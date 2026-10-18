@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-region-candidates:v1",
+  "title": "CadRegionCandidatesV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "source_asset_id", "source_sha256", "plan_profile_id", "status",
+    "geometry_engine", "policy", "summary", "category_summary", "region_candidates", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "source_asset_id": {"type": "string", "minLength": 1},
+    "source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "plan_profile_id": {"type": "string", "minLength": 1},
+    "status": {"const": "region-candidate-extraction-complete"},
+    "geometry_engine": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version", "geos_version"],
+      "properties": {
+        "name": {"const": "Shapely"},
+        "version": {"type": "string", "minLength": 1},
+        "geos_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["snap_tolerance_mm", "minimum_area_m2", "accepted_entity_types", "excluded_entity_types_are_reported"],
+      "properties": {
+        "snap_tolerance_mm": {"type": "number", "exclusiveMinimum": 0},
+        "minimum_area_m2": {"type": "number", "exclusiveMinimum": 0},
+        "accepted_entity_types": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "excluded_entity_types_are_reported": {"const": true}
+      }
+    },
+    "summary": {"$ref": "#/$defs/summary"},
+    "category_summary": {"type": "array", "items": {"$ref": "#/$defs/categorySummary"}},
+    "region_candidates": {"type": "array", "items": {"$ref": "#/$defs/region"}},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+  },
+  "$defs": {
+    "countMap": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "point": {
+      "type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}],
+      "minItems": 2, "maxItems": 2
+    },
+    "ring": {"type": "array", "minItems": 4, "items": {"$ref": "#/$defs/point"}},
+    "bounds": {
+      "type": "object", "additionalProperties": false, "required": ["minimum", "maximum"],
+      "properties": {"minimum": {"$ref": "#/$defs/point"}, "maximum": {"$ref": "#/$defs/point"}}
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "linework_candidate_count", "polygon_candidate_count", "dangle_geometry_count",
+        "cut_geometry_count", "invalid_ring_geometry_count", "created_domain_object_count",
+        "quantity_ready_count", "user_confirmation_required_now"
+      ],
+      "properties": {
+        "linework_candidate_count": {"type": "integer", "minimum": 0},
+        "polygon_candidate_count": {"type": "integer", "minimum": 0},
+        "dangle_geometry_count": {"type": "integer", "minimum": 0},
+        "cut_geometry_count": {"type": "integer", "minimum": 0},
+        "invalid_ring_geometry_count": {"type": "integer", "minimum": 0},
+        "created_domain_object_count": {"const": 0},
+        "quantity_ready_count": {"const": 0},
+        "user_confirmation_required_now": {"type": "boolean"}
+      }
+    },
+    "categorySummary": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "category", "input_candidate_count", "linework_candidate_count",
+        "excluded_candidate_type_counts", "polygon_candidate_count",
+        "polygon_candidate_total_area_m2", "dangle_geometry_count", "cut_geometry_count",
+        "invalid_ring_geometry_count", "source_candidate_ids"
+      ],
+      "properties": {
+        "category": {"type": "string", "minLength": 1},
+        "input_candidate_count": {"type": "integer", "minimum": 0},
+        "linework_candidate_count": {"type": "integer", "minimum": 0},
+        "excluded_candidate_type_counts": {"$ref": "#/$defs/countMap"},
+        "polygon_candidate_count": {"type": "integer", "minimum": 0},
+        "polygon_candidate_total_area_m2": {"type": "number", "minimum": 0},
+        "dangle_geometry_count": {"type": "integer", "minimum": 0},
+        "cut_geometry_count": {"type": "integer", "minimum": 0},
+        "invalid_ring_geometry_count": {"type": "integer", "minimum": 0},
+        "source_candidate_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "region": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "region_candidate_id", "category", "area_m2", "perimeter_m", "bounds",
+        "exterior_ring", "interior_rings", "topology_status",
+        "secondary_cad_validation_status", "domain_object_status", "quantity_status"
+      ],
+      "properties": {
+        "region_candidate_id": {"type": "string", "pattern": "^cadregion-[a-f0-9]{24}$"},
+        "category": {"type": "string", "minLength": 1},
+        "area_m2": {"type": "number", "exclusiveMinimum": 0},
+        "perimeter_m": {"type": "number", "exclusiveMinimum": 0},
+        "bounds": {"$ref": "#/$defs/bounds"},
+        "exterior_ring": {"$ref": "#/$defs/ring"},
+        "interior_rings": {"type": "array", "items": {"$ref": "#/$defs/ring"}},
+        "topology_status": {"const": "polygonized-candidate"},
+        "secondary_cad_validation_status": {"const": "required"},
+        "domain_object_status": {"const": "not-created"},
+        "quantity_status": {"const": "not-ready"}
+      }
+    },
+    "warning": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message"],
+      "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string", "minLength": 1}}
+    }
+  }
+}

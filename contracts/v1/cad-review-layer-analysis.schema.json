@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-review-layer-analysis:v1",
+  "title": "CadReviewLayerAnalysisV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "source_asset_id", "source_sha256", "semantic_mapping_version",
+    "plan_profile_id", "status", "summary", "layers", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "source_asset_id": {"type": "string", "minLength": 1},
+    "source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "semantic_mapping_version": {"type": "string", "minLength": 1},
+    "plan_profile_id": {"type": "string", "minLength": 1},
+    "status": {"const": "review-layer-spatial-analysis-complete"},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_layer_count", "declared_reachable_entity_count",
+        "declared_model_reachable_entity_count", "declared_paper_only_reachable_entity_count",
+        "model_reachable_unique_source_entity_count", "noninstantiated_model_source_entity_count",
+        "primary_plan_instance_count",
+        "outside_primary_plan_instance_count", "coordinate_missing_instance_count",
+        "maximum_nested_depth_seen", "traversal_issue_counts", "user_confirmation_required_now"
+      ],
+      "properties": {
+        "review_layer_count": {"type": "integer", "minimum": 0},
+        "declared_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "declared_model_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "declared_paper_only_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "model_reachable_unique_source_entity_count": {"type": "integer", "minimum": 0},
+        "noninstantiated_model_source_entity_count": {"type": "integer", "minimum": 0},
+        "primary_plan_instance_count": {"type": "integer", "minimum": 0},
+        "outside_primary_plan_instance_count": {"type": "integer", "minimum": 0},
+        "coordinate_missing_instance_count": {"type": "integer", "minimum": 0},
+        "maximum_nested_depth_seen": {"type": "integer", "minimum": 0},
+        "traversal_issue_counts": {"$ref": "#/$defs/countMap"},
+        "user_confirmation_required_now": {"type": "boolean"}
+      }
+    },
+    "layers": {"type": "array", "items": {"$ref": "#/$defs/layer"}},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+  },
+  "$defs": {
+    "countMap": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "point": {
+      "type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}],
+      "minItems": 2, "maxItems": 2
+    },
+    "bounds": {
+      "type": "object", "additionalProperties": false, "required": ["minimum", "maximum"],
+      "properties": {"minimum": {"$ref": "#/$defs/point"}, "maximum": {"$ref": "#/$defs/point"}}
+    },
+    "sample": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_entity_handle", "source_entity_type", "instance_depth", "bounds"],
+      "properties": {
+        "source_entity_handle": {"type": "integer", "minimum": 0},
+        "source_entity_type": {"type": "string", "minLength": 1},
+        "instance_depth": {"type": "integer", "minimum": 0},
+        "bounds": {"$ref": "#/$defs/bounds"}
+      }
+    },
+    "layer": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "layer_name", "category", "scope_disposition", "storage_entity_count",
+        "declared_reachable_entity_count", "model_reachable_unique_source_entity_count",
+        "declared_model_reachable_entity_count", "declared_paper_only_reachable_entity_count",
+        "noninstantiated_model_source_entity_count", "primary_plan_instance_count",
+        "primary_plan_unique_source_entity_count", "outside_primary_plan_instance_count",
+        "outside_primary_plan_unique_source_entity_count", "coordinate_missing_instance_count",
+        "primary_plan_entity_type_counts", "outside_primary_plan_entity_type_counts",
+        "primary_plan_samples", "disposition"
+      ],
+      "properties": {
+        "layer_name": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "minLength": 1},
+        "scope_disposition": {"type": "string", "minLength": 1},
+        "storage_entity_count": {"type": "integer", "minimum": 0},
+        "declared_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "declared_model_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "declared_paper_only_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "model_reachable_unique_source_entity_count": {"type": "integer", "minimum": 0},
+        "noninstantiated_model_source_entity_count": {"type": "integer", "minimum": 0},
+        "primary_plan_instance_count": {"type": "integer", "minimum": 0},
+        "primary_plan_unique_source_entity_count": {"type": "integer", "minimum": 0},
+        "outside_primary_plan_instance_count": {"type": "integer", "minimum": 0},
+        "outside_primary_plan_unique_source_entity_count": {"type": "integer", "minimum": 0},
+        "coordinate_missing_instance_count": {"type": "integer", "minimum": 0},
+        "primary_plan_entity_type_counts": {"$ref": "#/$defs/countMap"},
+        "outside_primary_plan_entity_type_counts": {"$ref": "#/$defs/countMap"},
+        "primary_plan_samples": {"type": "array", "maxItems": 25, "items": {"$ref": "#/$defs/sample"}},
+        "disposition": {"enum": ["evidence-only-review-required", "not-present-in-primary-plan"]}
+      }
+    },
+    "warning": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message"],
+      "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string", "minLength": 1}}
+    }
+  }
+}

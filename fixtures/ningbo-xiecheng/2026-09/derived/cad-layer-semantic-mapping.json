@@ -1,0 +1,4535 @@
+{
+  "contract_version": "1.0",
+  "mapping_version": "cad-layer-semantics-1.0.0",
+  "source_asset_id": "drawing-cad-01",
+  "source_sha256": "77DDAC8E80401BF3C7913BFF8AC959DC5D4A0CC573EC5CDCBC2CAB5D95A47616",
+  "source_geometry_quality": "parsed-with-compatibility-warnings",
+  "mapping_status": "mapped-with-review-items",
+  "summary": {
+    "total_layer_count": 57,
+    "mapped_layer_count": 57,
+    "review_layer_count": 4,
+    "total_entity_count": 94706,
+    "mapped_storage_entity_count": 94706,
+    "mapped_storage_entity_ratio": 1.0,
+    "non_review_storage_entity_count": 48918,
+    "non_review_storage_entity_ratio": 0.516525,
+    "review_storage_entity_count": 45788,
+    "professional_candidate_storage_entity_count": 9147,
+    "reachable_entity_count": 40334,
+    "reachable_entity_ratio": 0.425886,
+    "unreachable_definition_entity_count": 53032,
+    "other_context_entity_count": 1340,
+    "non_review_reachable_entity_count": 35822,
+    "review_reachable_entity_count": 4512,
+    "professional_candidate_reachable_entity_count": 7932,
+    "scope_disposition_layer_counts": {
+      "evidence-only": 33,
+      "excluded-by-project-decision": 8,
+      "included-design-evidence": 16
+    },
+    "user_confirmation_required_now": false
+  },
+  "category_summary": [
+    {
+      "category": "architecture.detail",
+      "layer_count": 3,
+      "entity_count": 277,
+      "reachable_entity_count": 208,
+      "layer_names": [
+        "SOL【实体】",
+        "DT-通用",
+        "D-造型细线"
+      ]
+    },
+    {
+      "category": "architecture.opening.door",
+      "layer_count": 1,
+      "entity_count": 378,
+      "reachable_entity_count": 360,
+      "layer_names": [
+        "PL-门"
+      ]
+    },
+    {
+      "category": "architecture.opening.window",
+      "layer_count": 1,
+      "entity_count": 6,
+      "reachable_entity_count": 6,
+      "layer_names": [
+        "WINDOW"
+      ]
+    },
+    {
+      "category": "architecture.wall",
+      "layer_count": 4,
+      "entity_count": 1530,
+      "reachable_entity_count": 1435,
+      "layer_names": [
+        "PL-新建墙体",
+        "001墙线",
+        "WALL",
+        "BS-墙"
+      ]
+    },
+    {
+      "category": "cad.reference",
+      "layer_count": 4,
+      "entity_count": 34132,
+      "reachable_entity_count": 25643,
+      "layer_names": [
+        "0",
+        "Defpoints",
+        "HATCH",
+        "0 @ 1"
+      ]
+    },
+    {
+      "category": "drawing.administration.frame-index",
+      "layer_count": 7,
+      "entity_count": 610,
+      "reachable_entity_count": 366,
+      "layer_names": [
+        "【00图框】",
+        "M-TK  图框",
+        "A3$0$TK-text",
+        "IHY-frame",
+        "TK-form",
+        "M-INDEX  索引",
+        "00封面"
+      ]
+    },
+    {
+      "category": "drawing.administration.paper-space-support",
+      "layer_count": 1,
+      "entity_count": 166,
+      "reachable_entity_count": 166,
+      "layer_names": [
+        "1"
+      ]
+    },
+    {
+      "category": "drawing.annotation.dimension",
+      "layer_count": 10,
+      "entity_count": 3578,
+      "reachable_entity_count": 1118,
+      "layer_names": [
+        "PL-新建墙体尺寸",
+        "PL-天花尺寸",
+        "PL-灯具尺寸",
+        "DIM",
+        "8",
+        "D■03 地面标注",
+        "DIM【标注】",
+        "D-外部标注",
+        "DIM-标注",
+        "DIM-外部标注"
+      ]
+    },
+    {
+      "category": "drawing.annotation.text",
+      "layer_count": 5,
+      "entity_count": 1189,
+      "reachable_entity_count": 597,
+      "layer_names": [
+        "PL-文字标注",
+        "TXT【文字】",
+        "图例",
+        "IHY-paper text",
+        "text"
+      ]
+    },
+    {
+      "category": "drawing.external-base-map",
+      "layer_count": 2,
+      "entity_count": 96,
+      "reachable_entity_count": 0,
+      "layer_names": [
+        "居民地与垣栅",
+        "道路与交通附属设施"
+      ]
+    },
+    {
+      "category": "drawing.external-reference",
+      "layer_count": 4,
+      "entity_count": 45788,
+      "reachable_entity_count": 4512,
+      "layer_names": [
+        "250",
+        "155",
+        "图层 1",
+        "AM_1"
+      ]
+    },
+    {
+      "category": "interior.ceiling",
+      "layer_count": 2,
+      "entity_count": 302,
+      "reachable_entity_count": 280,
+      "layer_names": [
+        "PL-天花",
+        "P-天花"
+      ]
+    },
+    {
+      "category": "interior.floor.finish-line",
+      "layer_count": 1,
+      "entity_count": 86,
+      "reachable_entity_count": 60,
+      "layer_names": [
+        "PL-地坪线"
+      ]
+    },
+    {
+      "category": "interior.furniture.fixed",
+      "layer_count": 2,
+      "entity_count": 4526,
+      "reachable_entity_count": 3989,
+      "layer_names": [
+        "PL-固定家具",
+        "PL-固定落地"
+      ]
+    },
+    {
+      "category": "interior.furniture.loose",
+      "layer_count": 2,
+      "entity_count": 1261,
+      "reachable_entity_count": 1170,
+      "layer_names": [
+        "PL-活动家具",
+        "P-活动家具"
+      ]
+    },
+    {
+      "category": "mep.electrical.lighting-fixture",
+      "layer_count": 3,
+      "entity_count": 214,
+      "reachable_entity_count": 118,
+      "layer_names": [
+        "PL-灯具",
+        "C-灯具",
+        "A墙面灯具"
+      ]
+    },
+    {
+      "category": "mep.electrical.outlet",
+      "layer_count": 2,
+      "entity_count": 312,
+      "reachable_entity_count": 121,
+      "layer_names": [
+        "插座",
+        "插座 @ 1"
+      ]
+    },
+    {
+      "category": "mep.electrical.switch",
+      "layer_count": 1,
+      "entity_count": 152,
+      "reachable_entity_count": 120,
+      "layer_names": [
+        "开关"
+      ]
+    },
+    {
+      "category": "mep.hvac.air-terminal",
+      "layer_count": 1,
+      "entity_count": 73,
+      "reachable_entity_count": 39,
+      "layer_names": [
+        "a空调风口"
+      ]
+    },
+    {
+      "category": "mep.plumbing",
+      "layer_count": 1,
+      "entity_count": 30,
+      "reachable_entity_count": 26,
+      "layer_names": [
+        "PL-给排水"
+      ]
+    }
+  ],
+  "layer_mappings": [
+    {
+      "layer_name": "0",
+      "layer_handle": 6,
+      "entity_count": 30718,
+      "reachable_entity_count": 25643,
+      "unreachable_definition_entity_count": 4128,
+      "other_context_entity_count": 947,
+      "block_context_counts": {
+        "model-and-paper-reachable": 34,
+        "model-reachable": 24490,
+        "paper-reachable": 1119,
+        "unowned": 947,
+        "unreachable-block-definition": 4128
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 6953,
+          "block_name": "GW21",
+          "entity_count": 7427,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 6163,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17122587,
+          "block_name": "G$CA53BEB15",
+          "entity_count": 2946,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17134470,
+          "block_name": "G$C09184D01",
+          "entity_count": 2894,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16988191,
+          "block_name": "G$C6A503C8D",
+          "entity_count": 1723,
+          "context": "model-reachable",
+          "insertion_reference_count": 13,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17054550,
+          "block_name": "*U",
+          "entity_count": 1318,
+          "context": "model-reachable",
+          "insertion_reference_count": 4,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17074191,
+          "block_name": "*U",
+          "entity_count": 1318,
+          "context": "model-reachable",
+          "insertion_reference_count": 4,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17107573,
+          "block_name": "*U",
+          "entity_count": 1318,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 21681
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 6138
+        },
+        {
+          "entity_type": "ATTRIB",
+          "count": 760
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 351
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 351
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "cad.reference",
+      "layer_role": "technical-support",
+      "confidence": 0.95,
+      "rule_id": "cad.reference",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Standard or generated CAD support layer; block expansion is required before professional interpretation."
+    },
+    {
+      "layer_name": "【00图框】",
+      "layer_handle": 16951728,
+      "entity_count": 27,
+      "reachable_entity_count": 26,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 1,
+      "block_context_counts": {
+        "paper-reachable": 26,
+        "unowned": 1
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 13,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 13,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": null,
+          "block_name": null,
+          "entity_count": 1,
+          "context": "unowned",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "INSERT",
+          "count": 26
+        },
+        {
+          "entity_type": "SEQEND",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.administration.frame-index",
+      "layer_role": "administrative",
+      "confidence": 0.96,
+      "rule_id": "drawing.frame-index",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies drawing frames, cover sheets, forms, or indexes."
+    },
+    {
+      "layer_name": "PL-新建墙体",
+      "layer_handle": 16957094,
+      "entity_count": 1501,
+      "reachable_entity_count": 1412,
+      "unreachable_definition_entity_count": 89,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 1400,
+        "paper-reachable": 12,
+        "unreachable-block-definition": 89
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 1294,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16985067,
+          "block_name": "G$CE40B424D",
+          "entity_count": 91,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 87,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16985954,
+          "block_name": "G$CABD8A9CE",
+          "entity_count": 8,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16986221,
+          "block_name": "G$CB4AED5DE",
+          "entity_count": 7,
+          "context": "model-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 6,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 6,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17172638,
+          "block_name": "G$C91750671",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 1345
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 74
+        },
+        {
+          "entity_type": "HATCH",
+          "count": 56
+        },
+        {
+          "entity_type": "CIRCLE",
+          "count": 26
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.wall",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "architecture.wall",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies walls or wall lines."
+    },
+    {
+      "layer_name": "PL-活动家具",
+      "layer_handle": 16957758,
+      "entity_count": 1260,
+      "reachable_entity_count": 1170,
+      "unreachable_definition_entity_count": 90,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 1170,
+        "unreachable-block-definition": 90
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 1063,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16985067,
+          "block_name": "G$CE40B424D",
+          "entity_count": 81,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 69,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17112111,
+          "block_name": "G$CFA59DD40",
+          "entity_count": 21,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16986221,
+          "block_name": "G$CB4AED5DE",
+          "entity_count": 11,
+          "context": "model-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16985954,
+          "block_name": "G$CABD8A9CE",
+          "entity_count": 9,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16959894,
+          "block_name": "G$CFB626B85",
+          "entity_count": 6,
+          "context": "model-reachable",
+          "insertion_reference_count": 9,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 777
+        },
+        {
+          "entity_type": "LINE",
+          "count": 361
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 90
+        },
+        {
+          "entity_type": "CIRCLE",
+          "count": 32
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "interior.furniture.loose",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "furniture.loose",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies loose furniture."
+    },
+    {
+      "layer_name": "PL-固定家具",
+      "layer_handle": 16957835,
+      "entity_count": 4099,
+      "reachable_entity_count": 3612,
+      "unreachable_definition_entity_count": 487,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 3612,
+        "unreachable-block-definition": 487
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 3216,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16985067,
+          "block_name": "G$CE40B424D",
+          "entity_count": 235,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 208,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16985954,
+          "block_name": "G$CABD8A9CE",
+          "entity_count": 94,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17000629,
+          "block_name": "G$CB5CC5982",
+          "entity_count": 82,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17018920,
+          "block_name": "G$CEE3BEEE1",
+          "entity_count": 50,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17002991,
+          "block_name": "G$C87A73C3B",
+          "entity_count": 49,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17003370,
+          "block_name": "G$C581A6BB6",
+          "entity_count": 49,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 2647
+        },
+        {
+          "entity_type": "LINE",
+          "count": 1270
+        },
+        {
+          "entity_type": "CIRCLE",
+          "count": 182
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "interior.furniture.fixed",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "rule_id": "furniture.fixed",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name identifies fixed furniture or fixed floor-standing elements."
+    },
+    {
+      "layer_name": "PL-固定落地",
+      "layer_handle": 16958220,
+      "entity_count": 427,
+      "reachable_entity_count": 377,
+      "unreachable_definition_entity_count": 50,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 377,
+        "unreachable-block-definition": 50
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 352,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 50,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16985067,
+          "block_name": "G$CE40B424D",
+          "entity_count": 16,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16985954,
+          "block_name": "G$CABD8A9CE",
+          "entity_count": 8,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16986221,
+          "block_name": "G$CB4AED5DE",
+          "entity_count": 1,
+          "context": "model-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 364
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 42
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 21
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "interior.furniture.fixed",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "rule_id": "furniture.fixed",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name identifies fixed furniture or fixed floor-standing elements."
+    },
+    {
+      "layer_name": "PL-门",
+      "layer_handle": 16958478,
+      "entity_count": 378,
+      "reachable_entity_count": 360,
+      "unreachable_definition_entity_count": 18,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 360,
+        "unreachable-block-definition": 18
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 335,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16985067,
+          "block_name": "G$CE40B424D",
+          "entity_count": 21,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 18,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16986221,
+          "block_name": "G$CB4AED5DE",
+          "entity_count": 3,
+          "context": "model-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16985954,
+          "block_name": "G$CABD8A9CE",
+          "entity_count": 1,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 194
+        },
+        {
+          "entity_type": "ARC",
+          "count": 124
+        },
+        {
+          "entity_type": "LINE",
+          "count": 46
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 14
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.opening.door",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "architecture.door",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies doors."
+    },
+    {
+      "layer_name": "250",
+      "layer_handle": 16960149,
+      "entity_count": 78,
+      "reachable_entity_count": 72,
+      "unreachable_definition_entity_count": 6,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 72,
+        "unreachable-block-definition": 6
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 66,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16985067,
+          "block_name": "G$CE40B424D",
+          "entity_count": 6,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 6,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 65
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 13
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.external-reference",
+      "layer_role": "technical-support",
+      "confidence": 0.76,
+      "rule_id": "external.complex-reference",
+      "verification_status": "needs-system-review",
+      "scope_disposition": "evidence-only",
+      "rationale": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    },
+    {
+      "layer_name": "PL-文字标注",
+      "layer_handle": 16960324,
+      "entity_count": 514,
+      "reachable_entity_count": 469,
+      "unreachable_definition_entity_count": 45,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 453,
+        "paper-reachable": 16,
+        "unreachable-block-definition": 45
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 413,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 38,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16985067,
+          "block_name": "G$CE40B424D",
+          "entity_count": 31,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 8,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 8,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16986221,
+          "block_name": "G$CB4AED5DE",
+          "entity_count": 5,
+          "context": "model-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16985954,
+          "block_name": "G$CABD8A9CE",
+          "entity_count": 4,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17027231,
+          "block_name": "G$CFF13627E",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "TEXT",
+          "count": 382
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 90
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 41
+        },
+        {
+          "entity_type": "ATTDEF",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.text",
+      "layer_role": "annotation",
+      "confidence": 0.95,
+      "rule_id": "annotation.text",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name explicitly identifies text or legends."
+    },
+    {
+      "layer_name": "PL-新建墙体尺寸",
+      "layer_handle": 16963511,
+      "entity_count": 855,
+      "reachable_entity_count": 152,
+      "unreachable_definition_entity_count": 703,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 152,
+        "unreachable-block-definition": 703
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 152,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17178180,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17178196,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17178212,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17178228,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17178262,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17178294,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17178467,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 343
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 187
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 93
+        },
+        {
+          "entity_type": "DIMENSION_LINEAR",
+          "count": 91
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 67
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "PL-地坪线",
+      "layer_handle": 16964803,
+      "entity_count": 86,
+      "reachable_entity_count": 60,
+      "unreachable_definition_entity_count": 26,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 60,
+        "unreachable-block-definition": 26
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 60,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17052215,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17052230,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17052245,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17052139,
+          "block_name": "G$C8193E2E1",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 53
+        },
+        {
+          "entity_type": "HATCH",
+          "count": 13
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 6
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 4
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 4
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "interior.floor.finish-line",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "rule_id": "floor.finish-line",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name identifies floor finish boundaries."
+    },
+    {
+      "layer_name": "Defpoints",
+      "layer_handle": 16973166,
+      "entity_count": 3413,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 3413,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "unreachable-block-definition": 3413
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17143081,
+          "block_name": "*D",
+          "entity_count": 5,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16977771,
+          "block_name": "*D",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16977786,
+          "block_name": "*D",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16977801,
+          "block_name": "*D",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16977818,
+          "block_name": "*D",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16977833,
+          "block_name": "*D",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978202,
+          "block_name": "*D",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978219,
+          "block_name": "*D",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "POINT",
+          "count": 3413
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "cad.reference",
+      "layer_role": "technical-support",
+      "confidence": 0.95,
+      "rule_id": "cad.reference",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Standard or generated CAD support layer; block expansion is required before professional interpretation."
+    },
+    {
+      "layer_name": "PL-灯具",
+      "layer_handle": 16973642,
+      "entity_count": 117,
+      "reachable_entity_count": 111,
+      "unreachable_definition_entity_count": 6,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 110,
+        "paper-reachable": 1,
+        "unreachable-block-definition": 6
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 89,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16975209,
+          "block_name": "G$CC908971F",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16975289,
+          "block_name": "*U",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16975356,
+          "block_name": "*U",
+          "entity_count": 1,
+          "context": "model-reachable",
+          "insertion_reference_count": 6,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16975695,
+          "block_name": "G$C378A91ED",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16975843,
+          "block_name": "*U",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 1,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16975890,
+          "block_name": "G$C05A92215",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16976038,
+          "block_name": "*U",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 1,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "INSERT",
+          "count": 117
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "mep.electrical.lighting-fixture",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "rule_id": "lighting.fixture",
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies lighting fixtures; MEP is excluded from the current contract scope."
+    },
+    {
+      "layer_name": "PL-天花",
+      "layer_handle": 16973825,
+      "entity_count": 299,
+      "reachable_entity_count": 277,
+      "unreachable_definition_entity_count": 22,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 277,
+        "unreachable-block-definition": 22
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 273,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16974367,
+          "block_name": "G$CFAE19BFE",
+          "entity_count": 6,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17082839,
+          "block_name": "G$C43E2001D",
+          "entity_count": 4,
+          "context": "model-reachable",
+          "insertion_reference_count": 29,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16974525,
+          "block_name": "G$CE016294B",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17000629,
+          "block_name": "G$CB5CC5982",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16975209,
+          "block_name": "G$CC908971F",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16975695,
+          "block_name": "G$C378A91ED",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16975890,
+          "block_name": "G$C05A92215",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 166
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 116
+        },
+        {
+          "entity_type": "HATCH",
+          "count": 6
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 5
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 5
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "interior.ceiling",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "rule_id": "ceiling",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies ceiling geometry."
+    },
+    {
+      "layer_name": "PL-天花尺寸",
+      "layer_handle": 16977766,
+      "entity_count": 365,
+      "reachable_entity_count": 39,
+      "unreachable_definition_entity_count": 326,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 39,
+        "unreachable-block-definition": 326
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 39,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16977801,
+          "block_name": "*D",
+          "entity_count": 10,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16977833,
+          "block_name": "*D",
+          "entity_count": 10,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978202,
+          "block_name": "*D",
+          "entity_count": 10,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978234,
+          "block_name": "*D",
+          "entity_count": 10,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978266,
+          "block_name": "*D",
+          "entity_count": 10,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978283,
+          "block_name": "*D",
+          "entity_count": 10,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978315,
+          "block_name": "*D",
+          "entity_count": 10,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 145
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 78
+        },
+        {
+          "entity_type": "DIMENSION_LINEAR",
+          "count": 39
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 39
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 32
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "PL-灯具尺寸",
+      "layer_handle": 16978699,
+      "entity_count": 803,
+      "reachable_entity_count": 95,
+      "unreachable_definition_entity_count": 708,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 95,
+        "unreachable-block-definition": 708
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 95,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16978704,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978719,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978734,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978749,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978764,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978779,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16978794,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 285
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 190
+        },
+        {
+          "entity_type": "DIMENSION_LINEAR",
+          "count": 95
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 95
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 69
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "155",
+      "layer_handle": 16981666,
+      "entity_count": 9243,
+      "reachable_entity_count": 2917,
+      "unreachable_definition_entity_count": 6326,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 2909,
+        "paper-reachable": 8,
+        "unreachable-block-definition": 6326
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 2869,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17000629,
+          "block_name": "G$CB5CC5982",
+          "entity_count": 54,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17003370,
+          "block_name": "G$C581A6BB6",
+          "entity_count": 30,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16992293,
+          "block_name": "G$C26AEEC73",
+          "entity_count": 20,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17016023,
+          "block_name": "G$C8099A3EB",
+          "entity_count": 17,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17003685,
+          "block_name": "G$C412AE02F",
+          "entity_count": 15,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17004118,
+          "block_name": "G$C9159D6C5",
+          "entity_count": 14,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17005689,
+          "block_name": "G$C41EAA9DD",
+          "entity_count": 13,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 4226
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 1538
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 801
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 801
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 744
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.external-reference",
+      "layer_role": "technical-support",
+      "confidence": 0.76,
+      "rule_id": "external.complex-reference",
+      "verification_status": "needs-system-review",
+      "scope_disposition": "evidence-only",
+      "rationale": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    },
+    {
+      "layer_name": "C-灯具",
+      "layer_handle": 17027241,
+      "entity_count": 94,
+      "reachable_entity_count": 4,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 90,
+      "block_context_counts": {
+        "model-reachable": 4,
+        "unowned": 90
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": null,
+          "block_name": null,
+          "entity_count": 90,
+          "context": "unowned",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17054458,
+          "block_name": "A$C3DAF4441",
+          "entity_count": 4,
+          "context": "model-reachable",
+          "insertion_reference_count": 150,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "SEQEND",
+          "count": 90
+        },
+        {
+          "entity_type": "LINE",
+          "count": 2
+        },
+        {
+          "entity_type": "CIRCLE",
+          "count": 1
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "mep.electrical.lighting-fixture",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "rule_id": "lighting.fixture",
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies lighting fixtures; MEP is excluded from the current contract scope."
+    },
+    {
+      "layer_name": "DIM",
+      "layer_handle": 17031285,
+      "entity_count": 95,
+      "reachable_entity_count": 93,
+      "unreachable_definition_entity_count": 2,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 93,
+        "unreachable-block-definition": 2
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 93,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17031279,
+          "block_name": "G$CEE040F5E",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17031511,
+          "block_name": "G$C669F4CC8",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LEADER",
+          "count": 95
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "P-活动家具",
+      "layer_handle": 17035641,
+      "entity_count": 1,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 1,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "unreachable-block-definition": 1
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17043585,
+          "block_name": "G$C0C97C9A6",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "INSERT",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "interior.furniture.loose",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "furniture.loose",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies loose furniture."
+    },
+    {
+      "layer_name": "开关",
+      "layer_handle": 17035651,
+      "entity_count": 152,
+      "reachable_entity_count": 120,
+      "unreachable_definition_entity_count": 32,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 110,
+        "paper-reachable": 10,
+        "unreachable-block-definition": 32
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 106,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17039321,
+          "block_name": "G$C5606DB99",
+          "entity_count": 5,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17037492,
+          "block_name": "G$C725D505A",
+          "entity_count": 4,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17038322,
+          "block_name": "G$CB36B0902",
+          "entity_count": 4,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17039172,
+          "block_name": "G$C7DB17BA3",
+          "entity_count": 4,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 4,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 4,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17035640,
+          "block_name": "G$C099D4891",
+          "entity_count": 3,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "MTEXT",
+          "count": 62
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 35
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 26
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 11
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 11
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "mep.electrical.switch",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "electrical.switch",
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies switches; MEP is excluded from the current contract scope."
+    },
+    {
+      "layer_name": "001墙线",
+      "layer_handle": 17035654,
+      "entity_count": 6,
+      "reachable_entity_count": 6,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 6
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17039390,
+          "block_name": "G$C9D3C6BC1",
+          "entity_count": 4,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17035714,
+          "block_name": "G$CF87F0591",
+          "entity_count": 1,
+          "context": "model-reachable",
+          "insertion_reference_count": 4,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17036196,
+          "block_name": "G$CACF8F062",
+          "entity_count": 1,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 6
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.wall",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "architecture.wall",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies walls or wall lines."
+    },
+    {
+      "layer_name": "WALL",
+      "layer_handle": 17036826,
+      "entity_count": 16,
+      "reachable_entity_count": 10,
+      "unreachable_definition_entity_count": 6,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 10,
+        "unreachable-block-definition": 6
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 10,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 4,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17176917,
+          "block_name": "G$C9335D084",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 14
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 1
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.wall",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "architecture.wall",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies walls or wall lines."
+    },
+    {
+      "layer_name": "PL-给排水",
+      "layer_handle": 17036831,
+      "entity_count": 30,
+      "reachable_entity_count": 26,
+      "unreachable_definition_entity_count": 4,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 26,
+        "unreachable-block-definition": 4
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 13,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 13,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17036825,
+          "block_name": "G$C33621BF6",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17048324,
+          "block_name": "G$CE8DADEEC",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "TEXT",
+          "count": 26
+        },
+        {
+          "entity_type": "LINE",
+          "count": 2
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 1
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "mep.plumbing",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "plumbing",
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies water supply or drainage; MEP is excluded from the current contract scope."
+    },
+    {
+      "layer_name": "插座",
+      "layer_handle": 17037874,
+      "entity_count": 311,
+      "reachable_entity_count": 120,
+      "unreachable_definition_entity_count": 191,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 113,
+        "paper-reachable": 7,
+        "unreachable-block-definition": 191
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 113,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17046305,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17046320,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17046335,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17046350,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17046802,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17046817,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17046832,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "INSERT",
+          "count": 87
+        },
+        {
+          "entity_type": "LINE",
+          "count": 64
+        },
+        {
+          "entity_type": "TEXT",
+          "count": 33
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 32
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 32
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "mep.electrical.outlet",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "rule_id": "electrical.outlet",
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name identifies outlets or an outlet-derived block layer; MEP is excluded from the current contract scope."
+    },
+    {
+      "layer_name": "A墙面灯具",
+      "layer_handle": 17039725,
+      "entity_count": 3,
+      "reachable_entity_count": 3,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 3
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17039801,
+          "block_name": "rtyiu",
+          "entity_count": 3,
+          "context": "paper-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 2
+        },
+        {
+          "entity_type": "CIRCLE",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "mep.electrical.lighting-fixture",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "rule_id": "lighting.fixture",
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies lighting fixtures; MEP is excluded from the current contract scope."
+    },
+    {
+      "layer_name": "a空调风口",
+      "layer_handle": 17039726,
+      "entity_count": 73,
+      "reachable_entity_count": 39,
+      "unreachable_definition_entity_count": 34,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 39,
+        "unreachable-block-definition": 34
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17039898,
+          "block_name": "*U",
+          "entity_count": 34,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17039950,
+          "block_name": "*U",
+          "entity_count": 34,
+          "context": "paper-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17039988,
+          "block_name": "yuyowse",
+          "entity_count": 5,
+          "context": "paper-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 67
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 6
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "mep.hvac.air-terminal",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "rule_id": "hvac.air-terminal",
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies HVAC air terminals; MEP is excluded from the current contract scope."
+    },
+    {
+      "layer_name": "8",
+      "layer_handle": 17042707,
+      "entity_count": 809,
+      "reachable_entity_count": 244,
+      "unreachable_definition_entity_count": 565,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 76,
+        "paper-reachable": 168,
+        "unreachable-block-definition": 565
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 84,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 84,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 76,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17158666,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17158727,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17158758,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17158819,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17158850,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 383
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 156
+        },
+        {
+          "entity_type": "DIMENSION_LINEAR",
+          "count": 78
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 78
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 41
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.97,
+      "rule_id": "annotation.dimension-pdf-cross-check",
+      "verification_status": "cross-checked-with-pdf",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer contains automatic dimension blocks whose values 17920, 26170, 3800 and 140 match the PDF drawing dimensions."
+    },
+    {
+      "layer_name": "1",
+      "layer_handle": 17042710,
+      "entity_count": 166,
+      "reachable_entity_count": 166,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 166
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 83,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 83,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 158
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 8
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.administration.paper-space-support",
+      "layer_role": "administrative",
+      "confidence": 0.9,
+      "rule_id": "drawing.paper-space-support",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Entities on this sample layer are paper-space block inserts and are not treated as model geometry."
+    },
+    {
+      "layer_name": "WINDOW",
+      "layer_handle": 17045175,
+      "entity_count": 6,
+      "reachable_entity_count": 6,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 6
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 3,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 3,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 6
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.opening.window",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "rule_id": "architecture.window",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies windows."
+    },
+    {
+      "layer_name": "SOL【实体】",
+      "layer_handle": 17049271,
+      "entity_count": 139,
+      "reachable_entity_count": 70,
+      "unreachable_definition_entity_count": 69,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 46,
+        "paper-reachable": 24,
+        "unreachable-block-definition": 69
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 42,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17345637,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17345668,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17345653,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17345684,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17345699,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17345714,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17345729,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 40
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 32
+        },
+        {
+          "entity_type": "SOLID",
+          "count": 23
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 13
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 13
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.detail",
+      "layer_role": "professional",
+      "confidence": 0.82,
+      "rule_id": "architecture.detail",
+      "verification_status": "needs-secondary-validation",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name indicates solid or detail geometry but does not identify a specific building component."
+    },
+    {
+      "layer_name": "D■03 地面标注",
+      "layer_handle": 17049278,
+      "entity_count": 92,
+      "reachable_entity_count": 44,
+      "unreachable_definition_entity_count": 2,
+      "other_context_entity_count": 46,
+      "block_context_counts": {
+        "paper-reachable": 44,
+        "unowned": 46,
+        "unreachable-block-definition": 2
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": null,
+          "block_name": null,
+          "entity_count": 46,
+          "context": "unowned",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 22,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 22,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17049270,
+          "block_name": "G$CF8139923",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17050072,
+          "block_name": "G$C73FB0507",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "INSERT",
+          "count": 46
+        },
+        {
+          "entity_type": "SEQEND",
+          "count": 46
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "TXT【文字】",
+      "layer_handle": 17049279,
+      "entity_count": 558,
+      "reachable_entity_count": 78,
+      "unreachable_definition_entity_count": 434,
+      "other_context_entity_count": 46,
+      "block_context_counts": {
+        "model-reachable": 56,
+        "paper-reachable": 22,
+        "unowned": 46,
+        "unreachable-block-definition": 434
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 56,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": null,
+          "block_name": null,
+          "entity_count": 46,
+          "context": "unowned",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17158063,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17158124,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17158155,
+          "block_name": "*D",
+          "entity_count": 9,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17157877,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17157898,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17157913,
+          "block_name": "*D",
+          "entity_count": 8,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 171
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 112
+        },
+        {
+          "entity_type": "DIMENSION_LINEAR",
+          "count": 56
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 56
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 47
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.text",
+      "layer_role": "annotation",
+      "confidence": 0.95,
+      "rule_id": "annotation.text",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name explicitly identifies text or legends."
+    },
+    {
+      "layer_name": "DIM【标注】",
+      "layer_handle": 17049280,
+      "entity_count": 46,
+      "reachable_entity_count": 44,
+      "unreachable_definition_entity_count": 2,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 44,
+        "unreachable-block-definition": 2
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17049345,
+          "block_name": "*U",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 1,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17049612,
+          "block_name": "*U",
+          "entity_count": 2,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17049879,
+          "block_name": "*U",
+          "entity_count": 2,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17050146,
+          "block_name": "*U",
+          "entity_count": 2,
+          "context": "paper-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17050235,
+          "block_name": "*U",
+          "entity_count": 2,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17050502,
+          "block_name": "*U",
+          "entity_count": 2,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17050591,
+          "block_name": "*U",
+          "entity_count": 2,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17050680,
+          "block_name": "*U",
+          "entity_count": 2,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 46
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "图例",
+      "layer_handle": 17052915,
+      "entity_count": 26,
+      "reachable_entity_count": 26,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 26
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 13,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 13,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "TEXT",
+          "count": 26
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.text",
+      "layer_role": "annotation",
+      "confidence": 0.95,
+      "rule_id": "annotation.text",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name explicitly identifies text or legends."
+    },
+    {
+      "layer_name": "P-天花",
+      "layer_handle": 17053438,
+      "entity_count": 3,
+      "reachable_entity_count": 3,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 3
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 3,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 3
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "interior.ceiling",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "rule_id": "ceiling",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies ceiling geometry."
+    },
+    {
+      "layer_name": "D-外部标注",
+      "layer_handle": 17053441,
+      "entity_count": 302,
+      "reachable_entity_count": 251,
+      "unreachable_definition_entity_count": 10,
+      "other_context_entity_count": 41,
+      "block_context_counts": {
+        "model-reachable": 219,
+        "paper-reachable": 32,
+        "unowned": 41,
+        "unreachable-block-definition": 10
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 189,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": null,
+          "block_name": null,
+          "entity_count": 41,
+          "context": "unowned",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17054435,
+          "block_name": "A$C0C1D23EB",
+          "entity_count": 16,
+          "context": "model-reachable",
+          "insertion_reference_count": 48,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 16,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 16,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17085710,
+          "block_name": "G$CB4F5E22B",
+          "entity_count": 13,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17163494,
+          "block_name": "G$CFEAAB390",
+          "entity_count": 4,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17082083,
+          "block_name": "G$C67BA2A18",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "INSERT",
+          "count": 245
+        },
+        {
+          "entity_type": "SEQEND",
+          "count": 41
+        },
+        {
+          "entity_type": "LINE",
+          "count": 16
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "DT-通用",
+      "layer_handle": 17053450,
+      "entity_count": 39,
+      "reachable_entity_count": 39,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 39
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 39,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "INSERT",
+          "count": 15
+        },
+        {
+          "entity_type": "LINE",
+          "count": 15
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 9
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.detail",
+      "layer_role": "professional",
+      "confidence": 0.82,
+      "rule_id": "architecture.detail",
+      "verification_status": "needs-secondary-validation",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name indicates solid or detail geometry but does not identify a specific building component."
+    },
+    {
+      "layer_name": "DIM-标注",
+      "layer_handle": 17078512,
+      "entity_count": 146,
+      "reachable_entity_count": 122,
+      "unreachable_definition_entity_count": 24,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 122,
+        "unreachable-block-definition": 24
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 61,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 61,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17078904,
+          "block_name": "G$C256B2867",
+          "entity_count": 12,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17078706,
+          "block_name": "*D",
+          "entity_count": 6,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17176072,
+          "block_name": "G$C3214095C",
+          "entity_count": 2,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17078628,
+          "block_name": "G$C3C63C96A",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17176917,
+          "block_name": "G$C9335D084",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17178514,
+          "block_name": "G$C592FFB85",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "TEXT",
+          "count": 73
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 39
+        },
+        {
+          "entity_type": "CIRCLE",
+          "count": 27
+        },
+        {
+          "entity_type": "LINE",
+          "count": 3
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 2
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "DIM-外部标注",
+      "layer_handle": 17097344,
+      "entity_count": 65,
+      "reachable_entity_count": 34,
+      "unreachable_definition_entity_count": 31,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 34,
+        "unreachable-block-definition": 31
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 34,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17163455,
+          "block_name": "*D",
+          "entity_count": 7,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17163419,
+          "block_name": "*D",
+          "entity_count": 6,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17163431,
+          "block_name": "*D",
+          "entity_count": 6,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17163443,
+          "block_name": "*D",
+          "entity_count": 6,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17163468,
+          "block_name": "*D",
+          "entity_count": 6,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 38
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 10
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 6
+        },
+        {
+          "entity_type": "DIMENSION_LINEAR",
+          "count": 5
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 5
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "rule_id": "annotation.dimension",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "layer_name": "BS-墙",
+      "layer_handle": 17102989,
+      "entity_count": 7,
+      "reachable_entity_count": 7,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 7
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 7,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 7
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.wall",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "rule_id": "architecture.wall",
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies walls or wall lines."
+    },
+    {
+      "layer_name": "D-造型细线",
+      "layer_handle": 17102997,
+      "entity_count": 99,
+      "reachable_entity_count": 99,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 99
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 58,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17103186,
+          "block_name": "swfdsf",
+          "entity_count": 41,
+          "context": "model-reachable",
+          "insertion_reference_count": 4,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 34
+        },
+        {
+          "entity_type": "LINE",
+          "count": 31
+        },
+        {
+          "entity_type": "HATCH",
+          "count": 16
+        },
+        {
+          "entity_type": "ARC",
+          "count": 12
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 4
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "architecture.detail",
+      "layer_role": "professional",
+      "confidence": 0.82,
+      "rule_id": "architecture.detail",
+      "verification_status": "needs-secondary-validation",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name indicates solid or detail geometry but does not identify a specific building component."
+    },
+    {
+      "layer_name": "M-TK  图框",
+      "layer_handle": 17146816,
+      "entity_count": 0,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {},
+      "top_owner_blocks": [],
+      "top_entity_types": [],
+      "mapping_status": "mapped",
+      "category": "drawing.administration.frame-index",
+      "layer_role": "administrative",
+      "confidence": 0.96,
+      "rule_id": "drawing.frame-index",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies drawing frames, cover sheets, forms, or indexes."
+    },
+    {
+      "layer_name": "A3$0$TK-text",
+      "layer_handle": 17147497,
+      "entity_count": 27,
+      "reachable_entity_count": 26,
+      "unreachable_definition_entity_count": 1,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 26,
+        "unreachable-block-definition": 1
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 13,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 13,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17147496,
+          "block_name": "G$CBE691408",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "ATTDEF",
+          "count": 27
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.administration.frame-index",
+      "layer_role": "administrative",
+      "confidence": 0.96,
+      "rule_id": "drawing.frame-index",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies drawing frames, cover sheets, forms, or indexes."
+    },
+    {
+      "layer_name": "IHY-frame",
+      "layer_handle": 17147716,
+      "entity_count": 42,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 41,
+      "other_context_entity_count": 1,
+      "block_context_counts": {
+        "unowned": 1,
+        "unreachable-block-definition": 41
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17148119,
+          "block_name": "FORM.A3",
+          "entity_count": 40,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17150372,
+          "block_name": "G$CA6057D94",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": null,
+          "block_name": null,
+          "entity_count": 1,
+          "context": "unowned",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 40
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 1
+        },
+        {
+          "entity_type": "SEQEND",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.administration.frame-index",
+      "layer_role": "administrative",
+      "confidence": 0.96,
+      "rule_id": "drawing.frame-index",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies drawing frames, cover sheets, forms, or indexes."
+    },
+    {
+      "layer_name": "IHY-paper text",
+      "layer_handle": 17147717,
+      "entity_count": 42,
+      "reachable_entity_count": 24,
+      "unreachable_definition_entity_count": 18,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 24,
+        "unreachable-block-definition": 18
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17148119,
+          "block_name": "FORM.A3",
+          "entity_count": 18,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 12,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 12,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "TEXT",
+          "count": 40
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 2
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.text",
+      "layer_role": "annotation",
+      "confidence": 0.95,
+      "rule_id": "annotation.text",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name explicitly identifies text or legends."
+    },
+    {
+      "layer_name": "TK-form",
+      "layer_handle": 17147718,
+      "entity_count": 0,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {},
+      "top_owner_blocks": [],
+      "top_entity_types": [],
+      "mapping_status": "mapped",
+      "category": "drawing.administration.frame-index",
+      "layer_role": "administrative",
+      "confidence": 0.96,
+      "rule_id": "drawing.frame-index",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies drawing frames, cover sheets, forms, or indexes."
+    },
+    {
+      "layer_name": "M-INDEX  索引",
+      "layer_handle": 17149021,
+      "entity_count": 514,
+      "reachable_entity_count": 314,
+      "unreachable_definition_entity_count": 32,
+      "other_context_entity_count": 168,
+      "block_context_counts": {
+        "paper-reachable": 314,
+        "unowned": 168,
+        "unreachable-block-definition": 32
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": null,
+          "block_name": null,
+          "entity_count": 168,
+          "context": "unowned",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16875513,
+          "block_name": "*Paper_Space",
+          "entity_count": 27,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17351905,
+          "block_name": "*Paper_Space",
+          "entity_count": 27,
+          "context": "paper-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17149085,
+          "block_name": "*U",
+          "entity_count": 10,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17151830,
+          "block_name": "*U",
+          "entity_count": 10,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17151866,
+          "block_name": "*U",
+          "entity_count": 10,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17151902,
+          "block_name": "*U",
+          "entity_count": 10,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17152188,
+          "block_name": "*U",
+          "entity_count": 10,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": false
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 116
+        },
+        {
+          "entity_type": "ATTRIB",
+          "count": 112
+        },
+        {
+          "entity_type": "ATTDEF",
+          "count": 58
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 58
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 56
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.administration.frame-index",
+      "layer_role": "administrative",
+      "confidence": 0.96,
+      "rule_id": "drawing.frame-index",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies drawing frames, cover sheets, forms, or indexes."
+    },
+    {
+      "layer_name": "00封面",
+      "layer_handle": 17158558,
+      "entity_count": 0,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {},
+      "top_owner_blocks": [],
+      "top_entity_types": [],
+      "mapping_status": "mapped",
+      "category": "drawing.administration.frame-index",
+      "layer_role": "administrative",
+      "confidence": 0.96,
+      "rule_id": "drawing.frame-index",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies drawing frames, cover sheets, forms, or indexes."
+    },
+    {
+      "layer_name": "图层 1",
+      "layer_handle": 17183805,
+      "entity_count": 36327,
+      "reachable_entity_count": 1514,
+      "unreachable_definition_entity_count": 34813,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 1514,
+        "unreachable-block-definition": 34813
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17261541,
+          "block_name": "G$CD57F7DBE",
+          "entity_count": 34288,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 1514,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17333534,
+          "block_name": "G$C03E5BC71",
+          "entity_count": 340,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17333316,
+          "block_name": "G$CB4933654",
+          "entity_count": 150,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17332769,
+          "block_name": "G$C2AF81F68",
+          "entity_count": 35,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "SPLINE",
+          "count": 19417
+        },
+        {
+          "entity_type": "LINE",
+          "count": 14652
+        },
+        {
+          "entity_type": "HATCH",
+          "count": 2248
+        },
+        {
+          "entity_type": "CIRCLE",
+          "count": 6
+        },
+        {
+          "entity_type": "ARC",
+          "count": 2
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.external-reference",
+      "layer_role": "technical-support",
+      "confidence": 0.76,
+      "rule_id": "external.complex-reference",
+      "verification_status": "needs-system-review",
+      "scope_disposition": "evidence-only",
+      "rationale": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    },
+    {
+      "layer_name": "text",
+      "layer_handle": 17183812,
+      "entity_count": 49,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 49,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "unreachable-block-definition": 49
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17261541,
+          "block_name": "G$CD57F7DBE",
+          "entity_count": 49,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "MTEXT",
+          "count": 49
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.annotation.text",
+      "layer_role": "annotation",
+      "confidence": 0.95,
+      "rule_id": "annotation.text",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name explicitly identifies text or legends."
+    },
+    {
+      "layer_name": "AM_1",
+      "layer_handle": 17183816,
+      "entity_count": 140,
+      "reachable_entity_count": 9,
+      "unreachable_definition_entity_count": 131,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "model-reachable": 9,
+        "unreachable-block-definition": 131
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17261541,
+          "block_name": "G$CD57F7DBE",
+          "entity_count": 130,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 9,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17333534,
+          "block_name": "G$C03E5BC71",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 125
+        },
+        {
+          "entity_type": "HATCH",
+          "count": 9
+        },
+        {
+          "entity_type": "ARC",
+          "count": 6
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.external-reference",
+      "layer_role": "technical-support",
+      "confidence": 0.76,
+      "rule_id": "external.complex-reference",
+      "verification_status": "needs-system-review",
+      "scope_disposition": "evidence-only",
+      "rationale": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    },
+    {
+      "layer_name": "居民地与垣栅",
+      "layer_handle": 17189166,
+      "entity_count": 95,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 95,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "unreachable-block-definition": 95
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17261541,
+          "block_name": "G$CD57F7DBE",
+          "entity_count": 95,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 89
+        },
+        {
+          "entity_type": "ARC",
+          "count": 6
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.external-base-map",
+      "layer_role": "technical-support",
+      "confidence": 0.9,
+      "rule_id": "external.base-map",
+      "verification_status": "needs-secondary-validation",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name appears to originate from external mapping or survey data."
+    },
+    {
+      "layer_name": "道路与交通附属设施",
+      "layer_handle": 17189169,
+      "entity_count": 1,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 1,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "unreachable-block-definition": 1
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17261541,
+          "block_name": "G$CD57F7DBE",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "SPLINE",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "drawing.external-base-map",
+      "layer_role": "technical-support",
+      "confidence": 0.9,
+      "rule_id": "external.base-map",
+      "verification_status": "needs-secondary-validation",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name appears to originate from external mapping or survey data."
+    },
+    {
+      "layer_name": "HATCH",
+      "layer_handle": 17353878,
+      "entity_count": 0,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {},
+      "top_owner_blocks": [],
+      "top_entity_types": [],
+      "mapping_status": "mapped",
+      "category": "cad.reference",
+      "layer_role": "technical-support",
+      "confidence": 0.95,
+      "rule_id": "cad.reference",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Standard or generated CAD support layer; block expansion is required before professional interpretation."
+    },
+    {
+      "layer_name": "插座 @ 1",
+      "layer_handle": 17356227,
+      "entity_count": 1,
+      "reachable_entity_count": 1,
+      "unreachable_definition_entity_count": 0,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "paper-reachable": 1
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17042831,
+          "block_name": "G$C721C69C9",
+          "entity_count": 1,
+          "context": "paper-reachable",
+          "insertion_reference_count": 2,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "HATCH",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "mep.electrical.outlet",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "rule_id": "electrical.outlet",
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name identifies outlets or an outlet-derived block layer; MEP is excluded from the current contract scope."
+    },
+    {
+      "layer_name": "0 @ 1",
+      "layer_handle": 17356262,
+      "entity_count": 1,
+      "reachable_entity_count": 0,
+      "unreachable_definition_entity_count": 1,
+      "other_context_entity_count": 0,
+      "block_context_counts": {
+        "unreachable-block-definition": 1
+      },
+      "top_owner_blocks": [
+        {
+          "block_handle": 17261541,
+          "block_name": "G$CD57F7DBE",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "top_entity_types": [
+        {
+          "entity_type": "MTEXT",
+          "count": 1
+        }
+      ],
+      "mapping_status": "mapped",
+      "category": "cad.reference",
+      "layer_role": "technical-support",
+      "confidence": 0.95,
+      "rule_id": "cad.reference",
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Standard or generated CAD support layer; block expansion is required before professional interpretation."
+    }
+  ],
+  "system_review_queue": [
+    {
+      "layer_name": "155",
+      "entity_count": 9243,
+      "reachable_entity_count": 2917,
+      "unreachable_definition_entity_count": 6326,
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 4226
+        },
+        {
+          "entity_type": "INSERT",
+          "count": 1538
+        },
+        {
+          "entity_type": "BLOCK",
+          "count": 801
+        },
+        {
+          "entity_type": "ENDBLK",
+          "count": 801
+        },
+        {
+          "entity_type": "MTEXT",
+          "count": 744
+        }
+      ],
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 2869,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17000629,
+          "block_name": "G$CB5CC5982",
+          "entity_count": 54,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17003370,
+          "block_name": "G$C581A6BB6",
+          "entity_count": 30,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 16992293,
+          "block_name": "G$C26AEEC73",
+          "entity_count": 20,
+          "context": "model-reachable",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17016023,
+          "block_name": "G$C8099A3EB",
+          "entity_count": 17,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17003685,
+          "block_name": "G$C412AE02F",
+          "entity_count": 15,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17004118,
+          "block_name": "G$C9159D6C5",
+          "entity_count": 14,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17005689,
+          "block_name": "G$C41EAA9DD",
+          "entity_count": 13,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "reason": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    },
+    {
+      "layer_name": "图层 1",
+      "entity_count": 36327,
+      "reachable_entity_count": 1514,
+      "unreachable_definition_entity_count": 34813,
+      "top_entity_types": [
+        {
+          "entity_type": "SPLINE",
+          "count": 19417
+        },
+        {
+          "entity_type": "LINE",
+          "count": 14652
+        },
+        {
+          "entity_type": "HATCH",
+          "count": 2248
+        },
+        {
+          "entity_type": "CIRCLE",
+          "count": 6
+        },
+        {
+          "entity_type": "ARC",
+          "count": 2
+        }
+      ],
+      "top_owner_blocks": [
+        {
+          "block_handle": 17261541,
+          "block_name": "G$CD57F7DBE",
+          "entity_count": 34288,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 1514,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17333534,
+          "block_name": "G$C03E5BC71",
+          "entity_count": 340,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17333316,
+          "block_name": "G$CB4933654",
+          "entity_count": 150,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 1,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17332769,
+          "block_name": "G$C2AF81F68",
+          "entity_count": 35,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "reason": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    },
+    {
+      "layer_name": "250",
+      "entity_count": 78,
+      "reachable_entity_count": 72,
+      "unreachable_definition_entity_count": 6,
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 65
+        },
+        {
+          "entity_type": "LWPOLYLINE",
+          "count": 13
+        }
+      ],
+      "top_owner_blocks": [
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 66,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 16985067,
+          "block_name": "G$CE40B424D",
+          "entity_count": 6,
+          "context": "model-reachable",
+          "insertion_reference_count": 3,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 17336385,
+          "block_name": "G$C0F052443",
+          "entity_count": 6,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "reason": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    },
+    {
+      "layer_name": "AM_1",
+      "entity_count": 140,
+      "reachable_entity_count": 9,
+      "unreachable_definition_entity_count": 131,
+      "top_entity_types": [
+        {
+          "entity_type": "LINE",
+          "count": 125
+        },
+        {
+          "entity_type": "HATCH",
+          "count": 9
+        },
+        {
+          "entity_type": "ARC",
+          "count": 6
+        }
+      ],
+      "top_owner_blocks": [
+        {
+          "block_handle": 17261541,
+          "block_name": "G$CD57F7DBE",
+          "entity_count": 130,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        },
+        {
+          "block_handle": 2,
+          "block_name": "*Model_Space",
+          "entity_count": 9,
+          "context": "model-reachable",
+          "insertion_reference_count": 0,
+          "external_reference_hint": false
+        },
+        {
+          "block_handle": 17333534,
+          "block_name": "G$C03E5BC71",
+          "entity_count": 1,
+          "context": "unreachable-block-definition",
+          "insertion_reference_count": 0,
+          "external_reference_hint": true
+        }
+      ],
+      "reason": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    }
+  ],
+  "warnings": [
+    {
+      "code": "BLOCK_INSTANCE_TRANSFORMS_NOT_APPLIED",
+      "message": "Block reachability is evaluated, but insertion transforms and instance multiplication are not applied yet. Entity counts are not quantities of real-world objects."
+    },
+    {
+      "code": "LAYERS_REQUIRE_SYSTEM_REVIEW",
+      "message": "4 layer candidates require system review of block and layout context before requesting user confirmation."
+    },
+    {
+      "code": "SOURCE_GEOMETRY_REQUIRES_SECONDARY_VALIDATION",
+      "message": "Source parser diagnostics require a second-engine or original-CAD spot check."
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# Used by optional CAD topology analyzers. Keep exact versions for reproducible replays.
+shapely==2.1.2

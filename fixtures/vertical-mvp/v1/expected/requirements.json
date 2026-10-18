@@ -1,0 +1,7 @@
+{
+  "fixture_version": "vertical-mvp-v1",
+  "goal": "quiet collaborative studio",
+  "hard_constraints": ["42 m2", "six fixed desks", "four linear lights"],
+  "source": "synthetic-fixture"
+}
+

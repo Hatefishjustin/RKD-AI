@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-secondary-validation:v1",
+  "title": "CadSecondaryValidationV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "source_asset_id", "reference_dwg_sha256", "source_relationship_status",
+    "dxf", "comparison", "status", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "source_asset_id": {"type": "string", "minLength": 1},
+    "reference_dwg_sha256": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^[A-F0-9]{64}$"}
+      ]
+    },
+    "source_relationship_status": {
+      "enum": ["not-specified", "registered-reference-unverified"]
+    },
+    "dxf": {"$ref": "#/$defs/dxf"},
+    "comparison": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/comparison"}
+      ]
+    },
+    "status": {
+      "enum": [
+        "secondary-summary-read",
+        "compared-with-differences",
+        "summary-matched",
+        "comparison-blocked"
+      ]
+    },
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+  },
+  "$defs": {
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1}
+      }
+    },
+    "dxf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version", "source_filename", "source_size_bytes", "source_sha256",
+        "parser", "encoding", "dxf_version", "dxf_version_name", "drawing_units",
+        "global_extents", "layer_names", "layer_count", "entities", "blocks", "status", "warnings"
+      ],
+      "properties": {
+        "contract_version": {"const": "1.0"},
+        "source_filename": {"type": "string", "pattern": "\\.[dD][xX][fF]$"},
+        "source_size_bytes": {"type": "integer", "minimum": 1},
+        "source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+        "parser": {
+          "type": "object", "additionalProperties": false, "required": ["name", "version"],
+          "properties": {"name": {"type": "string", "minLength": 1}, "version": {"type": "string", "minLength": 1}}
+        },
+        "encoding": {"type": "string", "minLength": 1},
+        "dxf_version": {"type": ["string", "null"]},
+        "dxf_version_name": {"type": "string", "minLength": 1},
+        "drawing_units": {
+          "type": "object", "additionalProperties": false, "required": ["code", "name"],
+          "properties": {"code": {"type": ["integer", "null"]}, "name": {"type": "string", "minLength": 1}}
+        },
+        "global_extents": {
+          "type": "object", "additionalProperties": false, "required": ["minimum", "maximum", "usage"],
+          "properties": {
+            "minimum": {"type": ["array", "null"], "items": {"type": "number"}},
+            "maximum": {"type": ["array", "null"], "items": {"type": "number"}},
+            "usage": {"type": "string", "minLength": 1}
+          }
+        },
+        "layer_names": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "layer_count": {"type": "integer", "minimum": 0},
+        "entities": {"$ref": "#/$defs/entities"},
+        "blocks": {"$ref": "#/$defs/blocks"},
+        "status": {"const": "secondary-summary-read"},
+        "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+      }
+    },
+    "entities": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "entity_count", "entity_type_count", "entity_counts", "layer_entity_counts",
+        "model_space_entity_count", "model_space_entity_counts", "paper_space_entity_count",
+        "paper_space_entity_counts", "text_entity_count", "dimension_entity_count",
+        "unique_handle_count", "geometry_extents"
+      ],
+      "properties": {
+        "entity_count": {"type": "integer", "minimum": 0},
+        "entity_type_count": {"type": "integer", "minimum": 0},
+        "entity_counts": {"$ref": "#/$defs/count_map"},
+        "layer_entity_counts": {"$ref": "#/$defs/count_map"},
+        "model_space_entity_count": {"type": "integer", "minimum": 0},
+        "model_space_entity_counts": {"$ref": "#/$defs/count_map"},
+        "paper_space_entity_count": {"type": "integer", "minimum": 0},
+        "paper_space_entity_counts": {"$ref": "#/$defs/count_map"},
+        "text_entity_count": {"type": "integer", "minimum": 0},
+        "dimension_entity_count": {"type": "integer", "minimum": 0},
+        "unique_handle_count": {"type": "integer", "minimum": 0},
+        "geometry_extents": {
+          "type": "object", "additionalProperties": false, "required": ["minimum", "maximum"],
+          "properties": {
+            "minimum": {"type": ["array", "null"], "items": {"type": "number"}},
+            "maximum": {"type": ["array", "null"], "items": {"type": "number"}}
+          }
+        }
+      }
+    },
+    "blocks": {
+      "type": "object", "additionalProperties": false,
+      "required": ["block_definition_count", "block_names", "non_empty_block_definition_count", "block_entity_counts"],
+      "properties": {
+        "block_definition_count": {"type": "integer", "minimum": 0},
+        "block_names": {"type": "array", "items": {"type": "string"}},
+        "non_empty_block_definition_count": {"type": "integer", "minimum": 0},
+        "block_entity_counts": {"$ref": "#/$defs/count_map"}
+      }
+    },
+    "count_map": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "comparison": {
+      "type": "object", "additionalProperties": false,
+      "required": ["comparison_status", "checks", "matching_check_ids", "difference_check_ids", "promotion_status", "warnings"],
+      "properties": {
+        "comparison_status": {"enum": ["compared-with-differences", "summary-matched"]},
+        "checks": {
+          "type": "array", "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["check_id", "status", "dxf_value", "dwg_value"],
+            "properties": {
+              "check_id": {"type": "string", "minLength": 1},
+              "status": {"enum": ["match", "difference", "not-comparable"]},
+              "dxf_value": {}, "dwg_value": {}
+            }
+          }
+        },
+        "matching_check_ids": {"type": "array", "items": {"type": "string"}},
+        "difference_check_ids": {"type": "array", "items": {"type": "string"}},
+        "promotion_status": {"const": "not-approved"},
+        "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+      }
+    }
+  }
+}

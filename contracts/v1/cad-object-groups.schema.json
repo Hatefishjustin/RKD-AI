@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-object-groups:v1",
+  "title": "CadObjectGroupsV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "source_asset_id", "source_sha256", "plan_profile_id",
+    "status", "grouping_policy", "summary", "category_summary", "groups", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "source_asset_id": {"type": "string", "minLength": 1},
+    "source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "plan_profile_id": {"type": "string", "minLength": 1},
+    "status": {"const": "geometry-grouping-complete"},
+    "grouping_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["policy_id", "endpoint_tolerance_mm", "block_instances_are_isolated", "cross_category_merging"],
+      "properties": {
+        "policy_id": {"type": "string", "minLength": 1},
+        "endpoint_tolerance_mm": {"type": "number", "exclusiveMinimum": 0},
+        "block_instances_are_isolated": {"const": true},
+        "cross_category_merging": {"const": false}
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "input_current_scope_candidate_count", "geometry_group_count", "category_count",
+        "final_domain_object_count", "quantity_ready_group_count", "user_confirmation_required_now"
+      ],
+      "properties": {
+        "input_current_scope_candidate_count": {"type": "integer", "minimum": 0},
+        "geometry_group_count": {"type": "integer", "minimum": 0},
+        "category_count": {"type": "integer", "minimum": 0},
+        "final_domain_object_count": {"const": 0},
+        "quantity_ready_group_count": {"const": 0},
+        "user_confirmation_required_now": {"type": "boolean"}
+      }
+    },
+    "category_summary": {"type": "array", "items": {"$ref": "#/$defs/categorySummary"}},
+    "groups": {"type": "array", "items": {"$ref": "#/$defs/group"}},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+  },
+  "$defs": {
+    "point": {
+      "type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}],
+      "minItems": 2, "maxItems": 2
+    },
+    "bounds": {
+      "type": "object", "additionalProperties": false, "required": ["minimum", "maximum"],
+      "properties": {"minimum": {"$ref": "#/$defs/point"}, "maximum": {"$ref": "#/$defs/point"}}
+    },
+    "countMap": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "categorySummary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["category", "candidate_count", "group_count", "singleton_group_count", "largest_group_candidate_count"],
+      "properties": {
+        "category": {"type": "string", "minLength": 1},
+        "candidate_count": {"type": "integer", "minimum": 1},
+        "group_count": {"type": "integer", "minimum": 1},
+        "singleton_group_count": {"type": "integer", "minimum": 0},
+        "largest_group_candidate_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "group": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "group_id", "category", "group_kind", "candidate_count", "candidate_ids",
+        "source_layers", "source_entity_type_counts", "bounds", "merge_confidence",
+        "domain_validation_status", "quantity_status"
+      ],
+      "properties": {
+        "group_id": {"type": "string", "pattern": "^cadgroup-[a-f0-9]{24}$"},
+        "category": {"type": "string", "minLength": 1},
+        "group_kind": {"enum": ["block-instance-candidate", "connected-geometry-candidate"]},
+        "candidate_count": {"type": "integer", "minimum": 1},
+        "candidate_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "source_layers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "source_entity_type_counts": {"$ref": "#/$defs/countMap"},
+        "bounds": {"$ref": "#/$defs/bounds"},
+        "merge_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "domain_validation_status": {"const": "pending"},
+        "quantity_status": {"const": "not-ready"}
+      }
+    },
+    "warning": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message"],
+      "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string", "minLength": 1}}
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "contract": "ValidationProfileV1",
+  "fixture_version": "vertical-mvp-v1",
+  "blocking_rules": ["area-consistency", "model-drawing-reference", "model-boq-reference"],
+  "intentional_failure_case": "one-cross-check-mismatch"
+}
+

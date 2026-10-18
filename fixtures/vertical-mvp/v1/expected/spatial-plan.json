@@ -1,0 +1,8 @@
+{
+  "fixture_version": "vertical-mvp-v1",
+  "option_id": "spatial_option_demo",
+  "seed": "deterministic-seed-1",
+  "area_m2": 42,
+  "fixed_elements": ["six fixed desks", "four linear lights"]
+}
+

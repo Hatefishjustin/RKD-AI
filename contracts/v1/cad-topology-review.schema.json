@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-topology-review:v1",
+  "title": "CadTopologyReviewV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "source_asset_id", "source_sha256", "plan_profile_id",
+    "status", "summary", "items", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "source_asset_id": {"type": "string", "minLength": 1},
+    "source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "plan_profile_id": {"type": "string", "minLength": 1},
+    "status": {"const": "topology-review-queue-created"},
+    "summary": {"$ref": "#/$defs/summary"},
+    "items": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+  },
+  "$defs": {
+    "countMap": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "input_geometry_group_count", "review_item_count", "review_status_counts",
+        "review_reason_counts", "category_review_counts", "oversized_network_counts",
+        "created_domain_object_count", "quantity_ready_count", "user_confirmation_required_now"
+      ],
+      "properties": {
+        "input_geometry_group_count": {"type": "integer", "minimum": 0},
+        "review_item_count": {"type": "integer", "minimum": 0},
+        "review_status_counts": {"$ref": "#/$defs/countMap"},
+        "review_reason_counts": {"$ref": "#/$defs/countMap"},
+        "category_review_counts": {"$ref": "#/$defs/countMap"},
+        "oversized_network_counts": {"$ref": "#/$defs/countMap"},
+        "created_domain_object_count": {"const": 0},
+        "quantity_ready_count": {"const": 0},
+        "user_confirmation_required_now": {"type": "boolean"}
+      }
+    },
+    "item": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "group_id", "category", "review_status", "review_reasons", "candidate_count",
+        "closed_source_candidate_count", "unknown_closure_candidate_count",
+        "block_instance_candidate_count", "bounds_size_mm", "requires_network_split",
+        "requires_secondary_cad_validation", "domain_object_status", "quantity_status",
+        "user_confirmation_required_now"
+      ],
+      "properties": {
+        "group_id": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "minLength": 1},
+        "review_status": {"type": "string", "minLength": 1},
+        "review_reasons": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "candidate_count": {"type": "integer", "minimum": 1},
+        "closed_source_candidate_count": {"type": "integer", "minimum": 0},
+        "unknown_closure_candidate_count": {"type": "integer", "minimum": 0},
+        "block_instance_candidate_count": {"type": "integer", "minimum": 0},
+        "bounds_size_mm": {
+          "type": "object", "additionalProperties": false, "required": ["x", "y"],
+          "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}
+        },
+        "requires_network_split": {"type": "boolean"},
+        "requires_secondary_cad_validation": {"const": true},
+        "domain_object_status": {"const": "not-created"},
+        "quantity_status": {"const": "not-ready"},
+        "user_confirmation_required_now": {"type": "boolean"}
+      }
+    },
+    "warning": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message"],
+      "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string", "minLength": 1}}
+    }
+  }
+}

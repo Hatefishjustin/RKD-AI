@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:error-registry:v1",
+  "registry_version": "1.0",
+  "errors": {
+    "COMMAND_NOT_REGISTERED": {"category": "validation", "retryable": false},
+    "COMMAND_NOT_ALLOWED": {"category": "authorization", "retryable": false},
+    "STALE_TARGET_VERSION": {"category": "conflict", "retryable": false},
+    "IDEMPOTENCY_CONFLICT": {"category": "conflict", "retryable": false},
+    "MISSING_EVIDENCE": {"category": "validation", "retryable": false},
+    "GATE_NOT_READY": {"category": "policy", "retryable": false},
+    "DESIGN_INTENT_NOT_FROZEN": {"category": "policy", "retryable": false},
+    "OUTPUT_CONTRACT_INVALID": {"category": "validation", "retryable": false},
+    "VALIDATION_PROFILE_FAILED": {"category": "validation", "retryable": false},
+    "EXECUTOR_UNHEALTHY": {"category": "dependency", "retryable": true},
+    "EXECUTOR_TIMEOUT": {"category": "resource", "retryable": true},
+    "SECURITY_SCAN_FAILED": {"category": "security", "retryable": false},
+    "LICENSE_UNAVAILABLE": {"category": "dependency", "retryable": true},
+    "EXTERNAL_RECONCILIATION_REQUIRED": {"category": "conflict", "retryable": false},
+    "EXTERNAL_ACTION_NOT_AUTHORIZED": {"category": "authorization", "retryable": false}
+  }
+}

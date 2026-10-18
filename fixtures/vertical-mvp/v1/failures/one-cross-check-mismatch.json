@@ -1,0 +1,8 @@
+{
+  "fixture_version": "vertical-mvp-v1",
+  "rule": "model-boq-reference",
+  "actual": "missing-object-mapping",
+  "expected_status": "quality-failed",
+  "expected_recovery": "correct-mapping-and-rerun-dependent-branch"
+}
+

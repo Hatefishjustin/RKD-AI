@@ -1,0 +1,217 @@
+{
+  "contract_version": "1.0",
+  "mapping_version": "cad-layer-semantics-1.0.0",
+  "rules": [
+    {
+      "rule_id": "architecture.wall",
+      "exact_names": ["PL-新建墙体", "001墙线", "WALL", "BS-墙"],
+      "category": "architecture.wall",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies walls or wall lines."
+    },
+    {
+      "rule_id": "architecture.door",
+      "exact_names": ["PL-门"],
+      "category": "architecture.opening.door",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies doors."
+    },
+    {
+      "rule_id": "architecture.window",
+      "exact_names": ["WINDOW"],
+      "category": "architecture.opening.window",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies windows."
+    },
+    {
+      "rule_id": "furniture.loose",
+      "exact_names": ["PL-活动家具", "P-活动家具"],
+      "category": "interior.furniture.loose",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies loose furniture."
+    },
+    {
+      "rule_id": "furniture.fixed",
+      "exact_names": ["PL-固定家具", "PL-固定落地"],
+      "category": "interior.furniture.fixed",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name identifies fixed furniture or fixed floor-standing elements."
+    },
+    {
+      "rule_id": "lighting.fixture",
+      "exact_names": ["PL-灯具", "C-灯具", "A墙面灯具"],
+      "category": "mep.electrical.lighting-fixture",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies lighting fixtures; MEP is excluded from the current contract scope."
+    },
+    {
+      "rule_id": "ceiling",
+      "exact_names": ["PL-天花", "P-天花"],
+      "category": "interior.ceiling",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name explicitly identifies ceiling geometry."
+    },
+    {
+      "rule_id": "plumbing",
+      "exact_names": ["PL-给排水"],
+      "category": "mep.plumbing",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies water supply or drainage; MEP is excluded from the current contract scope."
+    },
+    {
+      "rule_id": "electrical.switch",
+      "exact_names": ["开关"],
+      "category": "mep.electrical.switch",
+      "layer_role": "professional",
+      "confidence": 0.98,
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies switches; MEP is excluded from the current contract scope."
+    },
+    {
+      "rule_id": "electrical.outlet",
+      "pattern": "^插座(?:\\s*@\\s*\\d+)?$",
+      "category": "mep.electrical.outlet",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name identifies outlets or an outlet-derived block layer; MEP is excluded from the current contract scope."
+    },
+    {
+      "rule_id": "hvac.air-terminal",
+      "exact_names": ["a空调风口"],
+      "category": "mep.hvac.air-terminal",
+      "layer_role": "professional",
+      "confidence": 0.97,
+      "verification_status": "source-inferred",
+      "scope_disposition": "excluded-by-project-decision",
+      "rationale": "Layer name explicitly identifies HVAC air terminals; MEP is excluded from the current contract scope."
+    },
+    {
+      "rule_id": "floor.finish-line",
+      "exact_names": ["PL-地坪线"],
+      "category": "interior.floor.finish-line",
+      "layer_role": "professional",
+      "confidence": 0.95,
+      "verification_status": "source-inferred",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name identifies floor finish boundaries."
+    },
+    {
+      "rule_id": "annotation.dimension",
+      "exact_names": ["DIM", "D■03 地面标注", "D-外部标注", "DIM【标注】", "DIM-标注", "DIM-外部标注"],
+      "pattern": "尺寸",
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.92,
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies dimensions or external annotations."
+    },
+    {
+      "rule_id": "annotation.dimension-pdf-cross-check",
+      "exact_names": ["8"],
+      "category": "drawing.annotation.dimension",
+      "layer_role": "annotation",
+      "confidence": 0.97,
+      "verification_status": "cross-checked-with-pdf",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer contains automatic dimension blocks whose values 17920, 26170, 3800 and 140 match the PDF drawing dimensions."
+    },
+    {
+      "rule_id": "annotation.text",
+      "exact_names": ["PL-文字标注", "TXT【文字】", "text", "IHY-paper text", "图例"],
+      "category": "drawing.annotation.text",
+      "layer_role": "annotation",
+      "confidence": 0.95,
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name explicitly identifies text or legends."
+    },
+    {
+      "rule_id": "drawing.frame-index",
+      "exact_names": ["【00图框】", "M-TK  图框", "A3$0$TK-text", "IHY-frame", "TK-form", "M-INDEX  索引", "00封面"],
+      "category": "drawing.administration.frame-index",
+      "layer_role": "administrative",
+      "confidence": 0.96,
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name identifies drawing frames, cover sheets, forms, or indexes."
+    },
+    {
+      "rule_id": "cad.reference",
+      "exact_names": ["0", "Defpoints", "HATCH", "0 @ 1"],
+      "category": "cad.reference",
+      "layer_role": "technical-support",
+      "confidence": 0.95,
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Standard or generated CAD support layer; block expansion is required before professional interpretation."
+    },
+    {
+      "rule_id": "architecture.detail",
+      "exact_names": ["SOL【实体】", "D-造型细线", "DT-通用"],
+      "category": "architecture.detail",
+      "layer_role": "professional",
+      "confidence": 0.82,
+      "verification_status": "needs-secondary-validation",
+      "scope_disposition": "included-design-evidence",
+      "rationale": "Layer name indicates solid or detail geometry but does not identify a specific building component."
+    },
+    {
+      "rule_id": "external.base-map",
+      "exact_names": ["居民地与垣栅", "道路与交通附属设施"],
+      "category": "drawing.external-base-map",
+      "layer_role": "technical-support",
+      "confidence": 0.9,
+      "verification_status": "needs-secondary-validation",
+      "scope_disposition": "evidence-only",
+      "rationale": "Layer name appears to originate from external mapping or survey data."
+    },
+    {
+      "rule_id": "external.complex-reference",
+      "exact_names": ["250", "155", "图层 1", "AM_1"],
+      "category": "drawing.external-reference",
+      "layer_role": "technical-support",
+      "confidence": 0.76,
+      "verification_status": "needs-system-review",
+      "scope_disposition": "evidence-only",
+      "rationale": "This sample shows complex block, spline or hatch storage on a legacy/external-style layer; system must inspect block and layout context before assigning a professional object type."
+    },
+    {
+      "rule_id": "drawing.paper-space-support",
+      "exact_names": ["1"],
+      "category": "drawing.administration.paper-space-support",
+      "layer_role": "administrative",
+      "confidence": 0.9,
+      "verification_status": "source-inferred",
+      "scope_disposition": "evidence-only",
+      "rationale": "Entities on this sample layer are paper-space block inserts and are not treated as model geometry."
+    }
+  ]
+}

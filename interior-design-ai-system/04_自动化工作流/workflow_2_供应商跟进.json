@@ -1,0 +1,495 @@
+{
+  "name": "链2-供应商跟进",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        },
+        "timezone": "Asia/Shanghai"
+      },
+      "id": "b1",
+      "name": "每日9点巡检",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT t.task_no, t.project_no, t.supplier_name, t.task_type, t.content, t.required_date, t.owner, t.status, t.overdue_count, s.ontime_rate, s.overdue_total, s.quality_issues_history FROM supplier_tasks t LEFT JOIN suppliers s ON s.name = t.supplier_name WHERE t.status NOT IN ('已完成','已取消') AND t.required_date <= CURRENT_DATE + 3 ORDER BY t.required_date",
+        "options": {}
+      },
+      "id": "b2",
+      "name": "查到期与逾期任务",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -140,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// 分级：3天内到期=提醒责任人；逾期1-2天=催办；逾期≥3天或累计≥2次=升级老板\nconst rows = $input.all().map(i => i.json);\nconst now = Date.now();\nconst remind = [], urge = [], escalate = [];\nfor (const r of rows) {\n  const days = Math.floor((now - new Date(r.required_date).getTime()) / 86400000);\n  if (days > 0) { r.overdue_days = days; (days >= 3 || r.overdue_count >= 2 ? escalate : urge).push(r); }\n  else remind.push(r);\n}\nconst fmt = list => list.map(r => `- ${r.task_no} ${r.supplier_name}（${r.task_type}）责任：${r.owner}，要求：${r.required_date}${r.overdue_days ? '，逾期' + r.overdue_days + '天' : ''}`).join('\\n');\nlet text = '### 供应商任务巡检\\n';\nif (remind.length) text += '**【3天内到期，请跟进】**\\n' + fmt(remind) + '\\n';\nif (urge.length) text += '**【已逾期，请立即催办】**\\n' + fmt(urge) + '\\n';\nreturn [{ json: { group_text: text, escalate, has_escalate: escalate.length > 0 } }];"
+      },
+      "id": "b3",
+      "name": "分级提醒催办升级",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_PROCURE }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '供应商任务巡检', text: $json.group_text } }) }}",
+        "options": {}
+      },
+      "id": "b4",
+      "name": "群通知提醒催办",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.has_escalate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b5",
+      "name": "有升级项?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE supplier_tasks SET overdue_count = overdue_count + 1, status = '已升级' WHERE task_no = ANY(string_to_array($1, ','))",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$('分级提醒催办升级').first().json.escalate.map(r => r.task_no).join(',')]) }}"
+        }
+      },
+      "id": "b6",
+      "name": "标记任务升级",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        580,
+        120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO approvals (source_chain, business_no, title, detail_json) VALUES ('supplier', $1, $2, $3::jsonb)",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$('分级提醒催办升级').first().json.escalate[0].task_no, '供应商任务超期升级（' + $('分级提醒催办升级').first().json.escalate.length + '项）', JSON.stringify($('分级提醒催办升级').first().json.escalate)]) }}"
+        }
+      },
+      "id": "b7",
+      "name": "登记审批记录",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        820,
+        120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_BOSS }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '供应商超期升级', text: '### 【供应商超期升级】\\n' + $('分级提醒催办升级').first().json.escalate.map(r => '- ' + r.task_no + ' ' + r.supplier_name + '（' + r.task_type + '）逾期' + r.overdue_days + '天\\n  历史：准时率' + Math.round((r.ontime_rate || 0) * 100) + '%，累计逾期' + (r.overdue_total || 0) + '次').join('\\n') } }) }}",
+        "options": {}
+      },
+      "id": "b8",
+      "name": "升级推送老板附数据卡",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1060,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supplier-status",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "b9",
+      "name": "状态回填Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        420
+      ],
+      "webhookId": "supplier-status"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LLM_API_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.LLM_MODEL, messages: [ { role: 'system', content: '你是室内设计公司的供应商助理。输入责任人转填的供应商回复（微信/电话/口头），只输出JSON：{\"status\":\"询价中|已报价|已下单|生产中|已发货|已到货|已安装|整改中|已完成|已取消|null\",\"eta_date\":\"YYYY-MM-DD|null\",\"summary\":\"跟进摘要≤60字\",\"price_change\":数值或null,\"needs_boss_approval\":bool,\"confirm_reason\":\"\"}。needs_boss_approval=true 条件：报价较上次浮动超±10%、更换材料品牌、索赔/退款、延期影响合同工期节点。识别不了的字段输出null，禁止编造。' }, { role: 'user', content: JSON.stringify($json) } ], temperature: 0.1 }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.LLM_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "b10",
+      "name": "AI解析供应商回复",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        420
+      ],
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const out = [];\nfor (const it of $input.all()) {\n  const ai = it.json.choices?.[0]?.message?.content || it.json.content || '';\n  let p;\n  try { p = JSON.parse(String(ai).replace(/^```json?|```$/g, '').trim()); }\n  catch (e) { throw new Error('AI解析失败，原文转人工：' + String(ai).slice(0, 200)); }\n  const src = $('状态回填Webhook').first().json;\n  out.push({ json: { ...src, ...p, parse_failed: p.status === null } });\n}\nreturn out;"
+      },
+      "id": "b11",
+      "name": "解析AI结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.needs_boss_approval }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b12",
+      "name": "需老板审批?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        340,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO approvals (source_chain, business_no, title, detail_json, requester) VALUES ('supplier', $1, $2, $3::jsonb, $4)",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$json.task_no, '供应商变更需审批：' + $json.task_no, JSON.stringify($json), $json.owner]) }}"
+        }
+      },
+      "id": "b13",
+      "name": "登记审批记录",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        580,
+        320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_BOSS }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '供应商事项待审批', text: '### 【待审批】' + $json.task_no + '\\n' + $json.summary + '\\n原因：' + $json.confirm_reason } }) }}",
+        "options": {}
+      },
+      "id": "b14",
+      "name": "审批推送老板",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE supplier_tasks SET status = COALESCE($2::stask_status, status), eta_date = COALESCE($3::date, eta_date), last_followup_at = CURRENT_DATE, last_followup_note = $4, quoted_amount = COALESCE($5, quoted_amount), needs_boss_approval = $6 WHERE task_no = $1 RETURNING task_no, status",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$json.task_no, $json.status, $json.eta_date, $json.summary, $json.price_change, $json.needs_boss_approval]) }}"
+        }
+      },
+      "id": "b15",
+      "name": "更新任务状态",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        580,
+        520
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_PROCURE }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '任务状态已更新', text: '任务 ' + $('解析AI结果').first().json.task_no + ' → ' + ($('更新任务状态').first().json?.status || '状态待人工确认') + '\\n' + $('解析AI结果').first().json.summary } }) }}",
+        "options": {}
+      },
+      "id": "b16",
+      "name": "群内确认通知",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "每日9点巡检": {
+      "main": [
+        [
+          {
+            "node": "查到期与逾期任务",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查到期与逾期任务": {
+      "main": [
+        [
+          {
+            "node": "分级提醒催办升级",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分级提醒催办升级": {
+      "main": [
+        [
+          {
+            "node": "群通知提醒催办",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "群通知提醒催办": {
+      "main": [
+        [
+          {
+            "node": "有升级项?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "有升级项?": {
+      "main": [
+        [
+          {
+            "node": "标记任务升级",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "标记任务升级": {
+      "main": [
+        [
+          {
+            "node": "登记审批记录",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "登记审批记录": {
+      "main": [
+        [
+          {
+            "node": "审批推送老板",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "状态回填Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI解析供应商回复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI解析供应商回复": {
+      "main": [
+        [
+          {
+            "node": "解析AI结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析AI结果": {
+      "main": [
+        [
+          {
+            "node": "需老板审批?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "需老板审批?": {
+      "main": [
+        [
+          {
+            "node": "登记审批记录",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "更新任务状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "更新任务状态": {
+      "main": [
+        [
+          {
+            "node": "群内确认通知",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "pinData": {}
+}

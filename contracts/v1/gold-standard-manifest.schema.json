@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:gold-standard-manifest:v1",
+  "title": "GoldStandardManifestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "dataset_id", "organization_id", "source_project_ref",
+    "project_type", "source_root_name", "received_at", "use_permissions", "privacy",
+    "intake_status", "assets", "version_relationships", "duplicate_groups",
+    "coverage", "professional_review", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "organization_id": {"type": "string", "minLength": 1},
+    "source_project_ref": {"type": "string", "minLength": 1},
+    "project_type": {
+      "enum": ["enterprise-space", "office", "retail", "hospitality", "residential", "mixed", "unknown"]
+    },
+    "source_root_name": {"type": "string", "minLength": 1},
+    "received_at": {"type": "string", "format": "date-time"},
+    "use_permissions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evaluation", "training", "external_model_upload"],
+      "properties": {
+        "evaluation": {"$ref": "#/$defs/permission"},
+        "training": {"$ref": "#/$defs/permission"},
+        "external_model_upload": {"$ref": "#/$defs/permission"}
+      }
+    },
+    "privacy": {"$ref": "#/$defs/privacy"},
+    "intake_status": {
+      "enum": ["inventory-created", "privacy-review-required", "professional-review-required", "ready-for-replay", "blocked"]
+    },
+    "assets": {"type": "array", "items": {"$ref": "#/$defs/asset"}},
+    "version_relationships": {"type": "array", "items": {"$ref": "#/$defs/relationship"}},
+    "duplicate_groups": {
+      "type": "array", "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["sha256", "asset_ids"],
+        "properties": {
+          "sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+          "asset_ids": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "coverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["asset_count", "total_size_bytes", "confirmed_role_counts", "candidate_role_counts", "recommended_roles", "missing_recommended_roles", "replay_readiness"],
+      "properties": {
+        "asset_count": {"type": "integer", "minimum": 0},
+        "total_size_bytes": {"type": "integer", "minimum": 0},
+        "confirmed_role_counts": {"$ref": "#/$defs/count_map"},
+        "candidate_role_counts": {"$ref": "#/$defs/count_map"},
+        "recommended_roles": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/role"}},
+        "missing_recommended_roles": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/role"}},
+        "replay_readiness": {"enum": ["blocked", "pending-review", "ready"]}
+      }
+    },
+    "professional_review": {"$ref": "#/$defs/professional_review"},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+  },
+  "$defs": {
+    "permission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "authorization_reference"],
+      "properties": {
+        "status": {"enum": ["authorized", "pending", "prohibited"]},
+        "authorization_reference": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "authorized"}}, "required": ["status"]},
+          "then": {"properties": {"authorization_reference": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "privacy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["classification", "contains_personal_data", "contains_client_identifiers", "deidentification_status", "review_status"],
+      "properties": {
+        "classification": {"$ref": "#/$defs/privacy_classification"},
+        "contains_personal_data": {"type": "boolean"},
+        "contains_client_identifiers": {"type": "boolean"},
+        "deidentification_status": {"enum": ["not-started", "in-progress", "completed", "not-required"]},
+        "review_status": {"enum": ["pending", "approved", "rejected"]}
+      }
+    },
+    "privacy_classification": {"enum": ["public", "internal", "confidential", "restricted"]},
+    "role": {
+      "enum": [
+        "requirements", "survey", "cad", "model", "render", "construction-drawing",
+        "materials", "quotation", "change", "approval-evidence", "completion-photo", "unclassified"
+      ]
+    },
+    "asset": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "asset_id", "relative_path", "sha256", "size_bytes", "media_type", "source_class",
+        "ingestion_mode", "candidate_role", "role_status", "revision_id", "privacy_classification",
+        "deidentification_status", "duplicate_of"
+      ],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1},
+        "relative_path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string", "minLength": 1},
+        "source_class": {"const": "source"},
+        "ingestion_mode": {"const": "read-only"},
+        "candidate_role": {"$ref": "#/$defs/role"},
+        "role_status": {"enum": ["candidate", "confirmed", "unclassified"]},
+        "revision_id": {"type": ["string", "null"]},
+        "privacy_classification": {"$ref": "#/$defs/privacy_classification"},
+        "deidentification_status": {"enum": ["unreviewed", "required", "completed", "not-required"]},
+        "duplicate_of": {"type": ["string", "null"]}
+      }
+    },
+    "relationship": {
+      "type": "object", "additionalProperties": false,
+      "required": ["from_asset_id", "to_asset_id", "relationship_type", "status"],
+      "properties": {
+        "from_asset_id": {"type": "string", "minLength": 1},
+        "to_asset_id": {"type": "string", "minLength": 1},
+        "relationship_type": {"enum": ["supersedes", "derived-from", "corresponds-to", "approves", "documents-change-to"]},
+        "status": {"enum": ["candidate", "confirmed"]}
+      }
+    },
+    "professional_review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "reviewer_role", "reviewed_at", "approval_reference", "tolerance_profile_id", "known_defects"],
+      "properties": {
+        "status": {"enum": ["unassigned", "pending", "approved", "rejected"]},
+        "reviewer_role": {"type": ["string", "null"]},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time"},
+        "approval_reference": {"type": ["string", "null"]},
+        "tolerance_profile_id": {"type": ["string", "null"]},
+        "known_defects": {
+          "type": "array", "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["defect_id", "severity", "description", "accepted_for_replay"],
+            "properties": {
+              "defect_id": {"type": "string", "minLength": 1},
+              "severity": {"enum": ["E0", "E1", "E2", "E3"]},
+              "description": {"type": "string", "minLength": 1},
+              "accepted_for_replay": {"type": "boolean"}
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "approved"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "reviewer_role": {"type": "string", "minLength": 1},
+              "reviewed_at": {"type": "string", "format": "date-time"},
+              "approval_reference": {"type": "string", "minLength": 1},
+              "tolerance_profile_id": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "count_map": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "warning": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string", "minLength": 1}}
+    }
+  }
+}

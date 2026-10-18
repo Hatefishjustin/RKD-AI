@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:executor-result:v1",
+  "title": "ExecutorResultV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "schema_hash", "job_spec_hash", "parameters_hash",
+    "result_manifest_hash", "run_id", "job_id", "executor_capability",
+    "executor_name", "executor_version", "executor_bundle_digest", "environment_digest",
+    "software_versions", "service_identity", "status", "input_hashes",
+    "output_artifacts", "validation_results", "warnings", "error", "runtime",
+    "started_at", "finished_at"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "schema_hash": {"$ref": "#/$defs/hash"},
+    "job_spec_hash": {"$ref": "#/$defs/hash"},
+    "parameters_hash": {"$ref": "#/$defs/hash"},
+    "result_manifest_hash": {"$ref": "#/$defs/hash"},
+    "run_id": {"type": "string", "format": "uuid"},
+    "job_id": {"type": "string", "format": "uuid"},
+    "executor_capability": {"type": "string", "minLength": 1},
+    "executor_name": {"type": "string", "minLength": 1},
+    "executor_version": {"type": "string", "minLength": 1},
+    "executor_bundle_digest": {"$ref": "#/$defs/hash"},
+    "environment_digest": {"$ref": "#/$defs/hash"},
+    "software_versions": {"type": "object", "minProperties": 1},
+    "service_identity": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["succeeded", "quality-failed", "failed", "timed-out", "cancelled", "quarantined"]},
+    "external_job_id": {"type": ["string", "null"]},
+    "input_hashes": {"type": "array", "items": {"$ref": "#/$defs/hash"}, "minItems": 1},
+    "output_artifacts": {"type": "array", "items": {"$ref": "#/$defs/outputArtifact"}},
+    "validation_results": {"type": "array", "items": {"$ref": "#/$defs/validationResult"}},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}},
+    "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]},
+    "runtime": {"$ref": "#/$defs/runtime"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "checkpoint_ref": {"type": ["string", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "succeeded"}}, "required": ["status"]},
+      "then": {
+        "properties": {
+          "output_artifacts": {"minItems": 1},
+          "validation_results": {
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                {"$ref": "#/$defs/validationResult"},
+                {"properties": {"status": {"enum": ["passed", "warning"]}}}
+              ]
+            }
+          },
+          "error": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "quality-failed"}}, "required": ["status"]},
+      "then": {
+        "properties": {
+          "validation_results": {
+            "minItems": 1,
+            "contains": {"properties": {"status": {"const": "failed"}}, "required": ["status"]}
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"enum": ["failed", "timed-out", "cancelled", "quarantined"]}}, "required": ["status"]},
+      "then": {"properties": {"error": {"$ref": "#/$defs/error"}}}
+    }
+  ],
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-z0-9][a-z0-9:+._-]{7,255}$"},
+    "outputArtifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_type", "content_hash", "media_type", "size_bytes", "upload_receipt_id", "manifest_hash"],
+      "properties": {
+        "artifact_type": {"type": "string", "minLength": 1},
+        "content_hash": {"$ref": "#/$defs/hash"},
+        "media_type": {"type": "string", "minLength": 1},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "upload_receipt_id": {"type": "string", "minLength": 1},
+        "manifest_hash": {"$ref": "#/$defs/hash"},
+        "manifest": {"type": "object"}
+      }
+    },
+    "validationResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["check_id", "profile_version", "blocking", "status", "details"],
+      "properties": {
+        "check_id": {"type": "string", "minLength": 1},
+        "profile_version": {"type": "string", "minLength": 1},
+        "blocking": {"type": "boolean"},
+        "status": {"type": "string", "enum": ["passed", "failed", "warning", "not-run"]},
+        "details": {"type": "string"},
+        "evidence": {"type": "array", "items": {"type": "object"}}
+      }
+    },
+    "warning": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1}
+      }
+    },
+    "error": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "category", "retryable", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "enum": ["input", "security", "license", "resource", "execution", "timeout", "cancellation", "upload", "validation"]},
+        "retryable": {"type": "boolean"},
+        "message": {"type": "string", "minLength": 1},
+        "diagnostic_artifact_hash": {"oneOf": [{"$ref": "#/$defs/hash"}, {"type": "null"}]}
+      }
+    },
+    "runtime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["duration_ms", "attempt", "cost_amount", "currency"],
+      "properties": {
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "attempt": {"type": "integer", "minimum": 1},
+        "cost_amount": {"type": "number", "minimum": 0},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "cpu_seconds": {"type": ["number", "null"], "minimum": 0},
+        "gpu_seconds": {"type": ["number", "null"], "minimum": 0}
+      }
+    }
+  }
+}

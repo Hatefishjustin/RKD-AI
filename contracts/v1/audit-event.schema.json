@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:audit-event:v1",
+  "title": "AuditEventV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "schema_hash", "audit_id", "audit_type", "occurred_at",
+    "organization_id", "actor", "action", "target", "outcome", "request_context",
+    "reason", "previous_event_hash", "event_hash", "data_classification"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "schema_hash": {"$ref": "#/$defs/hash"},
+    "audit_id": {"type": "string", "format": "uuid"},
+    "audit_type": {"type": "string", "enum": ["business", "security"]},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "organization_id": {"type": "string", "format": "uuid"},
+    "project_id": {"type": ["string", "null"], "format": "uuid"},
+    "actor": {"$ref": "#/$defs/actor"},
+    "action": {"type": "string", "minLength": 1},
+    "target": {"$ref": "#/$defs/target"},
+    "outcome": {"type": "string", "enum": ["accepted", "rejected", "failed", "observed", "reconciled"]},
+    "request_context": {"$ref": "#/$defs/requestContext"},
+    "reason": {"type": "string", "minLength": 1},
+    "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "before_summary_hash": {"oneOf": [{"$ref": "#/$defs/hash"}, {"type": "null"}]},
+    "after_summary_hash": {"oneOf": [{"$ref": "#/$defs/hash"}, {"type": "null"}]},
+    "previous_event_hash": {"oneOf": [{"$ref": "#/$defs/hash"}, {"type": "null"}]},
+    "event_hash": {"$ref": "#/$defs/hash"},
+    "checkpoint_id": {"type": ["string", "null"], "format": "uuid"},
+    "data_classification": {"type": "string", "enum": ["public", "internal", "confidential", "restricted"]}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-z0-9][a-z0-9:+._-]{7,255}$"},
+    "actor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {"type": "string", "enum": ["user", "service", "agent", "system"]},
+        "id": {"type": "string", "minLength": 1},
+        "role": {"type": ["string", "null"]}
+      }
+    },
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_type", "object_id", "revision_id"],
+      "properties": {
+        "object_type": {"type": "string", "minLength": 1},
+        "object_id": {"type": "string", "format": "uuid"},
+        "revision_id": {"type": ["string", "null"], "format": "uuid"}
+      }
+    },
+    "requestContext": {
+      "type": "object", "additionalProperties": false,
+      "required": ["correlation_id", "source", "policy_version"],
+      "properties": {
+        "correlation_id": {"type": "string", "format": "uuid"},
+        "causation_id": {"type": ["string", "null"], "format": "uuid"},
+        "source": {"type": "string", "minLength": 1},
+        "policy_version": {"type": "string", "minLength": 1},
+        "ip_or_device_hash": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

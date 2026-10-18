@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ShowroomDesignDraftV1",
+  "type": "object",
+  "required": ["design_revision_id", "project_id", "revision_no", "requirement_id", "requirement_revision_no", "requirement_hash", "input_hash", "model", "validation", "source_kind", "change_reason", "actor_id", "created_at", "status", "artifacts"],
+  "properties": {
+    "design_revision_id": {"type": "string"}, "project_id": {"type": "string"},
+    "revision_no": {"type": "integer", "minimum": 1}, "requirement_id": {"type": "string"},
+    "requirement_revision_no": {"type": "integer", "minimum": 1},
+    "requirement_hash": {"$ref": "#/$defs/Hash"}, "input_hash": {"$ref": "#/$defs/Hash"},
+    "model": {"$ref": "#/$defs/Model"},
+    "validation": {
+      "type": "object", "required": ["rule_version", "hard_checks", "professional_checks", "publication_status"],
+      "properties": {
+        "rule_version": {"const": "showroom-strip-layout.v1"},
+        "publication_status": {"const": "not_approved"},
+        "hard_checks": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"$ref": "#/$defs/PassedCheck"}},
+        "professional_checks": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/UnknownCheck"}}
+      }
+    },
+    "source_kind": {"enum": ["rule_based_layout", "manual_layout_edit"]},
+    "status": {"enum": ["draft", "superseded", "source_outdated"]},
+    "change_reason": {"type": "string", "minLength": 1, "maxLength": 500}, "actor_id": {"type": "string"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "artifacts": {"type": "array", "minItems": 7, "maxItems": 7, "items": {"type": "object", "required": ["artifact_id", "artifact_kind", "filename", "content_type", "sha256", "size_bytes", "status", "download_url"], "properties": {
+      "artifact_id": {"type": "string"}, "artifact_kind": {"enum": ["layout_svg", "layout_dxf", "zone_csv", "model_json", "report_html", "manifest_json", "package_zip"]},
+      "filename": {"type": "string"}, "content_type": {"type": "string"}, "sha256": {"$ref": "#/$defs/Hash"}, "size_bytes": {"type": "integer", "minimum": 1},
+      "status": {"enum": ["draft", "superseded", "source_outdated"]}, "download_url": {"type": "string"}
+    }}}
+  },
+  "$defs": {
+    "Decimal": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+    "Hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "BoundarySource": {"enum": ["test_parameters_not_site_verified", "manual_boundary_not_site_verified"]},
+    "ZoneRequest": {"type": "object", "required": ["zone_id", "name", "min_area_m2"], "properties": {"zone_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$"}, "name": {"type": "string", "minLength": 1, "maxLength": 60}, "min_area_m2": {"$ref": "#/$defs/Decimal"}}},
+    "Program": {"type": "object", "required": ["scenario", "boundary_source", "width", "length", "aisle_width", "zones"], "properties": {"scenario": {"const": "showroom"}, "boundary_source": {"$ref": "#/$defs/BoundarySource"}, "width": {"$ref": "#/$defs/Decimal"}, "length": {"$ref": "#/$defs/Decimal"}, "aisle_width": {"$ref": "#/$defs/Decimal"}, "zones": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"$ref": "#/$defs/ZoneRequest"}}}},
+    "ZoneInput": {"type": "object", "required": ["zone_id", "x", "y", "width", "length"], "properties": {"zone_id": {"type": "string"}, "x": {"$ref": "#/$defs/Decimal"}, "y": {"$ref": "#/$defs/Decimal"}, "width": {"$ref": "#/$defs/Decimal"}, "length": {"$ref": "#/$defs/Decimal"}}},
+    "ModelInput": {"type": "object", "required": ["width", "length", "aisle_width", "zones"], "properties": {"width": {"$ref": "#/$defs/Decimal"}, "length": {"$ref": "#/$defs/Decimal"}, "aisle_width": {"$ref": "#/$defs/Decimal"}, "zones": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"$ref": "#/$defs/ZoneInput"}}}},
+    "Model": {"allOf": [{"$ref": "#/$defs/ModelInput"}, {"type": "object", "required": ["schema_version", "scenario", "boundary_source", "total_area_m2", "zone_area_m2", "aisle_area_m2", "unassigned_area_m2"], "properties": {"schema_version": {"const": "showroom-layout.v1"}, "scenario": {"const": "showroom"}, "boundary_source": {"$ref": "#/$defs/BoundarySource"}, "total_area_m2": {"$ref": "#/$defs/Decimal"}, "zone_area_m2": {"$ref": "#/$defs/Decimal"}, "aisle_area_m2": {"$ref": "#/$defs/Decimal"}, "unassigned_area_m2": {"$ref": "#/$defs/Decimal"}}}]},
+    "PassedCheck": {"type": "object", "required": ["code", "status", "message"], "properties": {"code": {"type": "string"}, "status": {"const": "passed"}, "message": {"type": "string"}}},
+    "UnknownCheck": {"type": "object", "required": ["code", "status", "message"], "properties": {"code": {"type": "string"}, "status": {"const": "unknown"}, "message": {"type": "string"}}}
+  }
+}

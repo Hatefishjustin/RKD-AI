@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:unified-model-manifest:v1",
+  "title": "UnifiedModelManifestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "schema_hash", "manifest_id", "project_id", "baseline_ref",
+    "semantic_model_ref", "representations", "coordinate_context", "unit_context",
+    "mapping_profile_version", "object_mappings", "coverage", "created_at"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "schema_hash": {"$ref": "#/$defs/hash"},
+    "manifest_id": {"type": "string", "format": "uuid"},
+    "project_id": {"type": "string", "format": "uuid"},
+    "baseline_ref": {"$ref": "#/$defs/revisionRef"},
+    "semantic_model_ref": {"$ref": "#/$defs/revisionRef"},
+    "representations": {"type": "array", "items": {"$ref": "#/$defs/representation"}, "minItems": 1},
+    "coordinate_context": {"$ref": "#/$defs/coordinateContext"},
+    "unit_context": {"$ref": "#/$defs/unitContext"},
+    "mapping_profile_version": {"type": "string", "minLength": 1},
+    "object_mappings": {"type": "array", "items": {"$ref": "#/$defs/objectMapping"}},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "created_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-z0-9][a-z0-9:+._-]{7,255}$"},
+    "revisionRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_id", "revision_id", "content_hash"],
+      "properties": {
+        "object_id": {"type": "string", "format": "uuid"},
+        "revision_id": {"type": "string", "format": "uuid"},
+        "content_hash": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "representation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["representation_id", "representation_type", "authority", "artifact_refs", "source_revision_refs", "software_bundle_digest", "validation_profile_refs"],
+      "properties": {
+        "representation_id": {"type": "string", "format": "uuid"},
+        "representation_type": {"type": "string", "enum": ["semantic", "native", "exchange", "render-scene", "drawing", "commercial"]},
+        "authority": {"type": "string", "enum": ["authoritative", "derived", "validated"]},
+        "artifact_refs": {"type": "array", "items": {"type": "string", "format": "uuid"}, "minItems": 1},
+        "source_revision_refs": {"type": "array", "items": {"$ref": "#/$defs/revisionRef"}, "minItems": 1},
+        "software_bundle_digest": {"$ref": "#/$defs/hash"},
+        "validation_profile_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+        "dropped_fields": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "coordinateContext": {
+      "type": "object", "additionalProperties": false,
+      "required": ["coordinate_system", "origin", "rotation_degrees", "elevation_datum", "transform_hash"],
+      "properties": {
+        "coordinate_system": {"type": "string", "minLength": 1},
+        "origin": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3},
+        "rotation_degrees": {"type": "number"},
+        "elevation_datum": {"type": "string", "minLength": 1},
+        "transform_hash": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "unitContext": {
+      "type": "object", "additionalProperties": false,
+      "required": ["length", "area", "volume", "angle", "currency"],
+      "properties": {
+        "length": {"type": "string", "minLength": 1},
+        "area": {"type": "string", "minLength": 1},
+        "volume": {"type": "string", "minLength": 1},
+        "angle": {"type": "string", "minLength": 1},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}
+      }
+    },
+    "objectMapping": {
+      "type": "object", "additionalProperties": false,
+      "required": ["semantic_object_ref", "representation_type", "external_object_ref", "mapping_type", "status"],
+      "properties": {
+        "semantic_object_ref": {"$ref": "#/$defs/revisionRef"},
+        "representation_type": {"type": "string", "enum": ["native", "exchange", "render-scene", "drawing", "commercial"]},
+        "external_object_ref": {"type": "string", "minLength": 1},
+        "mapping_type": {"type": "string", "enum": ["one-to-one", "one-to-many", "many-to-one", "unmapped", "conflict"]},
+        "status": {"type": "string", "enum": ["automatic", "confirmed", "needs-human", "invalidated"]},
+        "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "coverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["semantic_object_count", "mapped_object_count", "mapping_ratio", "quantity_source_ratio", "drawing_reference_ratio"],
+      "properties": {
+        "semantic_object_count": {"type": "integer", "minimum": 0},
+        "mapped_object_count": {"type": "integer", "minimum": 0},
+        "mapping_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "quantity_source_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "drawing_reference_ratio": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

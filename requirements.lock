@@ -1,0 +1,5 @@
+# RKD AI local verification dependencies.
+# The application backend itself uses Python's standard library; these packages
+# are pinned for optional CAD topology and contract validation checks.
+jsonschema==4.25.1
+shapely==2.1.2

@@ -1,0 +1,174 @@
+{
+  "fixture_id": "ningbo-xiecheng-showroom-2026-09",
+  "project_name": "宁波协诚集团展厅室内装修工程",
+  "received_at": "2026-09-19",
+  "source_policy": "read_only_copy",
+  "privacy_classification": "internal-project",
+  "project_decisions": {
+    "budget_baseline": {
+      "amount_cny": 600000.0,
+      "label": "优惠价",
+      "tax_included": true,
+      "tax_rate": null,
+      "status": "user_confirmed_amount_and_tax_scope_rate_pending",
+      "source_conflict": "source_workbook_labels_discounted_price_before_tax"
+    },
+    "scope": {
+      "mep_included": false,
+      "fire_protection_included": false,
+      "tax_included": true
+    },
+    "requirements_policy": "derive_initial_requirements_from_design_proposal_then_require_human_confirmation",
+    "technical_information_policy": {
+      "primary_source": "construction_drawing_dwg",
+      "secondary_source": "floor_plan_pdf",
+      "evidence_source": "site_photos",
+      "request_user_input_only_when": [
+        "construction_drawing_missing_required_field",
+        "construction_drawing_internal_conflict",
+        "drawing_and_site_evidence_conflict"
+      ]
+    }
+  },
+  "assets": [
+    {
+      "asset_id": "drawing-plan-01",
+      "path": "source/平面图.pdf",
+      "kind": "floor_plan_pdf",
+      "sha256": "81C424805B3CA3B3628F0EE446264343B03965F19853A7FA654192D87B785F0D",
+      "size_bytes": 139815,
+      "parse_status": "parsed_with_text_encoding_warning",
+      "page_count": 1,
+      "drawing_size_mm": {"width": 17920, "height": 26170},
+      "measurement_status": "drawing_measurement_not_site_verified"
+    },
+    {
+      "asset_id": "drawing-cad-01",
+      "path": "source/04 平面PL.dwg",
+      "kind": "cad_floor_plan_dwg",
+      "sha256": "77DDAC8E80401BF3C7913BFF8AC959DC5D4A0CC573EC5CDCBC2CAB5D95A47616",
+      "size_bytes": 5492640,
+      "dwg_header": "AC1021",
+      "dwg_version": "AutoCAD 2007/2008/2009",
+      "inspection_path": "derived/cad-source-inspection.json",
+      "semantic_mapping_path": "derived/cad-layer-semantic-mapping.json",
+      "semantic_report_path": "derived/cad-semantic-mapping-report.md",
+      "block_context_report_path": "derived/cad-block-context-report.md",
+      "plan_localization_profile_path": "derived/plan-localization-profile.json",
+      "plan_candidates_path": "derived/cad-plan-candidates.json",
+      "plan_candidate_report_path": "derived/cad-plan-candidate-report.md",
+      "review_layer_analysis_path": "derived/cad-review-layer-analysis.json",
+      "review_layer_report_path": "derived/cad-review-layer-report.md",
+      "object_groups_path": "derived/cad-object-groups.json",
+      "object_group_report_path": "derived/cad-object-group-report.md",
+      "topology_review_path": "derived/cad-topology-review.json",
+      "region_candidates_path": "derived/cad-region-candidates.json",
+      "region_candidate_report_path": "derived/cad-region-candidate-report.md",
+      "parse_status": "geometry_parsed_with_compatibility_warnings",
+      "parser": "GNU LibreDWG 0.14",
+      "geometry_summary": {
+        "units": "millimeters",
+        "object_count": 103713,
+        "entity_count": 94706,
+        "entity_type_count": 26,
+        "layer_count": 57,
+        "text_entity_count": 3506,
+        "dimension_entity_count": 1152,
+        "semantic_layer_count": 57,
+        "system_review_layer_count": 4,
+        "non_review_mapping_storage_entity_ratio": 0.516525,
+        "reachable_entity_count": 40334,
+        "reachable_entity_ratio": 0.425886,
+        "unreachable_definition_entity_count": 53032,
+        "unknown_owner_entity_count": 1340,
+        "system_review_reachable_entity_count": 4512,
+        "professional_candidate_reachable_entity_count": 7932,
+        "localized_plan_size_mm": {"width": 26169.58183, "height": 17920.174938},
+        "localized_direct_model_candidate_count": 831,
+        "current_scope_candidate_count": 570,
+        "excluded_mep_candidate_count": 261,
+        "expanded_block_candidate_count": 105,
+        "maximum_expanded_block_depth": 2,
+        "review_layer_primary_plan_instance_count": 6,
+        "current_scope_geometry_group_count": 133,
+        "polygonized_region_candidate_count": 70,
+        "quantity_ready_group_count": 0,
+        "requires_secondary_validation": true
+      },
+      "measurement_status": "drawing_measurement_not_site_verified"
+    },
+    {
+      "asset_id": "drawing-cad-01-dxf-2013",
+      "path": "source/04 平面PL.dxf",
+      "kind": "cad_floor_plan_dxf_secondary_export",
+      "sha256": "C7036B9D1C3D58932C5EEAF8A78C89A52F1A993969274084635F9230F9F391BB",
+      "size_bytes": 40269415,
+      "dxf_header": "AC1027",
+      "dxf_version": "AutoCAD 2013-2017",
+      "source_dwg_asset_id": "drawing-cad-01",
+      "source_dwg_sha256": "77DDAC8E80401BF3C7913BFF8AC959DC5D4A0CC573EC5CDCBC2CAB5D95A47616",
+      "secondary_validation_path": "derived/cad-secondary-validation.json",
+      "geometry_review_path": "derived/cad-secondary-geometry-review.json",
+      "geometry_review_report_path": "derived/cad-secondary-geometry-review-report.md",
+      "cross_engine_review_path": "derived/cad-cross-engine-review.json",
+      "cross_engine_review_report_path": "derived/cad-cross-engine-review-report.md",
+      "secondary_validation_status": "summary-compared-with-differences",
+      "geometry_review_status": "direct-entities-compared-basic-2d-blocks-expanded",
+      "cross_engine_review_status": "640-preserved-handles-matched-305-type-aware-review-items",
+      "measurement_status": "drawing_measurement_not_site_verified",
+      "promotion_status": "not-approved"
+    },
+    {
+      "asset_id": "estimate-xls-01",
+      "path": "source/20260721宁波协诚集团样品展厅装修预算.xls",
+      "kind": "legacy_budget_workbook",
+      "sha256": "06D480DF21F4667B066D44BF886F1E8DEA00C771A0D6E7DC2363F4B05B7CCE25",
+      "size_bytes": 1033728,
+      "parse_status": "parsed",
+      "sheets": ["封面", "汇总", "展厅", "家具"],
+      "amounts": {
+        "base_direct_cost": 244640.0,
+        "main_material_cost": 322728.5,
+        "furniture_cost": 48940.0,
+        "total_before_tax": 616308.5,
+        "discounted_before_tax": 600000.0,
+        "mep_and_display_equipment": "separate",
+        "invoice_tax": "pending"
+      }
+    },
+    {
+      "asset_id": "site-photo-01",
+      "path": "source/现场照片-01.jpg",
+      "kind": "site_photo",
+      "sha256": "62CFF752EC16689250B96833A556CB97947DA20792A5D841D95E51D321C87048",
+      "size_bytes": 98491,
+      "parse_status": "visual_reviewed",
+      "personal_data_observed": false
+    },
+    {
+      "asset_id": "site-photo-02",
+      "path": "source/现场照片-02.jpg",
+      "kind": "site_photo",
+      "sha256": "761C9EBC8ED191AA5177B4CC6B035784AF0FB5E3DA04E7677CB88634C5BCB525",
+      "size_bytes": 113928,
+      "parse_status": "visual_reviewed",
+      "personal_data_observed": false
+    },
+    {
+      "asset_id": "site-photo-03",
+      "path": "source/现场照片-03.jpg",
+      "kind": "site_photo",
+      "sha256": "1A7C0B3A88D1FB525384DCFFE7EF271D72F98643008C9542268F65FC98A42930",
+      "size_bytes": 109723,
+      "parse_status": "visual_reviewed",
+      "personal_data_observed": false
+    }
+  ],
+  "known_gaps": [
+    "dxf_summary_compared_geometry_validation_pending",
+    "dwg_object_merging_and_secondary_validation",
+    "client_requirement_and_material_approval",
+    "tax_rate_and_tax_amount_confirmation",
+    "contract_document_confirmation"
+  ]
+}

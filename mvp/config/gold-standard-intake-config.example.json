@@ -1,0 +1,38 @@
+{
+  "dataset_id": "gold-enterprise-space-001-v1",
+  "organization_id": "org-rkd",
+  "source_project_ref": "historical-project-001",
+  "project_type": "enterprise-space",
+  "received_at": "2026-09-19T12:00:00+08:00",
+  "use_permissions": {
+    "evaluation": {
+      "status": "pending",
+      "authorization_reference": null
+    },
+    "training": {
+      "status": "prohibited",
+      "authorization_reference": null
+    },
+    "external_model_upload": {
+      "status": "prohibited",
+      "authorization_reference": null
+    }
+  },
+  "privacy": {
+    "classification": "confidential",
+    "contains_personal_data": true,
+    "contains_client_identifiers": true,
+    "deidentification_status": "not-started",
+    "review_status": "pending"
+  },
+  "professional_review": {
+    "status": "unassigned",
+    "reviewer_role": null,
+    "reviewed_at": null,
+    "approval_reference": null,
+    "tolerance_profile_id": null,
+    "known_defects": []
+  },
+  "asset_overrides": {},
+  "version_relationships": []
+}

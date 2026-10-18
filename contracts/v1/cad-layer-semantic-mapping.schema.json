@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-layer-semantic-mapping:v1",
+  "title": "CadLayerSemanticMappingV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "mapping_version", "source_asset_id", "source_sha256",
+    "source_geometry_quality", "mapping_status", "summary", "category_summary",
+    "layer_mappings", "system_review_queue", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "mapping_version": {"type": "string", "minLength": 1},
+    "source_asset_id": {"type": "string", "minLength": 1},
+    "source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "source_geometry_quality": {
+      "type": "string",
+      "enum": ["parsed", "parsed-with-compatibility-warnings"]
+    },
+    "mapping_status": {
+      "type": "string",
+      "enum": ["mapped", "mapped-with-review-items"]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_layer_count", "mapped_layer_count", "review_layer_count",
+        "total_entity_count", "mapped_storage_entity_count", "mapped_storage_entity_ratio",
+        "non_review_storage_entity_count", "non_review_storage_entity_ratio", "review_storage_entity_count",
+        "professional_candidate_storage_entity_count", "reachable_entity_count",
+        "reachable_entity_ratio", "unreachable_definition_entity_count", "other_context_entity_count",
+        "non_review_reachable_entity_count", "review_reachable_entity_count",
+        "professional_candidate_reachable_entity_count", "scope_disposition_layer_counts",
+        "user_confirmation_required_now"
+      ],
+      "properties": {
+        "total_layer_count": {"type": "integer", "minimum": 0},
+        "mapped_layer_count": {"type": "integer", "minimum": 0},
+        "review_layer_count": {"type": "integer", "minimum": 0},
+        "total_entity_count": {"type": "integer", "minimum": 0},
+        "mapped_storage_entity_count": {"type": "integer", "minimum": 0},
+        "mapped_storage_entity_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "non_review_storage_entity_count": {"type": "integer", "minimum": 0},
+        "non_review_storage_entity_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "review_storage_entity_count": {"type": "integer", "minimum": 0},
+        "professional_candidate_storage_entity_count": {"type": "integer", "minimum": 0},
+        "reachable_entity_count": {"type": "integer", "minimum": 0},
+        "reachable_entity_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "unreachable_definition_entity_count": {"type": "integer", "minimum": 0},
+        "other_context_entity_count": {"type": "integer", "minimum": 0},
+        "non_review_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "review_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "professional_candidate_reachable_entity_count": {"type": "integer", "minimum": 0},
+        "scope_disposition_layer_counts": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "user_confirmation_required_now": {"type": "boolean"}
+      }
+    },
+    "category_summary": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/categorySummary"}
+    },
+    "layer_mappings": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/layerMapping"}
+    },
+    "system_review_queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "layer_name", "entity_count", "reachable_entity_count",
+          "unreachable_definition_entity_count", "top_entity_types", "top_owner_blocks", "reason"
+        ],
+        "properties": {
+          "layer_name": {"type": "string", "minLength": 1},
+          "entity_count": {"type": "integer", "minimum": 0},
+          "reachable_entity_count": {"type": "integer", "minimum": 0},
+          "unreachable_definition_entity_count": {"type": "integer", "minimum": 0},
+          "top_entity_types": {"type": "array", "items": {"$ref": "#/$defs/entityTypeCount"}},
+          "top_owner_blocks": {"type": "array", "items": {"$ref": "#/$defs/ownerBlock"}},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "entityTypeCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_type", "count"],
+      "properties": {
+        "entity_type": {"type": "string", "minLength": 1},
+        "count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "categorySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "layer_count", "entity_count", "reachable_entity_count", "layer_names"],
+      "properties": {
+        "category": {"type": "string", "minLength": 1},
+        "layer_count": {"type": "integer", "minimum": 0},
+        "entity_count": {"type": "integer", "minimum": 0},
+        "reachable_entity_count": {"type": "integer", "minimum": 0},
+        "layer_names": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "layerMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layer_name", "layer_handle", "entity_count", "reachable_entity_count",
+        "unreachable_definition_entity_count", "other_context_entity_count", "block_context_counts",
+        "top_owner_blocks", "top_entity_types", "mapping_status",
+        "category", "layer_role", "confidence", "rule_id", "verification_status",
+        "scope_disposition", "rationale"
+      ],
+      "properties": {
+        "layer_name": {"type": "string", "minLength": 1},
+        "layer_handle": {"type": "integer", "minimum": 0},
+        "entity_count": {"type": "integer", "minimum": 0},
+        "reachable_entity_count": {"type": "integer", "minimum": 0},
+        "unreachable_definition_entity_count": {"type": "integer", "minimum": 0},
+        "other_context_entity_count": {"type": "integer", "minimum": 0},
+        "block_context_counts": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "top_owner_blocks": {"type": "array", "items": {"$ref": "#/$defs/ownerBlock"}},
+        "top_entity_types": {"type": "array", "items": {"$ref": "#/$defs/entityTypeCount"}},
+        "mapping_status": {"type": "string", "enum": ["mapped", "unclassified"]},
+        "category": {"type": "string", "minLength": 1},
+        "layer_role": {"type": "string", "enum": ["professional", "annotation", "administrative", "technical-support", "review"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "rule_id": {"type": ["string", "null"]},
+        "verification_status": {"type": "string", "enum": ["source-inferred", "cross-checked-with-pdf", "needs-secondary-validation", "needs-system-review"]},
+        "scope_disposition": {"type": "string", "enum": ["included-design-evidence", "excluded-by-project-decision", "evidence-only", "undetermined"]},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "ownerBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "block_handle", "block_name", "entity_count", "context",
+        "insertion_reference_count", "external_reference_hint"
+      ],
+      "properties": {
+        "block_handle": {"type": ["integer", "null"], "minimum": 0},
+        "block_name": {"type": ["string", "null"]},
+        "entity_count": {"type": "integer", "minimum": 0},
+        "context": {"type": "string", "minLength": 1},
+        "insertion_reference_count": {"type": "integer", "minimum": 0},
+        "external_reference_hint": {"type": "boolean"}
+      }
+    }
+  }
+}

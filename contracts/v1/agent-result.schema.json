@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:agent-result:v1",
+  "title": "AgentResultV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "schema_hash", "task_spec_hash", "result_manifest_hash",
+    "run_id", "task_id", "agent_type", "agent_version", "status", "input_refs_used",
+    "structured_output", "evidence_refs", "unknowns", "risks", "proposed_commands",
+    "quality_checks", "error", "usage", "started_at", "finished_at"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "schema_hash": {"$ref": "#/$defs/hash"},
+    "task_spec_hash": {"$ref": "#/$defs/hash"},
+    "result_manifest_hash": {"$ref": "#/$defs/hash"},
+    "run_id": {"type": "string", "format": "uuid"},
+    "task_id": {"type": "string", "format": "uuid"},
+    "agent_type": {"type": "string", "minLength": 1},
+    "agent_version": {"type": "string", "minLength": 1},
+    "model_provider": {"type": ["string", "null"]},
+    "model_id": {"type": ["string", "null"]},
+    "prompt_version": {"type": ["string", "null"]},
+    "knowledge_snapshot_id": {"type": ["string", "null"], "format": "uuid"},
+    "status": {"type": "string", "enum": ["succeeded", "needs-human", "blocked", "failed", "quarantined"]},
+    "input_refs_used": {"type": "array", "items": {"$ref": "#/$defs/inputRefUsed"}, "minItems": 1},
+    "structured_output": {"type": "object"},
+    "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}},
+    "unknowns": {"type": "array", "items": {"$ref": "#/$defs/unknown"}},
+    "risks": {"type": "array", "items": {"$ref": "#/$defs/risk"}},
+    "proposed_commands": {"type": "array", "items": {"$ref": "#/$defs/proposedCommand"}},
+    "quality_checks": {"type": "array", "items": {"$ref": "#/$defs/qualityCheck"}},
+    "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]},
+    "usage": {"$ref": "#/$defs/usage"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "succeeded"}}, "required": ["status"]},
+      "then": {
+        "properties": {
+          "structured_output": {"minProperties": 1},
+          "evidence_refs": {"minItems": 1},
+          "quality_checks": {
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                {"$ref": "#/$defs/qualityCheck"},
+                {"properties": {"status": {"enum": ["passed", "warning"]}}}
+              ]
+            }
+          },
+          "error": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"enum": ["blocked", "failed", "quarantined"]}}, "required": ["status"]},
+      "then": {"properties": {"error": {"$ref": "#/$defs/error"}}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "needs-human"}}, "required": ["status"]},
+      "then": {
+        "anyOf": [
+          {"properties": {"unknowns": {"minItems": 1}}},
+          {"properties": {"error": {"$ref": "#/$defs/error"}}}
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-z0-9][a-z0-9:+._-]{7,255}$"},
+    "inputRefUsed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_type", "object_id", "revision_id", "content_hash"],
+      "properties": {
+        "object_type": {"type": "string", "minLength": 1},
+        "object_id": {"type": "string", "format": "uuid"},
+        "revision_id": {"type": "string", "format": "uuid"},
+        "content_hash": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "evidenceRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_type", "source_id", "locator", "content_hash"],
+      "properties": {
+        "source_type": {"type": "string", "minLength": 1},
+        "source_id": {"type": "string", "minLength": 1},
+        "revision_id": {"type": ["string", "null"], "format": "uuid"},
+        "locator": {"type": "string", "minLength": 1},
+        "content_hash": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "unknown": {
+      "type": "object", "additionalProperties": false,
+      "required": ["unknown_id", "description", "blocking", "suggested_owner_role"],
+      "properties": {
+        "unknown_id": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "blocking": {"type": "boolean"},
+        "suggested_owner_role": {"type": "string", "minLength": 1},
+        "needed_by": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "risk": {
+      "type": "object", "additionalProperties": false,
+      "required": ["risk_id", "description", "severity", "blocking"],
+      "properties": {
+        "risk_id": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+        "blocking": {"type": "boolean"}
+      }
+    },
+    "proposedCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["proposal_id", "command_type", "target_id", "expected_version", "payload", "risk_level"],
+      "properties": {
+        "proposal_id": {"type": "string", "format": "uuid"},
+        "command_type": {"type": "string", "minLength": 1},
+        "target_id": {"type": "string", "format": "uuid"},
+        "expected_version": {"type": "integer", "minimum": 0},
+        "payload": {"type": "object"},
+        "risk_level": {"type": "string", "enum": ["low", "medium", "high", "critical"]}
+      }
+    },
+    "qualityCheck": {
+      "type": "object", "additionalProperties": false,
+      "required": ["check_id", "acceptance_rule_id", "profile_version", "blocking", "status", "details"],
+      "properties": {
+        "check_id": {"type": "string", "minLength": 1},
+        "acceptance_rule_id": {"type": "string", "minLength": 1},
+        "profile_version": {"type": "string", "minLength": 1},
+        "blocking": {"type": "boolean"},
+        "status": {"type": "string", "enum": ["passed", "failed", "warning", "not-run"]},
+        "details": {"type": "string"}
+      }
+    },
+    "error": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "category", "retryable", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "enum": ["validation", "authorization", "conflict", "dependency", "security", "resource", "execution", "policy"]},
+        "retryable": {"type": "boolean"},
+        "message": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}}
+      }
+    },
+    "usage": {
+      "type": "object", "additionalProperties": false, "required": ["runtime_ms", "cost_amount", "currency"],
+      "properties": {
+        "runtime_ms": {"type": "integer", "minimum": 0},
+        "input_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "output_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "cost_amount": {"type": "number", "minimum": 0},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}
+      }
+    }
+  }
+}

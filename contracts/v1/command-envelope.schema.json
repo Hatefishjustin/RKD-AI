@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:command-envelope:v1",
+  "title": "CommandEnvelopeV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "schema_hash", "command_id", "command_type", "registry_version",
+    "organization_id", "project_id", "target_id", "expected_version", "payload_hash",
+    "payload", "idempotency_key", "side_effect_class", "authorization", "requested_by",
+    "correlation_id", "created_at"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "schema_hash": {"$ref": "#/$defs/hash"},
+    "command_id": {"type": "string", "format": "uuid"},
+    "command_type": {"type": "string", "minLength": 1},
+    "registry_version": {"type": "string", "minLength": 1},
+    "organization_id": {"type": "string", "format": "uuid"},
+    "project_id": {"type": "string", "format": "uuid"},
+    "target_id": {"type": "string", "format": "uuid"},
+    "expected_version": {"type": "integer", "minimum": 0},
+    "payload_hash": {"$ref": "#/$defs/hash"},
+    "payload": {"type": "object"},
+    "idempotency_key": {"type": "string", "minLength": 16, "maxLength": 255},
+    "side_effect_class": {"type": "string", "enum": ["none", "internal", "external", "business-fact"]},
+    "authorization": {"$ref": "#/$defs/authorization"},
+    "requested_by": {"$ref": "#/$defs/identity"},
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "causation_id": {"type": ["string", "null"], "format": "uuid"},
+    "created_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"side_effect_class": {"const": "external"}}, "required": ["side_effect_class"]},
+      "then": {
+        "properties": {
+          "authorization": {
+            "properties": {"mode": {"enum": ["approval", "dual-control"]}},
+            "required": ["authorization_id", "mode", "policy_version", "approved_target_version", "expires_at", "issuer_service", "signature_ref"]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-z0-9][a-z0-9:+._-]{7,255}$"},
+    "identity": {
+      "type": "object", "additionalProperties": false, "required": ["identity_type", "identity_id", "role"],
+      "properties": {
+        "identity_type": {"type": "string", "enum": ["human", "agent", "service"]},
+        "identity_id": {"type": "string", "minLength": 1},
+        "role": {"type": "string", "minLength": 1}
+      }
+    },
+    "authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["authorization_id", "mode", "policy_version", "approved_target_version", "expires_at", "issuer_service", "signature_ref"],
+      "properties": {
+        "authorization_id": {"type": "string", "format": "uuid"},
+        "mode": {"type": "string", "enum": ["none", "approval", "dual-control"]},
+        "policy_version": {"type": "string", "minLength": 1},
+        "approved_target_version": {"type": "integer", "minimum": 0},
+        "expires_at": {"type": "string", "format": "date-time"},
+        "issuer_service": {"type": "string", "minLength": 1},
+        "signature_ref": {"type": "string", "minLength": 1},
+        "second_approver_id": {"type": ["string", "null"], "minLength": 1}
+      }
+    }
+  }
+}

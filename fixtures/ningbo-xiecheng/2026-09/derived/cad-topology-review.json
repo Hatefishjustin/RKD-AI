@@ -1,0 +1,2907 @@
+{
+  "contract_version": "1.0",
+  "source_asset_id": "drawing-cad-01",
+  "source_sha256": "77DDAC8E80401BF3C7913BFF8AC959DC5D4A0CC573EC5CDCBC2CAB5D95A47616",
+  "plan_profile_id": "ningbo-xiecheng-primary-floor-plan-v1",
+  "status": "topology-review-queue-created",
+  "summary": {
+    "input_geometry_group_count": 133,
+    "review_item_count": 133,
+    "review_status_counts": {
+      "needs-boundary-polygonization": 40,
+      "needs-component-decomposition": 63,
+      "needs-wall-boundary-pairing": 12,
+      "needs-wall-opening-pairing": 12,
+      "supporting-evidence-only": 6
+    },
+    "review_reason_counts": {
+      "ceiling-network-requires-closed-regions": 37,
+      "connected-network-exceeds-split-threshold": 9,
+      "detail-is-not-a-quantity-object": 6,
+      "door-has-no-block-instance": 10,
+      "door-must-pair-with-wall-opening": 12,
+      "floor-network-requires-closed-regions": 3,
+      "furniture-network-requires-component-splitting": 63,
+      "no-closed-source-primitive": 36,
+      "wall-lines-require-boundary-or-centerline-model": 12
+    },
+    "category_review_counts": {
+      "architecture.detail": 6,
+      "architecture.opening.door": 12,
+      "architecture.wall": 12,
+      "interior.ceiling": 37,
+      "interior.floor.finish-line": 3,
+      "interior.furniture.fixed": 27,
+      "interior.furniture.loose": 36
+    },
+    "oversized_network_counts": {
+      "architecture.wall": 2,
+      "interior.ceiling": 3,
+      "interior.floor.finish-line": 1,
+      "interior.furniture.fixed": 3
+    },
+    "created_domain_object_count": 0,
+    "quantity_ready_count": 0,
+    "user_confirmation_required_now": false
+  },
+  "items": [
+    {
+      "group_id": "cadgroup-6943676faaad89c38587befc",
+      "category": "architecture.detail",
+      "review_status": "supporting-evidence-only",
+      "review_reasons": [
+        "detail-is-not-a-quantity-object"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 2611.126722,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-db6804d6f5a062decd05954e",
+      "category": "architecture.detail",
+      "review_status": "supporting-evidence-only",
+      "review_reasons": [
+        "detail-is-not-a-quantity-object"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 2611.126722,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-991b45fbec880b1da013ab03",
+      "category": "architecture.detail",
+      "review_status": "supporting-evidence-only",
+      "review_reasons": [
+        "detail-is-not-a-quantity-object"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4403.615591,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-e96afbfcbc40dc03b3ff103e",
+      "category": "architecture.detail",
+      "review_status": "supporting-evidence-only",
+      "review_reasons": [
+        "detail-is-not-a-quantity-object"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4445.287499,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-8dc412d754d2c25c44fa8ac3",
+      "category": "architecture.detail",
+      "review_status": "supporting-evidence-only",
+      "review_reasons": [
+        "detail-is-not-a-quantity-object"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4403.615591,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-9d558145f4b98349fba0573b",
+      "category": "architecture.detail",
+      "review_status": "supporting-evidence-only",
+      "review_reasons": [
+        "detail-is-not-a-quantity-object"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4445.287499,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-07e1420ac2c88c1499f6baa3",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 100.072492,
+        "y": 3640.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-a3e3f2468b9a7b741b11e672",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 40.0,
+        "y": 910.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-7399727301844cebd74cf81c",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 40.0,
+        "y": 910.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-a3542239fcad20fccba9a303",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 40.0,
+        "y": 880.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-a7ab46313e2f31f7ec8d7694",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 40.0,
+        "y": 880.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-fad8175209b7534b83543354",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 60.0,
+        "y": 1400.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-bc6b811294f6be4b3b233bd2",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 650.0,
+        "y": 407.997415
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-0179c3520c636511db13e661",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 650.0,
+        "y": 407.997415
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-f48ec83ae58b5102940a7ad8",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 973.285743,
+        "y": 988.71144
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-fd057438759457eba3968cd7",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 650.0,
+        "y": 407.997415
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-636e46ce3677dbfb5f4aa084",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening",
+        "door-has-no-block-instance"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 650.0,
+        "y": 407.997415
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-162e70a2d0cbc1c5207f6a22",
+      "category": "architecture.opening.door",
+      "review_status": "needs-wall-opening-pairing",
+      "review_reasons": [
+        "door-must-pair-with-wall-opening"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 973.285743,
+        "y": 988.71144
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-f49c6173dcf293052c036eee",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 48,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 18539.973015,
+        "y": 8520.109606
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-6523da9cf76ebc1c13448b7a",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 21,
+      "closed_source_candidate_count": 2,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4951.147249,
+        "y": 2770.109603
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-2c02d79a3d3709be28ee89dc",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 18000.0,
+        "y": 140.00091
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-d66f93543514db3d6804b681",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 2,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 700.0,
+        "y": 700.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-ed0091b94abf1c3667746535",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1400.0,
+        "y": 1212.435565
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-0229af54bc4131e61f4ca193",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1630.940108,
+        "y": 1412.435565
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-7c1fc74b02356206753b28c7",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 100.0,
+        "y": 139.999947
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-b7c8bf2b810c2fc314863ae4",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 60.000053,
+        "y": 5400.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-27934ce13f219cabff48e9b4",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 60.007639,
+        "y": 2839.913029
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-485ebc30adcadf3983272636",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 7,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1550.001086,
+        "y": 3600.298167
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-a00586ba7d630419457fb3bc",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 660.0002,
+        "y": 3450.136103
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-63f11b8c75642998bf2ad913",
+      "category": "architecture.wall",
+      "review_status": "needs-wall-boundary-pairing",
+      "review_reasons": [
+        "wall-lines-require-boundary-or-centerline-model"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 660.0,
+        "y": 730.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-f5953ee89fcecd8e2b5c2ef9",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.0,
+        "y": 920.109659
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-417763726f7031d362bb9436",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 13,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4430.167398,
+        "y": 9915.245353
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-5348505c111c5123aee5daf9",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.0,
+        "y": 5080.109659
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-9c250e10276817b6c675478d",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.062252,
+        "y": 1590.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-0b4ccc6cf5bfee77caa25a53",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 5,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 2611.126722,
+        "y": 2400.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-325dd93574ce694f628b41ad",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.0,
+        "y": 880.109659
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-291b378d0e512d86d796e65d",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.002631,
+        "y": 8019.955069
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-95676e741cb6ac01f4684399",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 19,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1730.020527,
+        "y": 7999.954347
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-7c2445487e9d78e6f6b139fc",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 13,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3900.121754,
+        "y": 4690.479659
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-3ea69183bbdda570a516f2b5",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4853.615591,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-25eaff4c82fd11e8d1871b27",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4813.615591,
+        "y": 460.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-bbdffd8cfe2a57319fa22664",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4833.615591,
+        "y": 480.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-bddeecaf1a5d81e0234016b7",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3763.615591,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-f272267bd9cf7ef5d61c42fc",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3723.615591,
+        "y": 460.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-aee9f0f3d1886434db009db3",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3743.615591,
+        "y": 480.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-4a5d22e0252b3fb238d0b602",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1750.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-c510bc6c28b03f2257d7db6b",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1750.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-f754792b9d30be0eab5019d3",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1750.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-9e3934b486be3cb3d110fc2d",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1750.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-767b9519830aba9bff8dbc45",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1750.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-52a12829fe05014d010e0f3e",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1750.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-5b32fddff9cb75c4509900e4",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1750.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-e873c24d44ac56181df1b8c3",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1750.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-bd4bb561423a5eb80600088f",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1800.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-c46f1fadf0313b232b85f526",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1600.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-1c4db91f7027ee2e235bc30d",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1950.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-1228c7bf119e93cb1250c6c7",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 80.0,
+        "y": 2750.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-80873f5fe86092125b94e2fa",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.0,
+        "y": 3800.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-2df1f5696b8bd56db3914f87",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4403.615591,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-a0c81c672cebdcbbb070391d",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4445.287499,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-59d57299ad58e7510c581426",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4445.287499,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-1dae1f3a35e6d818a270e3bf",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4403.615591,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-47541e0c95716ff238011253",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 4,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 2803.615591,
+        "y": 200.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-41ae58a7d2f1c169269dbce4",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.0,
+        "y": 3800.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-0457fff8447627d043056d89",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 5153.615591,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-716d8e60a0cd07499b982280",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 5113.615591,
+        "y": 560.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-6fcade97ce6a975078e4cf80",
+      "category": "interior.ceiling",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "ceiling-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 5133.615591,
+        "y": 580.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-9c814b780b10ba9daa2370c0",
+      "category": "interior.floor.finish-line",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "floor-network-requires-closed-regions",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 56,
+      "closed_source_candidate_count": 13,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 26169.701071,
+        "y": 17920.175148
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-b6b665713c91ea398d4f2c15",
+      "category": "interior.floor.finish-line",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "floor-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 900.006444,
+        "y": 0.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-34f0f826247ac3cc6d529029",
+      "category": "interior.floor.finish-line",
+      "review_status": "needs-boundary-polygonization",
+      "review_reasons": [
+        "floor-network-requires-closed-regions",
+        "no-closed-source-primitive"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 900.006444,
+        "y": 0.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-6e4988db53618dc321fc3a6f",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 6,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 450.0,
+        "y": 8019.955887
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-6de7895fbf813a4c1fdc6f11",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 36,
+      "closed_source_candidate_count": 6,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 732.820323,
+        "y": 840.0
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-f26c03680e767c2c4f199e46",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 1,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 860.0,
+        "y": 860.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-1e183f08179b394ac524b7a3",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.0,
+        "y": 3800.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-8a09040d9c540c5920b72ce6",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 79,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3340.167568,
+        "y": 4830.109659
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-b40aa5ea875a71b0e6faadb2",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 12,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 880.167568,
+        "y": 40.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-de6a4509a80f9d3ad7060205",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 40.0,
+        "y": 0.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-a41f65f64ceb18ffe444c0f2",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3940.167568,
+        "y": 5610.109659
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-e8482fedf72ebfb988eb0e31",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 120.0,
+        "y": 450.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-69e427497529eee998218178",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting",
+        "connected-network-exceeds-split-threshold"
+      ],
+      "candidate_count": 35,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 40.0,
+        "y": 2880.109659
+      },
+      "requires_network_split": true,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-33a63d51133528dfca3e17dc",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 40.0,
+        "y": 40.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-76ddc14e80c27fd0540cdd9f",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4400.028146,
+        "y": 0.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-4d42790b4c52795c6ec9373b",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 7,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 140.000451,
+        "y": 1229.48064
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-9afc82966616009127749c17",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 324.821052,
+        "y": 40.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-7ddce6b9f6405cf01c18cf16",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 378.95057,
+        "y": 505.266538
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-8e18c8e88e1605bed1d8db9b",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 324.821052,
+        "y": 40.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-2fd473c6dfef2d3bb7e483fc",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 378.95057,
+        "y": 505.266538
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-03688b32547c401f5e0f50c4",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 78.946678,
+        "y": 402.633809
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-6deca9964dbe8660d48480f0",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 450.002852,
+        "y": 300.001523
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-a3845b53a5d2a06ff09bca61",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 450.002852,
+        "y": 300.001523
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-966ea6aa2d880e01a9ff2cdd",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 7,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 140.000451,
+        "y": 1229.48064
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-127989ba41e385eb0bc55245",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 324.821052,
+        "y": 40.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-9a974a0f49372bfd4ff2badd",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 378.95057,
+        "y": 505.266538
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-807c1723f45fe77549810213",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 324.821052,
+        "y": 40.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-af5bae4e8741b7c659944940",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 378.95057,
+        "y": 505.266538
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-21d561a3715d35e913bf9e2e",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.0,
+        "y": 2321.069207
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-ff048384380d3bc7e312ed1e",
+      "category": "interior.furniture.fixed",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 1,
+      "block_instance_candidate_count": 1,
+      "bounds_size_mm": {
+        "x": 386.844572,
+        "y": 1308.772865
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-c566bd8e00a298ea32c47b1b",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 700.0,
+        "y": 5400.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-38f942f85f53a13e4c5cb8b2",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 2000.0,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-2d31c26050998981b4fefcbe",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3800.0,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-af41b2127fa416d3e3a4d033",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3800.0,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-c1018878eba279771d88f12c",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 2000.0,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-489b934d77aa3e9b22225909",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3800.0,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-25b22aa5025df06b58856bde",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3800.0,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-935105ae5e5f65db381a51bc",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 5653.615591,
+        "y": 1200.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-d474ee30b27313aaba1dea36",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 400.0,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-c511f90fd53a2cee105a7f88",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 240.0,
+        "y": 440.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-2cd29fc7186d4d4472e25bbf",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 3,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 4445.287499,
+        "y": 1200.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-8b4dd40b3fa754237ee87632",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 400.0,
+        "y": 600.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-8e91b2b3cdb2f8ebf32c8cc2",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 240.0,
+        "y": 440.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-2f87d54b3669fcae28281085",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 5,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1900.0,
+        "y": 3150.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-b0030a77176f9f0fdc00b81f",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1500.0,
+        "y": 80.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-eb70e9eb9944ba8dab645a05",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 300.0,
+        "y": 1200.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-ff464d009e383fd917cfa35d",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 300.000002,
+        "y": 1200.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-e9ef152eb0876e3c2ea34c2d",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 0.00794,
+        "y": 5080.11002
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-0f2f2acb0a2585c64a479272",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 7,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 2350.0,
+        "y": 1900.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-b5db3d9e5b6d34f563cc9e14",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 80.0,
+        "y": 1500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-9013bd70a463f2f7cf5cd052",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 8,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1450.0,
+        "y": 4650.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-f9cf7fc6b3a72e89c431fff1",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1800.0,
+        "y": 1800.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-b5a007b8364208d47ed6e054",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 7,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1800.0,
+        "y": 2900.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-21904e8b09e52482290da769",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1800.0,
+        "y": 1800.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-5f5348d0373d6312ac95faa9",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 5,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1800.0,
+        "y": 1800.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-d7809b6ff3141468ecf680b8",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 3150.0,
+        "y": 1800.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-886408e3ec965d062b7ff246",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1000.0,
+        "y": 1000.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-15ffe68375aed4b6c31c4270",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 470.0,
+        "y": 1000.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-aad145631fafc04a2d86e989",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 650.0,
+        "y": 450.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-e8833f7ee8676e3cf51d8148",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 350.0,
+        "y": 500.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-dbafa0d2abcc2c0ce1d34eb9",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1000.0,
+        "y": 1000.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-83b0516b5a2e70669dd1e749",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 600.0,
+        "y": 1380.478591
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-ea87ec79d332506f283948ef",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 600.0,
+        "y": 580.478591
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-4239c5b512867d94d5ed0965",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 1,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 400.0,
+        "y": 2818.865242
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-d957cf208bb120b93c50e47b",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 1100.0,
+        "y": 2200.0
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    },
+    {
+      "group_id": "cadgroup-5f43c74024be22f91555a85c",
+      "category": "interior.furniture.loose",
+      "review_status": "needs-component-decomposition",
+      "review_reasons": [
+        "furniture-network-requires-component-splitting"
+      ],
+      "candidate_count": 2,
+      "closed_source_candidate_count": 0,
+      "unknown_closure_candidate_count": 0,
+      "block_instance_candidate_count": 0,
+      "bounds_size_mm": {
+        "x": 80.00037,
+        "y": 3950.000022
+      },
+      "requires_network_split": false,
+      "requires_secondary_cad_validation": true,
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready",
+      "user_confirmation_required_now": false
+    }
+  ],
+  "warnings": [
+    {
+      "code": "TOPOLOGY_REVIEW_IS_NOT_OBJECT_APPROVAL",
+      "message": "The queue routes each group to a professional validation rule and does not create approved domain objects."
+    },
+    {
+      "code": "SECONDARY_CAD_ENGINE_REQUIRED",
+      "message": "All groups remain blocked from quantity production until a second CAD engine or original CAD software validates the geometry sample."
+    }
+  ]
+}

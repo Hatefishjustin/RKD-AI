@@ -1,0 +1,89 @@
+{
+  "contract_version": "1.0",
+  "schema_hash": "sha256:f330c9c968113b5886cd910f4a34070be428399c89778268638304337f655346",
+  "manifest_id": "00000000-0000-4000-8000-000000000101",
+  "project_id": "00000000-0000-4000-8000-000000000001",
+  "baseline_ref": {
+    "object_id": "00000000-0000-4000-8000-000000000010",
+    "revision_id": "00000000-0000-4000-8000-000000000011",
+    "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "semantic_model_ref": {
+    "object_id": "00000000-0000-4000-8000-000000000020",
+    "revision_id": "00000000-0000-4000-8000-000000000021",
+    "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "representations": [
+    {
+      "representation_id": "00000000-0000-4000-8000-000000000030",
+      "representation_type": "native",
+      "authority": "derived",
+      "artifact_refs": ["00000000-0000-4000-8000-000000000040"],
+      "source_revision_refs": [
+        {
+          "object_id": "00000000-0000-4000-8000-000000000020",
+          "revision_id": "00000000-0000-4000-8000-000000000021",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      ],
+      "software_bundle_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "validation_profile_refs": ["validation-profile-vertical-mvp-v1"],
+      "dropped_fields": [],
+      "warnings": ["synthetic fixture representation; not a construction model"]
+    },
+    {
+      "representation_id": "00000000-0000-4000-8000-000000000031",
+      "representation_type": "exchange",
+      "authority": "derived",
+      "artifact_refs": ["00000000-0000-4000-8000-000000000041"],
+      "source_revision_refs": [
+        {
+          "object_id": "00000000-0000-4000-8000-000000000020",
+          "revision_id": "00000000-0000-4000-8000-000000000021",
+          "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      ],
+      "software_bundle_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "validation_profile_refs": ["validation-profile-vertical-mvp-v1"],
+      "dropped_fields": [],
+      "warnings": ["synthetic fixture representation; not a construction model"]
+    }
+  ],
+  "coordinate_context": {
+    "coordinate_system": "local-project-cartesian",
+    "origin": [0.0, 0.0, 0.0],
+    "rotation_degrees": 0.0,
+    "elevation_datum": "synthetic-project-zero",
+    "transform_hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "unit_context": {
+    "length": "m",
+    "area": "m2",
+    "volume": "m3",
+    "angle": "degrees",
+    "currency": "CNY"
+  },
+  "mapping_profile_version": "vertical-mvp-mapping-v1",
+  "object_mappings": [
+    {
+      "semantic_object_ref": {
+        "object_id": "00000000-0000-4000-8000-000000000050",
+        "revision_id": "00000000-0000-4000-8000-000000000051",
+        "content_hash": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      },
+      "representation_type": "native",
+      "external_object_ref": "synthetic-space-01",
+      "mapping_type": "one-to-one",
+      "status": "automatic",
+      "evidence_refs": ["fixture:expected/spatial-plan.json#spatial_option_demo"]
+    }
+  ],
+  "coverage": {
+    "semantic_object_count": 1,
+    "mapped_object_count": 1,
+    "mapping_ratio": 1.0,
+    "quantity_source_ratio": 0.0,
+    "drawing_reference_ratio": 0.0
+  },
+  "created_at": "2026-09-19T00:00:00+08:00"
+}

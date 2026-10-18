@@ -1,0 +1,4284 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "RKD Interior Production API",
+    "version": "1.0.0",
+    "description": "Tenant-scoped API boundary for the vertical MVP. The server builds CommandEnvelopeV1 and never accepts direct database or executor writes from clients. M5 local account pilot authenticates using a server-side session cookie; OIDC/serviceToken are reference contracts, not implemented runtime providers. All project routes including downloads require current project authorization in account mode. Legacy command execution is closed in launched local/account modes."
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Projects"
+    },
+    {
+      "name": "Files"
+    },
+    {
+      "name": "Commands"
+    },
+    {
+      "name": "Workflows"
+    },
+    {
+      "name": "Artifacts"
+    },
+    {
+      "name": "Operations"
+    },
+    {
+      "name": "Requirements"
+    },
+    {
+      "name": "Design"
+    },
+    {
+      "name": "Procurement"
+    },
+    {
+      "name": "Changes"
+    },
+    {
+      "name": "Identity"
+    }
+  ],
+  "paths": {
+    "/v1/projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List projects visible to the signed-in organization",
+        "operationId": "listProjects",
+        "responses": {
+          "200": {
+            "description": "Project page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create a project",
+        "operationId": "createProject",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Read a project",
+        "operationId": "getProject",
+        "responses": {
+          "200": {
+            "description": "Project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Rename a project with optimistic version check",
+        "operationId": "updateProject",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/files": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "List stored source files and their provenance",
+        "operationId": "listFiles",
+        "responses": {
+          "200": {
+            "description": "Project file list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilePage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/files/{fileId}/content": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/FileId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Stream the stored original bytes",
+        "operationId": "getFileContent",
+        "parameters": [
+          {
+            "name": "preview",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Original file bytes",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/decisions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Read sourced project decisions",
+        "operationId": "listProjectDecisions",
+        "responses": {
+          "200": {
+            "description": "Decision list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/issues": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "List source-linked issues and their dispositions",
+        "operationId": "listIssues",
+        "responses": {
+          "200": {
+            "description": "Issue page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuePage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/issues/{issueId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "issueId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Read one source-linked issue",
+        "operationId": "getIssue",
+        "responses": {
+          "200": {
+            "description": "Issue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Record a reasoned issue disposition",
+        "operationId": "recordIssueDisposition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueDispositionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated issue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/jobs": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "List persistent task state",
+        "operationId": "listJobs",
+        "responses": {
+          "200": {
+            "description": "Job page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/jobs/{jobId}/retry": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Retry a retryable task",
+        "operationId": "retryJob",
+        "responses": {
+          "202": {
+            "description": "Retry accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/jobs/{jobId}/cancel": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Cancel a persistent task",
+        "operationId": "cancelJob",
+        "responses": {
+          "200": {
+            "description": "Cancelled task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/estimates": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "List persistent estimate working copies",
+        "operationId": "listEstimates",
+        "responses": {
+          "200": {
+            "description": "Estimate page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimatePage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/requirements": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Requirements"
+        ],
+        "summary": "Read the current structured requirement draft",
+        "operationId": "getRequirementDraft",
+        "responses": {
+          "200": {
+            "description": "Requirement draft or empty item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Requirements"
+        ],
+        "summary": "Save an immutable showroom requirement revision, retaining source evidence",
+        "operationId": "updateRequirementDraft",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expected_revision",
+                  "design_program",
+                  "change_reason"
+                ],
+                "properties": {
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "design_program": {
+                    "$ref": "showroom-design.schema.json#/$defs/Program"
+                  },
+                  "design_notes": {
+                    "type": "string",
+                    "maxLength": 4000
+                  },
+                  "change_reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved requirement revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/design": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Design"
+        ],
+        "summary": "Read current design with dynamic lifecycle and revision history",
+        "operationId": "getDesign",
+        "responses": {
+          "200": {
+            "description": "Current draft or null and immutable revisions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/design/revisions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Design"
+        ],
+        "summary": "Generate a rule layout or validate a manual edit and generate seven real artifacts",
+        "operationId": "createDesignRevision",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expected_revision",
+                  "requirement_revision_no",
+                  "change_reason"
+                ],
+                "properties": {
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "requirement_revision_no": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "change_reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "model": {
+                    "$ref": "showroom-design.schema.json#/$defs/ModelInput"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved design or reused identical revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "item"
+                  ],
+                  "properties": {
+                    "item": {
+                      "$ref": "showroom-design.schema.json"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Unprocessable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/design/revisions/{revisionNo}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "revisionNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Design"
+        ],
+        "summary": "Read a historical design baseline",
+        "operationId": "getDesignRevision",
+        "responses": {
+          "200": {
+            "description": "Historical design and revision history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/design/artifacts/{artifactId}/content": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/ArtifactId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Design"
+        ],
+        "summary": "Download project-scoped design bytes after integrity verification",
+        "operationId": "getDesignArtifactContent",
+        "responses": {
+          "200": {
+            "description": "SVG, DXF, CSV, JSON, HTML or ZIP bytes",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/requirements/drafts": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Requirements"
+        ],
+        "summary": "Build a rule-based requirement draft from saved evidence",
+        "operationId": "createRequirementDraft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "change_reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Requirement draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/estimates/{estimateId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/EstimateId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Read the current estimate revision and Decimal calculation",
+        "operationId": "getEstimate",
+        "responses": {
+          "200": {
+            "description": "Estimate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estimate"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/estimates/{estimateId}/lines/{lineId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/EstimateId"
+        },
+        {
+          "name": "lineId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Create a revision by editing one estimate line",
+        "operationId": "updateEstimateLine",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstimateLineUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated estimate revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estimate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/estimates/{estimateId}/calculations": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/EstimateId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Create an immutable revision and run sourced Decimal pricing",
+        "operationId": "calculateEstimate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstimateCalculationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Calculated estimate revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estimate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/estimates/{estimateId}/export": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/EstimateId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Artifacts"
+        ],
+        "summary": "Export the current estimate revision as HTML and CSV",
+        "operationId": "exportEstimate",
+        "responses": {
+          "201": {
+            "description": "Estimate artifacts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimateArtifactPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/estimates/artifacts/{artifactId}/content": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/ArtifactId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Artifacts"
+        ],
+        "summary": "Download an estimate artifact",
+        "operationId": "downloadEstimateArtifact",
+        "responses": {
+          "200": {
+            "description": "Artifact bytes"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/spatial": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Read the current parameter geometry and quantity revision",
+        "operationId": "getSpatialModel",
+        "responses": {
+          "200": {
+            "description": "Spatial model",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpatialModelPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/spatial/revisions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Create an immutable parameter geometry revision and deterministic area quantity",
+        "operationId": "createSpatialRevision",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpatialRevisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Spatial revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpatialModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/procurement/orders": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "List local material order drafts and facts",
+        "operationId": "listProcurementOrders",
+        "responses": {
+          "200": {
+            "description": "Order page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcurementOrderPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Create a side-effect-free material order draft",
+        "operationId": "createProcurementOrder",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcurementOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcurementOrder"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/procurement/orders/{orderId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "orderId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Read one material order with receipts and allocations",
+        "operationId": "getProcurementOrder",
+        "responses": {
+          "200": {
+            "description": "Material order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcurementOrder"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/procurement/orders/{orderId}/receipts": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "orderId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Record received quantities without exceeding the order",
+        "operationId": "recordProcurementReceipt",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcurementReceiptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Updated order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcurementOrder"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/procurement/orders/{orderId}/allocations": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "orderId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Allocate received quantities to a target area and crew",
+        "operationId": "recordProcurementAllocation",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcurementAllocationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Updated order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcurementOrder"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/changes": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Changes"
+        ],
+        "summary": "List project change requests",
+        "operationId": "listChanges",
+        "responses": {
+          "200": {
+            "description": "Change page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Changes"
+        ],
+        "summary": "Create a local change request",
+        "operationId": "createChange",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Change request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Change"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/changes/{changeId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "changeId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Changes"
+        ],
+        "summary": "Read a change request, impact and acceptance history",
+        "operationId": "getChange",
+        "responses": {
+          "200": {
+            "description": "Change request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Change"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/changes/{changeId}/analyze": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "changeId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Changes"
+        ],
+        "summary": "Create deterministic change impact and draft outputs",
+        "operationId": "analyzeChange",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Analyzed change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Change"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/changes/{changeId}/acceptance": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "changeId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Changes"
+        ],
+        "summary": "Record human change acceptance",
+        "operationId": "acceptChange",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAcceptanceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Change"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/changes/artifacts/{artifactId}/content": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/ArtifactId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Changes"
+        ],
+        "summary": "Download a change output",
+        "operationId": "downloadChangeArtifact",
+        "responses": {
+          "200": {
+            "description": "Change output bytes"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/uploads": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Create an isolated upload session",
+        "operationId": "initiateUpload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadInitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Upload session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSession"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/uploads/{uploadId}/content": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/UploadId"
+        }
+      ],
+      "put": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Receive the declared file bytes",
+        "operationId": "receiveUpload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bytes staged with server hash",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadReceived"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/uploads/{uploadId}/complete": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/UploadId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Verify staged bytes and register an unparsed original",
+        "operationId": "completeUpload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadCompleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Original stored; parsing not implied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileStored"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/commands": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Commands"
+        ],
+        "summary": "Submit a registered business command",
+        "description": "The gateway builds CommandEnvelopeV1, adds tenant, actor, authorization, hashes, correlation and audit context, then writes the command and Outbox atomically. Clients cannot submit SQL, executor callbacks or arbitrary event types.",
+        "operationId": "submitCommand",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandSubmitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Command accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/Unprocessable"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/commands/{commandId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/CommandId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Commands"
+        ],
+        "summary": "Read command status",
+        "operationId": "getCommand",
+        "responses": {
+          "200": {
+            "description": "Command status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/workflows/{workflowRunId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/WorkflowRunId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Read a tenant-scoped workflow",
+        "operationId": "getWorkflow",
+        "responses": {
+          "200": {
+            "description": "Workflow state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowRun"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/artifacts/{artifactId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "$ref": "#/components/parameters/ArtifactId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Artifacts"
+        ],
+        "summary": "Read artifact metadata and a short-lived download URL",
+        "operationId": "getArtifact",
+        "responses": {
+          "200": {
+            "description": "Artifact metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Artifact"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "security": [],
+        "summary": "Liveness probe",
+        "operationId": "live",
+        "responses": {
+          "200": {
+            "description": "Process is alive"
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "security": [],
+        "summary": "Readiness probe",
+        "operationId": "ready",
+        "responses": {
+          "200": {
+            "description": "Dependencies are ready"
+          },
+          "503": {
+            "description": "Dependency is unavailable"
+          }
+        }
+      }
+    },
+    "/v1/auth/config": {
+      "get": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "getIdentityConfig",
+        "summary": "Read local/account mode and initialization status",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        },
+        "security": []
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "login",
+        "summary": "Authenticate personal account; set server session cookie",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "writeOnly": true
+                  }
+                },
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/session": {
+      "get": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "getSession",
+        "summary": "Read current account and CSRF token",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "logout",
+        "summary": "Revoke current session and clear cookie",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/auth/users": {
+      "get": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "listAccounts",
+        "summary": "Administrator lists organization accounts",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "createAccount",
+        "summary": "Administrator creates a non-admin personal account",
+        "responses": {
+          "201": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 64
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 15,
+                    "maxLength": 128,
+                    "writeOnly": true
+                  }
+                },
+                "required": [
+                  "username",
+                  "display_name",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/auth/users/{userId}": {
+      "patch": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "updateAccount",
+        "summary": "Administrator enables/disables an account and revokes its sessions",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "active"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{projectId}/members": {
+      "get": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "listProjectMembers",
+        "summary": "List members of an authorized project",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectId"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Identity"
+        ],
+        "operationId": "setProjectMember",
+        "summary": "Administrator assigns or revokes a project role; effective on next request",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/expired session or invalid login"
+          },
+          "403": {
+            "description": "Insufficient role or failed CSRF/Origin/Host validation"
+          },
+          "404": {
+            "description": "Unknown or unauthorized resource"
+          },
+          "409": {
+            "description": "Conflicting account"
+          },
+          "429": {
+            "description": "Login attempt limit reached"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "manager",
+                      "editor",
+                      "viewer",
+                      "none"
+                    ]
+                  }
+                },
+                "required": [
+                  "user_id",
+                  "role"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectId"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "oidc": {
+        "type": "openIdConnect",
+        "openIdConnectUrl": "https://identity.example.invalid/.well-known/openid-configuration"
+      },
+      "serviceToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "service-token"
+      },
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "rkd_session",
+        "description": "HttpOnly SameSite=Strict cookie, checked against persisted sessions; local loopback pilot only. Mutations also require X-CSRF-Token and same-origin requests."
+      }
+    },
+    "parameters": {
+      "ProjectId": {
+        "name": "projectId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "UploadId": {
+        "name": "uploadId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "FileId": {
+        "name": "fileId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "CommandId": {
+        "name": "commandId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "WorkflowRunId": {
+        "name": "workflowRunId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "ArtifactId": {
+        "name": "artifactId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "EstimateId": {
+        "name": "estimateId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 255
+        }
+      }
+    },
+    "schemas": {
+      "CreateProjectRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      },
+      "UpdateProjectRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "expected_version"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "required": [
+          "project_id",
+          "organization_id",
+          "name",
+          "status",
+          "version"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "archived"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ProjectPage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UploadInitRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filename",
+          "size_bytes"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "minLength": 1
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 104857600
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        }
+      },
+      "UploadSession": {
+        "type": "object",
+        "required": [
+          "upload_id",
+          "status",
+          "upload_url"
+        ],
+        "properties": {
+          "upload_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "initiated"
+            ]
+          },
+          "upload_url": {
+            "type": "string"
+          }
+        }
+      },
+      "UploadReceived": {
+        "type": "object",
+        "required": [
+          "upload_id",
+          "status",
+          "received_sha256",
+          "received_bytes"
+        ],
+        "properties": {
+          "upload_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "staged"
+            ]
+          },
+          "received_sha256": {
+            "type": "string"
+          },
+          "received_bytes": {
+            "type": "integer"
+          }
+        }
+      },
+      "UploadCompleteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "completed_sha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        }
+      },
+      "FileStored": {
+        "type": "object",
+        "required": [
+          "file_id",
+          "status",
+          "sha256",
+          "size_bytes",
+          "revision"
+        ],
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "stored_unparsed"
+            ]
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "FileAsset": {
+        "type": "object",
+        "required": [
+          "file_id",
+          "organization_id",
+          "project_id",
+          "filename",
+          "kind",
+          "content_type",
+          "size_bytes",
+          "sha256",
+          "source_kind",
+          "source_ref",
+          "format_status",
+          "created_at",
+          "revision",
+          "download_url"
+        ],
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "source_kind": {
+            "type": "string"
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "format_status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "download_url": {
+            "type": "string",
+            "description": "One-hour signed same-origin URL"
+          }
+        }
+      },
+      "FilePage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileAsset"
+            }
+          }
+        }
+      },
+      "Decision": {
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "source",
+          "status"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {},
+          "source": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "source_conflict": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "DecisionPage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Decision"
+            }
+          }
+        }
+      },
+      "IssueDispositionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "reason",
+          "expected_version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "in_review",
+              "resolved",
+              "deferred",
+              "unknown"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "Issue": {
+        "type": "object",
+        "required": [
+          "issue_id",
+          "source_ref",
+          "source_locator",
+          "issue_type",
+          "severity",
+          "title",
+          "detail",
+          "disposition_status",
+          "version"
+        ],
+        "properties": {
+          "issue_id": {
+            "type": "string"
+          },
+          "source_file_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "source_locator": {
+            "type": "string"
+          },
+          "issue_type": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "object"
+          },
+          "disposition_status": {
+            "type": "string"
+          },
+          "disposition_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          }
+        }
+      },
+      "IssuePage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "required": [
+          "job_id",
+          "job_type",
+          "status",
+          "attempt_count",
+          "input_hash",
+          "input_ref"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "job_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "retryable",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "attempt_count": {
+            "type": "integer"
+          },
+          "input_hash": {
+            "type": "string"
+          },
+          "input_ref": {
+            "type": "string"
+          },
+          "output": {
+            "type": "object"
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "JobPage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Job"
+            }
+          }
+        }
+      },
+      "DecimalText": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[0-9]+(?:\\.[0-9]+)?$"
+      },
+      "EstimateLineUpdateRequest": {
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "change_reason"
+        ],
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "change_reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "main_material_unit_cost": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "auxiliary_unit_cost": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "labor_unit_cost": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "inclusion_status": {
+            "type": "string",
+            "enum": [
+              "included",
+              "excluded"
+            ]
+          },
+          "exclusion_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "EstimateCalculationRequest": {
+        "type": "object",
+        "required": [
+          "expected_revision"
+        ],
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "change_reason": {
+            "type": "string"
+          },
+          "trial_tax_rate": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "construction_cost_markup": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "design_cost_markup": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "design_cost_net": {
+            "$ref": "#/components/schemas/DecimalText"
+          }
+        }
+      },
+      "EstimateLine": {
+        "type": "object",
+        "required": [
+          "line_id",
+          "name",
+          "unit",
+          "inclusion_status",
+          "source_locator",
+          "source_amount"
+        ],
+        "properties": {
+          "line_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "main_material_unit_cost": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "auxiliary_unit_cost": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "labor_unit_cost": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "current_cost": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "source_amount": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "inclusion_status": {
+            "type": "string",
+            "enum": [
+              "included",
+              "excluded"
+            ]
+          },
+          "source_locator": {
+            "type": "string"
+          }
+        }
+      },
+      "CalculationRun": {
+        "type": "object",
+        "required": [
+          "calculation_run_id",
+          "revision_no",
+          "formula_version",
+          "result",
+          "warnings"
+        ],
+        "properties": {
+          "calculation_run_id": {
+            "type": "string"
+          },
+          "revision_no": {
+            "type": "integer"
+          },
+          "formula_version": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "Estimate": {
+        "type": "object",
+        "required": [
+          "estimate_id",
+          "project_id",
+          "revision_no",
+          "assumptions",
+          "lines",
+          "calculation"
+        ],
+        "properties": {
+          "estimate_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "CNY"
+            ]
+          },
+          "revision_no": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "assumptions": {
+            "type": "object"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EstimateLine"
+            }
+          },
+          "calculation": {
+            "$ref": "#/components/schemas/CalculationRun"
+          }
+        }
+      },
+      "EstimatePage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "estimate_id",
+                "current_revision_no"
+              ],
+              "properties": {
+                "estimate_id": {
+                  "type": "string"
+                },
+                "current_revision_no": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SpatialDeduction": {
+        "type": "object",
+        "required": [
+          "deduction_id",
+          "x",
+          "y",
+          "width",
+          "length"
+        ],
+        "properties": {
+          "deduction_id": {
+            "type": "string"
+          },
+          "x": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "y": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "width": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "length": {
+            "$ref": "#/components/schemas/DecimalText"
+          }
+        }
+      },
+      "SpatialRevisionRequest": {
+        "type": "object",
+        "required": [
+          "width",
+          "length",
+          "expected_revision"
+        ],
+        "properties": {
+          "spatial_unit_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "width": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "length": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "deductions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpatialDeduction"
+            }
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "change_reason": {
+            "type": "string"
+          }
+        }
+      },
+      "SpatialModel": {
+        "type": "object",
+        "required": [
+          "spatial_unit_id",
+          "revision_no",
+          "width",
+          "length",
+          "area_m2",
+          "deductions",
+          "quantity_items"
+        ],
+        "properties": {
+          "spatial_unit_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revision_no": {
+            "type": "integer"
+          },
+          "width": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "length": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "area_m2": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "deductions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpatialDeduction"
+            }
+          },
+          "quantity_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "quantity_item_id",
+                "quantity",
+                "unit",
+                "formula"
+              ],
+              "properties": {
+                "quantity_item_id": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "$ref": "#/components/schemas/DecimalText"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "formula": {
+                  "type": "string"
+                },
+                "source_status": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SpatialModelPage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpatialModel"
+            }
+          }
+        }
+      },
+      "ProcurementOrderRequest": {
+        "type": "object",
+        "required": [
+          "supplier_name",
+          "delivery_location",
+          "lines"
+        ],
+        "properties": {
+          "supplier_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "delivery_location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_kind": {
+            "type": "string"
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "item_name",
+                "ordered_quantity",
+                "unit"
+              ],
+              "properties": {
+                "item_code": {
+                  "type": "string"
+                },
+                "item_name": {
+                  "type": "string"
+                },
+                "specification": {
+                  "type": "string"
+                },
+                "ordered_quantity": {
+                  "$ref": "#/components/schemas/DecimalText"
+                },
+                "unit": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProcurementReceiptRequest": {
+        "type": "object",
+        "required": [
+          "expected_version",
+          "receiver",
+          "evidence_ref",
+          "lines"
+        ],
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "receipt_no": {
+            "type": "string"
+          },
+          "receiver": {
+            "type": "string"
+          },
+          "evidence_ref": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "line_id",
+                "quantity"
+              ],
+              "properties": {
+                "line_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "$ref": "#/components/schemas/DecimalText"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProcurementAllocationRequest": {
+        "type": "object",
+        "required": [
+          "expected_version",
+          "target_area",
+          "recipient",
+          "evidence_ref",
+          "lines"
+        ],
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "target_area": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "evidence_ref": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "line_id",
+                "quantity"
+              ],
+              "properties": {
+                "line_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "$ref": "#/components/schemas/DecimalText"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProcurementOrder": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "project_id",
+          "revision_no",
+          "status",
+          "supplier_name",
+          "delivery_location",
+          "external_effects_enabled",
+          "lines",
+          "receipts",
+          "allocations"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "revision_no": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "supplier_name": {
+            "type": "string"
+          },
+          "delivery_location": {
+            "type": "string"
+          },
+          "external_effects_enabled": {
+            "const": false
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "receipts": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "ProcurementOrderPage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProcurementOrder"
+            }
+          }
+        }
+      },
+      "ChangeRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "reason",
+          "description"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "issue_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "design_revision_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "geometry_revision_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity_delta_m2": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "cost_delta_net": {
+            "$ref": "#/components/schemas/DecimalText"
+          },
+          "schedule_delta_days": {
+            "$ref": "#/components/schemas/DecimalText"
+          }
+        }
+      },
+      "ChangeAnalysisRequest": {
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "ChangeAcceptanceRequest": {
+        "type": "object",
+        "required": [
+          "conclusion",
+          "evidence_ref"
+        ],
+        "properties": {
+          "conclusion": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "rework",
+              "rejected",
+              "unknown"
+            ]
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "Change": {
+        "type": "object",
+        "required": [
+          "change_id",
+          "project_id",
+          "change_no",
+          "title",
+          "status",
+          "baseline",
+          "proposal",
+          "impact",
+          "artifacts",
+          "acceptances"
+        ],
+        "properties": {
+          "change_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "change_no": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "baseline": {
+            "type": "object"
+          },
+          "proposal": {
+            "type": "object"
+          },
+          "impact": {
+            "type": "object"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "acceptances": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "ChangePage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Change"
+            }
+          }
+        }
+      },
+      "CommandSubmitRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command_type",
+          "target_id",
+          "expected_version",
+          "payload"
+        ],
+        "properties": {
+          "command_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "payload": {
+            "type": "object"
+          }
+        }
+      },
+      "CommandAccepted": {
+        "type": "object",
+        "required": [
+          "command_id",
+          "status"
+        ],
+        "properties": {
+          "command_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "duplicate"
+            ]
+          },
+          "workflow_run_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CommandStatus": {
+        "type": "object",
+        "required": [
+          "command_id",
+          "command_type",
+          "status"
+        ],
+        "properties": {
+          "command_id": {
+            "type": "string"
+          },
+          "command_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "rejected",
+              "failed",
+              "completed"
+            ]
+          },
+          "result": {
+            "type": "object"
+          }
+        }
+      },
+      "WorkflowRun": {
+        "type": "object",
+        "required": [
+          "workflow_run_id",
+          "workflow_type",
+          "status",
+          "current_state",
+          "input_revision"
+        ],
+        "properties": {
+          "workflow_run_id": {
+            "type": "string"
+          },
+          "workflow_type": {
+            "type": "string"
+          },
+          "workflow_version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "current_state": {
+            "type": "string"
+          },
+          "input_revision": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Artifact": {
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "kind",
+          "status"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "source_revision": {
+            "type": "string"
+          },
+          "download_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
+        }
+      },
+      "EstimateArtifact": {
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "estimate_id",
+          "revision_no",
+          "artifact_kind",
+          "filename",
+          "content_type",
+          "sha256",
+          "size_bytes",
+          "status"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "estimate_id": {
+            "type": "string"
+          },
+          "revision_no": {
+            "type": "integer"
+          },
+          "artifact_kind": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "download_url": {
+            "type": "string"
+          }
+        }
+      },
+      "EstimateArtifactPage": {
+        "type": "object",
+        "required": [
+          "estimate_id",
+          "revision_no",
+          "items"
+        ],
+        "properties": {
+          "estimate_id": {
+            "type": "string"
+          },
+          "revision_no": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EstimateArtifact"
+            }
+          }
+        }
+      },
+      "RequirementPage": {
+        "type": "object",
+        "required": [
+          "item"
+        ],
+        "properties": {
+          "item": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RequirementDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "RequirementDraft": {
+        "type": "object",
+        "required": [
+          "requirement_id",
+          "project_id",
+          "revision_no",
+          "status",
+          "source_kind",
+          "content",
+          "source_refs",
+          "input_hash"
+        ],
+        "properties": {
+          "requirement_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "revision_no": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft_unconfirmed"
+            ]
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "rule_based_draft",
+              "manual_draft"
+            ]
+          },
+          "content": {
+            "type": "object"
+          },
+          "source_refs": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "input_hash": {
+            "type": "string"
+          }
+        }
+      },
+      "DesignPage": {
+        "type": "object",
+        "required": [
+          "item",
+          "revisions"
+        ],
+        "properties": {
+          "item": {
+            "oneOf": [
+              {
+                "$ref": "showroom-design.schema.json"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revisions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "revision_no",
+                "requirement_revision_no",
+                "source_kind",
+                "change_reason",
+                "actor_id",
+                "created_at"
+              ]
+            }
+          }
+        }
+      },
+      "AsyncAccepted": {
+        "type": "object",
+        "required": [
+          "operation_id",
+          "status"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued"
+            ]
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "required": [
+          "error_code",
+          "message",
+          "request_id"
+        ],
+        "properties": {
+          "error_code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "details": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Request is invalid",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Authentication required",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Access denied",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found in this tenant scope",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Version or idempotency conflict",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "Unprocessable": {
+        "description": "Business rule rejected the command",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "Upload exceeds policy",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      }
+    }
+  }
+}

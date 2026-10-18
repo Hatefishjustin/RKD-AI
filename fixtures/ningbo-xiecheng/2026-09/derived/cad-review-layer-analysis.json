@@ -1,0 +1,232 @@
+{
+  "contract_version": "1.0",
+  "source_asset_id": "drawing-cad-01",
+  "source_sha256": "77DDAC8E80401BF3C7913BFF8AC959DC5D4A0CC573EC5CDCBC2CAB5D95A47616",
+  "semantic_mapping_version": "cad-layer-semantics-1.0.0",
+  "plan_profile_id": "ningbo-xiecheng-primary-floor-plan-v1",
+  "status": "review-layer-spatial-analysis-complete",
+  "summary": {
+    "review_layer_count": 4,
+    "declared_reachable_entity_count": 4512,
+    "declared_model_reachable_entity_count": 4504,
+    "declared_paper_only_reachable_entity_count": 8,
+    "model_reachable_unique_source_entity_count": 4484,
+    "noninstantiated_model_source_entity_count": 20,
+    "primary_plan_instance_count": 6,
+    "outside_primary_plan_instance_count": 4489,
+    "coordinate_missing_instance_count": 1,
+    "maximum_nested_depth_seen": 2,
+    "traversal_issue_counts": {},
+    "user_confirmation_required_now": false
+  },
+  "layers": [
+    {
+      "layer_name": "250",
+      "category": "drawing.external-reference",
+      "scope_disposition": "evidence-only",
+      "storage_entity_count": 78,
+      "declared_reachable_entity_count": 72,
+      "declared_model_reachable_entity_count": 72,
+      "declared_paper_only_reachable_entity_count": 0,
+      "model_reachable_unique_source_entity_count": 72,
+      "noninstantiated_model_source_entity_count": 0,
+      "primary_plan_instance_count": 5,
+      "primary_plan_unique_source_entity_count": 5,
+      "outside_primary_plan_instance_count": 79,
+      "outside_primary_plan_unique_source_entity_count": 67,
+      "coordinate_missing_instance_count": 0,
+      "primary_plan_entity_type_counts": {
+        "LINE": 5
+      },
+      "outside_primary_plan_entity_type_counts": {
+        "LINE": 65,
+        "LWPOLYLINE": 14
+      },
+      "primary_plan_samples": [
+        {
+          "source_entity_handle": 16960153,
+          "source_entity_type": "LINE",
+          "instance_depth": 0,
+          "bounds": {
+            "minimum": [
+              5908000.518793163,
+              -2587739.418006371
+            ],
+            "maximum": [
+              5908600.518793163,
+              -2587739.418006371
+            ]
+          }
+        },
+        {
+          "source_entity_handle": 16960154,
+          "source_entity_type": "LINE",
+          "instance_depth": 0,
+          "bounds": {
+            "minimum": [
+              5913004.134383744,
+              -2587739.418006371
+            ],
+            "maximum": [
+              5915404.1343837455,
+              -2587739.418006371
+            ]
+          }
+        },
+        {
+          "source_entity_handle": 16960155,
+          "source_entity_type": "LINE",
+          "instance_depth": 0,
+          "bounds": {
+            "minimum": [
+              5919849.421882664,
+              -2587739.4180063712
+            ],
+            "maximum": [
+              5919849.421882665,
+              -2585339.4180063712
+            ]
+          }
+        },
+        {
+          "source_entity_handle": 16960156,
+          "source_entity_type": "LINE",
+          "instance_depth": 0,
+          "bounds": {
+            "minimum": [
+              5913004.134383744,
+              -2585339.4180063712
+            ],
+            "maximum": [
+              5915404.1343837455,
+              -2585339.4180063712
+            ]
+          }
+        },
+        {
+          "source_entity_handle": 16960157,
+          "source_entity_type": "LINE",
+          "instance_depth": 0,
+          "bounds": {
+            "minimum": [
+              5908000.518793163,
+              -2585339.4180063712
+            ],
+            "maximum": [
+              5908600.518793163,
+              -2585339.4180063712
+            ]
+          }
+        }
+      ],
+      "disposition": "evidence-only-review-required"
+    },
+    {
+      "layer_name": "155",
+      "category": "drawing.external-reference",
+      "scope_disposition": "evidence-only",
+      "storage_entity_count": 9243,
+      "declared_reachable_entity_count": 2917,
+      "declared_model_reachable_entity_count": 2909,
+      "declared_paper_only_reachable_entity_count": 8,
+      "model_reachable_unique_source_entity_count": 2889,
+      "noninstantiated_model_source_entity_count": 20,
+      "primary_plan_instance_count": 1,
+      "primary_plan_unique_source_entity_count": 1,
+      "outside_primary_plan_instance_count": 2887,
+      "outside_primary_plan_unique_source_entity_count": 2887,
+      "coordinate_missing_instance_count": 1,
+      "primary_plan_entity_type_counts": {
+        "LINE": 1
+      },
+      "outside_primary_plan_entity_type_counts": {
+        "DIMENSION_ALIGNED": 10,
+        "DIMENSION_ANG2LN": 1,
+        "DIMENSION_LINEAR": 730,
+        "DIMENSION_RADIUS": 3,
+        "HATCH": 150,
+        "INSERT": 49,
+        "LEADER": 54,
+        "LINE": 1731,
+        "LWPOLYLINE": 159
+      },
+      "primary_plan_samples": [
+        {
+          "source_entity_handle": 17082994,
+          "source_entity_type": "LINE",
+          "instance_depth": 0,
+          "bounds": {
+            "minimum": [
+              5923018.778214566,
+              -2585339.4180063712
+            ],
+            "maximum": [
+              5923018.778214566,
+              -2585189.4180063712
+            ]
+          }
+        }
+      ],
+      "disposition": "evidence-only-review-required"
+    },
+    {
+      "layer_name": "图层 1",
+      "category": "drawing.external-reference",
+      "scope_disposition": "evidence-only",
+      "storage_entity_count": 36327,
+      "declared_reachable_entity_count": 1514,
+      "declared_model_reachable_entity_count": 1514,
+      "declared_paper_only_reachable_entity_count": 0,
+      "model_reachable_unique_source_entity_count": 1514,
+      "noninstantiated_model_source_entity_count": 0,
+      "primary_plan_instance_count": 0,
+      "primary_plan_unique_source_entity_count": 0,
+      "outside_primary_plan_instance_count": 1514,
+      "outside_primary_plan_unique_source_entity_count": 1514,
+      "coordinate_missing_instance_count": 0,
+      "primary_plan_entity_type_counts": {},
+      "outside_primary_plan_entity_type_counts": {
+        "ARC": 2,
+        "CIRCLE": 6,
+        "LINE": 1178,
+        "LWPOLYLINE": 2,
+        "SPLINE": 326
+      },
+      "primary_plan_samples": [],
+      "disposition": "not-present-in-primary-plan"
+    },
+    {
+      "layer_name": "AM_1",
+      "category": "drawing.external-reference",
+      "scope_disposition": "evidence-only",
+      "storage_entity_count": 140,
+      "declared_reachable_entity_count": 9,
+      "declared_model_reachable_entity_count": 9,
+      "declared_paper_only_reachable_entity_count": 0,
+      "model_reachable_unique_source_entity_count": 9,
+      "noninstantiated_model_source_entity_count": 0,
+      "primary_plan_instance_count": 0,
+      "primary_plan_unique_source_entity_count": 0,
+      "outside_primary_plan_instance_count": 9,
+      "outside_primary_plan_unique_source_entity_count": 9,
+      "coordinate_missing_instance_count": 0,
+      "primary_plan_entity_type_counts": {},
+      "outside_primary_plan_entity_type_counts": {
+        "ARC": 1,
+        "LINE": 8
+      },
+      "primary_plan_samples": [],
+      "disposition": "not-present-in-primary-plan"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "REVIEW_LAYERS_NOT_PROMOTED",
+      "message": "Spatial placement does not assign these legacy layers to walls, furniture, or other professional categories."
+    },
+    {
+      "code": "INSTANCE_COUNTS_ARE_NOT_QUANTITIES",
+      "message": "Instance counts are diagnostic occurrences and must not be used as bill-of-quantity values."
+    }
+  ]
+}

@@ -1,0 +1,627 @@
+{
+  "name": "链1-施工问题管理",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "issue-submit",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1",
+      "name": "问题提交Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        0
+      ],
+      "webhookId": "issue-submit"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// 预校验：必填项缺失直接报错，不进入AI\nconst items = $input.all();\nconst out = [];\nfor (const it of items) {\n  const b = it.json.body || it.json;\n  if (!b.project_no || !b.description) {\n    throw new Error('缺少 project_no 或 description，拒绝入库：' + JSON.stringify(b).slice(0, 200));\n  }\n  out.push({ json: { ...b, found_at: b.found_at || new Date().toISOString(), photos: b.photos || [] } });\n}\nreturn out;"
+      },
+      "id": "a2",
+      "name": "预校验输入",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -140,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LLM_API_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.LLM_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.LLM_MODEL, messages: [ { role: 'system', content: '你是室内设计公司的施工问题助理。输入现场提交的问题描述与照片说明，只输出JSON：{\"issue_type\":\"尺寸|材料|工艺|质量|进度|安全|图纸|客户变更|其他\",\"severity\":\"一般|重要|紧急\",\"description\":\"位置+现象+依据，≤80字\",\"affects_design\":bool,\"affects_cost\":bool,\"affects_schedule\":bool,\"needs_drawing_change\":bool,\"responsible_party\":\"施工方|供应商|设计方|客户|物业\",\"confidence\":0.00}。判定：紧急=安全风险/停工/影响关键节点；重要=影响设计效果或需返工；一般=可随工序修复。不确定的字段置null并在description前加[待补充]，禁止编造。' }, { role: 'user', content: JSON.stringify($json) } ], temperature: 0.2 }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "a3",
+      "name": "AI整理-施工问题助理",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// 解析AI结果，计算默认截止时间与置信度标记\nconst out = [];\nfor (const it of $input.all()) {\n  const ai = it.json.choices?.[0]?.message?.content || it.json.content || '';\n  let parsed;\n  try { parsed = JSON.parse(String(ai).replace(/^```json?|```$/g, '').trim()); }\n  catch (e) { throw new Error('AI输出解析失败，原文转待整理队列：' + String(ai).slice(0, 300)); }\n  const src = $('预校验输入').first().json;\n  const hours = { '紧急': 24, '重要': 72, '一般': 168 };\n  const sev = parsed.severity || '一般';\n  const deadline = new Date(Date.now() + (hours[sev] || 168) * 3600 * 1000);\n  const needsBoss = sev === '紧急' || (sev === '重要' && (parsed.affects_design || parsed.affects_cost || parsed.affects_schedule));\n  // 责任人映射：尺寸/图纸→施工图设计师；材料/工艺/质量→施工方+采购；进度→采购责任人；客户变更→老板\n  const assignMap = { '尺寸': '施工图设计师', '图纸': '施工图设计师', '材料': '采购责任人', '工艺': '采购责任人', '质量': '采购责任人', '进度': '采购责任人', '客户变更': '老板' };\n  out.push({ json: { ...src, ...parsed, deadline: deadline.toISOString(), needs_boss_approval: needsBoss,\n    assignee: src.assignee || assignMap[parsed.issue_type] || '采购责任人',\n    low_confidence: (parsed.confidence ?? 0) < 0.7 } });\n}\nreturn out;"
+      },
+      "id": "a4",
+      "name": "解析与编号规则",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.low_confidence }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a5",
+      "name": "置信度≥0.7?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        580,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_ISSUE }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '问题待补充', text: '### 问题需补充信息\\n提交人：' + $json.found_by + '\\n原文：' + $json.description + '\\nAI无法完整识别，请在群里补充说明后重新提交。' } }) }}",
+        "options": {}
+      },
+      "id": "a6",
+      "name": "退回提交人补充",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT next_no('WT-26') AS issue_no",
+        "options": {}
+      },
+      "id": "a7",
+      "name": "生成问题编号",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        820,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const no = $('生成问题编号').first().json.issue_no;\nconst d = $('解析与编号规则').first().json;\nreturn [{ json: { ...d, issue_no: no } }];"
+      },
+      "id": "a8",
+      "name": "合并编号",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO issues (issue_no, project_no, found_at, found_by, source, issue_type, raw_description, photos, severity, affects_design, affects_cost, affects_schedule, needs_drawing_change, needs_boss_approval, responsible_party, assignee, deadline, ai_confidence, status) VALUES ($1,$2,$3,$4,'钉钉表单',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'待处理') RETURNING issue_no",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$json.issue_no, $json.project_no, $json.found_at, $json.found_by, $json.issue_type, $json.description, $json.photos, $json.severity, $json.affects_design, $json.affects_cost, $json.affects_schedule, $json.needs_drawing_change, $json.needs_boss_approval, $json.responsible_party, $json.assignee, $json.deadline, $json.confidence]) }}"
+        }
+      },
+      "id": "a9",
+      "name": "写入问题表",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1300,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('解析与编号规则').first().json.needs_boss_approval }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a10",
+      "name": "需老板审批?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO approvals (source_chain, business_no, title, detail_json, requester) VALUES ('issue', $1, $2, $3, $4)",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$json.issue_no, '紧急/重要施工问题：' + $json.issue_no, JSON.stringify($json), $json.found_by]) }}"
+        }
+      },
+      "id": "a11",
+      "name": "登记审批记录",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1780,
+        -120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_BOSS }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '待审批-施工问题', text: '### 【待审批】' + $('合并编号').first().json.issue_no + '\\n严重程度：' + $('合并编号').first().json.severity + '\\n' + $('合并编号').first().json.description + '\\n责任方：' + $('合并编号').first().json.responsible_party } }) }}",
+        "options": {}
+      },
+      "id": "a12",
+      "name": "推送老板审批",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2020,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_ISSUE }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '新施工问题', text: '### 新问题 ' + $json.issue_no + '\\n项目：' + $json.project_no + '\\n类型：' + $json.issue_type + ' / ' + $json.severity + '\\n' + $json.description + '\\n**责任人：@' + $json.assignee + '**  截止：' + $json.deadline.slice(0, 16) + ($json.needs_boss_approval ? '\\n> 已推送老板审批' : '') } }) }}",
+        "options": {}
+      },
+      "id": "a13",
+      "name": "钉钉分派通知",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2020,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        },
+        "timezone": "Asia/Shanghai"
+      },
+      "id": "a14",
+      "name": "每日9点巡检",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -380,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT issue_no, project_no, severity, assignee, deadline, overdue_count, needs_boss_approval FROM issues WHERE status NOT IN ('已关闭','待整理') AND deadline < CURRENT_TIMESTAMP ORDER BY deadline",
+        "options": {}
+      },
+      "id": "a15",
+      "name": "查逾期未关闭问题",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -140,
+        420
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// 逾期分级：逾期1天催办、3天升级；无逾期发正常简报\nconst rows = $input.all().map(i => i.json);\nconst now = Date.now();\nlet md = '';\nconst escalated = [];\nfor (const r of rows) {\n  const days = Math.floor((now - new Date(r.deadline).getTime()) / 86400000);\n  if (days >= 3 || r.overdue_count >= 2) escalated.push(r);\n  md += `- ${r.issue_no}（${r.severity}）责任：${r.assignee}，逾期${days}天\\n`;\n}\nif (!rows.length) md = '- 全部问题按期处理中，无逾期';\nreturn [{ json: { report: '### 施工问题巡检 ' + new Date().toISOString().slice(0, 10) + '\\n' + md, escalated, count: rows.length } }];"
+      },
+      "id": "a16",
+      "name": "生成巡检分级",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.escalated.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a17",
+      "name": "有升级项?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        340,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE issues SET overdue_count = overdue_count + 1, status = '已升级' WHERE issue_no = ANY(string_to_array($1, ','))",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$('生成巡检分级').first().json.escalate.map(r => r.issue_no).join(',')]) }}"
+        }
+      },
+      "id": "a18",
+      "name": "标记升级状态",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        580,
+        320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_BOSS }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '问题超期升级', text: '### 【超期升级】以下问题逾期≥3天\\n' + $('生成巡检分级').first().json.escalated.map(r => `- ${r.issue_no}（${r.severity}）责任：${r.assignee}`).join('\\n') } }) }}",
+        "options": {}
+      },
+      "id": "a19",
+      "name": "升级推送老板",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_ISSUE }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '问题巡检日报', text: $('生成巡检分级').first().json.report } }) }}",
+        "options": {}
+      },
+      "id": "a20",
+      "name": "巡检日报进群",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        340,
+        560
+      ]
+    }
+  ],
+  "connections": {
+    "问题提交Webhook": {
+      "main": [
+        [
+          {
+            "node": "预校验输入",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "预校验输入": {
+      "main": [
+        [
+          {
+            "node": "AI整理-施工问题助理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI整理-施工问题助理": {
+      "main": [
+        [
+          {
+            "node": "解析与编号规则",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析与编号规则": {
+      "main": [
+        [
+          {
+            "node": "置信度≥0.7?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "置信度≥0.7?": {
+      "main": [
+        [
+          {
+            "node": "生成问题编号",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "退回提交人补充",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成问题编号": {
+      "main": [
+        [
+          {
+            "node": "合并编号",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "合并编号": {
+      "main": [
+        [
+          {
+            "node": "写入问题表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写入问题表": {
+      "main": [
+        [
+          {
+            "node": "需老板审批?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "需老板审批?": {
+      "main": [
+        [
+          {
+            "node": "登记审批记录",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "钉钉分派通知",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "钉钉分派通知",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "登记审批记录": {
+      "main": [
+        [
+          {
+            "node": "推送老板审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "每日9点巡检": {
+      "main": [
+        [
+          {
+            "node": "查逾期未关闭问题",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查逾期未关闭问题": {
+      "main": [
+        [
+          {
+            "node": "生成巡检分级",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成巡检分级": {
+      "main": [
+        [
+          {
+            "node": "有升级项?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "有升级项?": {
+      "main": [
+        [
+          {
+            "node": "标记升级状态",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "巡检日报进群",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "标记升级状态": {
+      "main": [
+        [
+          {
+            "node": "升级推送老板",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "pinData": {}
+}

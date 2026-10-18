@@ -1,0 +1,8 @@
+{
+  "fixture_version": "vertical-mvp-v1",
+  "intent_id": "intent_demo",
+  "style": "quiet collaborative",
+  "budget_level": "mid",
+  "forbidden": ["unverified material substitution"]
+}
+

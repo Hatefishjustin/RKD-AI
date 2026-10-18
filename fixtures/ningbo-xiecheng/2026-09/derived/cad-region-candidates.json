@@ -1,0 +1,3556 @@
+{
+  "contract_version": "1.0",
+  "source_asset_id": "drawing-cad-01",
+  "source_sha256": "77DDAC8E80401BF3C7913BFF8AC959DC5D4A0CC573EC5CDCBC2CAB5D95A47616",
+  "plan_profile_id": "ningbo-xiecheng-primary-floor-plan-v1",
+  "status": "region-candidate-extraction-complete",
+  "geometry_engine": {
+    "name": "Shapely",
+    "version": "2.1.2",
+    "geos_version": "3.13.1"
+  },
+  "policy": {
+    "snap_tolerance_mm": 2.0,
+    "minimum_area_m2": 0.01,
+    "accepted_entity_types": [
+      "ARC",
+      "CIRCLE",
+      "LINE",
+      "LWPOLYLINE",
+      "POLYLINE_2D",
+      "POLYLINE_3D"
+    ],
+    "excluded_entity_types_are_reported": true
+  },
+  "summary": {
+    "linework_candidate_count": 226,
+    "polygon_candidate_count": 70,
+    "dangle_geometry_count": 162,
+    "cut_geometry_count": 7,
+    "invalid_ring_geometry_count": 0,
+    "created_domain_object_count": 0,
+    "quantity_ready_count": 0,
+    "user_confirmation_required_now": false
+  },
+  "category_summary": [
+    {
+      "category": "architecture.wall",
+      "input_candidate_count": 90,
+      "linework_candidate_count": 82,
+      "excluded_candidate_type_counts": {
+        "HATCH": 8
+      },
+      "polygon_candidate_count": 8,
+      "polygon_candidate_total_area_m2": 5.746084,
+      "dangle_geometry_count": 31,
+      "cut_geometry_count": 0,
+      "invalid_ring_geometry_count": 0,
+      "source_candidate_ids": [
+        "cadcand-03778d073f1cadf6da75bd3f",
+        "cadcand-04a71d25ae387c63155a8cbe",
+        "cadcand-060eff1a6bfc84ec91bb6b41",
+        "cadcand-06b4010de6eb3d7ea2f1669f",
+        "cadcand-09972f5a79413b128be5e59f",
+        "cadcand-09ed48af15bf98886a2ee033",
+        "cadcand-0fc64eb03cad9776b26b2ee5",
+        "cadcand-1152e3f90ba7c9d88abd534d",
+        "cadcand-1158c5413858b902faf25b50",
+        "cadcand-11eb5e994902b8ffe1828b15",
+        "cadcand-136a7ba10789e3c7d9e4b2d4",
+        "cadcand-152e2d402afe731e52769ba1",
+        "cadcand-1c42e11689f00a5e8b7af03e",
+        "cadcand-1cb49d0725a36384d31ddb67",
+        "cadcand-1cf94ce0925479ac3ba97e02",
+        "cadcand-27f36a3d921478f74f21fd07",
+        "cadcand-296aef7f00a7e7bf98763cb3",
+        "cadcand-29d96e0ba390a9e1a44109bf",
+        "cadcand-2a1a2efd6d6be94c22d0978a",
+        "cadcand-3039a3b4cd81ea6a27f823b8",
+        "cadcand-304d33ebf57ee1f5a677bfd7",
+        "cadcand-307a516a763434236c325def",
+        "cadcand-383036db974ffb56215df41d",
+        "cadcand-3ea06e7933151df5bb9640a9",
+        "cadcand-3f151c819d0e490b51496ef3",
+        "cadcand-437203a1ff4b21c07bbf8885",
+        "cadcand-4a8f80013b33dacffe36d105",
+        "cadcand-4b303247100d097f0602da09",
+        "cadcand-4ba61453e378eb94fcc76969",
+        "cadcand-50cd9286072ac689bc7f5217",
+        "cadcand-53af5eb147a63c9ca5b2e391",
+        "cadcand-581c47142c4c4d74f483e4b0",
+        "cadcand-59ec14b81425746717c11169",
+        "cadcand-5b3a85a68780bb70283ae6b6",
+        "cadcand-5ff0941f441ab995eccacc28",
+        "cadcand-60e4077721bd33f0c40df900",
+        "cadcand-650cba18c8f089abf5967caa",
+        "cadcand-68992af3977145d569657033",
+        "cadcand-6dd8cbf9c638e4d352c337b0",
+        "cadcand-6f05af37968635137a0fe5cd",
+        "cadcand-71935fd3ffc63e8ef626e607",
+        "cadcand-72cba1d26fdc85e0f137aa52",
+        "cadcand-780d46a47307add55ca40b8b",
+        "cadcand-7bbfa8997bc10e3446d698e2",
+        "cadcand-7e6c94918a9ad7f672f5f324",
+        "cadcand-7f0079f74ad0c3429a7b5ee2",
+        "cadcand-8354c28bb4ab1f504b5b4aa1",
+        "cadcand-87be6e647ac67e2952902aa3",
+        "cadcand-88d17504b9bfbdc5c8b3fb61",
+        "cadcand-92d313ee339b06443eda2522",
+        "cadcand-9c4301cf3c8274f31b301e2b",
+        "cadcand-9f680174036621bb116cffbd",
+        "cadcand-a1afff84dcd5ad2b6dfa1d3f",
+        "cadcand-a3ca94a843573a0cf06ab0b9",
+        "cadcand-a957cde4960125d51c3a2439",
+        "cadcand-aa375a84720284969879c537",
+        "cadcand-ac3d82d9320fed9d03d9317c",
+        "cadcand-b183f9e7df04cf7de69a07b7",
+        "cadcand-b2d0c86421ca806369548836",
+        "cadcand-b85e25ab4ef5be12fe2c0298",
+        "cadcand-b9b78aeea0d5a2d5df88e758",
+        "cadcand-bceb008df41f6388dfddcf60",
+        "cadcand-bd838c5ef7b3305fa986cc79",
+        "cadcand-c4e252c6a12d1fe96b751301",
+        "cadcand-c567054020bffd01ec793a75",
+        "cadcand-c6edd627337d804c9f6cc176",
+        "cadcand-c907501b493ad287c7aa5c51",
+        "cadcand-ccff10c16ecf8e62ca9da517",
+        "cadcand-ce1a97a9d056436a52ad82fb",
+        "cadcand-d64ff4b51f1b2b51529dd838",
+        "cadcand-d7d3b570ee2c8b2254e9f087",
+        "cadcand-df07282dd75c59807f19d590",
+        "cadcand-e0c24ffa7b6d5c7c6b9a3e3f",
+        "cadcand-e2fa6ef76f43e6d39a999b5b",
+        "cadcand-e52f42317047e83fd729c074",
+        "cadcand-ea2f5bdff315be02221856df",
+        "cadcand-ed3e7e22c762654c4c45ec3b",
+        "cadcand-f1764ba9048a676b14ee6802",
+        "cadcand-f424c0fbf29eca08491ffc59",
+        "cadcand-f665eca7eb85136732a1d9b9",
+        "cadcand-fbbf9d805f3e5bdd5e919d00",
+        "cadcand-fcc4b3557a9999f446fec43f"
+      ]
+    },
+    {
+      "category": "interior.ceiling",
+      "input_candidate_count": 106,
+      "linework_candidate_count": 102,
+      "excluded_candidate_type_counts": {
+        "HATCH": 3,
+        "degenerate-after-snap": 1
+      },
+      "polygon_candidate_count": 58,
+      "polygon_candidate_total_area_m2": 37.37976,
+      "dangle_geometry_count": 100,
+      "cut_geometry_count": 0,
+      "invalid_ring_geometry_count": 0,
+      "source_candidate_ids": [
+        "cadcand-05b4f63079e6339ca56b1d92",
+        "cadcand-060799dd0ba707a9fd24c7c6",
+        "cadcand-0a8ec0ba24867c72b2f801f8",
+        "cadcand-0b6119ab68b0d8a5f5d30ebb",
+        "cadcand-0b82748b11dacc3564594acd",
+        "cadcand-0d19df038efd819d6a89f855",
+        "cadcand-0d42aa368040e9bc231596d5",
+        "cadcand-127296f9e9b9aca4a4acc880",
+        "cadcand-1711e0944bf753cf7d2693a6",
+        "cadcand-1865460b2cb86d140f60b1c4",
+        "cadcand-1b18f21994b87284f3d7b5b7",
+        "cadcand-1b1e438bf202d9add1216592",
+        "cadcand-1c23396faded60cb9d092ed8",
+        "cadcand-1fdde616413ec2d762e365c5",
+        "cadcand-216bbdd9ea970b11ffe1fc6f",
+        "cadcand-21a855b4c1aa2f7685226759",
+        "cadcand-28b4cb791c0706f6dea62b13",
+        "cadcand-2a1252b6d4a47686e2c791d9",
+        "cadcand-2b0c8719c1895d4183323cc1",
+        "cadcand-3650ae0f3f196e22f6394b0b",
+        "cadcand-38d61d77e0923706675e1b53",
+        "cadcand-391c227d2455431530526026",
+        "cadcand-39878817a80f70e685aed52b",
+        "cadcand-3e5ce55bac9e158447ea6821",
+        "cadcand-3f77383214d804e9c60a0dd8",
+        "cadcand-4042fc11e40194eb5055667d",
+        "cadcand-41153a8e9330c7d77b007241",
+        "cadcand-4542f8037d3e822ea24afa6f",
+        "cadcand-4550a576f045940b6a3e0a84",
+        "cadcand-46cd0bd7a21df96cfa7c83c4",
+        "cadcand-477ecbf51c6bc0e0a8d08b9d",
+        "cadcand-4bb810a23a6dbe9a883644e0",
+        "cadcand-4ca14243efdd656871eb1e0b",
+        "cadcand-52bfd1992cc773b14f866b8f",
+        "cadcand-563034c2534c2bfd28cddeda",
+        "cadcand-58cd837d2f4ed712394abe07",
+        "cadcand-5983362d7a798a46c7d4746b",
+        "cadcand-59de980d629fd0c76961f121",
+        "cadcand-5c8fe0087a6c44be34fc06fb",
+        "cadcand-5f3423bb9da25b74a56aea2a",
+        "cadcand-5f9e2b3635a93d8664fb71fd",
+        "cadcand-649790d4f5a19dde7313e723",
+        "cadcand-64f2056d85114e47784c551c",
+        "cadcand-6563503461bd4ebaed7afc61",
+        "cadcand-65efaa8a2711f099b1109866",
+        "cadcand-678e7a67d04225f0553953f4",
+        "cadcand-682c97b1ae0fd08d2f5c5c36",
+        "cadcand-6de860660eb83622daef16d6",
+        "cadcand-6ebd25eb16d94584d7796511",
+        "cadcand-6f581be4a7d31f0b4d6787d7",
+        "cadcand-70170abc74e330952fb3caf0",
+        "cadcand-718a33155f4343e522ce2962",
+        "cadcand-773b6a179f178b5a6184f637",
+        "cadcand-7f65504d5ec1c6bc2f5e210c",
+        "cadcand-81165d577453cc93330b1953",
+        "cadcand-82f93e42f8b6ef0688581fa1",
+        "cadcand-8335bc22c933b14f2a46f186",
+        "cadcand-83f697f5b580d558a76b6ca6",
+        "cadcand-876c8dd7edd052020dffab0d",
+        "cadcand-8a20511410e1a8b68257b668",
+        "cadcand-8bde44db9ede5735c6d676b0",
+        "cadcand-8dfa99cb8d284290f3f48f41",
+        "cadcand-8f0177907230b67e96b0f5dd",
+        "cadcand-912351c9206f88932dc81ebb",
+        "cadcand-920883272e08bba3adf62f78",
+        "cadcand-92e57f93e4290577ee55f75c",
+        "cadcand-98cd4b41957e7227d1902907",
+        "cadcand-993840e46ac4607826506e1d",
+        "cadcand-9e3361b3ca2343567dbe4981",
+        "cadcand-a1cff675215df9d43fcd385d",
+        "cadcand-a2f1047046791ca75c985036",
+        "cadcand-a8de9ed4df01733d76c765d4",
+        "cadcand-aa9d8d49b3998fc86397c336",
+        "cadcand-ab7360565fa3a76abbd86732",
+        "cadcand-b0d28fc0d3f3474878a4e97e",
+        "cadcand-b205a2dd4e841013cd39fd4b",
+        "cadcand-b51b5d5561b30d886df5a977",
+        "cadcand-b8f47d6f973394b451cad53f",
+        "cadcand-c056b835b5df378db2929e27",
+        "cadcand-c6163b2c8acf1dc61d9a2f1e",
+        "cadcand-cb43f9b5a56c831c767cc064",
+        "cadcand-cf7a321317c86781cb413d16",
+        "cadcand-cfb10c24cb2a61e6e969697e",
+        "cadcand-d03f96d96141d2e655ba99c1",
+        "cadcand-d12b4c86fcc290a142db738a",
+        "cadcand-d31da868851fcbc0a17eb40c",
+        "cadcand-d47cac40ab6b40f3386850ae",
+        "cadcand-d9ebf5fb53586eedf01ca156",
+        "cadcand-dbde38fa2508119ebe7b3a08",
+        "cadcand-e20fdcdb0ec55461bfe51108",
+        "cadcand-e25e7afec899cb574e0e1153",
+        "cadcand-e688d847ccb3e0c1cdcf55fa",
+        "cadcand-ea239a8b41f6b9c32b060bbb",
+        "cadcand-eb85a0a269ec6a6fc42e43a5",
+        "cadcand-ec5f2648a83d7bf67e88c9f9",
+        "cadcand-ee91318ed2ea9e719fe8ad86",
+        "cadcand-ef0cce87d34eb40cf891a39e",
+        "cadcand-f03e39a519e31b714bfaa4d1",
+        "cadcand-f13a1c8c9b21b431c560f9d0",
+        "cadcand-f3e3b4680b0be4f7a196b859",
+        "cadcand-f3f7fde964c15b50b2e6a30f",
+        "cadcand-f66ddfa2975d35f7056f1cbd"
+      ]
+    },
+    {
+      "category": "interior.floor.finish-line",
+      "input_candidate_count": 58,
+      "linework_candidate_count": 42,
+      "excluded_candidate_type_counts": {
+        "DIMENSION_LINEAR": 3,
+        "HATCH": 13
+      },
+      "polygon_candidate_count": 4,
+      "polygon_candidate_total_area_m2": 0.17696,
+      "dangle_geometry_count": 31,
+      "cut_geometry_count": 7,
+      "invalid_ring_geometry_count": 0,
+      "source_candidate_ids": [
+        "cadcand-0395cc528902ee0198a5535f",
+        "cadcand-06e32702ffadfff5dfccf59d",
+        "cadcand-0bcbc2274d38d9c8f275538b",
+        "cadcand-1183872fb2bab1ba48d3f02f",
+        "cadcand-257587a1d2d08fa9e2833a37",
+        "cadcand-2b6c14e01caf25139855d4af",
+        "cadcand-2fe863c831c69a08963eb0e5",
+        "cadcand-36db710c37111c3058b9cb46",
+        "cadcand-40c710a8505744620e7cc168",
+        "cadcand-40c7d18b94928102ebe78b7a",
+        "cadcand-41de74fb3fd795f7e7bcfdee",
+        "cadcand-420b998e26c5608425e27d1d",
+        "cadcand-487cc052587e101eb8a07ea7",
+        "cadcand-4a47b45748f567393c62269d",
+        "cadcand-4aac6da057cd395a4a42b7d8",
+        "cadcand-4ea834c0e9cbd0d5f6dd9db5",
+        "cadcand-5251b555aa8e38fcbf89562e",
+        "cadcand-5ea610fbd4c4027cfdce129d",
+        "cadcand-642588a9a01c4d73d5c444d5",
+        "cadcand-715e566cde6c2f5f20aae806",
+        "cadcand-77080313dcf8eee94bad7503",
+        "cadcand-7a71b9d49a016d8d4fd3e2e0",
+        "cadcand-7d872f5963ed56f522b69b53",
+        "cadcand-84a872b0d678bbce472e727e",
+        "cadcand-999d30e67a8641cfe89f4ee4",
+        "cadcand-9a3775e0182019070b2a1846",
+        "cadcand-a000d0ea1b92878c7d99af30",
+        "cadcand-a09b32e4d09e7e074a908a88",
+        "cadcand-a23f3537cf3f524eea0a2a25",
+        "cadcand-a63d80d808a583686a7ba984",
+        "cadcand-c51129ccab3150c9f5db6f52",
+        "cadcand-c67e869580c11104d5aef739",
+        "cadcand-cb1df564a399cb0d3caa5e71",
+        "cadcand-cc0efecc3d47353f9acc6388",
+        "cadcand-d0cda077f7c7db6ed7d61042",
+        "cadcand-d6206eb843d3f7160e20d313",
+        "cadcand-d9b3178417cadb51ac0ef167",
+        "cadcand-db979048e7e4a31ff02ab8bf",
+        "cadcand-e10f8d398e88a8b6cf4a0dcd",
+        "cadcand-e3798f837e2fb6bd31221098",
+        "cadcand-f41dd44eff20d599aa52c3d7",
+        "cadcand-f46bb3c42078480c1c9dd449"
+      ]
+    }
+  ],
+  "region_candidates": [
+    {
+      "region_candidate_id": "cadregion-240781ef9c30151732f2e15d",
+      "category": "architecture.wall",
+      "area_m2": 0.8978,
+      "perimeter_m": 9.004,
+      "bounds": {
+        "minimum": [
+          5904749.363783,
+          -2585839.483285
+        ],
+        "maximum": [
+          5908001.363783,
+          -2584589.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5908001.363783,
+          -2585339.483285
+        ],
+        [
+          5905389.363783,
+          -2585339.483285
+        ],
+        [
+          5905389.363783,
+          -2585839.483285
+        ],
+        [
+          5904749.363783,
+          -2585839.483285
+        ],
+        [
+          5904749.363783,
+          -2585339.483285
+        ],
+        [
+          5904749.363783,
+          -2585189.483285
+        ],
+        [
+          5907851.363783,
+          -2585189.483285
+        ],
+        [
+          5907851.363783,
+          -2584589.483285
+        ],
+        [
+          5908001.363783,
+          -2584589.483285
+        ],
+        [
+          5908001.363783,
+          -2585339.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-380a299069d4191df041f485",
+      "category": "architecture.wall",
+      "area_m2": 0.5728,
+      "perimeter_m": 8.004,
+      "bounds": {
+        "minimum": [
+          5905249.363783,
+          -2588489.483285
+        ],
+        "maximum": [
+          5908001.363783,
+          -2587239.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5905389.363783,
+          -2587739.483285
+        ],
+        [
+          5908001.363783,
+          -2587739.483285
+        ],
+        [
+          5908001.363783,
+          -2588489.483285
+        ],
+        [
+          5907851.363783,
+          -2588489.483285
+        ],
+        [
+          5907851.363783,
+          -2587889.483285
+        ],
+        [
+          5905389.363783,
+          -2587889.483285
+        ],
+        [
+          5905249.363783,
+          -2587889.483285
+        ],
+        [
+          5905249.363783,
+          -2587239.483285
+        ],
+        [
+          5905389.363783,
+          -2587239.483285
+        ],
+        [
+          5905389.363783,
+          -2587739.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-072880ff0adfc830d8e44e57",
+      "category": "architecture.wall",
+      "area_m2": 0.383584,
+      "perimeter_m": 2.199074,
+      "bounds": {
+        "minimum": [
+          5906539.363783,
+          -2596549.483285
+        ],
+        "maximum": [
+          5907239.363783,
+          -2595849.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5907239.363783,
+          -2596199.483285
+        ],
+        [
+          5907233.363783,
+          -2596267.483285
+        ],
+        [
+          5907213.363783,
+          -2596333.483285
+        ],
+        [
+          5907181.363783,
+          -2596393.483285
+        ],
+        [
+          5907137.363783,
+          -2596447.483285
+        ],
+        [
+          5907083.363783,
+          -2596491.483285
+        ],
+        [
+          5907023.363783,
+          -2596523.483285
+        ],
+        [
+          5906957.363783,
+          -2596543.483285
+        ],
+        [
+          5906889.363783,
+          -2596549.483285
+        ],
+        [
+          5906821.363783,
+          -2596543.483285
+        ],
+        [
+          5906755.363783,
+          -2596523.483285
+        ],
+        [
+          5906695.363783,
+          -2596491.483285
+        ],
+        [
+          5906641.363783,
+          -2596447.483285
+        ],
+        [
+          5906597.363783,
+          -2596393.483285
+        ],
+        [
+          5906565.363783,
+          -2596333.483285
+        ],
+        [
+          5906545.363783,
+          -2596267.483285
+        ],
+        [
+          5906539.363783,
+          -2596199.483285
+        ],
+        [
+          5906545.363783,
+          -2596131.483285
+        ],
+        [
+          5906565.363783,
+          -2596065.483285
+        ],
+        [
+          5906597.363783,
+          -2596005.483285
+        ],
+        [
+          5906641.363783,
+          -2595951.483285
+        ],
+        [
+          5906695.363783,
+          -2595907.483285
+        ],
+        [
+          5906755.363783,
+          -2595875.483285
+        ],
+        [
+          5906821.363783,
+          -2595855.483285
+        ],
+        [
+          5906889.363783,
+          -2595849.483285
+        ],
+        [
+          5906957.363783,
+          -2595855.483285
+        ],
+        [
+          5907023.363783,
+          -2595875.483285
+        ],
+        [
+          5907083.363783,
+          -2595907.483285
+        ],
+        [
+          5907137.363783,
+          -2595951.483285
+        ],
+        [
+          5907181.363783,
+          -2596005.483285
+        ],
+        [
+          5907213.363783,
+          -2596065.483285
+        ],
+        [
+          5907233.363783,
+          -2596131.483285
+        ],
+        [
+          5907239.363783,
+          -2596199.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-a8d54b9b5fcfa786ba6cbd6f",
+      "category": "architecture.wall",
+      "area_m2": 0.8403,
+      "perimeter_m": 11.504,
+      "bounds": {
+        "minimum": [
+          5908601.363783,
+          -2588489.483285
+        ],
+        "maximum": [
+          5913003.363783,
+          -2587739.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5908751.363783,
+          -2587889.483285
+        ],
+        [
+          5908751.363783,
+          -2588489.483285
+        ],
+        [
+          5908601.363783,
+          -2588489.483285
+        ],
+        [
+          5908601.363783,
+          -2587739.483285
+        ],
+        [
+          5913003.363783,
+          -2587739.483285
+        ],
+        [
+          5913003.363783,
+          -2588489.483285
+        ],
+        [
+          5912853.363783,
+          -2588489.483285
+        ],
+        [
+          5912853.363783,
+          -2587889.483285
+        ],
+        [
+          5908751.363783,
+          -2587889.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-fde7189b741a22ebd8de5d08",
+      "category": "architecture.wall",
+      "area_m2": 0.8403,
+      "perimeter_m": 11.504,
+      "bounds": {
+        "minimum": [
+          5908601.363783,
+          -2585339.483285
+        ],
+        "maximum": [
+          5913003.363783,
+          -2584589.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5908601.363783,
+          -2585339.483285
+        ],
+        [
+          5908601.363783,
+          -2584589.483285
+        ],
+        [
+          5908751.363783,
+          -2584589.483285
+        ],
+        [
+          5908751.363783,
+          -2585189.483285
+        ],
+        [
+          5912853.363783,
+          -2585189.483285
+        ],
+        [
+          5912853.363783,
+          -2584589.483285
+        ],
+        [
+          5913003.363783,
+          -2584589.483285
+        ],
+        [
+          5913003.363783,
+          -2585339.483285
+        ],
+        [
+          5908601.363783,
+          -2585339.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-24ada3c262b6d02347be8064",
+      "category": "architecture.wall",
+      "area_m2": 0.8469,
+      "perimeter_m": 11.592,
+      "bounds": {
+        "minimum": [
+          5915403.363783,
+          -2588489.483285
+        ],
+        "maximum": [
+          5919849.363783,
+          -2587739.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5919849.363783,
+          -2588489.483285
+        ],
+        [
+          5919699.363783,
+          -2588489.483285
+        ],
+        [
+          5919699.363783,
+          -2587889.483285
+        ],
+        [
+          5915553.363783,
+          -2587889.483285
+        ],
+        [
+          5915553.363783,
+          -2588489.483285
+        ],
+        [
+          5915403.363783,
+          -2588489.483285
+        ],
+        [
+          5915403.363783,
+          -2587739.483285
+        ],
+        [
+          5919849.363783,
+          -2587739.483285
+        ],
+        [
+          5919849.363783,
+          -2588489.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-7cd8bf2acdc3aba1fa4775f8",
+      "category": "architecture.wall",
+      "area_m2": 0.8469,
+      "perimeter_m": 11.592,
+      "bounds": {
+        "minimum": [
+          5915403.363783,
+          -2585339.483285
+        ],
+        "maximum": [
+          5919849.363783,
+          -2584589.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5919699.363783,
+          -2584589.483285
+        ],
+        [
+          5919849.363783,
+          -2584589.483285
+        ],
+        [
+          5919849.363783,
+          -2585339.483285
+        ],
+        [
+          5915403.363783,
+          -2585339.483285
+        ],
+        [
+          5915403.363783,
+          -2584589.483285
+        ],
+        [
+          5915553.363783,
+          -2584589.483285
+        ],
+        [
+          5915553.363783,
+          -2585189.483285
+        ],
+        [
+          5919699.363783,
+          -2585189.483285
+        ],
+        [
+          5919699.363783,
+          -2584589.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-75cb9c98e270a156047866f7",
+      "category": "architecture.wall",
+      "area_m2": 0.5175,
+      "perimeter_m": 7.2,
+      "bounds": {
+        "minimum": [
+          5921569.363783,
+          -2595029.483285
+        ],
+        "maximum": [
+          5921719.363783,
+          -2591579.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5921569.363783,
+          -2591579.483285
+        ],
+        [
+          5921719.363783,
+          -2591579.483285
+        ],
+        [
+          5921719.363783,
+          -2595029.483285
+        ],
+        [
+          5921569.363783,
+          -2595029.483285
+        ],
+        [
+          5921569.363783,
+          -2591579.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-192159ab66f9daeb325ed808",
+      "category": "interior.ceiling",
+      "area_m2": 0.5776,
+      "perimeter_m": 3.04,
+      "bounds": {
+        "minimum": [
+          5901629.363783,
+          -2589859.483285
+        ],
+        "maximum": [
+          5902389.363783,
+          -2589099.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5902389.363783,
+          -2589859.483285
+        ],
+        [
+          5901629.363783,
+          -2589859.483285
+        ],
+        [
+          5901629.363783,
+          -2589099.483285
+        ],
+        [
+          5902389.363783,
+          -2589099.483285
+        ],
+        [
+          5902389.363783,
+          -2589859.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-fd17fb9f5ae26dc3e2d83a9a",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5901629.363783,
+          -2589089.483285
+        ],
+        "maximum": [
+          5902389.363783,
+          -2588319.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5902389.363783,
+          -2589089.483285
+        ],
+        [
+          5901629.363783,
+          -2589089.483285
+        ],
+        [
+          5901629.363783,
+          -2588319.483285
+        ],
+        [
+          5902389.363783,
+          -2588319.483285
+        ],
+        [
+          5902389.363783,
+          -2589089.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-2229acd182c6464aa7feafbf",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5901629.363783,
+          -2588309.483285
+        ],
+        "maximum": [
+          5902389.363783,
+          -2587539.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5902389.363783,
+          -2588309.483285
+        ],
+        [
+          5901629.363783,
+          -2588309.483285
+        ],
+        [
+          5901629.363783,
+          -2587539.483285
+        ],
+        [
+          5902389.363783,
+          -2587539.483285
+        ],
+        [
+          5902389.363783,
+          -2588309.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-39f15aea045bf14f6555c4b0",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5901629.363783,
+          -2587529.483285
+        ],
+        "maximum": [
+          5902389.363783,
+          -2586759.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5902389.363783,
+          -2587529.483285
+        ],
+        [
+          5901629.363783,
+          -2587529.483285
+        ],
+        [
+          5901629.363783,
+          -2586759.483285
+        ],
+        [
+          5902389.363783,
+          -2586759.483285
+        ],
+        [
+          5902389.363783,
+          -2587529.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-b39920d7eace8f3fc95f73c6",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5901629.363783,
+          -2586749.483285
+        ],
+        "maximum": [
+          5902389.363783,
+          -2585979.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5902389.363783,
+          -2586749.483285
+        ],
+        [
+          5901629.363783,
+          -2586749.483285
+        ],
+        [
+          5901629.363783,
+          -2585979.483285
+        ],
+        [
+          5902389.363783,
+          -2585979.483285
+        ],
+        [
+          5902389.363783,
+          -2586749.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-c14c3047bc86a7fc02bc0c38",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5901629.363783,
+          -2585969.483285
+        ],
+        "maximum": [
+          5902389.363783,
+          -2585199.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5901629.363783,
+          -2585199.483285
+        ],
+        [
+          5902389.363783,
+          -2585199.483285
+        ],
+        [
+          5902389.363783,
+          -2585969.483285
+        ],
+        [
+          5901629.363783,
+          -2585969.483285
+        ],
+        [
+          5901629.363783,
+          -2585199.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-4bbc98575c38c3da3d437609",
+      "category": "interior.ceiling",
+      "area_m2": 0.5776,
+      "perimeter_m": 3.04,
+      "bounds": {
+        "minimum": [
+          5902399.363783,
+          -2589859.483285
+        ],
+        "maximum": [
+          5903159.363783,
+          -2589099.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903159.363783,
+          -2589859.483285
+        ],
+        [
+          5902399.363783,
+          -2589859.483285
+        ],
+        [
+          5902399.363783,
+          -2589099.483285
+        ],
+        [
+          5903159.363783,
+          -2589099.483285
+        ],
+        [
+          5903159.363783,
+          -2589859.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-9a08005017c3f1a0f6067f3c",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5902399.363783,
+          -2589089.483285
+        ],
+        "maximum": [
+          5903159.363783,
+          -2588319.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903159.363783,
+          -2589089.483285
+        ],
+        [
+          5902399.363783,
+          -2589089.483285
+        ],
+        [
+          5902399.363783,
+          -2588319.483285
+        ],
+        [
+          5903159.363783,
+          -2588319.483285
+        ],
+        [
+          5903159.363783,
+          -2589089.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-a8e2d9e43e174ec6ae9cac09",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5902399.363783,
+          -2588309.483285
+        ],
+        "maximum": [
+          5903159.363783,
+          -2587539.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903159.363783,
+          -2588309.483285
+        ],
+        [
+          5902399.363783,
+          -2588309.483285
+        ],
+        [
+          5902399.363783,
+          -2587539.483285
+        ],
+        [
+          5903159.363783,
+          -2587539.483285
+        ],
+        [
+          5903159.363783,
+          -2588309.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-95215e4d6dbec526f4312af9",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5902399.363783,
+          -2587529.483285
+        ],
+        "maximum": [
+          5903159.363783,
+          -2586759.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903159.363783,
+          -2587529.483285
+        ],
+        [
+          5902399.363783,
+          -2587529.483285
+        ],
+        [
+          5902399.363783,
+          -2586759.483285
+        ],
+        [
+          5903159.363783,
+          -2586759.483285
+        ],
+        [
+          5903159.363783,
+          -2587529.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-6a9bb66d2a48a78c278e440f",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5902399.363783,
+          -2586749.483285
+        ],
+        "maximum": [
+          5903159.363783,
+          -2585979.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903159.363783,
+          -2586749.483285
+        ],
+        [
+          5902399.363783,
+          -2586749.483285
+        ],
+        [
+          5902399.363783,
+          -2585979.483285
+        ],
+        [
+          5903159.363783,
+          -2585979.483285
+        ],
+        [
+          5903159.363783,
+          -2586749.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-fdbd5a59373d1399d92309ad",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5902399.363783,
+          -2585969.483285
+        ],
+        "maximum": [
+          5903159.363783,
+          -2585199.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5902399.363783,
+          -2585199.483285
+        ],
+        [
+          5903159.363783,
+          -2585199.483285
+        ],
+        [
+          5903159.363783,
+          -2585969.483285
+        ],
+        [
+          5902399.363783,
+          -2585969.483285
+        ],
+        [
+          5902399.363783,
+          -2585199.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-5314b0b16a47792be365c76d",
+      "category": "interior.ceiling",
+      "area_m2": 0.5776,
+      "perimeter_m": 3.04,
+      "bounds": {
+        "minimum": [
+          5903169.363783,
+          -2589859.483285
+        ],
+        "maximum": [
+          5903929.363783,
+          -2589099.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903929.363783,
+          -2589859.483285
+        ],
+        [
+          5903169.363783,
+          -2589859.483285
+        ],
+        [
+          5903169.363783,
+          -2589099.483285
+        ],
+        [
+          5903929.363783,
+          -2589099.483285
+        ],
+        [
+          5903929.363783,
+          -2589859.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-bacb95c8501e9e1ba7a64be4",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5903169.363783,
+          -2589089.483285
+        ],
+        "maximum": [
+          5903929.363783,
+          -2588319.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903929.363783,
+          -2589089.483285
+        ],
+        [
+          5903169.363783,
+          -2589089.483285
+        ],
+        [
+          5903169.363783,
+          -2588319.483285
+        ],
+        [
+          5903929.363783,
+          -2588319.483285
+        ],
+        [
+          5903929.363783,
+          -2589089.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-b5c43d2d7f93df0d25774f80",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5903169.363783,
+          -2588309.483285
+        ],
+        "maximum": [
+          5903929.363783,
+          -2587539.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903929.363783,
+          -2588309.483285
+        ],
+        [
+          5903169.363783,
+          -2588309.483285
+        ],
+        [
+          5903169.363783,
+          -2587539.483285
+        ],
+        [
+          5903929.363783,
+          -2587539.483285
+        ],
+        [
+          5903929.363783,
+          -2588309.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-eeb1013690d296f4e82e11df",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5903169.363783,
+          -2587529.483285
+        ],
+        "maximum": [
+          5903929.363783,
+          -2586759.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903929.363783,
+          -2587529.483285
+        ],
+        [
+          5903169.363783,
+          -2587529.483285
+        ],
+        [
+          5903169.363783,
+          -2586759.483285
+        ],
+        [
+          5903929.363783,
+          -2586759.483285
+        ],
+        [
+          5903929.363783,
+          -2587529.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-2fcdcd516089bb555c1b4435",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5903169.363783,
+          -2586749.483285
+        ],
+        "maximum": [
+          5903929.363783,
+          -2585979.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903929.363783,
+          -2586749.483285
+        ],
+        [
+          5903169.363783,
+          -2586749.483285
+        ],
+        [
+          5903169.363783,
+          -2585979.483285
+        ],
+        [
+          5903929.363783,
+          -2585979.483285
+        ],
+        [
+          5903929.363783,
+          -2586749.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-367396cde643ab796024d172",
+      "category": "interior.ceiling",
+      "area_m2": 0.5852,
+      "perimeter_m": 3.06,
+      "bounds": {
+        "minimum": [
+          5903169.363783,
+          -2585969.483285
+        ],
+        "maximum": [
+          5903929.363783,
+          -2585199.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903169.363783,
+          -2585199.483285
+        ],
+        [
+          5903929.363783,
+          -2585199.483285
+        ],
+        [
+          5903929.363783,
+          -2585969.483285
+        ],
+        [
+          5903169.363783,
+          -2585969.483285
+        ],
+        [
+          5903169.363783,
+          -2585199.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-fa7ac362278a9dce1a00f468",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2598019.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2597529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904219.363783,
+          -2598019.483285
+        ],
+        [
+          5903649.363783,
+          -2598019.483285
+        ],
+        [
+          5903649.363783,
+          -2597529.483285
+        ],
+        [
+          5904219.363783,
+          -2597529.483285
+        ],
+        [
+          5904219.363783,
+          -2598019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-ff6a65e2d678a213a0897272",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2597519.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2597029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2597519.483285
+        ],
+        [
+          5903649.363783,
+          -2597029.483285
+        ],
+        [
+          5904219.363783,
+          -2597029.483285
+        ],
+        [
+          5904219.363783,
+          -2597519.483285
+        ],
+        [
+          5903649.363783,
+          -2597519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-4ccdcaef23ea0e8c462eb2af",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2597019.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2596529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2597019.483285
+        ],
+        [
+          5903649.363783,
+          -2596529.483285
+        ],
+        [
+          5904219.363783,
+          -2596529.483285
+        ],
+        [
+          5904219.363783,
+          -2597019.483285
+        ],
+        [
+          5903649.363783,
+          -2597019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-f8db5beb752b61e375e7c03e",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2596519.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2596029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2596519.483285
+        ],
+        [
+          5903649.363783,
+          -2596029.483285
+        ],
+        [
+          5904219.363783,
+          -2596029.483285
+        ],
+        [
+          5904219.363783,
+          -2596519.483285
+        ],
+        [
+          5903649.363783,
+          -2596519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-694325b3cfc2347613b81240",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2596019.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2595529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2596019.483285
+        ],
+        [
+          5903649.363783,
+          -2595529.483285
+        ],
+        [
+          5904219.363783,
+          -2595529.483285
+        ],
+        [
+          5904219.363783,
+          -2596019.483285
+        ],
+        [
+          5903649.363783,
+          -2596019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-255ce07107f9618b698be141",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2595519.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2595029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2595519.483285
+        ],
+        [
+          5903649.363783,
+          -2595029.483285
+        ],
+        [
+          5904219.363783,
+          -2595029.483285
+        ],
+        [
+          5904219.363783,
+          -2595519.483285
+        ],
+        [
+          5903649.363783,
+          -2595519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-0093bd923fbd0d190d20f464",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2595019.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2594529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2595019.483285
+        ],
+        [
+          5903649.363783,
+          -2594529.483285
+        ],
+        [
+          5904219.363783,
+          -2594529.483285
+        ],
+        [
+          5904219.363783,
+          -2595019.483285
+        ],
+        [
+          5903649.363783,
+          -2595019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-d932ca3e87579df70662a637",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2594519.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2594029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2594519.483285
+        ],
+        [
+          5903649.363783,
+          -2594029.483285
+        ],
+        [
+          5904219.363783,
+          -2594029.483285
+        ],
+        [
+          5904219.363783,
+          -2594519.483285
+        ],
+        [
+          5903649.363783,
+          -2594519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-b6d5c80232a49124ccaf0c18",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2594019.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2593529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2594019.483285
+        ],
+        [
+          5903649.363783,
+          -2593529.483285
+        ],
+        [
+          5904219.363783,
+          -2593529.483285
+        ],
+        [
+          5904219.363783,
+          -2594019.483285
+        ],
+        [
+          5903649.363783,
+          -2594019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-78fe9d14b54f9c67a9575b19",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2593519.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2593029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2593519.483285
+        ],
+        [
+          5903649.363783,
+          -2593029.483285
+        ],
+        [
+          5904219.363783,
+          -2593029.483285
+        ],
+        [
+          5904219.363783,
+          -2593519.483285
+        ],
+        [
+          5903649.363783,
+          -2593519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-7035f339bb986b4d1de7dcc3",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2593019.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2592529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2593019.483285
+        ],
+        [
+          5903649.363783,
+          -2592529.483285
+        ],
+        [
+          5904219.363783,
+          -2592529.483285
+        ],
+        [
+          5904219.363783,
+          -2593019.483285
+        ],
+        [
+          5903649.363783,
+          -2593019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-ee4de354c169cff5c4c5a2e9",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2592519.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2592029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2592519.483285
+        ],
+        [
+          5903649.363783,
+          -2592029.483285
+        ],
+        [
+          5904219.363783,
+          -2592029.483285
+        ],
+        [
+          5904219.363783,
+          -2592519.483285
+        ],
+        [
+          5903649.363783,
+          -2592519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-501f038e07d92ffec07fedc1",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2592019.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2591529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2592019.483285
+        ],
+        [
+          5903649.363783,
+          -2591529.483285
+        ],
+        [
+          5904219.363783,
+          -2591529.483285
+        ],
+        [
+          5904219.363783,
+          -2592019.483285
+        ],
+        [
+          5903649.363783,
+          -2592019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-627a5de7f0779ab831aabf3b",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2591519.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2591029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2591519.483285
+        ],
+        [
+          5903649.363783,
+          -2591029.483285
+        ],
+        [
+          5904219.363783,
+          -2591029.483285
+        ],
+        [
+          5904219.363783,
+          -2591519.483285
+        ],
+        [
+          5903649.363783,
+          -2591519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-e04a4581ea381d3eb298b565",
+      "category": "interior.ceiling",
+      "area_m2": 0.2793,
+      "perimeter_m": 2.12,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2591019.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2590529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2591019.483285
+        ],
+        [
+          5903649.363783,
+          -2590529.483285
+        ],
+        [
+          5904219.363783,
+          -2590529.483285
+        ],
+        [
+          5904219.363783,
+          -2591019.483285
+        ],
+        [
+          5903649.363783,
+          -2591019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-47ffab21431ed23427b7812f",
+      "category": "interior.ceiling",
+      "area_m2": 0.285,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5903649.363783,
+          -2590519.483285
+        ],
+        "maximum": [
+          5904219.363783,
+          -2590019.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903649.363783,
+          -2590519.483285
+        ],
+        [
+          5903649.363783,
+          -2590019.483285
+        ],
+        [
+          5904219.363783,
+          -2590019.483285
+        ],
+        [
+          5904219.363783,
+          -2590519.483285
+        ],
+        [
+          5903649.363783,
+          -2590519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-e1bf8a5abe793c6371ec4ee4",
+      "category": "interior.ceiling",
+      "area_m2": 0.608,
+      "perimeter_m": 3.12,
+      "bounds": {
+        "minimum": [
+          5903939.363783,
+          -2589859.483285
+        ],
+        "maximum": [
+          5904739.363783,
+          -2589099.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904739.363783,
+          -2589099.483285
+        ],
+        [
+          5904739.363783,
+          -2589859.483285
+        ],
+        [
+          5903939.363783,
+          -2589859.483285
+        ],
+        [
+          5903939.363783,
+          -2589099.483285
+        ],
+        [
+          5904739.363783,
+          -2589099.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-e04f73209b76e3b23654b64f",
+      "category": "interior.ceiling",
+      "area_m2": 0.616,
+      "perimeter_m": 3.14,
+      "bounds": {
+        "minimum": [
+          5903939.363783,
+          -2589089.483285
+        ],
+        "maximum": [
+          5904739.363783,
+          -2588319.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904739.363783,
+          -2588319.483285
+        ],
+        [
+          5904739.363783,
+          -2589089.483285
+        ],
+        [
+          5903939.363783,
+          -2589089.483285
+        ],
+        [
+          5903939.363783,
+          -2588319.483285
+        ],
+        [
+          5904739.363783,
+          -2588319.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-7f6187c494bf8c8cc52d3601",
+      "category": "interior.ceiling",
+      "area_m2": 0.616,
+      "perimeter_m": 3.14,
+      "bounds": {
+        "minimum": [
+          5903939.363783,
+          -2588309.483285
+        ],
+        "maximum": [
+          5904739.363783,
+          -2587539.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904739.363783,
+          -2587539.483285
+        ],
+        [
+          5904739.363783,
+          -2588309.483285
+        ],
+        [
+          5903939.363783,
+          -2588309.483285
+        ],
+        [
+          5903939.363783,
+          -2587539.483285
+        ],
+        [
+          5904739.363783,
+          -2587539.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-c9e1c9dbd46d32807377fb93",
+      "category": "interior.ceiling",
+      "area_m2": 0.616,
+      "perimeter_m": 3.14,
+      "bounds": {
+        "minimum": [
+          5903939.363783,
+          -2587529.483285
+        ],
+        "maximum": [
+          5904739.363783,
+          -2586759.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904739.363783,
+          -2586759.483285
+        ],
+        [
+          5904739.363783,
+          -2587529.483285
+        ],
+        [
+          5903939.363783,
+          -2587529.483285
+        ],
+        [
+          5903939.363783,
+          -2586759.483285
+        ],
+        [
+          5904739.363783,
+          -2586759.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-c94f4365590ca3203059fc7c",
+      "category": "interior.ceiling",
+      "area_m2": 0.616,
+      "perimeter_m": 3.14,
+      "bounds": {
+        "minimum": [
+          5903939.363783,
+          -2586749.483285
+        ],
+        "maximum": [
+          5904739.363783,
+          -2585979.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904739.363783,
+          -2585979.483285
+        ],
+        [
+          5904739.363783,
+          -2586749.483285
+        ],
+        [
+          5903939.363783,
+          -2586749.483285
+        ],
+        [
+          5903939.363783,
+          -2585979.483285
+        ],
+        [
+          5904739.363783,
+          -2585979.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-5e9657d6c65428075c722707",
+      "category": "interior.ceiling",
+      "area_m2": 0.616,
+      "perimeter_m": 3.14,
+      "bounds": {
+        "minimum": [
+          5903939.363783,
+          -2585969.483285
+        ],
+        "maximum": [
+          5904739.363783,
+          -2585199.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5903939.363783,
+          -2585199.483285
+        ],
+        [
+          5904739.363783,
+          -2585199.483285
+        ],
+        [
+          5904739.363783,
+          -2585969.483285
+        ],
+        [
+          5903939.363783,
+          -2585969.483285
+        ],
+        [
+          5903939.363783,
+          -2585199.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-71e33aa9244aa17d084c1c8c",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2598019.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2597529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904229.363783,
+          -2598019.483285
+        ],
+        [
+          5904219.363783,
+          -2598019.483285
+        ],
+        [
+          5904219.363783,
+          -2597529.483285
+        ],
+        [
+          5904799.363783,
+          -2597529.483285
+        ],
+        [
+          5904799.363783,
+          -2598019.483285
+        ],
+        [
+          5904229.363783,
+          -2598019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-4058a2575e57197774d2f0fc",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2597519.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2597029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2597519.483285
+        ],
+        [
+          5904219.363783,
+          -2597519.483285
+        ],
+        [
+          5904219.363783,
+          -2597029.483285
+        ],
+        [
+          5904799.363783,
+          -2597029.483285
+        ],
+        [
+          5904799.363783,
+          -2597519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-c85a63b1b38781d2ab4fca5d",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2597019.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2596529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2597019.483285
+        ],
+        [
+          5904219.363783,
+          -2597019.483285
+        ],
+        [
+          5904219.363783,
+          -2596529.483285
+        ],
+        [
+          5904799.363783,
+          -2596529.483285
+        ],
+        [
+          5904799.363783,
+          -2597019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-ea7b371c7fa88960b2a6618a",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2596519.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2596029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2596519.483285
+        ],
+        [
+          5904219.363783,
+          -2596519.483285
+        ],
+        [
+          5904219.363783,
+          -2596029.483285
+        ],
+        [
+          5904799.363783,
+          -2596029.483285
+        ],
+        [
+          5904799.363783,
+          -2596519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-d83e96e1d8f0a1a6725722f9",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2596019.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2595529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2596019.483285
+        ],
+        [
+          5904219.363783,
+          -2596019.483285
+        ],
+        [
+          5904219.363783,
+          -2595529.483285
+        ],
+        [
+          5904799.363783,
+          -2595529.483285
+        ],
+        [
+          5904799.363783,
+          -2596019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-29f5735b9984176099fc6e0d",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2595519.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2595029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2595519.483285
+        ],
+        [
+          5904219.363783,
+          -2595519.483285
+        ],
+        [
+          5904219.363783,
+          -2595029.483285
+        ],
+        [
+          5904799.363783,
+          -2595029.483285
+        ],
+        [
+          5904799.363783,
+          -2595519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-ac9778f88fcc19a839447ce9",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2595019.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2594529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2595019.483285
+        ],
+        [
+          5904219.363783,
+          -2595019.483285
+        ],
+        [
+          5904219.363783,
+          -2594529.483285
+        ],
+        [
+          5904799.363783,
+          -2594529.483285
+        ],
+        [
+          5904799.363783,
+          -2595019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-4d6837be9da50054aa09eb1f",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2594519.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2594029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2594519.483285
+        ],
+        [
+          5904219.363783,
+          -2594519.483285
+        ],
+        [
+          5904219.363783,
+          -2594029.483285
+        ],
+        [
+          5904799.363783,
+          -2594029.483285
+        ],
+        [
+          5904799.363783,
+          -2594519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-46ab76ab2f1a0c8a88bb1d45",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2594019.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2593529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2594019.483285
+        ],
+        [
+          5904219.363783,
+          -2594019.483285
+        ],
+        [
+          5904219.363783,
+          -2593529.483285
+        ],
+        [
+          5904799.363783,
+          -2593529.483285
+        ],
+        [
+          5904799.363783,
+          -2594019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-e9f17bfb364d86a29f7830b8",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2593519.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2593029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2593519.483285
+        ],
+        [
+          5904219.363783,
+          -2593519.483285
+        ],
+        [
+          5904219.363783,
+          -2593029.483285
+        ],
+        [
+          5904799.363783,
+          -2593029.483285
+        ],
+        [
+          5904799.363783,
+          -2593519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-fd8747ae7e65fa3a3c648d2f",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2593019.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2592529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2593019.483285
+        ],
+        [
+          5904219.363783,
+          -2593019.483285
+        ],
+        [
+          5904219.363783,
+          -2592529.483285
+        ],
+        [
+          5904799.363783,
+          -2592529.483285
+        ],
+        [
+          5904799.363783,
+          -2593019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-53198cd5c6aecfc31c011eaf",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2592519.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2592029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2592519.483285
+        ],
+        [
+          5904219.363783,
+          -2592519.483285
+        ],
+        [
+          5904219.363783,
+          -2592029.483285
+        ],
+        [
+          5904799.363783,
+          -2592029.483285
+        ],
+        [
+          5904799.363783,
+          -2592519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-dbea3126c1612a9696492ddb",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2592019.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2591529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2592019.483285
+        ],
+        [
+          5904219.363783,
+          -2592019.483285
+        ],
+        [
+          5904219.363783,
+          -2591529.483285
+        ],
+        [
+          5904799.363783,
+          -2591529.483285
+        ],
+        [
+          5904799.363783,
+          -2592019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-db905020ec85592f062ee88b",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2591519.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2591029.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2591519.483285
+        ],
+        [
+          5904219.363783,
+          -2591519.483285
+        ],
+        [
+          5904219.363783,
+          -2591029.483285
+        ],
+        [
+          5904799.363783,
+          -2591029.483285
+        ],
+        [
+          5904799.363783,
+          -2591519.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-66762123118e4330a54c76cd",
+      "category": "interior.ceiling",
+      "area_m2": 0.2842,
+      "perimeter_m": 2.14,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2591019.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2590529.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904799.363783,
+          -2591019.483285
+        ],
+        [
+          5904219.363783,
+          -2591019.483285
+        ],
+        [
+          5904219.363783,
+          -2590529.483285
+        ],
+        [
+          5904799.363783,
+          -2590529.483285
+        ],
+        [
+          5904799.363783,
+          -2591019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-ca9c77d4b49e1e928364d70a",
+      "category": "interior.ceiling",
+      "area_m2": 0.29,
+      "perimeter_m": 2.16,
+      "bounds": {
+        "minimum": [
+          5904219.363783,
+          -2590519.483285
+        ],
+        "maximum": [
+          5904799.363783,
+          -2590019.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5904229.363783,
+          -2590019.483285
+        ],
+        [
+          5904799.363783,
+          -2590019.483285
+        ],
+        [
+          5904799.363783,
+          -2590519.483285
+        ],
+        [
+          5904219.363783,
+          -2590519.483285
+        ],
+        [
+          5904219.363783,
+          -2590019.483285
+        ],
+        [
+          5904229.363783,
+          -2590019.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-10a73bb24640b98866b6bf59",
+      "category": "interior.ceiling",
+      "area_m2": 0.5604,
+      "perimeter_m": 6.004,
+      "bounds": {
+        "minimum": [
+          5909401.363783,
+          -2585739.483285
+        ],
+        "maximum": [
+          5912203.363783,
+          -2585539.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5909401.363783,
+          -2585739.483285
+        ],
+        [
+          5909401.363783,
+          -2585539.483285
+        ],
+        [
+          5912203.363783,
+          -2585539.483285
+        ],
+        [
+          5912203.363783,
+          -2585739.483285
+        ],
+        [
+          5909401.363783,
+          -2585739.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-d20ed257a22537516039200c",
+      "category": "interior.ceiling",
+      "area_m2": 13.59306,
+      "perimeter_m": 14.824,
+      "bounds": {
+        "minimum": [
+          5923023.363783,
+          -2589805.483285
+        ],
+        "maximum": [
+          5926353.363783,
+          -2585723.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5923023.363783,
+          -2585723.483285
+        ],
+        [
+          5926353.363783,
+          -2585723.483285
+        ],
+        [
+          5926353.363783,
+          -2589805.483285
+        ],
+        [
+          5923023.363783,
+          -2589805.483285
+        ],
+        [
+          5923023.363783,
+          -2585723.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-4dc6a45bb23873784908fbf1",
+      "category": "interior.floor.finish-line",
+      "area_m2": 0.04402,
+      "perimeter_m": 8.824,
+      "bounds": {
+        "minimum": [
+          5908601.363783,
+          -2587729.483285
+        ],
+        "maximum": [
+          5913003.363783,
+          -2587719.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5908601.363783,
+          -2587719.483285
+        ],
+        [
+          5913003.363783,
+          -2587719.483285
+        ],
+        [
+          5913003.363783,
+          -2587729.483285
+        ],
+        [
+          5908601.363783,
+          -2587729.483285
+        ],
+        [
+          5908601.363783,
+          -2587719.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-a1905dff9beb7243836c72d2",
+      "category": "interior.floor.finish-line",
+      "area_m2": 0.04402,
+      "perimeter_m": 8.824,
+      "bounds": {
+        "minimum": [
+          5908601.363783,
+          -2585359.483285
+        ],
+        "maximum": [
+          5913003.363783,
+          -2585349.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5913003.363783,
+          -2585359.483285
+        ],
+        [
+          5908601.363783,
+          -2585359.483285
+        ],
+        [
+          5908601.363783,
+          -2585349.483285
+        ],
+        [
+          5913003.363783,
+          -2585349.483285
+        ],
+        [
+          5913003.363783,
+          -2585359.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-ed1dafe077ef75f009472fc0",
+      "category": "interior.floor.finish-line",
+      "area_m2": 0.04446,
+      "perimeter_m": 8.912,
+      "bounds": {
+        "minimum": [
+          5915403.363783,
+          -2587729.483285
+        ],
+        "maximum": [
+          5919849.363783,
+          -2587719.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5919849.363783,
+          -2587719.483285
+        ],
+        [
+          5919849.363783,
+          -2587729.483285
+        ],
+        [
+          5915403.363783,
+          -2587729.483285
+        ],
+        [
+          5915403.363783,
+          -2587719.483285
+        ],
+        [
+          5919849.363783,
+          -2587719.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    },
+    {
+      "region_candidate_id": "cadregion-30bd59e38595939907ee4e4d",
+      "category": "interior.floor.finish-line",
+      "area_m2": 0.04446,
+      "perimeter_m": 8.912,
+      "bounds": {
+        "minimum": [
+          5915403.363783,
+          -2585359.483285
+        ],
+        "maximum": [
+          5919849.363783,
+          -2585349.483285
+        ]
+      },
+      "exterior_ring": [
+        [
+          5919849.363783,
+          -2585349.483285
+        ],
+        [
+          5919849.363783,
+          -2585359.483285
+        ],
+        [
+          5915403.363783,
+          -2585359.483285
+        ],
+        [
+          5915403.363783,
+          -2585349.483285
+        ],
+        [
+          5919849.363783,
+          -2585349.483285
+        ]
+      ],
+      "interior_rings": [],
+      "topology_status": "polygonized-candidate",
+      "secondary_cad_validation_status": "required",
+      "domain_object_status": "not-created",
+      "quantity_status": "not-ready"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "POLYGONIZED_REGIONS_ARE_NOT_ROOMS_OR_QUANTITIES",
+      "message": "Closed linework regions may be wall footprints, drafting subdivisions, or decoration boundaries and require category-specific and secondary CAD validation."
+    },
+    {
+      "code": "HATCH_AND_DIMENSION_EVIDENCE_EXCLUDED",
+      "message": "Hatches and dimensions are reported but excluded from polygonization to avoid inventing boundary segments from parser-specific path ordering."
+    }
+  ]
+}

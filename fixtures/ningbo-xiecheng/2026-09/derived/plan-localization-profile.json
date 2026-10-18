@@ -1,0 +1,21 @@
+{
+  "contract_version": "1.0",
+  "profile_id": "ningbo-xiecheng-primary-floor-plan-v1",
+  "source_asset_id": "drawing-cad-01",
+  "expected_dimensions_mm": [17920, 26170],
+  "dimension_tolerance_mm": 5,
+  "anchor_consensus_tolerance_mm": 5,
+  "minimum_anchor_matches": 2,
+  "max_block_expansion_depth": 16,
+  "primary_anchor_layers": ["PL-天花尺寸", "PL-灯具尺寸"],
+  "corroborating_evidence": [
+    {
+      "source_asset_id": "drawing-plan-01",
+      "description": "PDF drawing outer dimensions are 17,920 mm by 26,170 mm."
+    },
+    {
+      "layer_name": "PL-地坪线",
+      "description": "Floor-finish boundary occupies the same model-space plan region."
+    }
+  ]
+}

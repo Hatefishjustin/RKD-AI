@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-secondary-geometry-review:v1",
+  "title": "CadSecondaryGeometryReviewV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "source_asset_id", "source_sha256", "dxf_parser", "plan_profile_id",
+    "target_region", "status", "summary", "category_comparison", "dxf_layer_counts",
+    "evidence_sample", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "source_asset_id": {"type": "string", "minLength": 1},
+    "source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "dxf_parser": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version", "encoding"],
+      "properties": {"name": {"type": "string", "minLength": 1}, "version": {"type": "string", "minLength": 1}, "encoding": {"type": "string", "minLength": 1}}
+    },
+    "plan_profile_id": {"type": "string", "minLength": 1},
+    "target_region": {"type": "object", "additionalProperties": true},
+    "status": {"const": "geometry-review-created"},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "dxf_model_entity_record_count", "dxf_direct_entity_in_main_plan_count",
+        "dxf_current_scope_direct_entity_count", "dxf_block_insertion_point_count",
+        "dxf_block_expansion_status_counts", "dxf_expanded_block_point_count",
+        "dxf_expanded_block_leaf_entity_type_counts", "skipped_counts", "category_difference_count", "created_domain_object_count",
+        "quantity_ready_count", "promotion_status"
+      ],
+      "properties": {
+        "dxf_model_entity_record_count": {"type": "integer", "minimum": 0},
+        "dxf_direct_entity_in_main_plan_count": {"type": "integer", "minimum": 0},
+        "dxf_current_scope_direct_entity_count": {"type": "integer", "minimum": 0},
+        "dxf_block_insertion_point_count": {"type": "integer", "minimum": 0},
+        "dxf_block_expansion_status_counts": {"$ref": "#/$defs/count_map"},
+        "dxf_expanded_block_point_count": {"type": "integer", "minimum": 0},
+        "dxf_expanded_block_leaf_entity_type_counts": {"$ref": "#/$defs/count_map"},
+        "skipped_counts": {"$ref": "#/$defs/count_map"},
+        "category_difference_count": {"type": "integer", "minimum": 0},
+        "created_domain_object_count": {"const": 0},
+        "quantity_ready_count": {"const": 0},
+        "promotion_status": {"const": "not-approved"}
+      }
+    },
+    "category_comparison": {
+      "type": "array", "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["category", "dxf_direct_entity_count", "dwg_candidate_count", "delta_dxf_minus_dwg", "status"],
+        "properties": {
+          "category": {"type": "string", "minLength": 1},
+          "dxf_direct_entity_count": {"type": "integer", "minimum": 0},
+          "dwg_candidate_count": {"type": "integer", "minimum": 0},
+          "delta_dxf_minus_dwg": {"type": "integer"},
+          "status": {"enum": ["match", "difference"]}
+        }
+      }
+    },
+    "dxf_layer_counts": {"$ref": "#/$defs/count_map"},
+    "evidence_sample": {
+      "type": "array", "maxItems": 5000, "items": {
+        "type": "object", "additionalProperties": false,
+        "required": [
+          "entity_handle", "entity_type", "layer", "category", "scope_disposition", "bounds",
+          "point_count", "geometry_status", "requires_block_expansion", "eligible_for_current_scope"
+        ],
+        "properties": {
+          "entity_handle": {"type": "integer", "minimum": 0},
+          "entity_type": {"type": "string", "minLength": 1},
+          "layer": {"type": "string", "minLength": 1},
+          "category": {"type": "string", "minLength": 1},
+          "scope_disposition": {"type": "string", "minLength": 1},
+          "bounds": {"type": "object", "additionalProperties": false, "required": ["minimum", "maximum"], "properties": {"minimum": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}, "maximum": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}}},
+          "point_count": {"type": "integer", "minimum": 1},
+          "geometry_status": {"enum": ["direct-model-geometry-candidate", "block-insertion-point-only"]},
+          "requires_block_expansion": {"type": "boolean"},
+          "eligible_for_current_scope": {"type": "boolean"}
+          ,"block_expansion": {
+            "type": "object", "additionalProperties": false,
+            "required": ["status", "expanded_point_count", "expanded_bounds", "leaf_entity_type_counts", "issue_counts"],
+            "properties": {
+              "status": {"enum": ["expanded", "partially-expanded", "not-expanded"]},
+              "expanded_point_count": {"type": "integer", "minimum": 0},
+              "expanded_bounds": {
+                "oneOf": [
+                  {"type": "null"},
+                  {"type": "object", "additionalProperties": false, "required": ["minimum", "maximum"], "properties": {"minimum": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}, "maximum": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}}}
+                ]
+              },
+              "leaf_entity_type_counts": {"$ref": "#/$defs/count_map"},
+              "issue_counts": {"$ref": "#/$defs/count_map"}
+            }
+          }
+        }
+      }
+    },
+    "warnings": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string", "minLength": 1}}}}
+  },
+  "$defs": {"count_map": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}}
+}

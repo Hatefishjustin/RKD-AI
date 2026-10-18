@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:event-envelope:v1",
+  "title": "EventEnvelopeV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "schema_hash", "event_id", "event_type", "event_schema_version",
+    "organization_id", "project_id", "aggregate_type", "aggregate_id", "aggregate_version",
+    "actor", "correlation_id", "causation_id", "idempotency_key", "occurred_at",
+    "recorded_at", "data_classification", "payload_hash", "payload"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "schema_hash": {"$ref": "#/$defs/hash"},
+    "event_id": {"type": "string", "format": "uuid"},
+    "event_type": {"type": "string", "minLength": 1},
+    "event_schema_version": {"type": "integer", "minimum": 1},
+    "organization_id": {"type": "string", "format": "uuid"},
+    "project_id": {"type": "string", "format": "uuid"},
+    "aggregate_type": {"type": "string", "minLength": 1},
+    "aggregate_id": {"type": "string", "format": "uuid"},
+    "aggregate_version": {"type": "integer", "minimum": 1},
+    "actor": {"$ref": "#/$defs/actor"},
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "causation_id": {"type": ["string", "null"], "format": "uuid"},
+    "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 255},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "recorded_at": {"type": "string", "format": "date-time"},
+    "data_classification": {"type": "string", "enum": ["public", "internal", "confidential", "restricted"]},
+    "payload_hash": {"$ref": "#/$defs/hash"},
+    "payload": {"type": "object"}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-z0-9][a-z0-9:+._-]{7,255}$"},
+    "actor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {"type": "string", "enum": ["user", "service", "agent", "system"]},
+        "id": {"type": "string", "minLength": 1},
+        "role": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

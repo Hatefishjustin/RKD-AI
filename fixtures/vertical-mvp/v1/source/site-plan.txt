@@ -1,0 +1,6 @@
+fixture_version: vertical-mvp-v1
+space: collaboration-studio
+area_m2: 42
+rooms: studio, meeting-room, storage
+notes: synthetic fixture; no personal data
+

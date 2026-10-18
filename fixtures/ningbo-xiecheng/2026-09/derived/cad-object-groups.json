@@ -1,0 +1,4284 @@
+{
+  "contract_version": "1.0",
+  "source_asset_id": "drawing-cad-01",
+  "source_sha256": "77DDAC8E80401BF3C7913BFF8AC959DC5D4A0CC573EC5CDCBC2CAB5D95A47616",
+  "plan_profile_id": "ningbo-xiecheng-primary-floor-plan-v1",
+  "status": "geometry-grouping-complete",
+  "grouping_policy": {
+    "policy_id": "connected-endpoints-or-intersections-v1",
+    "endpoint_tolerance_mm": 2.0,
+    "block_instances_are_isolated": true,
+    "cross_category_merging": false
+  },
+  "summary": {
+    "input_current_scope_candidate_count": 570,
+    "geometry_group_count": 133,
+    "category_count": 7,
+    "final_domain_object_count": 0,
+    "quantity_ready_group_count": 0,
+    "user_confirmation_required_now": false
+  },
+  "category_summary": [
+    {
+      "category": "architecture.detail",
+      "candidate_count": 16,
+      "group_count": 6,
+      "singleton_group_count": 0,
+      "largest_group_candidate_count": 3
+    },
+    {
+      "category": "architecture.opening.door",
+      "candidate_count": 18,
+      "group_count": 12,
+      "singleton_group_count": 7,
+      "largest_group_candidate_count": 3
+    },
+    {
+      "category": "architecture.wall",
+      "candidate_count": 90,
+      "group_count": 12,
+      "singleton_group_count": 5,
+      "largest_group_candidate_count": 48
+    },
+    {
+      "category": "interior.ceiling",
+      "candidate_count": 106,
+      "group_count": 37,
+      "singleton_group_count": 16,
+      "largest_group_candidate_count": 19
+    },
+    {
+      "category": "interior.floor.finish-line",
+      "candidate_count": 58,
+      "group_count": 3,
+      "singleton_group_count": 2,
+      "largest_group_candidate_count": 56
+    },
+    {
+      "category": "interior.furniture.fixed",
+      "candidate_count": 212,
+      "group_count": 27,
+      "singleton_group_count": 15,
+      "largest_group_candidate_count": 79
+    },
+    {
+      "category": "interior.furniture.loose",
+      "candidate_count": 70,
+      "group_count": 36,
+      "singleton_group_count": 26,
+      "largest_group_candidate_count": 8
+    }
+  ],
+  "groups": [
+    {
+      "group_id": "cadgroup-6943676faaad89c38587befc",
+      "category": "architecture.detail",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-4213d740f542a5e9bf41b9ee",
+        "cadcand-d256fdfd36112531dab7aedd"
+      ],
+      "source_layers": [
+        "SOL【实体】"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 2
+      },
+      "bounds": {
+        "minimum": [
+          5905389.3920710925,
+          -2587739.418006371
+        ],
+        "maximum": [
+          5908000.518793163,
+          -2587239.418006371
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-db6804d6f5a062decd05954e",
+      "category": "architecture.detail",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-25c1745e70944e62dff0d0b8",
+        "cadcand-26ae682ef1b9136778dccb88"
+      ],
+      "source_layers": [
+        "SOL【实体】"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 2
+      },
+      "bounds": {
+        "minimum": [
+          5905389.3920710925,
+          -2585839.4180063712
+        ],
+        "maximum": [
+          5908000.518793163,
+          -2585339.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-991b45fbec880b1da013ab03",
+      "category": "architecture.detail",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-b1b9fa4f8e75156c873cb894",
+        "cadcand-bef3330a4927a04156793f8a",
+        "cadcand-f439d44d675b1d430c4b3183"
+      ],
+      "source_layers": [
+        "SOL【实体】"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5908600.518793163,
+          -2585839.4180063712
+        ],
+        "maximum": [
+          5913004.134383744,
+          -2585339.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-e96afbfcbc40dc03b3ff103e",
+      "category": "architecture.detail",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-aab9680c4847d0759222ce78",
+        "cadcand-abe263db9438fe3c0cd04fe9",
+        "cadcand-f28ec26cf67a12747aeae0f4"
+      ],
+      "source_layers": [
+        "SOL【实体】"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5915404.1343837455,
+          -2585839.4180063712
+        ],
+        "maximum": [
+          5919849.421882665,
+          -2585339.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-8dc412d754d2c25c44fa8ac3",
+      "category": "architecture.detail",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-105e90a1d50a2a4a72c01cd8",
+        "cadcand-2f7e2ee2551be75ffca8e886",
+        "cadcand-482f37c5c589b24085961dde"
+      ],
+      "source_layers": [
+        "SOL【实体】"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5908600.518793163,
+          -2587739.4180063712
+        ],
+        "maximum": [
+          5913004.134383744,
+          -2587239.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-9d558145f4b98349fba0573b",
+      "category": "architecture.detail",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-25c8be9392763cbc9102fb98",
+        "cadcand-649ef747847d7d4eb6c72518",
+        "cadcand-85b4f559e26566c50d580e87"
+      ],
+      "source_layers": [
+        "SOL【实体】"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5915404.1343837455,
+          -2587739.4180063712
+        ],
+        "maximum": [
+          5919849.421882665,
+          -2587239.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-07e1420ac2c88c1499f6baa3",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-1526123c486d545c7a928a20",
+        "cadcand-9a0ea9c4b6c4fe8cfcc38172",
+        "cadcand-b0d9dd8c117a7038b4983d9f"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5900849.257582387,
+          -2589289.797354333
+        ],
+        "maximum": [
+          5900949.330074191,
+          -2585649.797354332
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-a3e3f2468b9a7b741b11e672",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-d1a78eeb5d67ea4873e70709"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5900872.832907019,
+          -2587416.9883194454
+        ],
+        "maximum": [
+          5900912.832907019,
+          -2586506.9883194454
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-7399727301844cebd74cf81c",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-9c0f6639bcc767d2ba4e31d6"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5900872.39122165,
+          -2588340.2988612875
+        ],
+        "maximum": [
+          5900912.39122165,
+          -2587430.2988612875
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-a3542239fcad20fccba9a303",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-f127a973994a79f322829be0"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5923098.778214566,
+          -2581389.4180063712
+        ],
+        "maximum": [
+          5923138.778214566,
+          -2580509.4180063712
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-a7ab46313e2f31f7ec8d7694",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-e6523f72743404867266505e"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905269.3920710925,
+          -2583869.198688382
+        ],
+        "maximum": [
+          5905309.3920710925,
+          -2582989.198688382
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-fad8175209b7534b83543354",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-d1ab4e00c7c7399084b98b2f"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905168.726348121,
+          -2587612.2423857627
+        ],
+        "maximum": [
+          5905228.726348121,
+          -2586212.2423857627
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-bc6b811294f6be4b3b233bd2",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-1f1489da6de55c78c3c7909a",
+        "cadcand-29477f2ca22b2ad8f323f1e1"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "ARC": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5926044.131307909,
+          -2593820.393865359
+        ],
+        "maximum": [
+          5926694.131307893,
+          -2593412.396450148
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-0179c3520c636511db13e661",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-2316dad40efa88f2b1686321",
+        "cadcand-cabdbdce2f9d6fe89c9daaf8"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "ARC": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5925254.130856833,
+          -2593820.393865359
+        ],
+        "maximum": [
+          5925904.130856818,
+          -2593412.396450148
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-f48ec83ae58b5102940a7ad8",
+      "category": "architecture.opening.door",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-50f6af3d86495f237ccc9221"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5923185.748914865,
+          -2594657.736726516
+        ],
+        "maximum": [
+          5924159.034657485,
+          -2593669.025286221
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-fd057438759457eba3968cd7",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-93b5fb22ebe8dc63b1cf8b1a",
+        "cadcand-f77f1af65e8610527aa5dd61"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "ARC": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5926044.131307909,
+          -2591640.6004024763
+        ],
+        "maximum": [
+          5926694.131307893,
+          -2591232.602987265
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-636e46ce3677dbfb5f4aa084",
+      "category": "architecture.opening.door",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-126b06cf23cee7f611230ae1",
+        "cadcand-6d4c787383000b7101f79891"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "ARC": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5925254.130856833,
+          -2591640.6004024763
+        ],
+        "maximum": [
+          5925904.130856818,
+          -2591232.602987265
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-162e70a2d0cbc1c5207f6a22",
+      "category": "architecture.opening.door",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-6e59fc603a8bad98eca69a22"
+      ],
+      "source_layers": [
+        "PL-门"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5923185.748766838,
+          -2591383.27523503
+        ],
+        "maximum": [
+          5924159.034509458,
+          -2590394.563794735
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-f49c6173dcf293052c036eee",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 48,
+      "candidate_ids": [
+        "cadcand-03778d073f1cadf6da75bd3f",
+        "cadcand-04a71d25ae387c63155a8cbe",
+        "cadcand-060eff1a6bfc84ec91bb6b41",
+        "cadcand-06b4010de6eb3d7ea2f1669f",
+        "cadcand-09ed48af15bf98886a2ee033",
+        "cadcand-0fc64eb03cad9776b26b2ee5",
+        "cadcand-1158c5413858b902faf25b50",
+        "cadcand-136a7ba10789e3c7d9e4b2d4",
+        "cadcand-152e2d402afe731e52769ba1",
+        "cadcand-27f36a3d921478f74f21fd07",
+        "cadcand-296aef7f00a7e7bf98763cb3",
+        "cadcand-29d96e0ba390a9e1a44109bf",
+        "cadcand-2a1a2efd6d6be94c22d0978a",
+        "cadcand-3039a3b4cd81ea6a27f823b8",
+        "cadcand-3ea06e7933151df5bb9640a9",
+        "cadcand-3f151c819d0e490b51496ef3",
+        "cadcand-437203a1ff4b21c07bbf8885",
+        "cadcand-4a8f80013b33dacffe36d105",
+        "cadcand-4b303247100d097f0602da09",
+        "cadcand-50cd9286072ac689bc7f5217",
+        "cadcand-53af5eb147a63c9ca5b2e391",
+        "cadcand-650cba18c8f089abf5967caa",
+        "cadcand-68992af3977145d569657033",
+        "cadcand-6dd8cbf9c638e4d352c337b0",
+        "cadcand-6f05af37968635137a0fe5cd",
+        "cadcand-72cba1d26fdc85e0f137aa52",
+        "cadcand-7bbfa8997bc10e3446d698e2",
+        "cadcand-7f0079f74ad0c3429a7b5ee2",
+        "cadcand-8354c28bb4ab1f504b5b4aa1",
+        "cadcand-87be6e647ac67e2952902aa3",
+        "cadcand-88d17504b9bfbdc5c8b3fb61",
+        "cadcand-89b4a0082ec6e06db8c6b82e",
+        "cadcand-a3ca94a843573a0cf06ab0b9",
+        "cadcand-aa375a84720284969879c537",
+        "cadcand-ac3d82d9320fed9d03d9317c",
+        "cadcand-b2d0c86421ca806369548836",
+        "cadcand-b85e25ab4ef5be12fe2c0298",
+        "cadcand-bd838c5ef7b3305fa986cc79",
+        "cadcand-c4e252c6a12d1fe96b751301",
+        "cadcand-c6edd627337d804c9f6cc176",
+        "cadcand-ccff10c16ecf8e62ca9da517",
+        "cadcand-ce1a97a9d056436a52ad82fb",
+        "cadcand-df07282dd75c59807f19d590",
+        "cadcand-e0c24ffa7b6d5c7c6b9a3e3f",
+        "cadcand-e52f42317047e83fd729c074",
+        "cadcand-f1764ba9048a676b14ee6802",
+        "cadcand-f424c0fbf29eca08491ffc59",
+        "cadcand-f665eca7eb85136732a1d9b9"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 1,
+        "LINE": 47
+      },
+      "bounds": {
+        "minimum": [
+          5904749.392070904,
+          -2588489.4180063717
+        ],
+        "maximum": [
+          5923289.36508627,
+          -2579969.3084000438
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-6523da9cf76ebc1c13448b7a",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 21,
+      "candidate_ids": [
+        "cadcand-1152e3f90ba7c9d88abd534d",
+        "cadcand-11eb5e994902b8ffe1828b15",
+        "cadcand-1c42e11689f00a5e8b7af03e",
+        "cadcand-1cf94ce0925479ac3ba97e02",
+        "cadcand-307a516a763434236c325def",
+        "cadcand-383036db974ffb56215df41d",
+        "cadcand-4ba61453e378eb94fcc76969",
+        "cadcand-575933f74c7609b4ae7b6a47",
+        "cadcand-581c47142c4c4d74f483e4b0",
+        "cadcand-5b3a85a68780bb70283ae6b6",
+        "cadcand-5ff0941f441ab995eccacc28",
+        "cadcand-60e4077721bd33f0c40df900",
+        "cadcand-92d313ee339b06443eda2522",
+        "cadcand-9f680174036621bb116cffbd",
+        "cadcand-a42305bebd3e9ae212dcf439",
+        "cadcand-b183f9e7df04cf7de69a07b7",
+        "cadcand-b9b78aeea0d5a2d5df88e758",
+        "cadcand-c567054020bffd01ec793a75",
+        "cadcand-d7d3b570ee2c8b2254e9f087",
+        "cadcand-e2fa6ef76f43e6d39a999b5b",
+        "cadcand-fbbf9d805f3e5bdd5e919d00"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 2,
+        "LINE": 19
+      },
+      "bounds": {
+        "minimum": [
+          5903049.371543895,
+          -2590009.5276092202
+        ],
+        "maximum": [
+          5908000.518793163,
+          -2587239.418006371
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-2c02d79a3d3709be28ee89dc",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-780d46a47307add55ca40b8b",
+        "cadcand-eead0f3ac150980775d4529b"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 1,
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905109.371543895,
+          -2598169.4834958743
+        ],
+        "maximum": [
+          5923109.371543895,
+          -2598029.4825862385
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-d66f93543514db3d6804b681",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-8ac7593e90bee2e8d4a30881",
+        "cadcand-c907501b493ad287c7aa5c51"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "CIRCLE": 1,
+        "HATCH": 1
+      },
+      "bounds": {
+        "minimum": [
+          5906539.371543895,
+          -2596549.4831701773
+        ],
+        "maximum": [
+          5907239.371543895,
+          -2595849.4831701773
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-ed0091b94abf1c3667746535",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-7e6c94918a9ad7f672f5f324"
+      ],
+      "source_layers": [
+        "WALL"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5906183.385189544,
+          -2596806.1053802962
+        ],
+        "maximum": [
+          5907583.385189544,
+          -2595593.669814998
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-0229af54bc4131e61f4ca193",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-fcc4b3557a9999f446fec43f"
+      ],
+      "source_layers": [
+        "WALL"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5906067.915135707,
+          -2596906.1053802962
+        ],
+        "maximum": [
+          5907698.855243382,
+          -2595493.669814998
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-7c1fc74b02356206753b28c7",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-71935fd3ffc63e8ef626e607"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905289.3920710925,
+          -2580109.3083473775
+        ],
+        "maximum": [
+          5905389.3920710925,
+          -2579969.3084000438
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-b7c8bf2b810c2fc314863ae4",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-59ec14b81425746717c11169"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5927018.945612436,
+          -2591729.4834958776
+        ],
+        "maximum": [
+          5927078.945665102,
+          -2586329.4834957537
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-27934ce13f219cabff48e9b4",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-9c4301cf3c8274f31b301e2b"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5927018.938025899,
+          -2597729.65841695
+        ],
+        "maximum": [
+          5927078.945665102,
+          -2594889.7453875635
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-485ebc30adcadf3983272636",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 7,
+      "candidate_ids": [
+        "cadcand-09972f5a79413b128be5e59f",
+        "cadcand-1cb49d0725a36384d31ddb67",
+        "cadcand-a1afff84dcd5ad2b6dfa1d3f",
+        "cadcand-bceb008df41f6388dfddcf60",
+        "cadcand-ea2f5bdff315be02221856df",
+        "cadcand-ed3e7e22c762654c4c45ec3b",
+        "cadcand-f6b3c3737af8bc46832ff23b"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 1,
+        "LINE": 6
+      },
+      "bounds": {
+        "minimum": [
+          5921468.77028351,
+          -2595029.8518729135
+        ],
+        "maximum": [
+          5923018.771369044,
+          -2591429.553705819
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-a00586ba7d630419457fb3bc",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-a957cde4960125d51c3a2439",
+        "cadcand-f10debdf93f7d08bf52102ca"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 1,
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5926358.945412172,
+          -2589809.5541094015
+        ],
+        "maximum": [
+          5927018.945612436,
+          -2586359.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-63f11b8c75642998bf2ad913",
+      "category": "architecture.wall",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-0663154f2da90ba932d18ea9",
+        "cadcand-304d33ebf57ee1f5a677bfd7",
+        "cadcand-d64ff4b51f1b2b51529dd838"
+      ],
+      "source_layers": [
+        "PL-新建墙体"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 1,
+        "LINE": 2
+      },
+      "bounds": {
+        "minimum": [
+          5926358.945782457,
+          -2585919.4180063712
+        ],
+        "maximum": [
+          5927018.945782457,
+          -2585189.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-f5953ee89fcecd8e2b5c2ef9",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-8f0177907230b67e96b0f5dd"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905349.3920710925,
+          -2583909.3083473756
+        ],
+        "maximum": [
+          5905349.3920710925,
+          -2582989.198688382
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-417763726f7031d362bb9436",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 13,
+      "candidate_ids": [
+        "cadcand-0d42aa368040e9bc231596d5",
+        "cadcand-4542f8037d3e822ea24afa6f",
+        "cadcand-5983362d7a798a46c7d4746b",
+        "cadcand-59de980d629fd0c76961f121",
+        "cadcand-65efaa8a2711f099b1109866",
+        "cadcand-70170abc74e330952fb3caf0",
+        "cadcand-8a20511410e1a8b68257b668",
+        "cadcand-b8f47d6f973394b451cad53f",
+        "cadcand-b9c85d8efc98edae081e51ff",
+        "cadcand-c056b835b5df378db2929e27",
+        "cadcand-c7777654aa8b9bbae27ff2db",
+        "cadcand-d47cac40ab6b40f3386850ae",
+        "cadcand-dbde38fa2508119ebe7b3a08"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 1,
+        "LINE": 12
+      },
+      "bounds": {
+        "minimum": [
+          5922588.778214566,
+          -2590024.5537001193
+        ],
+        "maximum": [
+          5927018.945612436,
+          -2580109.3083473775
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-5348505c111c5123aee5daf9",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-ea239a8b41f6b9c32b060bbb"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905789.3920710925,
+          -2585189.4180063712
+        ],
+        "maximum": [
+          5905789.3920710925,
+          -2580109.3083473775
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-9c250e10276817b6c675478d",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-3650ae0f3f196e22f6394b0b"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5904749.407633968,
+          -2587319.418006371
+        ],
+        "maximum": [
+          5904749.469886222,
+          -2585729.4180063712
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-0b4ccc6cf5bfee77caa25a53",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 5,
+      "candidate_ids": [
+        "cadcand-39878817a80f70e685aed52b",
+        "cadcand-6563503461bd4ebaed7afc61",
+        "cadcand-773b6a179f178b5a6184f637",
+        "cadcand-a1cff675215df9d43fcd385d",
+        "cadcand-d31da868851fcbc0a17eb40c"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 5
+      },
+      "bounds": {
+        "minimum": [
+          5905389.3920710925,
+          -2587739.418006371
+        ],
+        "maximum": [
+          5908000.518793163,
+          -2585339.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-325dd93574ce694f628b41ad",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-8bde44db9ede5735c6d676b0"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5923058.778214566,
+          -2581389.4180063712
+        ],
+        "maximum": [
+          5923058.778214566,
+          -2580509.3083473775
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-291b378d0e512d86d796e65d",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-58cd837d2f4ed712394abe07"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905389.579902328,
+          -2598029.482678162
+        ],
+        "maximum": [
+          5905389.5825333195,
+          -2590009.5276092202
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-95676e741cb6ac01f4684399",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 19,
+      "candidate_ids": [
+        "cadcand-060799dd0ba707a9fd24c7c6",
+        "cadcand-0b6119ab68b0d8a5f5d30ebb",
+        "cadcand-1b18f21994b87284f3d7b5b7",
+        "cadcand-1b1e438bf202d9add1216592",
+        "cadcand-21a855b4c1aa2f7685226759",
+        "cadcand-2b0c8719c1895d4183323cc1",
+        "cadcand-46cd0bd7a21df96cfa7c83c4",
+        "cadcand-4c566f36388ca3ffb8a69de5",
+        "cadcand-6f581be4a7d31f0b4d6787d7",
+        "cadcand-718a33155f4343e522ce2962",
+        "cadcand-8dfa99cb8d284290f3f48f41",
+        "cadcand-912351c9206f88932dc81ebb",
+        "cadcand-98cd4b41957e7227d1902907",
+        "cadcand-b51b5d5561b30d886df5a977",
+        "cadcand-d9ebf5fb53586eedf01ca156",
+        "cadcand-e688d847ccb3e0c1cdcf55fa",
+        "cadcand-f13a1c8c9b21b431c560f9d0",
+        "cadcand-f3f7fde964c15b50b2e6a30f",
+        "cadcand-f66ddfa2975d35f7056f1cbd"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 1,
+        "LWPOLYLINE": 18
+      },
+      "bounds": {
+        "minimum": [
+          5903649.371543895,
+          -2598019.481956371
+        ],
+        "maximum": [
+          5905379.3920710925,
+          -2590019.5276092202
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-7c2445487e9d78e6f6b139fc",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 13,
+      "candidate_ids": [
+        "cadcand-0d19df038efd819d6a89f855",
+        "cadcand-1711e0944bf753cf7d2693a6",
+        "cadcand-3f77383214d804e9c60a0dd8",
+        "cadcand-41153a8e9330c7d77b007241",
+        "cadcand-5f3423bb9da25b74a56aea2a",
+        "cadcand-678e7a67d04225f0553953f4",
+        "cadcand-682c97b1ae0fd08d2f5c5c36",
+        "cadcand-8335bc22c933b14f2a46f186",
+        "cadcand-83f697f5b580d558a76b6ca6",
+        "cadcand-876c8dd7edd052020dffab0d",
+        "cadcand-993840e46ac4607826506e1d",
+        "cadcand-ab7360565fa3a76abbd86732",
+        "cadcand-c07b7f30d3dd1c84c66c4d29"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "HATCH": 1,
+        "LINE": 1,
+        "LWPOLYLINE": 11
+      },
+      "bounds": {
+        "minimum": [
+          5900849.363695007,
+          -2589869.8965974823
+        ],
+        "maximum": [
+          5904749.485449285,
+          -2585179.4169382895
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-3ea69183bbdda570a516f2b5",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-0a8ec0ba24867c72b2f801f8"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5907750.518793163,
+          -2582599.363176874
+        ],
+        "maximum": [
+          5912604.134383745,
+          -2582099.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-25eaff4c82fd11e8d1871b27",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-1fdde616413ec2d762e365c5"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5907770.518793163,
+          -2582579.363176874
+        ],
+        "maximum": [
+          5912584.134383745,
+          -2582119.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-bbdffd8cfe2a57319fa22664",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-ec5f2648a83d7bf67e88c9f9"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5907760.518793163,
+          -2582589.363176874
+        ],
+        "maximum": [
+          5912594.134383745,
+          -2582109.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-bddeecaf1a5d81e0234016b7",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-aa9d8d49b3998fc86397c336"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5915704.134383745,
+          -2582599.363176874
+        ],
+        "maximum": [
+          5919467.749974326,
+          -2582099.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-f272267bd9cf7ef5d61c42fc",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-05b4f63079e6339ca56b1d92"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5915724.134383745,
+          -2582579.363176874
+        ],
+        "maximum": [
+          5919447.749974326,
+          -2582119.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-aee9f0f3d1886434db009db3",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-ee91318ed2ea9e719fe8ad86"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5915714.134383745,
+          -2582589.363176874
+        ],
+        "maximum": [
+          5919457.749974326,
+          -2582109.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-4a5d22e0252b3fb238d0b602",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-6ebd25eb16d94584d7796511",
+        "cadcand-b205a2dd4e841013cd39fd4b"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5915826.778133204,
+          -2584929.418006371
+        ],
+        "maximum": [
+          5917576.778133204,
+          -2584849.418006371
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-c510bc6c28b03f2257d7db6b",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-38d61d77e0923706675e1b53",
+        "cadcand-e25e7afec899cb574e0e1153"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5917676.778133204,
+          -2584929.418006371
+        ],
+        "maximum": [
+          5919426.778133204,
+          -2584849.418006371
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-f754792b9d30be0eab5019d3",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-1c23396faded60cb9d092ed8",
+        "cadcand-f3e3b4680b0be4f7a196b859"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5909002.326588454,
+          -2584929.4180063712
+        ],
+        "maximum": [
+          5910752.326588454,
+          -2584849.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-9e3934b486be3cb3d110fc2d",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-216bbdd9ea970b11ffe1fc6f",
+        "cadcand-ef0cce87d34eb40cf891a39e"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5910852.326588454,
+          -2584929.4180063712
+        ],
+        "maximum": [
+          5912602.326588454,
+          -2584849.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-767b9519830aba9bff8dbc45",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-4ca14243efdd656871eb1e0b",
+        "cadcand-7f65504d5ec1c6bc2f5e210c"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5909002.326588454,
+          -2588229.4180063717
+        ],
+        "maximum": [
+          5910752.326588454,
+          -2588149.4180063717
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-52a12829fe05014d010e0f3e",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-c6163b2c8acf1dc61d9a2f1e",
+        "cadcand-e20fdcdb0ec55461bfe51108"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5910852.326588454,
+          -2588229.4180063717
+        ],
+        "maximum": [
+          5912602.326588454,
+          -2588149.4180063717
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-5b32fddff9cb75c4509900e4",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-477ecbf51c6bc0e0a8d08b9d",
+        "cadcand-f03e39a519e31b714bfaa4d1"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5915826.778133204,
+          -2588229.4180063712
+        ],
+        "maximum": [
+          5917576.778133204,
+          -2588149.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-e873c24d44ac56181df1b8c3",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-9e3361b3ca2343567dbe4981",
+        "cadcand-cb43f9b5a56c831c767cc064"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5917676.778133204,
+          -2588229.4180063712
+        ],
+        "maximum": [
+          5919426.778133204,
+          -2588149.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-bd4bb561423a5eb80600088f",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-0b82748b11dacc3564594acd",
+        "cadcand-a2f1047046791ca75c985036"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905720.088035652,
+          -2588229.4180063717
+        ],
+        "maximum": [
+          5907520.088035652,
+          -2588149.4180063717
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-c46f1fadf0313b232b85f526",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-3e5ce55bac9e158447ea6821",
+        "cadcand-d12b4c86fcc290a142db738a"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905820.088035652,
+          -2584929.4180063712
+        ],
+        "maximum": [
+          5907420.088035652,
+          -2584849.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-1c4db91f7027ee2e235bc30d",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-1865460b2cb86d140f60b1c4",
+        "cadcand-92e57f93e4290577ee55f75c"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5902082.273138888,
+          -2582049.3083474454
+        ],
+        "maximum": [
+          5904032.273138888,
+          -2581969.3083474454
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-1228c7bf119e93cb1250c6c7",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-5f9e2b3635a93d8664fb71fd",
+        "cadcand-b0d28fc0d3f3474878a4e97e"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5925018.861913604,
+          -2584059.4180060457
+        ],
+        "maximum": [
+          5925098.861913604,
+          -2581309.4180060457
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-80873f5fe86092125b94e2fa",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-4bb810a23a6dbe9a883644e0"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905239.3920710925,
+          -2583909.3083473756
+        ],
+        "maximum": [
+          5905239.3920710925,
+          -2580109.3083473775
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-2df1f5696b8bd56db3914f87",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-391c227d2455431530526026",
+        "cadcand-6de860660eb83622daef16d6",
+        "cadcand-cf7a321317c86781cb413d16"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5908600.518793163,
+          -2587739.418006371
+        ],
+        "maximum": [
+          5913004.134383744,
+          -2587139.418006371
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-a0c81c672cebdcbbb070391d",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-2a1252b6d4a47686e2c791d9",
+        "cadcand-a8de9ed4df01733d76c765d4",
+        "cadcand-d03f96d96141d2e655ba99c1"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5915404.1343837455,
+          -2587739.4180063712
+        ],
+        "maximum": [
+          5919849.421882664,
+          -2587139.418006371
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-59d57299ad58e7510c581426",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-4042fc11e40194eb5055667d",
+        "cadcand-5c8fe0087a6c44be34fc06fb",
+        "cadcand-920883272e08bba3adf62f78"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5915404.1343837455,
+          -2585939.4180063717
+        ],
+        "maximum": [
+          5919849.421882665,
+          -2585339.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-1dae1f3a35e6d818a270e3bf",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-28b4cb791c0706f6dea62b13",
+        "cadcand-563034c2534c2bfd28cddeda",
+        "cadcand-64f2056d85114e47784c551c"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5908600.518793163,
+          -2585939.4180063712
+        ],
+        "maximum": [
+          5913004.134383744,
+          -2585339.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-47541e0c95716ff238011253",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 4,
+      "candidate_ids": [
+        "cadcand-4550a576f045940b6a3e0a84",
+        "cadcand-52bfd1992cc773b14f866b8f",
+        "cadcand-82f93e42f8b6ef0688581fa1",
+        "cadcand-cfb10c24cb2a61e6e969697e"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 4
+      },
+      "bounds": {
+        "minimum": [
+          5909400.518793163,
+          -2585739.4180063712
+        ],
+        "maximum": [
+          5912204.134383744,
+          -2585539.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-41ae58a7d2f1c169269dbce4",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-127296f9e9b9aca4a4acc880"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5904099.3920710925,
+          -2583909.3083473756
+        ],
+        "maximum": [
+          5904099.3920710925,
+          -2580109.3083473775
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-0457fff8447627d043056d89",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-81165d577453cc93330b1953"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5909206.568011547,
+          -2593559.4509578496
+        ],
+        "maximum": [
+          5914360.183602129,
+          -2592959.4509578496
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-716d8e60a0cd07499b982280",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-649790d4f5a19dde7313e723"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5909226.568011547,
+          -2593539.4509578496
+        ],
+        "maximum": [
+          5914340.183602129,
+          -2592979.4509578496
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-6fcade97ce6a975078e4cf80",
+      "category": "interior.ceiling",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-eb85a0a269ec6a6fc42e43a5"
+      ],
+      "source_layers": [
+        "PL-天花"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5909216.568011547,
+          -2593549.4509578496
+        ],
+        "maximum": [
+          5914350.183602129,
+          -2592969.4509578496
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-9c814b780b10ba9daa2370c0",
+      "category": "interior.floor.finish-line",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 56,
+      "candidate_ids": [
+        "cadcand-0121c6e7fb6211f856c3affe",
+        "cadcand-0395cc528902ee0198a5535f",
+        "cadcand-06e32702ffadfff5dfccf59d",
+        "cadcand-0ac72963ef85c9f203c50b25",
+        "cadcand-0bcbc2274d38d9c8f275538b",
+        "cadcand-1213182128dc48c08b457963",
+        "cadcand-14cba0bbc6b2fe17f23427b6",
+        "cadcand-1e693d281885df3990b48373",
+        "cadcand-257587a1d2d08fa9e2833a37",
+        "cadcand-2b6c14e01caf25139855d4af",
+        "cadcand-2fe863c831c69a08963eb0e5",
+        "cadcand-36db710c37111c3058b9cb46",
+        "cadcand-40c710a8505744620e7cc168",
+        "cadcand-40c7d18b94928102ebe78b7a",
+        "cadcand-41de74fb3fd795f7e7bcfdee",
+        "cadcand-420b998e26c5608425e27d1d",
+        "cadcand-4375113aeacbb3298f8ba63b",
+        "cadcand-44ad4483fc38483adad38f71",
+        "cadcand-487cc052587e101eb8a07ea7",
+        "cadcand-4a47b45748f567393c62269d",
+        "cadcand-4aac6da057cd395a4a42b7d8",
+        "cadcand-4ea834c0e9cbd0d5f6dd9db5",
+        "cadcand-5251b555aa8e38fcbf89562e",
+        "cadcand-5ea610fbd4c4027cfdce129d",
+        "cadcand-642588a9a01c4d73d5c444d5",
+        "cadcand-670170fb93f7f74f813e77f5",
+        "cadcand-715e566cde6c2f5f20aae806",
+        "cadcand-77080313dcf8eee94bad7503",
+        "cadcand-7a71b9d49a016d8d4fd3e2e0",
+        "cadcand-7d872f5963ed56f522b69b53",
+        "cadcand-84a872b0d678bbce472e727e",
+        "cadcand-87b6066ed21f1d78e9d7bcdd",
+        "cadcand-8b561871124d6fcd5900209d",
+        "cadcand-9955db722f6c19fc99bcff3a",
+        "cadcand-999d30e67a8641cfe89f4ee4",
+        "cadcand-9a03ceafcfbb2f2c454bf5a1",
+        "cadcand-9a3775e0182019070b2a1846",
+        "cadcand-9fc85e8bda8c7f8043b9ef6a",
+        "cadcand-a000d0ea1b92878c7d99af30",
+        "cadcand-a09b32e4d09e7e074a908a88",
+        "cadcand-a23f3537cf3f524eea0a2a25",
+        "cadcand-a28b25fd859cc8dc6000e7c7",
+        "cadcand-a63d80d808a583686a7ba984",
+        "cadcand-c3f9a72e6a27605ad006f5d9",
+        "cadcand-c51129ccab3150c9f5db6f52",
+        "cadcand-c67e869580c11104d5aef739",
+        "cadcand-cb1df564a399cb0d3caa5e71",
+        "cadcand-cc0efecc3d47353f9acc6388",
+        "cadcand-d0cda077f7c7db6ed7d61042",
+        "cadcand-d6206eb843d3f7160e20d313",
+        "cadcand-d9b3178417cadb51ac0ef167",
+        "cadcand-db979048e7e4a31ff02ab8bf",
+        "cadcand-e10f8d398e88a8b6cf4a0dcd",
+        "cadcand-ef4f873cb82f8d012af4c9be",
+        "cadcand-f41dd44eff20d599aa52c3d7",
+        "cadcand-f46bb3c42078480c1c9dd449"
+      ],
+      "source_layers": [
+        "PL-地坪线"
+      ],
+      "source_entity_type_counts": {
+        "DIMENSION_LINEAR": 3,
+        "HATCH": 13,
+        "LINE": 40
+      },
+      "bounds": {
+        "minimum": [
+          5900849.257582387,
+          -2598029.4834958436
+        ],
+        "maximum": [
+          5927018.958653558,
+          -2580109.308347376
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-b6b665713c91ea398d4f2c15",
+      "category": "interior.floor.finish-line",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-1183872fb2bab1ba48d3f02f"
+      ],
+      "source_layers": [
+        "PL-地坪线"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5923224.034657484,
+          -2593827.736726516
+        ],
+        "maximum": [
+          5924124.041101632,
+          -2593827.7367265155
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-34f0f826247ac3cc6d529029",
+      "category": "interior.floor.finish-line",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-e3798f837e2fb6bd31221098"
+      ],
+      "source_layers": [
+        "PL-地坪线"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5923224.034509459,
+          -2591226.6699870927
+        ],
+        "maximum": [
+          5924124.040953605,
+          -2591226.6699870867
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-6e4988db53618dc321fc3a6f",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 6,
+      "candidate_ids": [
+        "cadcand-0c23648eda48316117c687c6",
+        "cadcand-aaf24c4b5bf35f03a970ce4f",
+        "cadcand-c005eccdc42226bb6fbc32a7",
+        "cadcand-dad575c918422795bb97e8e9",
+        "cadcand-f162f224e2b8433f19aac205",
+        "cadcand-f2eb162c1fbb64d985cbaae8"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 6
+      },
+      "bounds": {
+        "minimum": [
+          5903189.371543895,
+          -2598029.4834958436
+        ],
+        "maximum": [
+          5903639.371543895,
+          -2590009.5276092202
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-6de7895fbf813a4c1fdc6f11",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 36,
+      "candidate_ids": [
+        "cadcand-045445dd3f2b3559e9d868d4",
+        "cadcand-064511e2473eeddb9227256f",
+        "cadcand-08b8b5020662212c0ed01d45",
+        "cadcand-0b261502f4732f43d0141ee2",
+        "cadcand-12bd0d970b1981432372acc7",
+        "cadcand-17c94a057d4f4b36c49ae6fa",
+        "cadcand-2059417b2eb88c1dd54b170d",
+        "cadcand-262da2e73f83e0319695cf73",
+        "cadcand-2bf9036ad87808504f50c821",
+        "cadcand-2e91d07f9aab52d878ab59f3",
+        "cadcand-3523c9d5625c450808a07b69",
+        "cadcand-3e1b2faec537055b53731738",
+        "cadcand-400836dcd19fdb35293a8656",
+        "cadcand-491df8d7b5dc132c0eb206ef",
+        "cadcand-541caff3c05cd768fe1c9b95",
+        "cadcand-58e1cc1b3d890d10f2c6936a",
+        "cadcand-63964e40e8799f98b21599c8",
+        "cadcand-6d2a57c989b675d262a11e54",
+        "cadcand-6eae1c5e656d677bb7c8f974",
+        "cadcand-740c2c1ca43dc20e932c945e",
+        "cadcand-85062fe98c8c3b84d218269f",
+        "cadcand-8fbf7c2142d07f246ee25c32",
+        "cadcand-9cb9abb53c8fef675926c3a5",
+        "cadcand-b231d2be0ebdd39f02f5347c",
+        "cadcand-b9149efe15d82453179f1618",
+        "cadcand-bbe9167b7ab3bf84062b857a",
+        "cadcand-c073920a4cb0474d5848fa8e",
+        "cadcand-c11108fb0c7a4ab906a8aa44",
+        "cadcand-cbe047ba7185b7977a6d19c6",
+        "cadcand-d5265c5233967b8609ce5b55",
+        "cadcand-dec6f7437f00552f9d7d71bd",
+        "cadcand-df5b85efebccce9e4e145b3f",
+        "cadcand-f0ae3e430b617c48d0ce9818",
+        "cadcand-f3afda3613692348c97eb532",
+        "cadcand-f5fe7179c6c5d48037487d57",
+        "cadcand-f70b97c5d3bce433f87385a9"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "CIRCLE": 6,
+        "LINE": 24,
+        "LWPOLYLINE": 6
+      },
+      "bounds": {
+        "minimum": [
+          5906522.96138238,
+          -2596619.4831701773
+        ],
+        "maximum": [
+          5907255.781705411,
+          -2595779.4831701773
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-f26c03680e767c2c4f199e46",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-99db9503e42c151db84237a8"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "CIRCLE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5906459.371543895,
+          -2596629.4831701773
+        ],
+        "maximum": [
+          5907319.371543895,
+          -2595769.4831701773
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-1e183f08179b394ac524b7a3",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-91d842a757de06d665682c87"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905389.3920710925,
+          -2583909.3083473756
+        ],
+        "maximum": [
+          5905389.3920710925,
+          -2580109.3083473775
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-8a09040d9c540c5920b72ce6",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 79,
+      "candidate_ids": [
+        "cadcand-0137cd60434bcd7314d1bc8b",
+        "cadcand-01849ac9dfe537d95055c25f",
+        "cadcand-067f16a93f3984ff5f7f9640",
+        "cadcand-088bc24d32d63ff6bb0ec574",
+        "cadcand-09b68e5ecd9d4e8c2b9e97f4",
+        "cadcand-106e4c811a5b698dfee85741",
+        "cadcand-18c181f2303fd493f7f629c2",
+        "cadcand-19b0d57ff06d3cbacb1e717b",
+        "cadcand-263ff791639964c2d2c65bde",
+        "cadcand-26449bf35ba23e6bf1d3d16d",
+        "cadcand-2b04434c5e0527f097c9f27f",
+        "cadcand-344401cdd59a8f0ddb6720dc",
+        "cadcand-3c8808b0011305aa126061f5",
+        "cadcand-3d50bc6080e689ac896e489c",
+        "cadcand-3e9aaf612ad8a02fe4613f19",
+        "cadcand-3ed04b945174bd42414cd17b",
+        "cadcand-40d42192dc97bb8ea4bac3e2",
+        "cadcand-4148709d8bf2ec1d26bd416c",
+        "cadcand-42f056e95176c166ccf9d63a",
+        "cadcand-462306f69ede485c852778df",
+        "cadcand-47ed168fae3ce85c0ed94881",
+        "cadcand-4f0919db08023637d206e1bc",
+        "cadcand-52f2861b4596e0c18295ed92",
+        "cadcand-56239ce0e5fe55c9c2c0ef2c",
+        "cadcand-56378472a3cf5b905e3df560",
+        "cadcand-59f44d7dedac5912b16e885c",
+        "cadcand-5a58ffa212ce3167ccc4da14",
+        "cadcand-5eb1f076bbb5bffdc33ed95e",
+        "cadcand-5f290a1e4e3e2bb65936b784",
+        "cadcand-5fa7d4fb6d0a94855c67667c",
+        "cadcand-6131882a4de0cf6afab72626",
+        "cadcand-61598f24b5c77d2db4853ec1",
+        "cadcand-62c94bf14f7637ad20a0c937",
+        "cadcand-69f78586930c35709d75274d",
+        "cadcand-6aa9cf1e63d2c7b5a4be36f1",
+        "cadcand-6eb70886dc035a2035f7a6df",
+        "cadcand-71694554ca6d23fd07db6538",
+        "cadcand-72b0c7bdde85de786a0216cd",
+        "cadcand-746fd73c09ddd16d21062884",
+        "cadcand-747c42f58c9204cc4525ad2d",
+        "cadcand-74e9cd5008d78f83cf20d800",
+        "cadcand-77357271850fd8f414c6b5d3",
+        "cadcand-7a748256a66a5986a1d57429",
+        "cadcand-7f6fb31df94a08c1b9030d70",
+        "cadcand-80a0812287b28ab63893a21f",
+        "cadcand-84826218c5690f2239a6c520",
+        "cadcand-85be01b6a46a4ffe13d141d9",
+        "cadcand-86f6a73318975d581128a7fd",
+        "cadcand-8931ce66776c5b8fd8752701",
+        "cadcand-8b49f1a579f0255c03ae39e1",
+        "cadcand-8b9d87304e3c321ac9a6182f",
+        "cadcand-8ea070f1c62c071d9198e4c2",
+        "cadcand-98d8f8d1c6bafc4b47e8abe0",
+        "cadcand-9cac5d1ecb93fe9cb3a6ce2c",
+        "cadcand-9eadb56751b52ee3ae99c016",
+        "cadcand-a4d18f15e19ff610cb5bee4c",
+        "cadcand-abb46226bd94f302acb52b21",
+        "cadcand-adefe649b1555034fea5525b",
+        "cadcand-afdb0ad7495adea4d1236157",
+        "cadcand-b3948ac131733f8234e33931",
+        "cadcand-b3cf96deb4d82a6c7555f4ee",
+        "cadcand-bd7ee002551afef6df60e0ea",
+        "cadcand-c573874b0dcbabc5608c8ea9",
+        "cadcand-c84641ab6a79a93bb9798379",
+        "cadcand-cadc0d7143f22eecc5896232",
+        "cadcand-ce659eaf25360d2a005a79a3",
+        "cadcand-d60c0709d9f5686c44d9c0f7",
+        "cadcand-e190e49eb263461c7015b906",
+        "cadcand-e4572f3e93a3ce3e3e67c941",
+        "cadcand-e4b9c917688b046d77b4f51a",
+        "cadcand-e57ca946206ddc3e740e9e1e",
+        "cadcand-ea274ae01b9dca740c92f657",
+        "cadcand-eacaefaa57fda75de65dc55d",
+        "cadcand-eae4438841a9433201fc7351",
+        "cadcand-ebfd83ed0d690baed3d768da",
+        "cadcand-f014c378ca2db4731bc7528c",
+        "cadcand-f5ceb1db564045cdb1914a33",
+        "cadcand-fe23a98e2af310d135c81c3f",
+        "cadcand-fe3ac1b778b79ec16124366b"
+      ],
+      "source_layers": [
+        "PL-固定家具",
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 10,
+        "LWPOLYLINE": 69
+      },
+      "bounds": {
+        "minimum": [
+          5923018.778214566,
+          -2585339.4180063712
+        ],
+        "maximum": [
+          5926358.945782457,
+          -2580509.3083473775
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-b40aa5ea875a71b0e6faadb2",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 12,
+      "candidate_ids": [
+        "cadcand-138027bca1964c00c7438f54",
+        "cadcand-1995e25113f7c4adaf763978",
+        "cadcand-230fbb19eefb58fe107fee07",
+        "cadcand-4c1ead6b6584c2e142c6ac79",
+        "cadcand-68a7388d63ae18d62ea80ec1",
+        "cadcand-a385c1f31dd87c9df3963bc5",
+        "cadcand-a39341775eadd1391ee6917d",
+        "cadcand-bded39152f4592ffba6191fb",
+        "cadcand-d9d15425a47339b8bede6135",
+        "cadcand-e3caca40bf91b5aa550feb0d",
+        "cadcand-f1de6883ab4673ade9c1fee6",
+        "cadcand-f2e7cf209b80250511489fe3"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 2,
+        "LWPOLYLINE": 10
+      },
+      "bounds": {
+        "minimum": [
+          5925478.778214566,
+          -2585299.4180063712
+        ],
+        "maximum": [
+          5926358.945782457,
+          -2585259.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-de6a4509a80f9d3ad7060205",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-8bde39fc5c7c66a0f6351f50"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5923058.778214566,
+          -2585209.4180063712
+        ],
+        "maximum": [
+          5923098.778214566,
+          -2585209.4180063712
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-a41f65f64ceb18ffe444c0f2",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-0625fc0cb1b51320458d8719",
+        "cadcand-53627222c902685cb1c7d00b",
+        "cadcand-cb725356597ba21c08902f8f"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 2,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5922418.778214566,
+          -2585719.4180063712
+        ],
+        "maximum": [
+          5926358.945782457,
+          -2580109.3083473775
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-e8482fedf72ebfb988eb0e31",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-e76586abcdcbe9dfa59c414b"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5922783.778214566,
+          -2584539.4180063712
+        ],
+        "maximum": [
+          5922903.778214566,
+          -2584089.4180063712
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-69e427497529eee998218178",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 35,
+      "candidate_ids": [
+        "cadcand-00d9c49845abfb23cce494ca",
+        "cadcand-0367d49789f8e6689b00337b",
+        "cadcand-062ed8001a38e4fd0065f233",
+        "cadcand-0704dc1dda85b472ba470ecf",
+        "cadcand-2021f559764a539b74f07d7b",
+        "cadcand-288055ad8d663335ec3ebce5",
+        "cadcand-28c6f3091e0dc73d4f7123ef",
+        "cadcand-29695c8f9038dc99666f1780",
+        "cadcand-3298c3b89e90eeabed0a8064",
+        "cadcand-34b185a45d7246a347024e9d",
+        "cadcand-3a94bf0972a82c953381b38e",
+        "cadcand-3adae7510731386d44167e1e",
+        "cadcand-485f04a9ba9f3e2c54db8b4a",
+        "cadcand-4f1c2fa1233b0decaaf8fb64",
+        "cadcand-695201ffd2889d1f8adf84bc",
+        "cadcand-70d68599970415d72f257ef4",
+        "cadcand-7117f15ce8a7d0c6af1f6679",
+        "cadcand-7cef748b1902a4a680f13a80",
+        "cadcand-832b1323ad45aee924f54e32",
+        "cadcand-8ef8132a840a3c17b9d44eff",
+        "cadcand-924881a5b788db6f45f0e4b0",
+        "cadcand-a1310706d51553ca6c95cdf3",
+        "cadcand-a6d9a41261175387aa924595",
+        "cadcand-ae1015a0baa85800b0057efb",
+        "cadcand-affa6f6ce9cd9db3d393a970",
+        "cadcand-c22f06c9da8bcb8d812c247c",
+        "cadcand-c7f123746f00a10655c6a309",
+        "cadcand-c84e215aff817720512466ea",
+        "cadcand-ceb5684093785bcb2a61f0bd",
+        "cadcand-d3a2ad46aa294d0af8be4bec",
+        "cadcand-d92f5b59f386ead32e068c21",
+        "cadcand-d9ffe22874d7fb506f3d0a09",
+        "cadcand-e6652439caf3dc3a93e96402",
+        "cadcand-f35ca68093135e658a3f7f23",
+        "cadcand-f6654f6d2665b033a35084b5"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3,
+        "LWPOLYLINE": 32
+      },
+      "bounds": {
+        "minimum": [
+          5905309.3920710925,
+          -2582989.3083473756
+        ],
+        "maximum": [
+          5905349.3920710925,
+          -2580109.198688382
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-33a63d51133528dfca3e17dc",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-34ac617f85d06b00455ed1e5"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905309.3920710925,
+          -2583909.198688382
+        ],
+        "maximum": [
+          5905349.3920710925,
+          -2583869.198688382
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-76ddc14e80c27fd0540cdd9f",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-833f0ddd3c02f9b7866ebc17"
+      ],
+      "source_layers": [
+        "PL-固定家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5900849.363925084,
+          -2584349.308347376
+        ],
+        "maximum": [
+          5905249.392071093,
+          -2584349.308347376
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-4d42790b4c52795c6ec9373b",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 7,
+      "candidate_ids": [
+        "cadcand-4a32b3a96bbe83a09ab5529c",
+        "cadcand-8cadebc75b8ae6cab74c5006",
+        "cadcand-bea4f5fd647facfc3d505421",
+        "cadcand-c16ddffeae1f2fcff27585cb",
+        "cadcand-ea24c2c78655c8c38c1df24b",
+        "cadcand-ee71f82762e21611f758e8d4",
+        "cadcand-f59788df345820dda22262e8"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 7
+      },
+      "bounds": {
+        "minimum": [
+          5925904.130856818,
+          -2593827.7367265164
+        ],
+        "maximum": [
+          5926044.131307909,
+          -2592598.2560866927
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-9afc82966616009127749c17",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-95e6a58ad731e15e713c4780",
+        "cadcand-eee182c2344f836208403daf",
+        "cadcand-ffb9b39196896627ca3bf05b"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5926694.131307909,
+          -2593827.736726516
+        ],
+        "maximum": [
+          5927018.952360129,
+          -2593787.736726516
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-7ddce6b9f6405cf01c18cf16",
+      "category": "interior.furniture.fixed",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-2b65c6ff4e3751a0887f00b9"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5926343.81660755,
+          -2593282.5675824336
+        ],
+        "maximum": [
+          5926722.767177526,
+          -2592777.3010439626
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-8e18c8e88e1605bed1d8db9b",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-23dd8685426fbb791e849cb9",
+        "cadcand-645b2e41f9952767d306f37c",
+        "cadcand-7e58dbd3846489b9017ae69f"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5924929.309804598,
+          -2593827.736726516
+        ],
+        "maximum": [
+          5925254.130856818,
+          -2593787.736726516
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-2fd473c6dfef2d3bb7e483fc",
+      "category": "interior.furniture.fixed",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-55aa89dfd2a00636885cd192"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5925225.494197737,
+          -2593282.567582442
+        ],
+        "maximum": [
+          5925604.4447677145,
+          -2592777.301043971
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-03688b32547c401f5e0f50c4",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-fe3a9cee7047095505312aa4"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5925935.937695632,
+          -2594889.7452779496
+        ],
+        "maximum": [
+          5926014.884374126,
+          -2594487.1114692325
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-6deca9964dbe8660d48480f0",
+      "category": "interior.furniture.fixed",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-95e0393bc018a833195c4579"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5926188.570767479,
+          -2594889.745277942
+        ],
+        "maximum": [
+          5926638.573619484,
+          -2594589.7437548973
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-a3845b53a5d2a06ff09bca61",
+      "category": "interior.furniture.fixed",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-8c6dd8441903c2e628e15b04"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5925320.142772689,
+          -2594889.745277942
+        ],
+        "maximum": [
+          5925770.145624694,
+          -2594589.7437548973
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-966ea6aa2d880e01a9ff2cdd",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 7,
+      "candidate_ids": [
+        "cadcand-2dc8ff162219f26964c3bd71",
+        "cadcand-3eadf9c9b1bdf84416b31f19",
+        "cadcand-525ce4204a42a353d8a6935f",
+        "cadcand-68308586cb4a350e48c6a4e0",
+        "cadcand-6dbd52215ac6723887442509",
+        "cadcand-cad704faf56483d27721b7e8",
+        "cadcand-d5140b74767961672660a6b5"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 7
+      },
+      "bounds": {
+        "minimum": [
+          5925904.130856818,
+          -2592454.7407659316
+        ],
+        "maximum": [
+          5926044.131307909,
+          -2591225.260126108
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-127989ba41e385eb0bc55245",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-860c060bfe4ed528f5e5455c",
+        "cadcand-865834b65fd5d8a229959308",
+        "cadcand-b9cd20eaf2e9ed25aef4779b"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5926694.131307909,
+          -2591265.2601261083
+        ],
+        "maximum": [
+          5927018.952360129,
+          -2591225.2601261083
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-9a974a0f49372bfd4ff2badd",
+      "category": "interior.furniture.fixed",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-5bec164d72e750b65d50c875"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5926343.816607514,
+          -2592275.6958086444
+        ],
+        "maximum": [
+          5926722.7671774905,
+          -2591770.4292701734
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-807c1723f45fe77549810213",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-129e94c728bd7d99449f4a45",
+        "cadcand-73788aae43465f77c1e776da",
+        "cadcand-99d8d57305888d1aca9f255d"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5924929.309804598,
+          -2591265.2601261083
+        ],
+        "maximum": [
+          5925254.130856818,
+          -2591225.2601261083
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-af5bae4e8741b7c659944940",
+      "category": "interior.furniture.fixed",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-e8d896d8688070c95f13ffe0"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5925225.494197739,
+          -2592275.695808653
+        ],
+        "maximum": [
+          5925604.444767716,
+          -2591770.429270182
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-21d561a3715d35e913bf9e2e",
+      "category": "interior.furniture.fixed",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-544c000a49d570cc5761bda1"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5924186.668889887,
+          -2593687.736726516
+        ],
+        "maximum": [
+          5924186.668889887,
+          -2591366.6675199703
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-ff048384380d3bc7e312ed1e",
+      "category": "interior.furniture.fixed",
+      "group_kind": "block-instance-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-870026a252cdc77cb1fb7c68"
+      ],
+      "source_layers": [
+        "PL-固定落地"
+      ],
+      "source_entity_type_counts": {
+        "INSERT": 1
+      },
+      "bounds": {
+        "minimum": [
+          5924290.377018603,
+          -2593190.343085202
+        ],
+        "maximum": [
+          5924677.221590306,
+          -2591881.5702204527
+        ]
+      },
+      "merge_confidence": 0.9,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-c566bd8e00a298ea32c47b1b",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-ae9cd000d863585ae6f86091"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5904689.5825333195,
+          -2595409.5276092202
+        ],
+        "maximum": [
+          5905389.5825333195,
+          -2590009.5276092202
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-38f942f85f53a13e4c5cb8b2",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-01515dbd31956c5ff402a980"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905620.088035652,
+          -2588489.4180063717
+        ],
+        "maximum": [
+          5907620.088035652,
+          -2587889.4180063717
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-2d31c26050998981b4fefcbe",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-e6dcbd09e09e3ee5c3a0303a"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5908902.326588454,
+          -2588489.4180063717
+        ],
+        "maximum": [
+          5912702.326588454,
+          -2587889.4180063717
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-af41b2127fa416d3e3a4d033",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-90ce0368231410063b6bea4e"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5915726.778133204,
+          -2588489.4180063712
+        ],
+        "maximum": [
+          5919526.778133204,
+          -2587889.4180063712
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-c1018878eba279771d88f12c",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-a49512b415e6fca2f24278ff"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5905620.088035652,
+          -2585189.4180063712
+        ],
+        "maximum": [
+          5907620.088035652,
+          -2584589.4180063712
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-489b934d77aa3e9b22225909",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-fdd2b576be97c2f92d04fa44"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5908902.326588454,
+          -2585189.4180063712
+        ],
+        "maximum": [
+          5912702.326588454,
+          -2584589.4180063712
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-25b22aa5025df06b58856bde",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-0e3cc5a2dd2be1b777cdda31"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5915726.778133204,
+          -2585189.418006371
+        ],
+        "maximum": [
+          5919526.778133204,
+          -2584589.418006371
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-935105ae5e5f65db381a51bc",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-1771fa0256e5dea6c2b4239f",
+        "cadcand-465b26585b845f959147e54b",
+        "cadcand-a396c7e97d5a6d1ef27f87de"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5907350.518793163,
+          -2582949.363176874
+        ],
+        "maximum": [
+          5913004.134383745,
+          -2581749.363176874
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-d474ee30b27313aaba1dea36",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-425ee79e4d75b51a91e12ebf"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5911904.134383745,
+          -2582649.363176874
+        ],
+        "maximum": [
+          5912304.134383745,
+          -2582049.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-c511f90fd53a2cee105a7f88",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-e5ec9746ba2ea35724b09951"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5911984.134383745,
+          -2582569.363176874
+        ],
+        "maximum": [
+          5912224.134383745,
+          -2582129.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-2cd29fc7186d4d4472e25bbf",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "cadcand-2b611d4952ae452346be66cf",
+        "cadcand-ddceddd771b8a923050086a0",
+        "cadcand-f6ffc50c893a60477a8634b6"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 3
+      },
+      "bounds": {
+        "minimum": [
+          5915404.134383745,
+          -2582949.363176874
+        ],
+        "maximum": [
+          5919849.421882666,
+          -2581749.363176874
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-8b4dd40b3fa754237ee87632",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-9d0fcff258bdc06a41cb9270"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5916104.134383745,
+          -2582649.363176874
+        ],
+        "maximum": [
+          5916504.134383745,
+          -2582049.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-8e91b2b3cdb2f8ebf32c8cc2",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-b01108e3b5aa89bca3ed9b0a"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5916184.134383745,
+          -2582569.363176874
+        ],
+        "maximum": [
+          5916424.134383745,
+          -2582129.363176874
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-2f87d54b3669fcae28281085",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 5,
+      "candidate_ids": [
+        "cadcand-340df6df821d917ca6c37fa2",
+        "cadcand-43f6a89a89ce4d719a15dea0",
+        "cadcand-444269d8dfe1e6cec2c7b0bf",
+        "cadcand-c593fba3bd38be43a04a4c6c",
+        "cadcand-fed6d8480a62a3f3888f758f"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 5
+      },
+      "bounds": {
+        "minimum": [
+          5924108.861913501,
+          -2584259.4180063712
+        ],
+        "maximum": [
+          5926008.861913238,
+          -2581109.4180063712
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-b0030a77176f9f0fdc00b81f",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-48451fc99a1e00487e204e29"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5924308.861913501,
+          -2585146.9481054787
+        ],
+        "maximum": [
+          5925808.861913501,
+          -2585066.9481054787
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-eb70e9eb9944ba8dab645a05",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-43e4da219111cb3a9781ceed"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5924183.861913501,
+          -2584037.3321716855
+        ],
+        "maximum": [
+          5924483.861913501,
+          -2582837.3321716855
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-ff464d009e383fd917cfa35d",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-4cb454781632f6963b951f16"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5925633.8619137015,
+          -2582531.5038415454
+        ],
+        "maximum": [
+          5925933.861915263,
+          -2581331.5038411547
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-e9ef152eb0876e3c2ea34c2d",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-c3b6c87d781ec26f8a146e82"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5927008.945665109,
+          -2585189.4180063712
+        ],
+        "maximum": [
+          5927008.95360498,
+          -2580109.3079867624
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-0f2f2acb0a2585c64a479272",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 7,
+      "candidate_ids": [
+        "cadcand-168779dba1576c8a819c734b",
+        "cadcand-3e4587aae4034fbf4915adb6",
+        "cadcand-461ab5b4c7c02e149c685a6a",
+        "cadcand-5654a1702d4678c1920669b3",
+        "cadcand-acaa02e5153e97b1b8474bc4",
+        "cadcand-d042dc4cc12f474b350dfbb2",
+        "cadcand-ddfa647943ed7823430e9c8c"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 7
+      },
+      "bounds": {
+        "minimum": [
+          5901882.273138562,
+          -2582959.3083473067
+        ],
+        "maximum": [
+          5904232.273138562,
+          -2581059.3083473067
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-b5db3d9e5b6d34f563cc9e14",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-6c04ae293f23d0b19c273b1f"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5900902.273138562,
+          -2582759.3083473067
+        ],
+        "maximum": [
+          5900982.273138562,
+          -2581259.3083473067
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-9013bd70a463f2f7cf5cd052",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 8,
+      "candidate_ids": [
+        "cadcand-28f1f5a34f0a4a72c7493384",
+        "cadcand-41ceef6f1aaf947a161a14be",
+        "cadcand-9eac2a1904bec8b39e65886e",
+        "cadcand-9fb85e0ec2360d8ea08e1159",
+        "cadcand-b0cbe876f6f75207c90446ab",
+        "cadcand-cda39254496e19608a5ccb77",
+        "cadcand-e33fea6f968359e534261bae",
+        "cadcand-ff80729ae56af69824109b07"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 8
+      },
+      "bounds": {
+        "minimum": [
+          5916901.778133204,
+          -2595509.4509578496
+        ],
+        "maximum": [
+          5918351.778133204,
+          -2590859.4509578496
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-f9cf7fc6b3a72e89c431fff1",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-5d985f0fe4aa31b2c213ad5b"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5913151.778133204,
+          -2592289.4180063717
+        ],
+        "maximum": [
+          5914951.778133204,
+          -2590489.4180063717
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-b5a007b8364208d47ed6e054",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 7,
+      "candidate_ids": [
+        "cadcand-004ffa5458f2cefd34d324e1",
+        "cadcand-0c06c3b41c8bfe9556c37053",
+        "cadcand-30c34226ecae835c5336e62d",
+        "cadcand-88aaddb7e5c68654bf29ea16",
+        "cadcand-989bd603ba70c2777b15a775",
+        "cadcand-be0eded2c2ebae82500d7b55",
+        "cadcand-f1832e2d5f7424e4bd14919e"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 6,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5913151.778133204,
+          -2596029.483909328
+        ],
+        "maximum": [
+          5914951.778133204,
+          -2593129.483909328
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-21904e8b09e52482290da769",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-aae16aacaa75c59b231ccad4"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5910901.778133204,
+          -2592289.4180063717
+        ],
+        "maximum": [
+          5912701.778133204,
+          -2590489.4180063717
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-5f5348d0373d6312ac95faa9",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 5,
+      "candidate_ids": [
+        "cadcand-045557437d006fa3499adf5c",
+        "cadcand-9ac7152915ab88f793bbdce7",
+        "cadcand-ca93df1eaff85359e7d41d57",
+        "cadcand-fc480bec97c904043c3db1a1",
+        "cadcand-fe953939602dd41f4d6c1ee2"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 4,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5908651.778133204,
+          -2592989.4180063717
+        ],
+        "maximum": [
+          5910451.778133204,
+          -2591189.4180063717
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-d7809b6ff3141468ecf680b8",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-627808a03a11349c5c76574b"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5909351.778133204,
+          -2595425.1689848932
+        ],
+        "maximum": [
+          5912501.778133204,
+          -2593625.1689848932
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-886408e3ec965d062b7ff246",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-01cc11a4e00dd7cb6a17d0c0",
+        "cadcand-eb74a913b1551e41d20bca41"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 1,
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5913551.778133204,
+          -2591889.4180063717
+        ],
+        "maximum": [
+          5914551.778133204,
+          -2590889.4180063717
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-15ffe68375aed4b6c31c4270",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-fa94d6d9bf4af29e64799d78"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5911631.778133204,
+          -2595025.1689848932
+        ],
+        "maximum": [
+          5912101.778133204,
+          -2594025.1689848932
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-aad145631fafc04a2d86e989",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-fb89704cbc0ea0f79bba73d9"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5910781.778133204,
+          -2594925.1689848932
+        ],
+        "maximum": [
+          5911431.778133204,
+          -2594475.1689848932
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-e8833f7ee8676e3cf51d8148",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-1d6ca522b40904f28a3e0bee"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5911031.778133204,
+          -2594325.1689848932
+        ],
+        "maximum": [
+          5911381.778133204,
+          -2593825.1689848932
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-dbafa0d2abcc2c0ce1d34eb9",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-aed7a4e1f3e705edf1ff8687"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5911301.778133204,
+          -2591889.4180063717
+        ],
+        "maximum": [
+          5912301.778133204,
+          -2590889.4180063717
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-83b0516b5a2e70669dd1e749",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-deb2d16e0a3532e2a057e7fb"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5904250.560302048,
+          -2589569.8965974823
+        ],
+        "maximum": [
+          5904850.560302048,
+          -2588189.4180063712
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-ea87ec79d332506f283948ef",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-ad8b484543ce32a1577d4062"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5904266.239177692,
+          -2585056.520266335
+        ],
+        "maximum": [
+          5904866.239177692,
+          -2584476.041675224
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-4239c5b512867d94d5ed0965",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 1,
+      "candidate_ids": [
+        "cadcand-a44e3c4abeda80ca079a9fa4"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 1
+      },
+      "bounds": {
+        "minimum": [
+          5926584.210752179,
+          -2597926.1593705495
+        ],
+        "maximum": [
+          5926984.210752179,
+          -2595107.294128955
+        ]
+      },
+      "merge_confidence": 0.55,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-d957cf208bb120b93c50e47b",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-1f70c3da1387d7089b16cd57",
+        "cadcand-3ddec66d32fc02e0ba3e4afe"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LWPOLYLINE": 2
+      },
+      "bounds": {
+        "minimum": [
+          5923956.860229842,
+          -2589404.730678726
+        ],
+        "maximum": [
+          5925056.860229842,
+          -2587204.730678726
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    },
+    {
+      "group_id": "cadgroup-5f43c74024be22f91555a85c",
+      "category": "interior.furniture.loose",
+      "group_kind": "connected-geometry-candidate",
+      "candidate_count": 2,
+      "candidate_ids": [
+        "cadcand-5b6ee694f7dbba51a3752026",
+        "cadcand-7d1168237c91cefbc06b7a14"
+      ],
+      "source_layers": [
+        "PL-活动家具"
+      ],
+      "source_entity_type_counts": {
+        "LINE": 2
+      },
+      "bounds": {
+        "minimum": [
+          5926278.945412172,
+          -2589809.5540564233
+        ],
+        "maximum": [
+          5926358.945782457,
+          -2585859.554034742
+        ]
+      },
+      "merge_confidence": 0.7,
+      "domain_validation_status": "pending",
+      "quantity_status": "not-ready"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "GROUPS_ARE_NOT_FINAL_OBJECTS",
+      "message": "Connected geometry groups require category-specific topology validation before becoming walls, doors, furniture, spaces, or quantities."
+    },
+    {
+      "code": "SECONDARY_CAD_VALIDATION_REQUIRED",
+      "message": "Grouping is based on the first CAD parser result and is not construction verified."
+    }
+  ]
+}

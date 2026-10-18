@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-source-inspection:v1",
+  "title": "CadSourceInspectionV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "source_asset_id", "source_locator", "filename",
+    "media_type", "size_bytes", "sha256", "dwg_signature", "dwg_version",
+    "intake_status", "geometry_status", "parser", "geometry_metadata",
+    "checks", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "source_asset_id": {"type": "string", "minLength": 1},
+    "source_locator": {"type": "string", "minLength": 1},
+    "filename": {"type": "string", "pattern": "\\.[dD][wW][gG]$"},
+    "media_type": {"const": "image/vnd.dwg"},
+    "size_bytes": {"type": "integer", "minimum": 0},
+    "sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "dwg_signature": {"type": "string"},
+    "dwg_version": {"type": ["string", "null"]},
+    "intake_status": {
+      "type": "string",
+      "enum": ["rejected", "geometry-parse-pending", "geometry-parse-failed", "geometry-parsed"]
+    },
+    "geometry_status": {
+      "type": "string",
+      "enum": ["not-run", "unsupported", "failed", "succeeded"]
+    },
+    "parser": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "version": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
+    "geometry_metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "quality_status": {
+          "type": "string",
+          "enum": ["parsed", "parsed-with-compatibility-warnings"]
+        },
+        "requires_secondary_validation": {"type": "boolean"},
+        "parser_output_validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["valid_json", "required_sections_present", "json_size_bytes"],
+          "properties": {
+            "valid_json": {"const": true},
+            "required_sections_present": {"const": true},
+            "json_size_bytes": {"type": "integer", "minimum": 1}
+          }
+        },
+        "drawing_units": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "name"],
+          "properties": {
+            "code": {"type": ["integer", "null"]},
+            "name": {"type": "string", "minLength": 1}
+          }
+        },
+        "object_count": {"type": "integer", "minimum": 0},
+        "entity_count": {"type": "integer", "minimum": 0},
+        "non_entity_object_count": {"type": "integer", "minimum": 0},
+        "entity_type_count": {"type": "integer", "minimum": 0},
+        "entity_counts": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "text_entity_count": {"type": "integer", "minimum": 0},
+        "dimension_entity_count": {"type": "integer", "minimum": 0},
+        "layer_count": {"type": "integer", "minimum": 0},
+        "layer_names": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "layer_statistics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name", "handle", "entity_count", "entity_counts",
+              "block_context_counts", "top_owner_blocks"
+            ],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "handle": {"type": "integer", "minimum": 0},
+              "entity_count": {"type": "integer", "minimum": 0},
+              "entity_counts": {
+                "type": "object",
+                "additionalProperties": {"type": "integer", "minimum": 0}
+              },
+              "block_context_counts": {
+                "type": "object",
+                "additionalProperties": {"type": "integer", "minimum": 0}
+              },
+              "top_owner_blocks": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "block_handle", "block_name", "entity_count", "context",
+                    "insertion_reference_count", "external_reference_hint"
+                  ],
+                  "properties": {
+                    "block_handle": {"type": ["integer", "null"], "minimum": 0},
+                    "block_name": {"type": ["string", "null"]},
+                    "entity_count": {"type": "integer", "minimum": 0},
+                    "context": {
+                      "type": "string",
+                      "enum": [
+                        "model-and-paper-reachable", "model-reachable", "paper-reachable",
+                        "unreachable-block-definition", "unowned", "unknown-owner"
+                      ]
+                    },
+                    "insertion_reference_count": {"type": "integer", "minimum": 0},
+                    "external_reference_hint": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "unresolved_layer_reference_count": {"type": "integer", "minimum": 0},
+        "block_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "block_header_count", "insert_relationship_count", "unique_block_graph_edge_count",
+            "model_space_root_count", "paper_space_root_count", "model_reachable_block_count",
+            "paper_reachable_block_count", "model_and_paper_reachable_block_count",
+            "entity_context_counts"
+          ],
+          "properties": {
+            "block_header_count": {"type": "integer", "minimum": 0},
+            "insert_relationship_count": {"type": "integer", "minimum": 0},
+            "unique_block_graph_edge_count": {"type": "integer", "minimum": 0},
+            "model_space_root_count": {"type": "integer", "minimum": 0},
+            "paper_space_root_count": {"type": "integer", "minimum": 0},
+            "model_reachable_block_count": {"type": "integer", "minimum": 0},
+            "paper_reachable_block_count": {"type": "integer", "minimum": 0},
+            "model_and_paper_reachable_block_count": {"type": "integer", "minimum": 0},
+            "entity_context_counts": {
+              "type": "object",
+              "additionalProperties": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "global_extents": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum", "maximum", "usage"],
+          "properties": {
+            "minimum": {
+              "type": ["array", "null"],
+              "items": {"type": "number"}
+            },
+            "maximum": {
+              "type": ["array", "null"],
+              "items": {"type": "number"}
+            },
+            "usage": {"type": "string", "minLength": 1}
+          }
+        },
+        "parser_diagnostics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["diagnostic_line_count", "error_line_count", "categories"],
+          "properties": {
+            "diagnostic_line_count": {"type": "integer", "minimum": 0},
+            "error_line_count": {"type": "integer", "minimum": 0},
+            "categories": {
+              "type": "object",
+              "additionalProperties": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "blocking", "details"],
+        "properties": {
+          "check_id": {"type": "string", "minLength": 1},
+          "status": {"type": "string", "enum": ["passed", "failed", "warning", "not-run"]},
+          "blocking": {"type": "boolean"},
+          "details": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"intake_status": {"const": "geometry-parsed"}},
+        "required": ["intake_status"]
+      },
+      "then": {
+        "properties": {
+          "geometry_metadata": {
+            "required": [
+              "quality_status", "requires_secondary_validation", "parser_output_validation",
+              "drawing_units", "object_count", "entity_count", "non_entity_object_count",
+              "entity_type_count", "entity_counts", "text_entity_count",
+              "dimension_entity_count", "layer_count", "layer_names", "layer_statistics",
+              "unresolved_layer_reference_count", "block_context", "global_extents",
+              "parser_diagnostics"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "intake_status": {
+            "enum": ["rejected", "geometry-parse-pending", "geometry-parse-failed"]
+          }
+        },
+        "required": ["intake_status"]
+      },
+      "then": {
+        "properties": {"geometry_metadata": {"maxProperties": 0}}
+      }
+    }
+  ]
+}

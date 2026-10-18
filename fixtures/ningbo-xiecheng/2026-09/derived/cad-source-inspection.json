@@ -1,0 +1,3160 @@
+{
+  "source_asset_id": "drawing-cad-01",
+  "source_locator": "source/04 平面PL.dwg",
+  "filename": "04 平面PL.dwg",
+  "size_bytes": 5492640,
+  "sha256": "77DDAC8E80401BF3C7913BFF8AC959DC5D4A0CC573EC5CDCBC2CAB5D95A47616",
+  "dwg_signature": "AC1021",
+  "dwg_version": "AutoCAD 2007/2008/2009",
+  "intake_status": "geometry-parsed",
+  "geometry_status": "succeeded",
+  "parser": {
+    "name": "GNU LibreDWG",
+    "version": "0.14"
+  },
+  "geometry_metadata": {
+    "quality_status": "parsed-with-compatibility-warnings",
+    "requires_secondary_validation": true,
+    "parser_output_validation": {
+      "valid_json": true,
+      "required_sections_present": true,
+      "json_size_bytes": 80811962
+    },
+    "drawing_units": {
+      "code": 4,
+      "name": "millimeters"
+    },
+    "object_count": 103713,
+    "entity_count": 94706,
+    "non_entity_object_count": 9007,
+    "entity_type_count": 26,
+    "entity_counts": {
+      "LINE": 46380,
+      "SPLINE": 19419,
+      "LWPOLYLINE": 10447,
+      "INSERT": 3465,
+      "POINT": 3413,
+      "HATCH": 2631,
+      "BLOCK": 1475,
+      "ENDBLK": 1475,
+      "MTEXT": 1446,
+      "DIMENSION_LINEAR": 1136,
+      "ATTRIB": 918,
+      "TEXT": 706,
+      "ATTDEF": 436,
+      "SEQEND": 418,
+      "CIRCLE": 332,
+      "LEADER": 275,
+      "ARC": 198,
+      "VIEWPORT": 38,
+      "SOLID": 35,
+      "TRACE": 22,
+      "ELLIPSE": 14,
+      "DIMENSION_ALIGNED": 12,
+      "WIPEOUT": 10,
+      "DIMENSION_RADIUS": 3,
+      "DIMENSION_ANG2LN": 1,
+      "OLE2FRAME": 1
+    },
+    "text_entity_count": 3506,
+    "dimension_entity_count": 1152,
+    "layer_count": 57,
+    "layer_names": [
+      "0",
+      "【00图框】",
+      "PL-新建墙体",
+      "PL-活动家具",
+      "PL-固定家具",
+      "PL-固定落地",
+      "PL-门",
+      "250",
+      "PL-文字标注",
+      "PL-新建墙体尺寸",
+      "PL-地坪线",
+      "Defpoints",
+      "PL-灯具",
+      "PL-天花",
+      "PL-天花尺寸",
+      "PL-灯具尺寸",
+      "155",
+      "C-灯具",
+      "DIM",
+      "P-活动家具",
+      "开关",
+      "001墙线",
+      "WALL",
+      "PL-给排水",
+      "插座",
+      "A墙面灯具",
+      "a空调风口",
+      "8",
+      "1",
+      "WINDOW",
+      "SOL【实体】",
+      "D■03 地面标注",
+      "TXT【文字】",
+      "DIM【标注】",
+      "图例",
+      "P-天花",
+      "D-外部标注",
+      "DT-通用",
+      "DIM-标注",
+      "DIM-外部标注",
+      "BS-墙",
+      "D-造型细线",
+      "M-TK  图框",
+      "A3$0$TK-text",
+      "IHY-frame",
+      "IHY-paper text",
+      "TK-form",
+      "M-INDEX  索引",
+      "00封面",
+      "图层 1",
+      "text",
+      "AM_1",
+      "居民地与垣栅",
+      "道路与交通附属设施",
+      "HATCH",
+      "插座 @ 1",
+      "0 @ 1"
+    ],
+    "layer_statistics": [
+      {
+        "name": "0",
+        "handle": 6,
+        "entity_count": 30718,
+        "entity_counts": {
+          "LINE": 21681,
+          "LWPOLYLINE": 6138,
+          "ATTRIB": 760,
+          "BLOCK": 351,
+          "ENDBLK": 351,
+          "ATTDEF": 327,
+          "INSERT": 285,
+          "SEQEND": 183,
+          "MTEXT": 150,
+          "TEXT": 126,
+          "HATCH": 97,
+          "LEADER": 93,
+          "ARC": 46,
+          "VIEWPORT": 36,
+          "CIRCLE": 26,
+          "TRACE": 22,
+          "ELLIPSE": 12,
+          "SOLID": 12,
+          "DIMENSION_LINEAR": 11,
+          "WIPEOUT": 10,
+          "SPLINE": 1
+        },
+        "block_context_counts": {
+          "model-and-paper-reachable": 34,
+          "model-reachable": 24490,
+          "paper-reachable": 1119,
+          "unowned": 947,
+          "unreachable-block-definition": 4128
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 6953,
+            "block_name": "GW21",
+            "entity_count": 7427,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 6163,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17122587,
+            "block_name": "G$CA53BEB15",
+            "entity_count": 2946,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17134470,
+            "block_name": "G$C09184D01",
+            "entity_count": 2894,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16988191,
+            "block_name": "G$C6A503C8D",
+            "entity_count": 1723,
+            "context": "model-reachable",
+            "insertion_reference_count": 13,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17054550,
+            "block_name": "*U",
+            "entity_count": 1318,
+            "context": "model-reachable",
+            "insertion_reference_count": 4,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17074191,
+            "block_name": "*U",
+            "entity_count": 1318,
+            "context": "model-reachable",
+            "insertion_reference_count": 4,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17107573,
+            "block_name": "*U",
+            "entity_count": 1318,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "【00图框】",
+        "handle": 16951728,
+        "entity_count": 27,
+        "entity_counts": {
+          "INSERT": 26,
+          "SEQEND": 1
+        },
+        "block_context_counts": {
+          "paper-reachable": 26,
+          "unowned": 1
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 13,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 13,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": null,
+            "block_name": null,
+            "entity_count": 1,
+            "context": "unowned",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "PL-新建墙体",
+        "handle": 16957094,
+        "entity_count": 1501,
+        "entity_counts": {
+          "LINE": 1345,
+          "LWPOLYLINE": 74,
+          "HATCH": 56,
+          "CIRCLE": 26
+        },
+        "block_context_counts": {
+          "model-reachable": 1400,
+          "paper-reachable": 12,
+          "unreachable-block-definition": 89
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 1294,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16985067,
+            "block_name": "G$CE40B424D",
+            "entity_count": 91,
+            "context": "model-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17336385,
+            "block_name": "G$C0F052443",
+            "entity_count": 87,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16985954,
+            "block_name": "G$CABD8A9CE",
+            "entity_count": 8,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16986221,
+            "block_name": "G$CB4AED5DE",
+            "entity_count": 7,
+            "context": "model-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 6,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 6,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17172638,
+            "block_name": "G$C91750671",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-活动家具",
+        "handle": 16957758,
+        "entity_count": 1260,
+        "entity_counts": {
+          "LWPOLYLINE": 777,
+          "LINE": 361,
+          "INSERT": 90,
+          "CIRCLE": 32
+        },
+        "block_context_counts": {
+          "model-reachable": 1170,
+          "unreachable-block-definition": 90
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 1063,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16985067,
+            "block_name": "G$CE40B424D",
+            "entity_count": 81,
+            "context": "model-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17336385,
+            "block_name": "G$C0F052443",
+            "entity_count": 69,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17112111,
+            "block_name": "G$CFA59DD40",
+            "entity_count": 21,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16986221,
+            "block_name": "G$CB4AED5DE",
+            "entity_count": 11,
+            "context": "model-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16985954,
+            "block_name": "G$CABD8A9CE",
+            "entity_count": 9,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16959894,
+            "block_name": "G$CFB626B85",
+            "entity_count": 6,
+            "context": "model-reachable",
+            "insertion_reference_count": 9,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-固定家具",
+        "handle": 16957835,
+        "entity_count": 4099,
+        "entity_counts": {
+          "LWPOLYLINE": 2647,
+          "LINE": 1270,
+          "CIRCLE": 182
+        },
+        "block_context_counts": {
+          "model-reachable": 3612,
+          "unreachable-block-definition": 487
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 3216,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16985067,
+            "block_name": "G$CE40B424D",
+            "entity_count": 235,
+            "context": "model-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17336385,
+            "block_name": "G$C0F052443",
+            "entity_count": 208,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16985954,
+            "block_name": "G$CABD8A9CE",
+            "entity_count": 94,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17000629,
+            "block_name": "G$CB5CC5982",
+            "entity_count": 82,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17018920,
+            "block_name": "G$CEE3BEEE1",
+            "entity_count": 50,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17002991,
+            "block_name": "G$C87A73C3B",
+            "entity_count": 49,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17003370,
+            "block_name": "G$C581A6BB6",
+            "entity_count": 49,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-固定落地",
+        "handle": 16958220,
+        "entity_count": 427,
+        "entity_counts": {
+          "LINE": 364,
+          "INSERT": 42,
+          "LWPOLYLINE": 21
+        },
+        "block_context_counts": {
+          "model-reachable": 377,
+          "unreachable-block-definition": 50
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 352,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17336385,
+            "block_name": "G$C0F052443",
+            "entity_count": 50,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16985067,
+            "block_name": "G$CE40B424D",
+            "entity_count": 16,
+            "context": "model-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16985954,
+            "block_name": "G$CABD8A9CE",
+            "entity_count": 8,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16986221,
+            "block_name": "G$CB4AED5DE",
+            "entity_count": 1,
+            "context": "model-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-门",
+        "handle": 16958478,
+        "entity_count": 378,
+        "entity_counts": {
+          "LWPOLYLINE": 194,
+          "ARC": 124,
+          "LINE": 46,
+          "INSERT": 14
+        },
+        "block_context_counts": {
+          "model-reachable": 360,
+          "unreachable-block-definition": 18
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 335,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16985067,
+            "block_name": "G$CE40B424D",
+            "entity_count": 21,
+            "context": "model-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17336385,
+            "block_name": "G$C0F052443",
+            "entity_count": 18,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16986221,
+            "block_name": "G$CB4AED5DE",
+            "entity_count": 3,
+            "context": "model-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16985954,
+            "block_name": "G$CABD8A9CE",
+            "entity_count": 1,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "250",
+        "handle": 16960149,
+        "entity_count": 78,
+        "entity_counts": {
+          "LINE": 65,
+          "LWPOLYLINE": 13
+        },
+        "block_context_counts": {
+          "model-reachable": 72,
+          "unreachable-block-definition": 6
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 66,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16985067,
+            "block_name": "G$CE40B424D",
+            "entity_count": 6,
+            "context": "model-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17336385,
+            "block_name": "G$C0F052443",
+            "entity_count": 6,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-文字标注",
+        "handle": 16960324,
+        "entity_count": 514,
+        "entity_counts": {
+          "TEXT": 382,
+          "INSERT": 90,
+          "MTEXT": 41,
+          "ATTDEF": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 453,
+          "paper-reachable": 16,
+          "unreachable-block-definition": 45
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 413,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17336385,
+            "block_name": "G$C0F052443",
+            "entity_count": 38,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16985067,
+            "block_name": "G$CE40B424D",
+            "entity_count": 31,
+            "context": "model-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 8,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 8,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16986221,
+            "block_name": "G$CB4AED5DE",
+            "entity_count": 5,
+            "context": "model-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16985954,
+            "block_name": "G$CABD8A9CE",
+            "entity_count": 4,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17027231,
+            "block_name": "G$CFF13627E",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-新建墙体尺寸",
+        "handle": 16963511,
+        "entity_count": 855,
+        "entity_counts": {
+          "LINE": 343,
+          "INSERT": 187,
+          "MTEXT": 93,
+          "DIMENSION_LINEAR": 91,
+          "BLOCK": 67,
+          "ENDBLK": 67,
+          "LWPOLYLINE": 5,
+          "DIMENSION_ALIGNED": 2
+        },
+        "block_context_counts": {
+          "model-reachable": 152,
+          "unreachable-block-definition": 703
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 152,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17178180,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17178196,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17178212,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17178228,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17178262,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17178294,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17178467,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-地坪线",
+        "handle": 16964803,
+        "entity_count": 86,
+        "entity_counts": {
+          "LINE": 53,
+          "HATCH": 13,
+          "INSERT": 6,
+          "BLOCK": 4,
+          "ENDBLK": 4,
+          "DIMENSION_LINEAR": 3,
+          "MTEXT": 3
+        },
+        "block_context_counts": {
+          "model-reachable": 60,
+          "unreachable-block-definition": 26
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 60,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17052215,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17052230,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17052245,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17052139,
+            "block_name": "G$C8193E2E1",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "Defpoints",
+        "handle": 16973166,
+        "entity_count": 3413,
+        "entity_counts": {
+          "POINT": 3413
+        },
+        "block_context_counts": {
+          "unreachable-block-definition": 3413
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17143081,
+            "block_name": "*D",
+            "entity_count": 5,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16977771,
+            "block_name": "*D",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16977786,
+            "block_name": "*D",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16977801,
+            "block_name": "*D",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16977818,
+            "block_name": "*D",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16977833,
+            "block_name": "*D",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978202,
+            "block_name": "*D",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978219,
+            "block_name": "*D",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-灯具",
+        "handle": 16973642,
+        "entity_count": 117,
+        "entity_counts": {
+          "INSERT": 117
+        },
+        "block_context_counts": {
+          "model-reachable": 110,
+          "paper-reachable": 1,
+          "unreachable-block-definition": 6
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 89,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16975209,
+            "block_name": "G$CC908971F",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16975289,
+            "block_name": "*U",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16975356,
+            "block_name": "*U",
+            "entity_count": 1,
+            "context": "model-reachable",
+            "insertion_reference_count": 6,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16975695,
+            "block_name": "G$C378A91ED",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16975843,
+            "block_name": "*U",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 1,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16975890,
+            "block_name": "G$C05A92215",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16976038,
+            "block_name": "*U",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 1,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "PL-天花",
+        "handle": 16973825,
+        "entity_count": 299,
+        "entity_counts": {
+          "LINE": 166,
+          "LWPOLYLINE": 116,
+          "HATCH": 6,
+          "BLOCK": 5,
+          "ENDBLK": 5,
+          "INSERT": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 277,
+          "unreachable-block-definition": 22
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 273,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16974367,
+            "block_name": "G$CFAE19BFE",
+            "entity_count": 6,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17082839,
+            "block_name": "G$C43E2001D",
+            "entity_count": 4,
+            "context": "model-reachable",
+            "insertion_reference_count": 29,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16974525,
+            "block_name": "G$CE016294B",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17000629,
+            "block_name": "G$CB5CC5982",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16975209,
+            "block_name": "G$CC908971F",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16975695,
+            "block_name": "G$C378A91ED",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16975890,
+            "block_name": "G$C05A92215",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-天花尺寸",
+        "handle": 16977766,
+        "entity_count": 365,
+        "entity_counts": {
+          "LINE": 145,
+          "INSERT": 78,
+          "DIMENSION_LINEAR": 39,
+          "MTEXT": 39,
+          "BLOCK": 32,
+          "ENDBLK": 32
+        },
+        "block_context_counts": {
+          "model-reachable": 39,
+          "unreachable-block-definition": 326
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 39,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16977801,
+            "block_name": "*D",
+            "entity_count": 10,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16977833,
+            "block_name": "*D",
+            "entity_count": 10,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978202,
+            "block_name": "*D",
+            "entity_count": 10,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978234,
+            "block_name": "*D",
+            "entity_count": 10,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978266,
+            "block_name": "*D",
+            "entity_count": 10,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978283,
+            "block_name": "*D",
+            "entity_count": 10,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978315,
+            "block_name": "*D",
+            "entity_count": 10,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-灯具尺寸",
+        "handle": 16978699,
+        "entity_count": 803,
+        "entity_counts": {
+          "LINE": 285,
+          "INSERT": 190,
+          "DIMENSION_LINEAR": 95,
+          "MTEXT": 95,
+          "BLOCK": 69,
+          "ENDBLK": 69
+        },
+        "block_context_counts": {
+          "model-reachable": 95,
+          "unreachable-block-definition": 708
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 95,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16978704,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978719,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978734,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978749,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978764,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978779,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16978794,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "155",
+        "handle": 16981666,
+        "entity_count": 9243,
+        "entity_counts": {
+          "LINE": 4226,
+          "INSERT": 1538,
+          "BLOCK": 801,
+          "ENDBLK": 801,
+          "MTEXT": 744,
+          "DIMENSION_LINEAR": 730,
+          "LWPOLYLINE": 171,
+          "HATCH": 154,
+          "LEADER": 62,
+          "DIMENSION_ALIGNED": 10,
+          "DIMENSION_RADIUS": 3,
+          "ARC": 1,
+          "DIMENSION_ANG2LN": 1,
+          "OLE2FRAME": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 2909,
+          "paper-reachable": 8,
+          "unreachable-block-definition": 6326
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 2869,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17000629,
+            "block_name": "G$CB5CC5982",
+            "entity_count": 54,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17003370,
+            "block_name": "G$C581A6BB6",
+            "entity_count": 30,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16992293,
+            "block_name": "G$C26AEEC73",
+            "entity_count": 20,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17016023,
+            "block_name": "G$C8099A3EB",
+            "entity_count": 17,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17003685,
+            "block_name": "G$C412AE02F",
+            "entity_count": 15,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17004118,
+            "block_name": "G$C9159D6C5",
+            "entity_count": 14,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17005689,
+            "block_name": "G$C41EAA9DD",
+            "entity_count": 13,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "C-灯具",
+        "handle": 17027241,
+        "entity_count": 94,
+        "entity_counts": {
+          "SEQEND": 90,
+          "LINE": 2,
+          "CIRCLE": 1,
+          "LWPOLYLINE": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 4,
+          "unowned": 90
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": null,
+            "block_name": null,
+            "entity_count": 90,
+            "context": "unowned",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17054458,
+            "block_name": "A$C3DAF4441",
+            "entity_count": 4,
+            "context": "model-reachable",
+            "insertion_reference_count": 150,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "DIM",
+        "handle": 17031285,
+        "entity_count": 95,
+        "entity_counts": {
+          "LEADER": 95
+        },
+        "block_context_counts": {
+          "model-reachable": 93,
+          "unreachable-block-definition": 2
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 93,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17031279,
+            "block_name": "G$CEE040F5E",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17031511,
+            "block_name": "G$C669F4CC8",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "P-活动家具",
+        "handle": 17035641,
+        "entity_count": 1,
+        "entity_counts": {
+          "INSERT": 1
+        },
+        "block_context_counts": {
+          "unreachable-block-definition": 1
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17043585,
+            "block_name": "G$C0C97C9A6",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "开关",
+        "handle": 17035651,
+        "entity_count": 152,
+        "entity_counts": {
+          "MTEXT": 62,
+          "LWPOLYLINE": 35,
+          "INSERT": 26,
+          "BLOCK": 11,
+          "ENDBLK": 11,
+          "LEADER": 5,
+          "CIRCLE": 1,
+          "HATCH": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 110,
+          "paper-reachable": 10,
+          "unreachable-block-definition": 32
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 106,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17039321,
+            "block_name": "G$C5606DB99",
+            "entity_count": 5,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17037492,
+            "block_name": "G$C725D505A",
+            "entity_count": 4,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17038322,
+            "block_name": "G$CB36B0902",
+            "entity_count": 4,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17039172,
+            "block_name": "G$C7DB17BA3",
+            "entity_count": 4,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 4,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 4,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17035640,
+            "block_name": "G$C099D4891",
+            "entity_count": 3,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "001墙线",
+        "handle": 17035654,
+        "entity_count": 6,
+        "entity_counts": {
+          "LWPOLYLINE": 6
+        },
+        "block_context_counts": {
+          "model-reachable": 6
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17039390,
+            "block_name": "G$C9D3C6BC1",
+            "entity_count": 4,
+            "context": "model-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17035714,
+            "block_name": "G$CF87F0591",
+            "entity_count": 1,
+            "context": "model-reachable",
+            "insertion_reference_count": 4,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17036196,
+            "block_name": "G$CACF8F062",
+            "entity_count": 1,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "WALL",
+        "handle": 17036826,
+        "entity_count": 16,
+        "entity_counts": {
+          "LWPOLYLINE": 14,
+          "BLOCK": 1,
+          "ENDBLK": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 10,
+          "unreachable-block-definition": 6
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 10,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17336385,
+            "block_name": "G$C0F052443",
+            "entity_count": 4,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17176917,
+            "block_name": "G$C9335D084",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "PL-给排水",
+        "handle": 17036831,
+        "entity_count": 30,
+        "entity_counts": {
+          "TEXT": 26,
+          "LINE": 2,
+          "BLOCK": 1,
+          "ENDBLK": 1
+        },
+        "block_context_counts": {
+          "paper-reachable": 26,
+          "unreachable-block-definition": 4
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 13,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 13,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17036825,
+            "block_name": "G$C33621BF6",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17048324,
+            "block_name": "G$CE8DADEEC",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "插座",
+        "handle": 17037874,
+        "entity_count": 311,
+        "entity_counts": {
+          "INSERT": 87,
+          "LINE": 64,
+          "TEXT": 33,
+          "BLOCK": 32,
+          "ENDBLK": 32,
+          "DIMENSION_LINEAR": 20,
+          "LEADER": 20,
+          "MTEXT": 20,
+          "LWPOLYLINE": 2,
+          "HATCH": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 113,
+          "paper-reachable": 7,
+          "unreachable-block-definition": 191
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 113,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17046305,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17046320,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17046335,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17046350,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17046802,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17046817,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17046832,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "A墙面灯具",
+        "handle": 17039725,
+        "entity_count": 3,
+        "entity_counts": {
+          "LINE": 2,
+          "CIRCLE": 1
+        },
+        "block_context_counts": {
+          "paper-reachable": 3
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17039801,
+            "block_name": "rtyiu",
+            "entity_count": 3,
+            "context": "paper-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "a空调风口",
+        "handle": 17039726,
+        "entity_count": 73,
+        "entity_counts": {
+          "LINE": 67,
+          "LWPOLYLINE": 6
+        },
+        "block_context_counts": {
+          "paper-reachable": 39,
+          "unreachable-block-definition": 34
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17039898,
+            "block_name": "*U",
+            "entity_count": 34,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17039950,
+            "block_name": "*U",
+            "entity_count": 34,
+            "context": "paper-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17039988,
+            "block_name": "yuyowse",
+            "entity_count": 5,
+            "context": "paper-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "8",
+        "handle": 17042707,
+        "entity_count": 809,
+        "entity_counts": {
+          "LINE": 383,
+          "INSERT": 156,
+          "DIMENSION_LINEAR": 78,
+          "MTEXT": 78,
+          "BLOCK": 41,
+          "ENDBLK": 41,
+          "LWPOLYLINE": 32
+        },
+        "block_context_counts": {
+          "model-reachable": 76,
+          "paper-reachable": 168,
+          "unreachable-block-definition": 565
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 84,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 84,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 76,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17158666,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17158727,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17158758,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17158819,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17158850,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "1",
+        "handle": 17042710,
+        "entity_count": 166,
+        "entity_counts": {
+          "LINE": 158,
+          "INSERT": 8
+        },
+        "block_context_counts": {
+          "paper-reachable": 166
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 83,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 83,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "WINDOW",
+        "handle": 17045175,
+        "entity_count": 6,
+        "entity_counts": {
+          "LINE": 6
+        },
+        "block_context_counts": {
+          "paper-reachable": 6
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 3,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 3,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "SOL【实体】",
+        "handle": 17049271,
+        "entity_count": 139,
+        "entity_counts": {
+          "LINE": 40,
+          "INSERT": 32,
+          "SOLID": 23,
+          "BLOCK": 13,
+          "ENDBLK": 13,
+          "DIMENSION_LINEAR": 7,
+          "MTEXT": 7,
+          "VIEWPORT": 2,
+          "CIRCLE": 1,
+          "LWPOLYLINE": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 46,
+          "paper-reachable": 24,
+          "unreachable-block-definition": 69
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 42,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17345637,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17345668,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17345653,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17345684,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17345699,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17345714,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17345729,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "D■03 地面标注",
+        "handle": 17049278,
+        "entity_count": 92,
+        "entity_counts": {
+          "INSERT": 46,
+          "SEQEND": 46
+        },
+        "block_context_counts": {
+          "paper-reachable": 44,
+          "unowned": 46,
+          "unreachable-block-definition": 2
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": null,
+            "block_name": null,
+            "entity_count": 46,
+            "context": "unowned",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 22,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 22,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17049270,
+            "block_name": "G$CF8139923",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17050072,
+            "block_name": "G$C73FB0507",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "TXT【文字】",
+        "handle": 17049279,
+        "entity_count": 558,
+        "entity_counts": {
+          "LINE": 171,
+          "INSERT": 112,
+          "DIMENSION_LINEAR": 56,
+          "MTEXT": 56,
+          "BLOCK": 47,
+          "ENDBLK": 47,
+          "ATTRIB": 46,
+          "ATTDEF": 23
+        },
+        "block_context_counts": {
+          "model-reachable": 56,
+          "paper-reachable": 22,
+          "unowned": 46,
+          "unreachable-block-definition": 434
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 56,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": null,
+            "block_name": null,
+            "entity_count": 46,
+            "context": "unowned",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17158063,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17158124,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17158155,
+            "block_name": "*D",
+            "entity_count": 9,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17157877,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17157898,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17157913,
+            "block_name": "*D",
+            "entity_count": 8,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "DIM【标注】",
+        "handle": 17049280,
+        "entity_count": 46,
+        "entity_counts": {
+          "LWPOLYLINE": 46
+        },
+        "block_context_counts": {
+          "paper-reachable": 44,
+          "unreachable-block-definition": 2
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17049345,
+            "block_name": "*U",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 1,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17049612,
+            "block_name": "*U",
+            "entity_count": 2,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17049879,
+            "block_name": "*U",
+            "entity_count": 2,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17050146,
+            "block_name": "*U",
+            "entity_count": 2,
+            "context": "paper-reachable",
+            "insertion_reference_count": 3,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17050235,
+            "block_name": "*U",
+            "entity_count": 2,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17050502,
+            "block_name": "*U",
+            "entity_count": 2,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17050591,
+            "block_name": "*U",
+            "entity_count": 2,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17050680,
+            "block_name": "*U",
+            "entity_count": 2,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "图例",
+        "handle": 17052915,
+        "entity_count": 26,
+        "entity_counts": {
+          "TEXT": 26
+        },
+        "block_context_counts": {
+          "paper-reachable": 26
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 13,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 13,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "P-天花",
+        "handle": 17053438,
+        "entity_count": 3,
+        "entity_counts": {
+          "LINE": 3
+        },
+        "block_context_counts": {
+          "model-reachable": 3
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 3,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "D-外部标注",
+        "handle": 17053441,
+        "entity_count": 302,
+        "entity_counts": {
+          "INSERT": 245,
+          "SEQEND": 41,
+          "LINE": 16
+        },
+        "block_context_counts": {
+          "model-reachable": 219,
+          "paper-reachable": 32,
+          "unowned": 41,
+          "unreachable-block-definition": 10
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 189,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": null,
+            "block_name": null,
+            "entity_count": 41,
+            "context": "unowned",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17054435,
+            "block_name": "A$C0C1D23EB",
+            "entity_count": 16,
+            "context": "model-reachable",
+            "insertion_reference_count": 48,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 16,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 16,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17085710,
+            "block_name": "G$CB4F5E22B",
+            "entity_count": 13,
+            "context": "model-reachable",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17163494,
+            "block_name": "G$CFEAAB390",
+            "entity_count": 4,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17082083,
+            "block_name": "G$C67BA2A18",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "DT-通用",
+        "handle": 17053450,
+        "entity_count": 39,
+        "entity_counts": {
+          "INSERT": 15,
+          "LINE": 15,
+          "LWPOLYLINE": 9
+        },
+        "block_context_counts": {
+          "model-reachable": 39
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 39,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "DIM-标注",
+        "handle": 17078512,
+        "entity_count": 146,
+        "entity_counts": {
+          "TEXT": 73,
+          "LWPOLYLINE": 39,
+          "CIRCLE": 27,
+          "LINE": 3,
+          "INSERT": 2,
+          "DIMENSION_LINEAR": 1,
+          "MTEXT": 1
+        },
+        "block_context_counts": {
+          "paper-reachable": 122,
+          "unreachable-block-definition": 24
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 61,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 61,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17078904,
+            "block_name": "G$C256B2867",
+            "entity_count": 12,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17078706,
+            "block_name": "*D",
+            "entity_count": 6,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17176072,
+            "block_name": "G$C3214095C",
+            "entity_count": 2,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17078628,
+            "block_name": "G$C3C63C96A",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17176917,
+            "block_name": "G$C9335D084",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17178514,
+            "block_name": "G$C592FFB85",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "DIM-外部标注",
+        "handle": 17097344,
+        "entity_count": 65,
+        "entity_counts": {
+          "LINE": 38,
+          "INSERT": 10,
+          "LWPOLYLINE": 6,
+          "DIMENSION_LINEAR": 5,
+          "MTEXT": 5,
+          "ARC": 1
+        },
+        "block_context_counts": {
+          "model-reachable": 34,
+          "unreachable-block-definition": 31
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 34,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17163455,
+            "block_name": "*D",
+            "entity_count": 7,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17163419,
+            "block_name": "*D",
+            "entity_count": 6,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17163431,
+            "block_name": "*D",
+            "entity_count": 6,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17163443,
+            "block_name": "*D",
+            "entity_count": 6,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17163468,
+            "block_name": "*D",
+            "entity_count": 6,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "BS-墙",
+        "handle": 17102989,
+        "entity_count": 7,
+        "entity_counts": {
+          "LINE": 7
+        },
+        "block_context_counts": {
+          "model-reachable": 7
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 7,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "D-造型细线",
+        "handle": 17102997,
+        "entity_count": 99,
+        "entity_counts": {
+          "LWPOLYLINE": 34,
+          "LINE": 31,
+          "HATCH": 16,
+          "ARC": 12,
+          "INSERT": 4,
+          "ELLIPSE": 2
+        },
+        "block_context_counts": {
+          "model-reachable": 99
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 58,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17103186,
+            "block_name": "swfdsf",
+            "entity_count": 41,
+            "context": "model-reachable",
+            "insertion_reference_count": 4,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "M-TK  图框",
+        "handle": 17146816,
+        "entity_count": 0,
+        "entity_counts": {},
+        "block_context_counts": {},
+        "top_owner_blocks": []
+      },
+      {
+        "name": "A3$0$TK-text",
+        "handle": 17147497,
+        "entity_count": 27,
+        "entity_counts": {
+          "ATTDEF": 27
+        },
+        "block_context_counts": {
+          "paper-reachable": 26,
+          "unreachable-block-definition": 1
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 13,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 13,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17147496,
+            "block_name": "G$CBE691408",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "IHY-frame",
+        "handle": 17147716,
+        "entity_count": 42,
+        "entity_counts": {
+          "LINE": 40,
+          "INSERT": 1,
+          "SEQEND": 1
+        },
+        "block_context_counts": {
+          "unowned": 1,
+          "unreachable-block-definition": 41
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17148119,
+            "block_name": "FORM.A3",
+            "entity_count": 40,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17150372,
+            "block_name": "G$CA6057D94",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": null,
+            "block_name": null,
+            "entity_count": 1,
+            "context": "unowned",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "IHY-paper text",
+        "handle": 17147717,
+        "entity_count": 42,
+        "entity_counts": {
+          "TEXT": 40,
+          "MTEXT": 2
+        },
+        "block_context_counts": {
+          "paper-reachable": 24,
+          "unreachable-block-definition": 18
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17148119,
+            "block_name": "FORM.A3",
+            "entity_count": 18,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 12,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 12,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "TK-form",
+        "handle": 17147718,
+        "entity_count": 0,
+        "entity_counts": {},
+        "block_context_counts": {},
+        "top_owner_blocks": []
+      },
+      {
+        "name": "M-INDEX  索引",
+        "handle": 17149021,
+        "entity_count": 514,
+        "entity_counts": {
+          "LINE": 116,
+          "ATTRIB": 112,
+          "ATTDEF": 58,
+          "LWPOLYLINE": 58,
+          "INSERT": 56,
+          "SEQEND": 56,
+          "CIRCLE": 29,
+          "HATCH": 29
+        },
+        "block_context_counts": {
+          "paper-reachable": 314,
+          "unowned": 168,
+          "unreachable-block-definition": 32
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": null,
+            "block_name": null,
+            "entity_count": 168,
+            "context": "unowned",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 16875513,
+            "block_name": "*Paper_Space",
+            "entity_count": 27,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17351905,
+            "block_name": "*Paper_Space",
+            "entity_count": 27,
+            "context": "paper-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17149085,
+            "block_name": "*U",
+            "entity_count": 10,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17151830,
+            "block_name": "*U",
+            "entity_count": 10,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17151866,
+            "block_name": "*U",
+            "entity_count": 10,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17151902,
+            "block_name": "*U",
+            "entity_count": 10,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17152188,
+            "block_name": "*U",
+            "entity_count": 10,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": false
+          }
+        ]
+      },
+      {
+        "name": "00封面",
+        "handle": 17158558,
+        "entity_count": 0,
+        "entity_counts": {},
+        "block_context_counts": {},
+        "top_owner_blocks": []
+      },
+      {
+        "name": "图层 1",
+        "handle": 17183805,
+        "entity_count": 36327,
+        "entity_counts": {
+          "SPLINE": 19417,
+          "LINE": 14652,
+          "HATCH": 2248,
+          "CIRCLE": 6,
+          "ARC": 2,
+          "LWPOLYLINE": 2
+        },
+        "block_context_counts": {
+          "model-reachable": 1514,
+          "unreachable-block-definition": 34813
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17261541,
+            "block_name": "G$CD57F7DBE",
+            "entity_count": 34288,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 1514,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17333534,
+            "block_name": "G$C03E5BC71",
+            "entity_count": 340,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17333316,
+            "block_name": "G$CB4933654",
+            "entity_count": 150,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 1,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 17332769,
+            "block_name": "G$C2AF81F68",
+            "entity_count": 35,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "text",
+        "handle": 17183812,
+        "entity_count": 49,
+        "entity_counts": {
+          "MTEXT": 49
+        },
+        "block_context_counts": {
+          "unreachable-block-definition": 49
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17261541,
+            "block_name": "G$CD57F7DBE",
+            "entity_count": 49,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "AM_1",
+        "handle": 17183816,
+        "entity_count": 140,
+        "entity_counts": {
+          "LINE": 125,
+          "HATCH": 9,
+          "ARC": 6
+        },
+        "block_context_counts": {
+          "model-reachable": 9,
+          "unreachable-block-definition": 131
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17261541,
+            "block_name": "G$CD57F7DBE",
+            "entity_count": 130,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          },
+          {
+            "block_handle": 2,
+            "block_name": "*Model_Space",
+            "entity_count": 9,
+            "context": "model-reachable",
+            "insertion_reference_count": 0,
+            "external_reference_hint": false
+          },
+          {
+            "block_handle": 17333534,
+            "block_name": "G$C03E5BC71",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "居民地与垣栅",
+        "handle": 17189166,
+        "entity_count": 95,
+        "entity_counts": {
+          "LINE": 89,
+          "ARC": 6
+        },
+        "block_context_counts": {
+          "unreachable-block-definition": 95
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17261541,
+            "block_name": "G$CD57F7DBE",
+            "entity_count": 95,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "道路与交通附属设施",
+        "handle": 17189169,
+        "entity_count": 1,
+        "entity_counts": {
+          "SPLINE": 1
+        },
+        "block_context_counts": {
+          "unreachable-block-definition": 1
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17261541,
+            "block_name": "G$CD57F7DBE",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "HATCH",
+        "handle": 17353878,
+        "entity_count": 0,
+        "entity_counts": {},
+        "block_context_counts": {},
+        "top_owner_blocks": []
+      },
+      {
+        "name": "插座 @ 1",
+        "handle": 17356227,
+        "entity_count": 1,
+        "entity_counts": {
+          "HATCH": 1
+        },
+        "block_context_counts": {
+          "paper-reachable": 1
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17042831,
+            "block_name": "G$C721C69C9",
+            "entity_count": 1,
+            "context": "paper-reachable",
+            "insertion_reference_count": 2,
+            "external_reference_hint": true
+          }
+        ]
+      },
+      {
+        "name": "0 @ 1",
+        "handle": 17356262,
+        "entity_count": 1,
+        "entity_counts": {
+          "MTEXT": 1
+        },
+        "block_context_counts": {
+          "unreachable-block-definition": 1
+        },
+        "top_owner_blocks": [
+          {
+            "block_handle": 17261541,
+            "block_name": "G$CD57F7DBE",
+            "entity_count": 1,
+            "context": "unreachable-block-definition",
+            "insertion_reference_count": 0,
+            "external_reference_hint": true
+          }
+        ]
+      }
+    ],
+    "unresolved_layer_reference_count": 0,
+    "block_context": {
+      "block_header_count": 1475,
+      "insert_relationship_count": 3465,
+      "unique_block_graph_edge_count": 1564,
+      "model_space_root_count": 1,
+      "paper_space_root_count": 2,
+      "model_reachable_block_count": 99,
+      "paper_reachable_block_count": 103,
+      "model_and_paper_reachable_block_count": 5,
+      "entity_context_counts": {
+        "model-and-paper-reachable": 34,
+        "model-reachable": 38014,
+        "paper-reachable": 2286,
+        "unowned": 1340,
+        "unreachable-block-definition": 53032
+      }
+    },
+    "global_extents": {
+      "minimum": [
+        5625238.477830815,
+        -3316391.693384166,
+        -0.00066961354806
+      ],
+      "maximum": [
+        7433318.278149127,
+        -2552493.4651899226,
+        3.6291882693066
+      ],
+      "usage": "diagnostic-only; includes the complete drawing set and layouts"
+    },
+    "parser_diagnostics": {
+      "diagnostic_line_count": 5711,
+      "error_line_count": 3,
+      "categories": {
+        "dimension-association": 2173,
+        "dynamic-block": 752,
+        "hatch-handle-stream": 2631,
+        "invalid-page-count": 1,
+        "other": 21,
+        "unhandled-class": 7,
+        "unstable-class": 126
+      }
+    }
+  },
+  "checks": [
+    {
+      "check_id": "cad.file-extension",
+      "status": "passed",
+      "blocking": true,
+      "details": "Source extension is .dwg."
+    },
+    {
+      "check_id": "cad.dwg-signature",
+      "status": "passed",
+      "blocking": true,
+      "details": "Recognized AC1021: AutoCAD 2007/2008/2009."
+    },
+    {
+      "check_id": "source.sha256",
+      "status": "passed",
+      "blocking": true,
+      "details": "Source hash matches the registered asset."
+    },
+    {
+      "check_id": "cad.geometry-parser",
+      "status": "warning",
+      "blocking": true,
+      "details": "Parser GNU LibreDWG 0.14 returned geometry metadata with quality status parsed-with-compatibility-warnings."
+    }
+  ],
+  "warnings": [
+    {
+      "code": "CAD_GEOMETRY_PARSE_WARNINGS",
+      "message": "Geometry metadata was extracted, but parser compatibility diagnostics require secondary validation."
+    }
+  ],
+  "contract_version": "1.0",
+  "media_type": "image/vnd.dwg"
+}

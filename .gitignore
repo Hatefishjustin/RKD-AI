@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+node_modules/
+.env
+
+# Local runtime state. Source fixtures remain read-only and are never stored here.
+var/
+web/dist/
+web/.vite/
+web/*.tsbuildinfo
+.build_xlsx/

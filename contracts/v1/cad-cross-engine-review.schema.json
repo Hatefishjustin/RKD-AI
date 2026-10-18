@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:cad-cross-engine-review:v1",
+  "title": "CadCrossEngineReviewV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "dxf_source_asset_id", "dxf_source_sha256", "dwg_source_asset_id",
+    "dwg_source_sha256", "plan_profile_id", "status", "policy", "summary",
+    "matched_candidates", "dxf_only", "dwg_only", "warnings"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "dxf_source_asset_id": {"type": "string", "minLength": 1},
+    "dxf_source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "dwg_source_asset_id": {"type": "string", "minLength": 1},
+    "dwg_source_sha256": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "plan_profile_id": {"type": "string", "minLength": 1},
+    "status": {"const": "cross-engine-review-created"},
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["identity_key", "direct_bounds_tolerance_mm", "arc_bounds_tolerance_mm", "block_comparison"],
+      "properties": {
+        "identity_key": {"const": "preserved-cad-entity-handle"},
+        "direct_bounds_tolerance_mm": {"type": "number", "exclusiveMinimum": 0},
+        "arc_bounds_tolerance_mm": {"type": "number", "exclusiveMinimum": 0},
+        "block_comparison": {"const": "expanded-block-bounds"}
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "dxf_candidate_count", "dwg_candidate_count", "common_handle_count", "matched_handle_count",
+        "review_required_handle_count", "matched_professional_candidate_count", "dxf_only_count",
+        "dwg_only_count", "mismatch_reason_counts", "created_domain_object_count",
+        "quantity_ready_count", "promotion_status"
+      ],
+      "properties": {
+        "dxf_candidate_count": {"type": "integer", "minimum": 0},
+        "dwg_candidate_count": {"type": "integer", "minimum": 0},
+        "common_handle_count": {"type": "integer", "minimum": 0},
+        "matched_handle_count": {"type": "integer", "minimum": 0},
+        "review_required_handle_count": {"type": "integer", "minimum": 0},
+        "matched_professional_candidate_count": {"type": "integer", "minimum": 0},
+        "dxf_only_count": {"type": "integer", "minimum": 0},
+        "dwg_only_count": {"type": "integer", "minimum": 0},
+        "mismatch_reason_counts": {"$ref": "#/$defs/count_map"},
+        "created_domain_object_count": {"const": 0},
+        "quantity_ready_count": {"const": 0},
+        "promotion_status": {"const": "not-approved"}
+      }
+    },
+    "matched_candidates": {"type": "array", "items": {"$ref": "#/$defs/match"}},
+    "dxf_only": {"$ref": "#/$defs/only"},
+    "dwg_only": {"$ref": "#/$defs/only"},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/warning"}}
+  },
+  "$defs": {
+    "count_map": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "match": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "entity_handle", "category", "layer", "entity_type", "comparison_mode", "tolerance_mm",
+        "maximum_bounds_delta_mm", "status", "review_reasons"
+      ],
+      "properties": {
+        "entity_handle": {"type": "integer", "minimum": 0},
+        "category": {"type": "string", "minLength": 1},
+        "layer": {"type": "string", "minLength": 1},
+        "entity_type": {"type": "string", "minLength": 1},
+        "comparison_mode": {"enum": ["direct-entity-bounds", "expanded-block-bounds"]},
+        "tolerance_mm": {"type": "number", "exclusiveMinimum": 0},
+        "maximum_bounds_delta_mm": {"type": ["number", "null"], "minimum": 0},
+        "status": {"enum": ["matched", "review-required"]},
+        "review_reasons": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "only": {
+      "type": "object", "additionalProperties": false,
+      "required": ["handles", "category_counts", "entity_type_counts"],
+      "properties": {
+        "handles": {"type": "array", "uniqueItems": true, "items": {"type": "integer", "minimum": 0}},
+        "category_counts": {"$ref": "#/$defs/count_map"},
+        "entity_type_counts": {"$ref": "#/$defs/count_map"}
+      }
+    },
+    "warning": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message"],
+      "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string", "minLength": 1}}
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:evaluation-observation:v1",
+  "title": "EvaluationObservationV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "observation_id", "organization_id", "project_id", "task_type",
+    "stage", "risk_level", "automation_level", "eligibility", "outcome",
+    "started_at", "completed_at", "human_interventions", "defects",
+    "consistency_checks", "provenance", "runtime"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "observation_id": {"type": "string", "minLength": 1},
+    "organization_id": {"type": "string", "minLength": 1},
+    "project_id": {"type": "string", "minLength": 1},
+    "task_type": {"type": "string", "minLength": 1},
+    "stage": {"type": "string", "minLength": 1},
+    "risk_level": {"enum": ["A0", "A1", "A2", "A3", "A4"]},
+    "automation_level": {"enum": ["manual", "assisted", "shadow", "supervised", "autonomous"]},
+    "eligibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["eligible", "reason_codes"],
+      "properties": {
+        "eligible": {"type": "boolean"},
+        "reason_codes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "outcome": {"enum": ["accepted", "accepted-after-correction", "rejected", "failed", "cancelled"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "human_interventions": {"type": "array", "items": {"$ref": "#/$defs/intervention"}},
+    "defects": {"type": "array", "items": {"$ref": "#/$defs/defect"}},
+    "consistency_checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["required_claim_count", "supported_claim_count", "unknown_claim_count"],
+      "properties": {
+        "required_claim_count": {"type": "integer", "minimum": 0},
+        "supported_claim_count": {"type": "integer", "minimum": 0},
+        "unknown_claim_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "runtime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["wall_clock_seconds", "compute_cost_cny", "retry_count", "model_versions", "executor_versions"],
+      "properties": {
+        "wall_clock_seconds": {"type": "number", "minimum": 0},
+        "compute_cost_cny": {"type": "number", "minimum": 0},
+        "retry_count": {"type": "integer", "minimum": 0},
+        "model_versions": {"type": "array", "items": {"type": "string"}},
+        "executor_versions": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "$defs": {
+    "intervention": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "minutes", "reason_code", "changed_output"],
+      "properties": {
+        "kind": {"enum": ["planned-gate", "clarification", "correction", "rescue", "manual-bypass"]},
+        "minutes": {"type": "number", "minimum": 0},
+        "reason_code": {"type": "string", "minLength": 1},
+        "changed_output": {"type": "boolean"}
+      }
+    },
+    "defect": {
+      "type": "object", "additionalProperties": false,
+      "required": ["severity", "domain", "code", "detected_stage", "escaped_stage"],
+      "properties": {
+        "severity": {"enum": ["E0", "E1", "E2", "E3"]},
+        "domain": {"enum": ["requirement", "geometry", "drawing", "render", "quantity", "commercial", "workflow", "security"]},
+        "code": {"type": "string", "minLength": 1},
+        "detected_stage": {"type": "string", "minLength": 1},
+        "escaped_stage": {"type": "boolean"}
+      }
+    },
+    "check": {
+      "type": "object", "additionalProperties": false,
+      "required": ["check_type", "status", "compared_item_count", "mismatch_count", "tolerance_profile"],
+      "properties": {
+        "check_type": {"type": "string", "minLength": 1},
+        "status": {"enum": ["passed", "failed", "blocked", "not-applicable"]},
+        "compared_item_count": {"type": "integer", "minimum": 0},
+        "mismatch_count": {"type": "integer", "minimum": 0},
+        "tolerance_profile": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

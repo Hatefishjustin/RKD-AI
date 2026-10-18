@@ -1,0 +1,434 @@
+{
+  "name": "链3-报价检查与签发",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "quote-check",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "c1",
+      "name": "报价检查Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        0
+      ],
+      "webhookId": "quote-check"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const b = $input.first().json.body || $input.first().json;\nif (!b.project_no || !Array.isArray(b.rows)) throw new Error('缺少 project_no 或 rows 数组');\nreturn [{ json: b }];"
+      },
+      "id": "c2",
+      "name": "校验输入",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -140,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LLM_API_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.LLM_MODEL, messages: [ { role: 'system', content: '你是室内设计公司的报价助理（检查模式）。输入报价明细rows与材料库摘录，逐项检查并只输出JSON：{\"problems\":[{\"type\":\"漏项|重复|异常单价|规格缺失|边界缺失\",\"location\":\"分部或行号\",\"issue\":\"\",\"suggestion\":\"\"}],\"summary\":\"\"}。检查依据13分部清单：拆除与保护、隔墙、水电、地面、墙面、天花、门窗、家具定制、灯具照明、五金洁具、空调消防配合、软装配饰、垃圾清运；单价与材料库偏差>±20%为异常；有数量无规格为缺失；报价说明未写含项/不含项与水电按实结算为边界缺失。无问题输出 {\"problems\":[],\"summary\":\"pass\"}。你不计算金额，不承担报价责任。' }, { role: 'user', content: JSON.stringify($json) } ], temperature: 0.2 }) }}",
+        "options": {
+          "timeout": 60000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.LLM_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "c3",
+      "name": "AI检查-报价助理",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const out = [];\nfor (const it of $input.all()) {\n  const ai = it.json.choices?.[0]?.message?.content || it.json.content || '';\n  let p;\n  try { p = JSON.parse(String(ai).replace(/^```json?|```$/g, '').trim()); }\n  catch (e) { throw new Error('AI检查输出解析失败：' + String(ai).slice(0, 300)); }\n  const src = $('校验输入').first().json;\n  const problems = p.problems || [];\n  let md = '### 报价检查报告 ' + src.project_no + '\\n';\n  md += problems.length ? problems.map(x => `- **[${x.type}]** ${x.location}：${x.issue}\\n  建议：${x.suggestion}`).join('\\n') : '全部检查通过。';\n  out.push({ json: { ...src, problems, report_md: md, has_problems: problems.length > 0, ai_summary: p.summary } });\n}\nreturn out;"
+      },
+      "id": "c4",
+      "name": "解析检查结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.has_problems }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c5",
+      "name": "有问题?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        580,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_QUOTE }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '报价检查有问题', text: $('解析检查结果').first().json.report_md } }) }}",
+        "options": {}
+      },
+      "id": "c6",
+      "name": "问题清单推送责任人",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LLM_API_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.LLM_MODEL, messages: [ { role: 'system', content: '你是室内设计公司的报价助理。根据报价明细与项目信息，生成报价说明：包含项、不含项、水电按实结算口径、变更签证规则、风险提示（消防报审、物业限制等），不超过300字。不出现内部成本与利润数字。' }, { role: 'user', content: JSON.stringify({ project: $('解析检查结果').first().json.project_no, rows_count: ($('解析检查结果').first().json.rows || []).length, material_notes: $('解析检查结果').first().json.notes || '' }) } ], temperature: 0.4 }) }}",
+        "options": {
+          "timeout": 60000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.LLM_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "c7",
+      "name": "AI生成报价说明",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const out = [];\nfor (const it of $input.all()) {\n  const ai = it.json.choices?.[0]?.message?.content || it.json.content || '';\n  const d = $('解析检查结果').first().json;\n  out.push({ json: { ...d, quote_note: String(ai).trim(), version_no: d.project_no + '-' + (d.version || 'Q01') } });\n}\nreturn out;"
+      },
+      "id": "c8",
+      "name": "组装版本数据",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO quote_versions (version_no, project_no, version_seq, status, total_amount, gross_margin) VALUES ($1, $2, $3, '待审批', $4, $5) ON CONFLICT (version_no) DO UPDATE SET status = '待审批', total_amount = EXCLUDED.total_amount, gross_margin = EXCLUDED.gross_margin RETURNING version_no",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$json.version_no, $json.project_no, parseInt(($json.version || 'Q01').replace('Q','')) || 1, $json.total_amount || 0, $json.gross_margin || null]) }}"
+        }
+      },
+      "id": "c9",
+      "name": "登记报价版本待审批",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1300,
+        -100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_BOSS }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '报价待签发', text: '### 【报价待签发】' + $('组装版本数据').first().json.version_no + '\\n金额合计：' + ($('组装版本数据').first().json.total_amount || '见Excel') + '\\n毛利率：' + ($('组装版本数据').first().json.gross_margin ? Math.round($('组装版本数据').first().json.gross_margin * 100) + '%' : '见Excel') + ($('组装版本数据').first().json.gross_margin && $('组装版本数据').first().json.gross_margin < 0.25 ? '\\n> ⚠️ 毛利率低于25%红线' : '') + '\\n\\n**报价说明（AI草稿，需人工确认）：**\\n' + $('组装版本数据').first().json.quote_note } }) }}",
+        "options": {}
+      },
+      "id": "c10",
+      "name": "推送老板签发",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 1 * *"
+            }
+          ],
+          "triggerAtDay": [
+            1
+          ]
+        },
+        "timezone": "Asia/Shanghai"
+      },
+      "id": "c11",
+      "name": "每月1日评分",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -380,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT supplier_name, COUNT(*) AS total, COUNT(*) FILTER (WHERE done_date <= required_date) AS ontime, AVG(NULLIF(quality_score,0)) AS quality, AVG(NULLIF(cooperation_score,0)) AS coop FROM supplier_tasks WHERE status = '已完成' AND done_date >= date_trunc('month', CURRENT_DATE - interval '1 month') AND done_date < date_trunc('month', CURRENT_DATE) GROUP BY supplier_name",
+        "options": {}
+      },
+      "id": "c12",
+      "name": "汇总上月任务",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -140,
+        420
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE suppliers SET ontime_rate = data.ontime, quality_score = COALESCE(data.quality, quality_score), cooperation_score = COALESCE(data.coop, cooperation_score), last_review_date = CURRENT_DATE FROM (SELECT * FROM jsonb_to_recordset($1::jsonb) AS x(supplier_name varchar, total int, ontime int, quality numeric, coop numeric)) AS data WHERE suppliers.name = data.supplier_name RETURNING suppliers.name",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([JSON.stringify($input.all().map(i => ({ supplier_name: i.json.supplier_name, total: i.json.total, ontime: i.json.ontime, quality: i.json.quality, coop: i.json.coop })))]) }}"
+        }
+      },
+      "id": "c13",
+      "name": "公式更新供应商评分",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        100,
+        420
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_MAIN",
+          "name": "公司主数据库"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DT_WEBHOOK_PROCURE }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ msgtype: 'markdown', markdown: { title: '供应商月度评分已更新', text: '本月按期交付率与评分已按公式自动更新，评级 A/B/C 见《03_供应商与任务.xlsx》月度评分表。' } }) }}",
+        "options": {}
+      },
+      "id": "c14",
+      "name": "群通知评分更新",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        340,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "报价检查Webhook": {
+      "main": [
+        [
+          {
+            "node": "校验输入",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "校验输入": {
+      "main": [
+        [
+          {
+            "node": "AI检查-报价助理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI检查-报价助理": {
+      "main": [
+        [
+          {
+            "node": "解析检查结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析检查结果": {
+      "main": [
+        [
+          {
+            "node": "有问题?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "有问题?": {
+      "main": [
+        [
+          {
+            "node": "AI生成报价说明",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "问题清单推送责任人",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI生成报价说明": {
+      "main": [
+        [
+          {
+            "node": "组装版本数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "组装版本数据": {
+      "main": [
+        [
+          {
+            "node": "登记报价版本待审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "登记报价版本待审批": {
+      "main": [
+        [
+          {
+            "node": "推送老板签发",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "每月1日评分": {
+      "main": [
+        [
+          {
+            "node": "汇总上月任务",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "汇总上月任务": {
+      "main": [
+        [
+          {
+            "node": "公式更新供应商评分",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "公式更新供应商评分": {
+      "main": [
+        [
+          {
+            "node": "群通知评分更新",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "pinData": {}
+}

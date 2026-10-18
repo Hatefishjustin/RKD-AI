@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:executor-job:v1",
+  "title": "ExecutorJobV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "schema_hash", "job_spec_hash", "parameters_hash",
+    "job_id", "package_id", "executor_capability", "executor_contract_version",
+    "organization_id", "project_id", "idempotency_key", "input_artifacts",
+    "parameters", "required_outputs", "validation_profile", "environment_policy",
+    "resource_limits", "security_context", "created_at"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "schema_hash": {"$ref": "#/$defs/hash"},
+    "job_spec_hash": {"$ref": "#/$defs/hash"},
+    "parameters_hash": {"$ref": "#/$defs/hash"},
+    "job_id": {"type": "string", "format": "uuid"},
+    "package_id": {"type": "string", "format": "uuid"},
+    "executor_capability": {"type": "string", "minLength": 1},
+    "executor_contract_version": {"type": "string", "minLength": 1},
+    "organization_id": {"type": "string", "format": "uuid"},
+    "project_id": {"type": "string", "format": "uuid"},
+    "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 255},
+    "input_artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifactRef"}, "minItems": 1},
+    "parameters": {"type": "object"},
+    "required_outputs": {"type": "array", "items": {"$ref": "#/$defs/outputSpec"}, "minItems": 1},
+    "validation_profile": {"$ref": "#/$defs/validationProfile"},
+    "environment_policy": {"$ref": "#/$defs/environmentPolicy"},
+    "resource_limits": {"$ref": "#/$defs/resourceLimits"},
+    "security_context": {"$ref": "#/$defs/securityContext"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "deadline_at": {"type": ["string", "null"], "format": "date-time"},
+    "cancellation_token_ref": {"type": ["string", "null"]},
+    "checkpoint_ref": {"type": ["string", "null"]}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-z0-9][a-z0-9:+._-]{7,255}$"},
+    "artifactRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_id", "revision_id", "content_hash", "media_type", "download_token_ref", "security_scan_receipt_id"],
+      "properties": {
+        "artifact_id": {"type": "string", "format": "uuid"},
+        "revision_id": {"type": "string", "format": "uuid"},
+        "content_hash": {"$ref": "#/$defs/hash"},
+        "media_type": {"type": "string", "minLength": 1},
+        "download_token_ref": {"type": "string", "minLength": 1},
+        "security_scan_receipt_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "outputSpec": {
+      "type": "object", "additionalProperties": false,
+      "required": ["output_type", "allowed_media_types", "min_count", "max_count", "required_manifest_fields"],
+      "properties": {
+        "output_type": {"type": "string", "minLength": 1},
+        "allowed_media_types": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true},
+        "min_count": {"type": "integer", "minimum": 1},
+        "max_count": {"type": "integer", "minimum": 1},
+        "required_manifest_fields": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      }
+    },
+    "validationProfile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["profile_id", "version", "profile_hash", "blocking_check_ids"],
+      "properties": {
+        "profile_id": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "profile_hash": {"$ref": "#/$defs/hash"},
+        "blocking_check_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true}
+      }
+    },
+    "environmentPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allowed_executor_bundle_digests", "allowed_plugin_digests", "required_template_revisions", "required_asset_pack_revisions"],
+      "properties": {
+        "allowed_executor_bundle_digests": {"type": "array", "items": {"$ref": "#/$defs/hash"}, "minItems": 1, "uniqueItems": true},
+        "allowed_plugin_digests": {"type": "array", "items": {"$ref": "#/$defs/hash"}, "uniqueItems": true},
+        "required_template_revisions": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "required_asset_pack_revisions": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      }
+    },
+    "resourceLimits": {
+      "type": "object", "additionalProperties": false, "required": ["timeout_seconds"],
+      "properties": {
+        "timeout_seconds": {"type": "integer", "minimum": 1},
+        "cpu_cores": {"type": ["number", "null"], "exclusiveMinimum": 0},
+        "memory_mb": {"type": ["integer", "null"], "minimum": 1},
+        "gpu_class": {"type": ["string", "null"]},
+        "max_output_bytes": {"type": ["integer", "null"], "minimum": 1}
+      }
+    },
+    "securityContext": {
+      "type": "object", "additionalProperties": false,
+      "required": ["network_policy", "credential_refs", "data_classification", "service_identity", "token_expires_at"],
+      "properties": {
+        "network_policy": {"type": "string", "enum": ["none", "allowlisted-egress", "provider-only"]},
+        "credential_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "data_classification": {"type": "string", "enum": ["public", "internal", "confidential", "restricted"]},
+        "service_identity": {"type": "string", "minLength": 1},
+        "token_expires_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}
