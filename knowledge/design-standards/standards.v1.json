@@ -1,0 +1,97 @@
+{
+  "contract_version": "rkd-design-standards.v1",
+  "updated_at": "2026-11-10",
+  "note": "老板逐条反馈沉淀成的可校验规则。每条必须有 id、出处、可校验方式；评审必须引用 id，生成必须在 standards_cited 里列出用到的条目。",
+  "rules": [
+    {
+      "id": "STD-001",
+      "title": "禁止堆叠方块",
+      "rule": "分区与体块不能用若干直角矩形色块排列表达；必须有圆角、弧形、斜置、收边等设计动作，且非直角元素不少于 2 处。",
+      "source": "老板 2026-11-10「我之前批评过堆叠方块，请注意」",
+      "applies_to": ["D2", "D3", "R"],
+      "severity": "blocker",
+      "checkable": "non_orthogonal_count >= 2"
+    },
+    {
+      "id": "STD-002",
+      "title": "图元必须可命名",
+      "rule": "图上每个图元都要有名称或图例编号；说明不了的黑线、空白色块一律删除。",
+      "source": "老板 2026-11-10「说明不了的黑线删除」「每一个图元都要有名称」",
+      "applies_to": ["D2", "D4", "R"],
+      "severity": "major",
+      "checkable": "unnamed_element_count == 0"
+    },
+    {
+      "id": "STD-003",
+      "title": "面积必须对得上",
+      "rule": "各分区面积之和必须等于场地可布置面积；对不上就补「通道及其他」，不许把差额藏起来。",
+      "source": "老板 2026-11-10「面积表补一行通道及其他，使各行加起来等于 469㎡」",
+      "applies_to": ["D2", "R"],
+      "severity": "blocker",
+      "checkable": "abs(sum(area_sqm) - usable_area) <= 1%"
+    },
+    {
+      "id": "STD-004",
+      "title": "成果要覆盖每个功能区",
+      "rule": "效果图不能只拍同一个主体；每个功能区至少有一张能看懂的画面对应，相机位置必须能在平面图上找到。",
+      "source": "老板 2026-11-10「所有图都一样：同一个视角看同一个中岛」",
+      "applies_to": ["D3", "D4", "R"],
+      "severity": "major",
+      "checkable": "covered_zone_count == zone_count"
+    },
+    {
+      "id": "STD-005",
+      "title": "天花不是空白",
+      "rule": "顶面必须有设计：吊顶造型、灯槽、灯具点位要成体系，不能交一块空白天花板。天花与灯光由概念角色负责，出图角色只负责落数据。",
+      "source": "老板 2026-11-10「天花和灯光要有明确负责人」「顶面图必须体现这部分设计，不能是空白天花」",
+      "applies_to": ["D3", "D4", "R"],
+      "severity": "blocker",
+      "checkable": "ceiling_coverage_ratio >= 0.6"
+    },
+    {
+      "id": "STD-006",
+      "title": "概念先发散再收敛",
+      "rule": "概念阶段至少 3 个方向明显不同的候选，每个写清叙事与取舍；由总监评审后选择或合并，不许第一个想法直接进深化。",
+      "source": "老板 2026-11-10「概念阶段先发散，出 3 个方向明显不同的概念」",
+      "applies_to": ["D3", "R"],
+      "severity": "major",
+      "checkable": "concept_option_count >= 3 and pairwise_difference >= 2"
+    },
+    {
+      "id": "STD-007",
+      "title": "动手前先讨论",
+      "rule": "空间规划与概念设计在动手前必须有一次讨论，讨论记录进入项目档案；没有讨论记录的方案不予评审。",
+      "source": "老板 2026-11-10「D2 和 D3 动手前先讨论一次，讨论记录要留下」",
+      "applies_to": ["D2", "D3", "P"],
+      "severity": "major",
+      "checkable": "discussion_message_count >= 2"
+    },
+    {
+      "id": "STD-008",
+      "title": "评审要具体到对象",
+      "rule": "评审意见必须带问题对象、严重度、依据和建议改法；空泛评价（「感觉不好」）不算意见，设计师必须逐条回应。",
+      "source": "老板 2026-11-10「每条有没有依据」「评审意见有没有真的改到方案里」",
+      "applies_to": ["R", "D2", "D3", "D4"],
+      "severity": "blocker",
+      "checkable": "every_issue_has_object_and_evidence"
+    },
+    {
+      "id": "STD-009",
+      "title": "展品要能认出来",
+      "rule": "展品必须对应真实产品或明确标注为示意样品；资料不足时标注来源缺口，不许用抽象几何体冒充产品。",
+      "source": "老板 2026-11-10「现在像桶…确认不了就标示意展品」",
+      "applies_to": ["D3", "D4", "R"],
+      "severity": "major",
+      "checkable": "product_has_source_or_label"
+    },
+    {
+      "id": "STD-010",
+      "title": "闸口只能由老板放行",
+      "rule": "任何 Agent（含总监）不得宣布方案通过；总监只能给出建议，最终批准必须由老板在网页上点击。",
+      "source": "老板 2026-11-10「闸口:总监只能建议，最终由我点头」",
+      "applies_to": ["P", "R", "D4"],
+      "severity": "blocker",
+      "checkable": "gate_decision_by == boss"
+    }
+  ]
+}

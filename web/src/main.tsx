@@ -9,6 +9,7 @@ import "./styles.css";
 import { DesignWorkspace } from "./DesignWorkspace";
 import { ProductionPanel } from "./ProductionPanel";
 import { ChangeProductionPanel } from "./ChangeProductionPanel";
+import { StudioView } from "./StudioView";
 import { AccountControls, AccountGate, AccountPanel } from "./AccountAccess";
 import { apiHeaders, checkSessionResponse, Session } from "./session";
 
@@ -234,7 +235,9 @@ function App({ session }: { session: Session }) {
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
   const [message, setMessage] = useState("正在读取本地项目...");
-  const [view, setView] = useState<"overview" | "requirements" | "files" | "issues" | "estimate" | "spatial" | "procurement" | "jobs" | "accounts">("overview");
+  const initialView = (new URLSearchParams(window.location.search).get("view") || "overview") as
+    "studio" | "overview" | "requirements" | "files" | "issues" | "estimate" | "spatial" | "procurement" | "jobs" | "accounts";
+  const [view, setView] = useState<"studio" | "overview" | "requirements" | "files" | "issues" | "estimate" | "spatial" | "procurement" | "jobs" | "accounts">(initialView);
   const [files, setFiles] = useState<FileAsset[]>([]);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -720,17 +723,19 @@ function App({ session }: { session: Session }) {
         <section className="content-area">
           <div className="content-heading">
             <div>
-              <div className="eyebrow">项目概览</div>
+              <div className="eyebrow">{view === "studio" ? "设计公司 · 项目工作台" : "项目概览"}</div>
               <h1>{selected?.name ?? "欢迎使用 RKD AI"}</h1>
               <p className="heading-note" role="status">{message}</p>
             </div>
             {selected && <div className="project-id">ID <code>{selected.project_id}</code></div>}
           </div>
 
-          {selected && <nav className="view-tabs" aria-label="项目页面"><button className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}>概览</button><button className={view === "requirements" ? "active" : ""} onClick={() => setView("requirements")}>需求草稿 <span>{requirement ? `v${requirement.revision_no}` : "-"}</span></button><button className={view === "files" ? "active" : ""} onClick={() => setView("files")}>资料与图纸 <span>{files.length}</span></button><button className={view === "issues" ? "active" : ""} onClick={() => setView("issues")}>检查与问题 <span>{issues.filter((issue) => issue.disposition_status !== "resolved").length}</span></button><button className={view === "estimate" ? "active" : ""} onClick={() => setView("estimate")}>预算与试算 <span>{estimate ? 1 : 0}</span></button><button className={view === "spatial" ? "active" : ""} onClick={() => setView("spatial")}>空间与工程量 <span>{spatial?.revision_no ?? 0}</span></button><button className={view === "procurement" ? "active" : ""} onClick={() => setView("procurement")}>采购施工 <span>{procurementOrders.length}</span></button><button className={view === "jobs" ? "active" : ""} onClick={() => setView("jobs")}>成果与任务 <span>{jobs.length}</span></button></nav>}
+          {selected && <nav className="view-tabs" aria-label="项目页面"><button className={view === "studio" ? "active" : ""} onClick={() => setView("studio")}>设计公司</button><button className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}>概览</button><button className={view === "requirements" ? "active" : ""} onClick={() => setView("requirements")}>需求草稿 <span>{requirement ? `v${requirement.revision_no}` : "-"}</span></button><button className={view === "files" ? "active" : ""} onClick={() => setView("files")}>资料与图纸 <span>{files.length}</span></button><button className={view === "issues" ? "active" : ""} onClick={() => setView("issues")}>检查与问题 <span>{issues.filter((issue) => issue.disposition_status !== "resolved").length}</span></button><button className={view === "estimate" ? "active" : ""} onClick={() => setView("estimate")}>预算与试算 <span>{estimate ? 1 : 0}</span></button><button className={view === "spatial" ? "active" : ""} onClick={() => setView("spatial")}>空间与工程量 <span>{spatial?.revision_no ?? 0}</span></button><button className={view === "procurement" ? "active" : ""} onClick={() => setView("procurement")}>采购施工 <span>{procurementOrders.length}</span></button><button className={view === "jobs" ? "active" : ""} onClick={() => setView("jobs")}>成果与任务 <span>{jobs.length}</span></button></nav>}
 
           {session.mode === "accounts" && selected && <p className="permission-notice">当前权限：{selected.role === "viewer" ? "只读 · 可以查看和下载，不能保存修改" : selected.role === "editor" ? "项目编辑 · 可保存草稿，本地验收需项目负责人" : "项目负责人"}。正式发布、外部下单和付款未开放。</p>}
-          {view === "accounts" && session.user?.is_admin ? <AccountPanel key={selected?.project_id} projectId={selected?.project_id} /> : selected && view === "overview" ? (
+          {view === "accounts" && session.user?.is_admin ? <AccountPanel key={selected?.project_id} projectId={selected?.project_id} /> : selected && view === "studio" ? (
+            <StudioView projectId={selected.project_id} />
+          ) : selected && view === "overview" ? (
             <>
               <div className="summary-grid">
                 <article className="summary-card emphasis"><span>当前状态</span><strong>已创建</strong><small>{files.length} 份文件</small></article>
