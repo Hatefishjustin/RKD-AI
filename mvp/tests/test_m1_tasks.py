@@ -1,6 +1,9 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+import shutil
+from rkd_mvp.task_repository import SQLiteTaskTransaction
 
 from rkd_mvp.api_service import ApiService
 from rkd_mvp.engine import MVPApp
@@ -81,6 +84,35 @@ class M1TaskServiceTests(unittest.TestCase):
         with self.assertRaises(TaskServiceError) as error:
             self.tasks.cancel_job("org-local", NINGBO_PROJECT_ID, job["job_id"])
         self.assertEqual(error.exception.code, "JOB_STATE")
+
+    def test_partial_import_failure_rolls_back_issues_but_keeps_retry_record(self):
+        self.service.create_project("org-local", "Failure", "failed-import")
+        original = SQLiteTaskTransaction.insert_issue
+        calls = []
+        def insert(tx, *args):
+            calls.append(1)
+            if len(calls) == 2:
+                tx.db.execute("INSERT INTO missing_table VALUES (1)")
+            return original(tx, *args)
+        with patch.object(SQLiteTaskTransaction, "insert_issue", insert):
+            result = self.tasks.ensure_ningbo_seed("org-local", "failed-import", FIXTURE_ROOT)
+        self.assertEqual((result["status"], result["attempt_count"]), ("retryable", 1))
+        self.assertEqual(self.tasks.list_issues("org-local", "failed-import")["items"], [])
+        retried = self.tasks.retry_job("org-local", "failed-import", result["job_id"], FIXTURE_ROOT)
+        self.assertEqual((retried["status"], retried["attempt_count"], retried["output"]["issue_count"]), ("succeeded", 2, 5))
+
+    def test_changed_report_cannot_reuse_old_task_input_hash(self):
+        job = self.tasks.list_jobs("org-local", NINGBO_PROJECT_ID)["items"][0]
+        copy = Path(self.directory.name) / "changed-source"
+        shutil.copytree(FIXTURE_ROOT / "derived", copy / "derived")
+        report = copy / "derived/cad-topology-review.json"
+        report.write_bytes(report.read_bytes() + b"\n")
+        with self.tasks._db() as db:
+            db.execute("UPDATE jobs SET status='retryable' WHERE job_id=?", (job["job_id"],))
+        result = self.tasks.retry_job("org-local", NINGBO_PROJECT_ID, job["job_id"], copy)
+        self.assertEqual((result["status"], result["error_code"]), ("retryable", "TASK_SOURCE_CHANGED"))
+        self.assertEqual(result["input_hash"], job["input_hash"])
+        self.assertEqual(len(self.tasks.list_issues("org-local", NINGBO_PROJECT_ID)["items"]), 5)
 
 
 if __name__ == "__main__":

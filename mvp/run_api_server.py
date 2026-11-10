@@ -12,7 +12,7 @@ from rkd_mvp.file_service import FileService
 from rkd_mvp.sqlite_store import SQLiteStore
 from rkd_mvp.task_service import TaskService
 from rkd_mvp.requirement_service import RequirementService
-from rkd_mvp.account_identity import AccountIdentityProvider
+from rkd_mvp.account_identity import AccountIdentityProvider, AccountGuardedLocalIdentityProvider
 from rkd_mvp.identity import LocalIdentityProvider
 
 
@@ -41,7 +41,7 @@ if mode == "local" and accounts.has_users():
     raise SystemExit("账号已启用，拒绝退回开发身份模式。请使用 accounts 模式。")
 if mode == "accounts" and not accounts.has_users():
     raise SystemExit("请先运行 scripts/rkd.ps1 start-secure 初始化管理员。")
-server = create_server(service, identity_provider=accounts if mode == "accounts" else LocalIdentityProvider(), port=port, static_dir=static_dir)
+server = create_server(service, identity_provider=accounts if mode == "accounts" else AccountGuardedLocalIdentityProvider(accounts), port=port, static_dir=static_dir)
 print(f"RKD local API listening on http://127.0.0.1:{port}")
 print(f"Identity mode: {mode}; loopback only; external publication disabled")
 try:

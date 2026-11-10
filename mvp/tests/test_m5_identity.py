@@ -87,6 +87,21 @@ class M5IdentityTests(unittest.TestCase):
         self.assertIn("SameSite=Strict", headers["Set-Cookie"])
         return {**payload, "cookie": headers["Set-Cookie"].split(";", 1)[0]}
 
+    def test_password_length_boundaries_and_eight_character_login(self):
+        admin = self.login()
+        for length in (7, 129):
+            status, _, _ = self.request('POST', '/api/v1/auth/users',
+                                       {'username': 'length-test', 'display_name': 'Test', 'password': 'a' * length}, admin)
+            self.assertEqual(status, 400)
+        for length in (8, 128):
+            username = 'length-' + str(length)
+            password = 'a' * length
+            status, _, _ = self.request('POST', '/api/v1/auth/users',
+                                       {'username': username, 'display_name': 'Test', 'password': password}, admin)
+            self.assertEqual(status, 201)
+            self.assertEqual(self.request('POST', '/api/v1/auth/login',
+                                         {'username': username, 'password': password})[0], 200)
+
     def test_ma01_real_login_rejects_forged_development_identity(self):
         for path in ("/api/v1/projects", "/api/v1/projects/alpha/files", "/api/v1/projects/alpha/changes"):
             self.assertEqual(self.request("GET", path, extra={"X-Organization-Id": "org-local", "X-Actor-Id": self.admin["user_id"]})[0], 401)
@@ -102,12 +117,15 @@ class M5IdentityTests(unittest.TestCase):
 
     def test_ma02_roles_isolate_reads_writes_and_approval_paths(self):
         viewer, editor, manager = (self.login(role) for role in ("viewer", "editor", "manager"))
-        for suffix in ("", "/files", "/issues", "/requirements", "/design", "/spatial", "/estimates", "/jobs", "/procurement/orders", "/changes"):
+        for suffix in ("", "/files", "/issues", "/requirements", "/design", "/spatial", "/production", "/estimates", "/jobs", "/procurement/orders", "/changes"):
             self.assertEqual(self.request("GET", "/api/v1/projects/beta" + suffix, session=viewer)[0], 404)
         for suffix in ("/uploads", "/requirements/drafts", "/design/revisions", "/spatial/revisions", "/procurement/orders", "/changes", "/commands"):
             self.assertEqual(self.request("POST", "/api/v1/projects/alpha" + suffix, {}, viewer)[0], 403)
         self.assertEqual(self.request("POST", "/api/v1/projects/alpha/requirements/drafts", {}, editor)[0], 201)
+        self.assertEqual(self.request("PATCH", "/api/v1/projects/alpha/production/settings", {}, viewer)[0], 403)
         self.assertEqual(self.request("POST", "/api/v1/projects/alpha/changes/fake/acceptance", {}, editor)[0], 403)
+        for session in (viewer, editor):
+            self.assertEqual(self.request("POST", "/api/v1/projects/alpha/changes/fake/reproduce", {}, session)[0], 403)
         self.assertEqual(self.request("PATCH", "/api/v1/projects/alpha", {"name": "负责人编辑", "expected_version": 0}, manager)[0], 200)
         self.assertEqual(self.service.app.store.audit[-1].context.actor_id, self.users["manager"]["user_id"])
         self.assertEqual(self.request("POST", "/api/v1/projects", {"name": "无权新建"}, editor)[0], 403)
@@ -172,6 +190,17 @@ class M5IdentityTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT COUNT(*) FROM auth_users").fetchone()[0], 4)
             self.assertEqual(db.execute("SELECT COUNT(*) FROM auth_memberships").fetchone()[0], 3)
             self.assertGreater(db.execute("SELECT COUNT(*) FROM auth_audit").fetchone()[0], 6)
+
+    def test_ma07_running_local_service_loses_access_when_accounts_enabled(self):
+        from rkd_mvp.account_identity import AccountGuardedLocalIdentityProvider
+        self.stop_server()
+        self.server = create_server(self.service, AccountGuardedLocalIdentityProvider(self.auth), port=0)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        # Existing source download URLs must also fail closed, even without
+        # headers, so guarding authenticate() alone would be insufficient.
+        for target in ("/api/v1/projects", f"/api/v1/projects/alpha/files/{self.file['file_id']}/content?signature=fake"):
+            self.assertEqual(self.request("GET", target)[0], 401)
 
     def test_ma08_launcher_refuses_downgrade_after_accounts_enabled(self):
         root = Path(__file__).parents[2]

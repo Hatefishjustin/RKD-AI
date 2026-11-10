@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Download, FilePlus2, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { apiHeaders, checkSessionResponse } from "./session";
+import { AiRequirementPanel } from "./AiRequirementPanel";
+import { AiDesignOptionsPanel } from "./AiDesignOptionsPanel";
+import { AiDevelopmentPanel } from "./AiDevelopmentPanel";
+import { AiSourceDeliveryPanel } from "./AiSourceDeliveryPanel";
+import { ProductionPanel } from "./ProductionPanel";
 
 type ZoneRequest = { zone_id: string; name: string; min_area_m2: string };
 type Program = { scenario: string; boundary_source: string; width: string; length: string; aisle_width: string; zones: ZoneRequest[] };
@@ -28,7 +33,7 @@ async function request<T>(path: string, method = "GET", body?: unknown): Promise
 
 export function DesignWorkspace({ projectId, onRequirementSaved }: { projectId: string; onRequirementSaved: () => void }) {
   const base = `/api/v1/projects/${projectId}`;
-  const [mode, setMode] = useState<"requirements" | "layout" | "outputs">("requirements");
+  const [mode, setMode] = useState<"requirements" | "options" | "development" | "delivery" | "layout" | "outputs">("requirements");
   const [requirement, setRequirement] = useState<Requirement | null>(null);
   const [program, setProgram] = useState<Program>(structuredClone(initialProgram));
   const [notes, setNotes] = useState("");
@@ -124,10 +129,11 @@ export function DesignWorkspace({ projectId, onRequirementSaved }: { projectId: 
   const length = Math.max(1, Number(model?.length ?? 8));
   return <section className="design-workspace" aria-busy={busy || loading}>
     <header className="section-heading"><h2>展厅设计草稿</h2><span className="design-status">规则生成 · 待人工确认</span></header>
-    <nav className="design-modes" aria-label="设计流程">{(["requirements", "layout", "outputs"] as const).map((tab) => <button key={tab} className={mode === tab ? "active" : ""} onClick={() => setMode(tab)}>{tab === "requirements" ? "需求" : tab === "layout" ? "分区布局" : "成果与历史"}</button>)}</nav>
+    <nav className="design-modes" aria-label="设计流程">{(["requirements", "options", "development", "delivery", "layout", "outputs"] as const).map((tab) => <button key={tab} className={mode === tab ? "active" : ""} onClick={() => setMode(tab)}>{tab === "requirements" ? "需求" : tab === "options" ? "AI 候选" : tab === "development" ? "深化量价" : tab === "delivery" ? "资料与技术交付" : tab === "layout" ? "分区布局" : "成果与历史"}</button>)}</nav>
     {error && <p className="design-feedback error" role="alert">{error}</p>}
     {message && <p className="design-feedback" role="status">{message}</p>}
     {loading ? <p className="files-empty">正在读取设计数据...</p> : mode === "requirements" ? <>
+      <AiRequirementPanel projectId={projectId} />
       <div className="design-baseline"><span>需求 {requirement ? `v${requirement.revision_no}` : "未保存"}</span><span>边界：{program.boundary_source === "test_parameters_not_site_verified" ? "测试参数" : "人工草稿"} · 未经现场核验</span>{dirty && <strong>有未保存修改</strong>}</div>
       <form onSubmit={(e) => { e.preventDefault(); void saveRequirement(); }} className="design-program">
         <div className="design-fields">
@@ -140,7 +146,7 @@ export function DesignWorkspace({ projectId, onRequirementSaved }: { projectId: 
         <div className="design-command-row"><label>修订理由<input required maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} /></label><button type="submit" className="dark-action" disabled={busy}><Save size={16} />保存需求草稿</button><button type="button" className="outline-action" disabled={busy || dirty || !requirement?.content.design_program} onClick={() => void saveDesign(true)}><FilePlus2 size={16} />生成分区布局</button></div>
       </form>
       {requirement && <details className="design-evidence"><summary>已保存的业务口径与来源（{requirement.source_refs.length} 条）</summary><dl className="design-facts"><div><dt>合同含税目标</dt><dd>{requirement.content.budget.contract_target_gross_cny === "unknown" ? "未知" : `¥${requirement.content.budget.contract_target_gross_cny}`}</dd></div><div><dt>试用税率</dt><dd>{requirement.content.budget.tax_rate}</dd></div><div><dt>排除范围</dt><dd>{Array.isArray(requirement.content.scope.excluded_scopes) ? requirement.content.scope.excluded_scopes.join("、") : String(requirement.content.scope.excluded_scopes)}</dd></div></dl><ul>{requirement.source_refs.map((ref, i) => <li key={i}>{ref.file_id ? <button type="button" onClick={() => void openSource(ref.file_id!)}>{ref.filename}</button> : <span>{ref.key} · {ref.source}</span>}{ref.source_conflict && <small>来源口径冲突：{ref.source_conflict}</small>}</li>)}</ul></details>}
-    </> : mode === "layout" ? !design || !model ? <div className="files-empty">尚无分区布局 <button className="outline-action" onClick={() => setMode("requirements")}>返回需求</button></div> : <>
+    </> : mode === "options" ? <AiDesignOptionsPanel projectId={projectId} /> : mode === "development" ? <AiDevelopmentPanel projectId={projectId} /> : mode === "delivery" ? <AiSourceDeliveryPanel projectId={projectId} /> : mode === "layout" ? !design || !model ? <div className="files-empty">尚无分区布局 <button className="outline-action" onClick={() => setMode("requirements")}>返回需求</button></div> : <>
       <div className="design-baseline"><span>设计 v{design.revision_no} / 需求 v{design.requirement_revision_no}</span><strong>{statusNames[design.status]}</strong>{modelDirty && <span>预览有未保存修改</span>}</div>
       <div className="design-editor"><div className="design-drawing"><svg viewBox={`-0.6 -0.6 ${width + 1.2} ${length + 1.2}`} role="img" aria-label="展厅功能分区布局" preserveAspectRatio="xMidYMid meet"><rect width={width} height={length} fill="#fff" stroke="#485565" strokeWidth=".025" /><rect width={width} height={Number(model.aisle_width)} fill="#f1f3f5" /><text x={width / 2} y={Number(model.aisle_width) / 2} textAnchor="middle" dominantBaseline="middle" fontSize=".24">预留通道 {model.aisle_width} m</text>{model.zones.map((z, i) => <g key={z.zone_id} tabIndex={0} role="button" aria-label={`选择 ${z.name}`} onClick={() => setSelectedZone(z.zone_id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedZone(z.zone_id); } }}><rect x={Number(z.x)} y={Number(z.y)} width={Math.max(0, Number(z.width))} height={Math.max(0, Number(z.length))} fill={["#def0e8", "#e8edf8", "#f7ead6", "#f3e3e9"][i % 4]} stroke={selectedZone === z.zone_id ? "#367858" : "#758190"} strokeWidth={selectedZone === z.zone_id ? ".07" : ".018"} /><text x={Number(z.x) + Number(z.width) / 2} y={Number(z.y) + Number(z.length) / 2} textAnchor="middle" fontSize={Math.min(.3, Math.max(.07, Number(z.width) / (z.name.length + 1)))}>{z.name}</text><text x={Number(z.x) + Number(z.width) / 2} y={Number(z.y) + Number(z.length) / 2 + .4} textAnchor="middle" fontSize={Math.min(.23, Math.max(.06, Number(z.width) / 9))}>{(Number(z.width) * Number(z.length)).toFixed(2)} m²</text></g>)}</svg><div className="drawing-caption">{model.width} × {model.length} m · 功能分区草稿 · 未批准</div></div>
       <aside className="design-inspector"><label>选择分区<select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)}>{model.zones.map((z) => <option key={z.zone_id} value={z.zone_id}>{z.name}</option>)}</select></label>{selected && <><small>对象 ID：{selected.zone_id}</small>{(["x", "y", "width", "length"] as const).map((k) => <label key={k}>{({ x: "X（m）", y: "Y（m）", width: "分区宽度（m）", length: "分区长度（m）" })[k]}<input type="number" step="0.001" min="0" disabled={historical || design.status === "source_outdated"} value={selected[k]} onChange={(e) => updateZone(selected.zone_id, k, e.target.value)} /></label>)}<p>最小面积 {selected.min_area_m2} m²</p></>}<label>修订理由<input value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} /></label><button type="button" className="dark-action" disabled={busy || historical || !modelDirty || design.status === "source_outdated" || dirty} onClick={() => void saveDesign(false)}><Save size={16} />检查并保存布局</button><button className="outline-action" disabled={busy || dirty || !requirement?.content.design_program} onClick={() => void saveDesign(true)}><RefreshCw size={16} />按当前需求重新生成</button></aside></div>
@@ -151,5 +157,6 @@ export function DesignWorkspace({ projectId, onRequirementSaved }: { projectId: 
       <div className="design-output-heading"><h3>成果版本</h3><label>查看修订<select aria-label="查看设计修订" value={design?.revision_no ?? ""} onChange={(e) => void loadRevision(e.target.value)} disabled={busy || revisions.length === 0}>{!design && <option value="">无成果</option>}{revisions.map((r) => <option key={r.revision_no} value={r.revision_no}>设计 v{r.revision_no} / 需求 v{r.requirement_revision_no}</option>)}</select></label></div>
       {design ? <><div className="design-baseline"><strong>{statusNames[design.status]}</strong><span>{design.change_reason} · {design.actor_id}</span></div><div className="design-artifact-list">{design.artifacts.map((a) => <div className="design-artifact" key={a.artifact_id}><div><strong>{artifactNames[a.artifact_kind]}</strong><small>{a.filename} · {a.size_bytes.toLocaleString()} 字节</small><code>SHA-256 {a.sha256.slice(0, 20)}...</code></div><button type="button" className="icon-action" disabled={busy} title={`下载 ${a.filename}`} aria-label={`下载 ${a.filename}`} onClick={() => void download(a)}><Download size={18} /></button></div>)}</div></> : <p className="files-empty">尚无设计成果</p>}
     </>}
+    {mode !== "requirements" && mode !== "options" && mode !== "development" && mode !== "delivery" && !historical && <ProductionPanel projectId={projectId} designRevision={design?.revision_no ?? 0} refreshKey={design?.design_revision_id ?? ""} />}
   </section>;
 }

@@ -3,12 +3,13 @@ from __future__ import annotations
 import json
 import hashlib
 import sqlite3
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Iterator
 
 from .models import new_id, now_iso
+from .procurement_repository import SQLiteProcurementRepository
 
 
 class ProcurementServiceError(Exception):
@@ -22,8 +23,13 @@ class ProcurementServiceError(Exception):
 class ProcurementService:
     """Local, side-effect-free procurement facts for the first M4 slice."""
 
-    def __init__(self, db_path: str | Path | None) -> None:
+    def __init__(self, db_path: str | Path | None, *, repository=None) -> None:
         self.db_path = Path(db_path) if db_path else None
+        self.repository = repository or SQLiteProcurementRepository(self._db)
+
+    def _transaction(self, org, project, *, write=False, connection=None):
+        return (nullcontext(self.repository.bind(connection, org, project)) if connection is not None
+                else self.repository.transaction(org, project, write=write))
 
     @contextmanager
     def _db(self, *, write: bool = False) -> Iterator[sqlite3.Connection]:
@@ -89,14 +95,13 @@ class ProcurementService:
     def _write_event(self, connection: sqlite3.Connection, organization_id: str, project_id: str,
                      event_type: str, aggregate_id: str, actor_id: str,
                      payload: dict[str, Any], idempotency_key: str | None = None) -> None:
-        connection.execute(
-            "INSERT INTO procurement_events(event_id, organization_id, project_id, event_type, aggregate_id, idempotency_key, payload_json, actor_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (new_id("proc-event"), organization_id, project_id, event_type, aggregate_id, idempotency_key, self._json(payload), actor_id, now_iso()),
-        )
+        connection.write_event({"event_id": new_id("proc-event"), "event_type": event_type, "aggregate_id": aggregate_id,
+                                "idempotency_key": idempotency_key, "payload_json": self._json(payload), "actor_id": actor_id,
+                                "created_at": now_iso()})
 
     def _public_order(self, connection: sqlite3.Connection, row: sqlite3.Row) -> dict[str, Any]:
         lines = []
-        for line in connection.execute("SELECT * FROM procurement_order_lines WHERE order_id = ? ORDER BY rowid", (row["order_id"],)):
+        for line in connection.lines(row["order_id"]):
             lines.append({
                 "line_id": line["line_id"], "item_code": line["item_code"], "item_name": line["item_name"],
                 "specification": line["specification"], "ordered_quantity": line["ordered_quantity_text"],
@@ -105,25 +110,25 @@ class ProcurementService:
                 "unit": line["unit"],
             })
         receipts = []
-        for receipt in connection.execute("SELECT * FROM material_receipts WHERE order_id = ? ORDER BY created_at", (row["order_id"],)):
-            receipt_lines = [dict(item) for item in connection.execute("SELECT receipt_line_id, line_id, quantity_text, unit FROM material_receipt_lines WHERE receipt_id = ?", (receipt["receipt_id"],))]
+        for receipt in connection.receipts(row["order_id"]):
+            receipt_lines = [dict(item) for item in connection.receipt_lines(receipt["receipt_id"])]
             receipts.append({**dict(receipt), "lines": receipt_lines})
-        allocations = [dict(item) for item in connection.execute("SELECT * FROM material_allocations WHERE order_id = ? ORDER BY created_at", (row["order_id"],))]
+        allocations = [dict(item) for item in connection.allocations(row["order_id"])]
         return {**dict(row), "external_effects_enabled": bool(row["external_effects_enabled"]), "lines": lines, "receipts": receipts, "allocations": allocations}
 
     def list_orders(self, organization_id: str, project_id: str) -> dict[str, Any]:
-        with self._db() as connection:
-            rows = connection.execute("SELECT * FROM procurement_orders WHERE organization_id = ? AND project_id = ? ORDER BY revision_no DESC", (organization_id, project_id)).fetchall()
+        with self._transaction(organization_id, project_id) as connection:
+            rows = connection.orders()
             return {"items": [self._public_order(connection, row) for row in rows]}
 
     def get_order(self, organization_id: str, project_id: str, order_id: str) -> dict[str, Any]:
-        with self._db() as connection:
-            row = connection.execute("SELECT * FROM procurement_orders WHERE order_id = ? AND organization_id = ? AND project_id = ?", (order_id, organization_id, project_id)).fetchone()
+        with self._transaction(organization_id, project_id) as connection:
+            row = connection.order(order_id)
             if row is None:
                 raise ProcurementServiceError(404, "NOT_FOUND", "采购订单不存在")
             return self._public_order(connection, row)
 
-    def create_order(self, organization_id: str, project_id: str, actor_id: str, request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+    def create_order(self, organization_id: str, project_id: str, actor_id: str, request: dict[str, Any], idempotency_key: str, *, connection=None) -> dict[str, Any]:
         supplier = str(request.get("supplier_name") or "").strip()
         location = str(request.get("delivery_location") or "").strip()
         source_kind = str(request.get("source_kind") or "manual_draft").strip()
@@ -144,19 +149,20 @@ class ProcurementService:
                 raise ProcurementServiceError(400, "INVALID_ORDER_LINE", "item_name 和 unit 是必需的")
             lines.append({"item_code": str(item.get("item_code") or "").strip(), "item_name": name, "specification": str(item.get("specification") or "unknown").strip() or "unknown", "quantity": self._text(quantity), "unit": unit})
         request_hash = self._fingerprint({"supplier_name": supplier, "delivery_location": location, "source_kind": source_kind, "source_ref": source_ref, "lines": lines})
-        with self._db(write=True) as connection:
-            existing = connection.execute("SELECT aggregate_id, payload_json FROM procurement_events WHERE organization_id = ? AND project_id = ? AND idempotency_key = ?", (organization_id, project_id, idempotency_key)).fetchone()
+        with self._transaction(organization_id, project_id, write=True, connection=connection) as connection:
+            existing = connection.event(idempotency_key)
             if existing:
                 if json.loads(existing["payload_json"]).get("request_hash") != request_hash:
                     raise ProcurementServiceError(409, "IDEMPOTENCY_CONFLICT", "幂等键已经用于不同的采购订单请求")
-                return self._public_order(connection, connection.execute("SELECT * FROM procurement_orders WHERE order_id = ?", (existing["aggregate_id"],)).fetchone())
-            revision = connection.execute("SELECT COALESCE(MAX(revision_no), 0) + 1 AS next_no FROM procurement_orders WHERE organization_id = ? AND project_id = ?", (organization_id, project_id)).fetchone()["next_no"]
+                return self._public_order(connection, connection.order(existing["aggregate_id"]))
+            revision = connection.next_revision()
             order_id, now = new_id("purchase-order"), now_iso()
-            connection.execute("INSERT INTO procurement_orders VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, 0, 1, ?, ?)", (order_id, organization_id, project_id, revision, supplier, location, source_kind, source_ref, now, now))
+            connection.insert_order({"order_id": order_id, "revision_no": revision, "supplier_name": supplier,
+                                     "delivery_location": location, "source_kind": source_kind, "source_ref": source_ref, "now": now})
             for item in lines:
-                connection.execute("INSERT INTO procurement_order_lines VALUES (?, ?, ?, ?, ?, ?, ?, '0', '0', ?)", (new_id("order-line"), order_id, item["item_code"], item["item_name"], item["specification"], item["quantity"], item["unit"], now))
+                connection.insert_line({**item, "line_id": new_id("order-line"), "order_id": order_id, "now": now})
             self._write_event(connection, organization_id, project_id, "procurement.order_draft_created", order_id, actor_id, {"line_count": len(lines), "external_effects_enabled": False, "request_hash": request_hash}, idempotency_key)
-            return self._public_order(connection, connection.execute("SELECT * FROM procurement_orders WHERE order_id = ?", (order_id,)).fetchone())
+            return self._public_order(connection, connection.order(order_id))
 
     def receive(self, organization_id: str, project_id: str, order_id: str, actor_id: str, request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
         if len(idempotency_key) < 16:
@@ -165,18 +171,21 @@ class ProcurementService:
         if not receiver or not evidence or not isinstance(request.get("lines"), list) or not request["lines"]:
             raise ProcurementServiceError(400, "INVALID_RECEIPT", "receiver、evidence_ref 和收货行是必需的")
         request_hash = self._fingerprint({"receiver": receiver, "evidence_ref": evidence, "lines": request["lines"], "received_at": request.get("received_at")})
-        with self._db(write=True) as connection:
-            duplicate = connection.execute("SELECT aggregate_id FROM procurement_events WHERE organization_id = ? AND project_id = ? AND idempotency_key = ?", (organization_id, project_id, idempotency_key)).fetchone()
+        with self._transaction(organization_id, project_id, write=True) as connection:
+            duplicate = connection.event(idempotency_key)
             if duplicate:
                 if duplicate["aggregate_id"] != order_id:
                     raise ProcurementServiceError(409, "IDEMPOTENCY_CONFLICT", "幂等键已经用于其他采购订单")
-                stored = connection.execute("SELECT payload_json FROM procurement_events WHERE organization_id = ? AND project_id = ? AND idempotency_key = ?", (organization_id, project_id, idempotency_key)).fetchone()
+                stored = duplicate
                 if json.loads(stored["payload_json"]).get("request_hash") != request_hash:
                     raise ProcurementServiceError(409, "IDEMPOTENCY_CONFLICT", "幂等键已经用于不同的收货请求")
-                return self.get_order(organization_id, project_id, order_id)
-            order = connection.execute("SELECT * FROM procurement_orders WHERE order_id = ? AND organization_id = ? AND project_id = ?", (order_id, organization_id, project_id)).fetchone()
+                return self._public_order(connection, connection.order(order_id))
+            order = connection.order(order_id)
             if order is None:
                 raise ProcurementServiceError(404, "NOT_FOUND", "采购订单不存在")
+            if order["source_kind"] == "design_boq_draft":
+                if not connection.source_current(order["source_ref"]):
+                    raise ProcurementServiceError(409, "ORDER_SOURCE_OUTDATED", "该订单的设计量价基线已变化，请核对最新草稿后登记收货")
             if request.get("expected_version") is not None and int(request["expected_version"]) != int(order["version"]):
                 raise ProcurementServiceError(409, "STALE_ORDER_VERSION", "采购订单已变化，请重新读取")
             receipt_lines: list[dict[str, Any]] = []
@@ -186,22 +195,25 @@ class ProcurementService:
                 if line_id in seen_lines:
                     raise ProcurementServiceError(400, "DUPLICATE_LINE", "同一笔收货不能重复填写同一订单行")
                 seen_lines.add(line_id)
-                line = connection.execute("SELECT * FROM procurement_order_lines WHERE line_id = ? AND order_id = ?", (line_id, order_id)).fetchone()
+                line = connection.line(order_id, line_id)
                 if line is None:
                     raise ProcurementServiceError(404, "NOT_FOUND", "订单行不存在")
                 if Decimal(line["received_quantity_text"]) + quantity > Decimal(line["ordered_quantity_text"]):
                     raise ProcurementServiceError(409, "RECEIPT_EXCEEDS_ORDER", f"收货数量超过订单行 {line_id} 的未收数量")
                 receipt_lines.append({"line": line, "quantity": quantity})
             receipt_id, now = new_id("receipt"), now_iso()
-            connection.execute("INSERT INTO material_receipts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (receipt_id, organization_id, project_id, order_id, str(request.get("receipt_no") or receipt_id), str(request.get("received_at") or now), receiver, evidence, str(request.get("note") or ""), idempotency_key, now))
+            connection.insert_receipt({"receipt_id": receipt_id, "order_id": order_id, "receipt_no": str(request.get("receipt_no") or receipt_id),
+                                       "received_at": str(request.get("received_at") or now), "receiver": receiver, "evidence_ref": evidence,
+                                       "note": str(request.get("note") or ""), "idempotency_key": idempotency_key, "now": now})
             for item in receipt_lines:
-                connection.execute("INSERT INTO material_receipt_lines VALUES (?, ?, ?, ?, ?)", (new_id("receipt-line"), receipt_id, item["line"]["line_id"], self._text(item["quantity"]), item["line"]["unit"]))
-                connection.execute("UPDATE procurement_order_lines SET received_quantity_text = ? WHERE line_id = ?", (self._text(Decimal(item["line"]["received_quantity_text"]) + item["quantity"]), item["line"]["line_id"]))
-            lines = [dict(item) for item in connection.execute("SELECT ordered_quantity_text AS ordered_quantity, received_quantity_text AS received_quantity, allocated_quantity_text AS allocated_quantity FROM procurement_order_lines WHERE order_id = ?", (order_id,))]
+                connection.insert_receipt_line({"receipt_line_id": new_id("receipt-line"), "receipt_id": receipt_id, "order_id": order_id,
+                                                "line_id": item["line"]["line_id"], "quantity": self._text(item["quantity"]), "unit": item["line"]["unit"]})
+                connection.update_line(order_id, item["line"]["line_id"], "received", self._text(Decimal(item["line"]["received_quantity_text"]) + item["quantity"]))
+            lines = [{"ordered_quantity": item["ordered_quantity_text"], "received_quantity": item["received_quantity_text"], "allocated_quantity": item["allocated_quantity_text"]} for item in connection.lines(order_id)]
             status = self._order_status(lines)
-            connection.execute("UPDATE procurement_orders SET status = ?, version = version + 1, updated_at = ? WHERE order_id = ?", (status, now, order_id))
+            connection.update_order(order_id, status, now)
             self._write_event(connection, organization_id, project_id, "procurement.received", order_id, actor_id, {"receipt_id": receipt_id, "line_count": len(receipt_lines), "request_hash": request_hash}, idempotency_key)
-            return self._public_order(connection, connection.execute("SELECT * FROM procurement_orders WHERE order_id = ?", (order_id,)).fetchone())
+            return self._public_order(connection, connection.order(order_id))
 
     def allocate(self, organization_id: str, project_id: str, order_id: str, actor_id: str, request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
         if len(idempotency_key) < 16:
@@ -210,16 +222,16 @@ class ProcurementService:
         if not target or not recipient or not evidence or not isinstance(request.get("lines"), list) or not request["lines"]:
             raise ProcurementServiceError(400, "INVALID_ALLOCATION", "target_area、recipient、evidence_ref 和分派行是必需的")
         request_hash = self._fingerprint({"target_area": target, "recipient": recipient, "evidence_ref": evidence, "lines": request["lines"]})
-        with self._db(write=True) as connection:
-            duplicate = connection.execute("SELECT aggregate_id FROM procurement_events WHERE organization_id = ? AND project_id = ? AND idempotency_key = ?", (organization_id, project_id, idempotency_key)).fetchone()
+        with self._transaction(organization_id, project_id, write=True) as connection:
+            duplicate = connection.event(idempotency_key)
             if duplicate:
                 if duplicate["aggregate_id"] != order_id:
                     raise ProcurementServiceError(409, "IDEMPOTENCY_CONFLICT", "幂等键已经用于其他采购订单")
-                stored = connection.execute("SELECT payload_json FROM procurement_events WHERE organization_id = ? AND project_id = ? AND idempotency_key = ?", (organization_id, project_id, idempotency_key)).fetchone()
+                stored = duplicate
                 if json.loads(stored["payload_json"]).get("request_hash") != request_hash:
                     raise ProcurementServiceError(409, "IDEMPOTENCY_CONFLICT", "幂等键已经用于不同的分派请求")
-                return self.get_order(organization_id, project_id, order_id)
-            order = connection.execute("SELECT * FROM procurement_orders WHERE order_id = ? AND organization_id = ? AND project_id = ?", (order_id, organization_id, project_id)).fetchone()
+                return self._public_order(connection, connection.order(order_id))
+            order = connection.order(order_id)
             if order is None:
                 raise ProcurementServiceError(404, "NOT_FOUND", "采购订单不存在")
             if request.get("expected_version") is not None and int(request["expected_version"]) != int(order["version"]):
@@ -231,7 +243,7 @@ class ProcurementService:
                 if line_id in seen_lines:
                     raise ProcurementServiceError(400, "DUPLICATE_LINE", "同一笔分派不能重复填写同一订单行")
                 seen_lines.add(line_id)
-                line = connection.execute("SELECT * FROM procurement_order_lines WHERE line_id = ? AND order_id = ?", (line_id, order_id)).fetchone()
+                line = connection.line(order_id, line_id)
                 if line is None:
                     raise ProcurementServiceError(404, "NOT_FOUND", "订单行不存在")
                 if Decimal(line["allocated_quantity_text"]) + quantity > Decimal(line["received_quantity_text"]):
@@ -239,10 +251,12 @@ class ProcurementService:
                 allocations.append((line, quantity))
             allocation_batch_id, now = new_id("allocation-batch"), now_iso()
             for line, quantity in allocations:
-                connection.execute("INSERT INTO material_allocations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (new_id("allocation"), organization_id, project_id, order_id, line["line_id"], self._text(quantity), target, recipient, evidence, str(request.get("note") or ""), idempotency_key, now))
-                connection.execute("UPDATE procurement_order_lines SET allocated_quantity_text = ? WHERE line_id = ?", (self._text(Decimal(line["allocated_quantity_text"]) + quantity), line["line_id"]))
-            lines = [dict(item) for item in connection.execute("SELECT ordered_quantity_text AS ordered_quantity, received_quantity_text AS received_quantity, allocated_quantity_text AS allocated_quantity FROM procurement_order_lines WHERE order_id = ?", (order_id,))]
+                connection.insert_allocation({"allocation_id": new_id("allocation"), "order_id": order_id, "line_id": line["line_id"],
+                                              "quantity": self._text(quantity), "target_area": target, "recipient": recipient, "evidence_ref": evidence,
+                                              "note": str(request.get("note") or ""), "idempotency_key": idempotency_key, "now": now})
+                connection.update_line(order_id, line["line_id"], "allocated", self._text(Decimal(line["allocated_quantity_text"]) + quantity))
+            lines = [{"ordered_quantity": item["ordered_quantity_text"], "received_quantity": item["received_quantity_text"], "allocated_quantity": item["allocated_quantity_text"]} for item in connection.lines(order_id)]
             status = self._order_status(lines)
-            connection.execute("UPDATE procurement_orders SET status = ?, version = version + 1, updated_at = ? WHERE order_id = ?", (status, now, order_id))
+            connection.update_order(order_id, status, now)
             self._write_event(connection, organization_id, project_id, "procurement.allocated", order_id, actor_id, {"allocation_batch_id": allocation_batch_id, "target_area": target, "line_count": len(allocations), "request_hash": request_hash}, idempotency_key)
-            return self._public_order(connection, connection.execute("SELECT * FROM procurement_orders WHERE order_id = ?", (order_id,)).fetchone())
+            return self._public_order(connection, connection.order(order_id))

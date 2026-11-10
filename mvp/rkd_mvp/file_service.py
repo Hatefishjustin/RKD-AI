@@ -11,6 +11,7 @@ from typing import Any, BinaryIO, Iterator
 
 from .api_service import ApiError, ApiService
 from .models import new_id, now_iso
+from .file_repository import SQLiteFileRepository
 
 
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024
@@ -18,12 +19,17 @@ NINGBO_PROJECT_ID = "project_ningbo_xiecheng_2026"
 
 
 class FileService:
-    def __init__(self, db_path: Path, runtime_root: Path) -> None:
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: Path | None, runtime_root: Path, *, repository=None) -> None:
+        self.db_path = Path(db_path) if db_path is not None else None
         self.runtime_root = Path(runtime_root).resolve()
+        if self.db_path is None and repository is None:
+            raise ValueError("an explicit file repository is required")
+        self.repository = repository or SQLiteFileRepository(self._db)
 
     @contextmanager
     def _db(self) -> Iterator[sqlite3.Connection]:
+        if self.db_path is None:
+            raise RuntimeError("SQLite connection is unavailable in PostgreSQL mode")
         connection = sqlite3.connect(self.db_path, timeout=30)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
@@ -55,10 +61,13 @@ class FileService:
 
     @staticmethod
     def _public_file(row: sqlite3.Row) -> dict[str, Any]:
-        return {key: row[key] for key in (
+        result = {key: row[key] for key in (
             "file_id", "organization_id", "project_id", "filename", "kind", "content_type",
             "size_bytes", "sha256", "source_kind", "source_ref", "format_status", "created_at", "revision",
         )}
+        if hasattr(result["created_at"], "isoformat"):
+            result["created_at"] = result["created_at"].isoformat()
+        return result
 
     @staticmethod
     def _format_status(filename: str, header: bytes) -> str:
@@ -87,117 +96,116 @@ class FileService:
         if declared_hash and (len(declared_hash) != 64 or any(c not in "0123456789abcdef" for c in declared_hash)):
             raise ApiError(400, "INVALID_UPLOAD", "sha256 must be a 64-character hex digest")
         upload_id = new_id("upload")
-        with self._db() as connection:
-            connection.execute(
-                "INSERT INTO file_uploads VALUES (?, ?, ?, ?, ?, ?, NULL, 'initiated', ?)",
-                (upload_id, organization_id, project_id, filename, size, declared_hash or None, now_iso()),
-            )
+        with self.repository.transaction(organization_id, project_id, write=True) as transaction:
+            transaction.insert_upload({"upload_id": upload_id, "organization_id": organization_id,
+                                       "project_id": project_id, "filename": filename, "declared_size": size,
+                                       "declared_sha256": declared_hash or None, "status": "initiated", "created_at": now_iso()})
         return {"upload_id": upload_id, "status": "initiated", "upload_url": f"/api/v1/projects/{project_id}/uploads/{upload_id}/content"}
 
-    def _upload(self, organization_id: str, project_id: str, upload_id: str) -> sqlite3.Row:
-        with self._db() as connection:
-            row = connection.execute(
-                "SELECT * FROM file_uploads WHERE upload_id = ? AND organization_id = ? AND project_id = ?",
-                (upload_id, organization_id, project_id),
-            ).fetchone()
+    @staticmethod
+    def _required_upload(transaction, upload_id):
+        row = transaction.upload(upload_id)
         if row is None:
             raise ApiError(404, "NOT_FOUND", "upload not found")
         return row
 
+    def _upload(self, organization_id: str, project_id: str, upload_id: str):
+        with self.repository.transaction(organization_id, project_id) as transaction:
+            return self._required_upload(transaction, upload_id)
+
     def receive(self, organization_id: str, project_id: str, upload_id: str,
                 stream: BinaryIO, content_length: int) -> dict[str, Any]:
-        upload = self._upload(organization_id, project_id, upload_id)
-        if upload["status"] != "initiated":
-            raise ApiError(409, "UPLOAD_STATE", "upload is not waiting for content")
-        if content_length > MAX_UPLOAD_BYTES:
-            raise ApiError(413, "UPLOAD_TOO_LARGE", "upload exceeds 100 MiB")
-        if content_length != upload["declared_size"] or content_length <= 0:
-            raise ApiError(409, "UPLOAD_SIZE_MISMATCH", "content length differs from upload session")
         staging = self._scope_dir(organization_id, project_id) / "staging" / f"{upload_id}.part"
-        staging.parent.mkdir(parents=True, exist_ok=True)
-        digest = hashlib.sha256()
-        remaining = content_length
+        created = False
         try:
-            with staging.open("xb") as output:
-                while remaining:
-                    chunk = stream.read(min(1024 * 1024, remaining))
-                    if not chunk:
-                        raise ApiError(400, "INCOMPLETE_UPLOAD", "upload ended before declared size")
-                    output.write(chunk)
-                    digest.update(chunk)
-                    remaining -= len(chunk)
-            received_hash = digest.hexdigest()
-            with self._db() as connection:
-                connection.execute(
-                    "UPDATE file_uploads SET status = 'staged', received_sha256 = ? WHERE upload_id = ?",
-                    (received_hash, upload_id),
-                )
+            # The repository locks this upload until bytes and metadata agree;
+            # a competing request cannot delete or replace the active writer.
+            with self.repository.transaction(organization_id, project_id, write=True) as transaction:
+                upload = self._required_upload(transaction, upload_id)
+                if upload["status"] != "initiated":
+                    raise ApiError(409, "UPLOAD_STATE", "upload is not waiting for content")
+                if content_length > MAX_UPLOAD_BYTES:
+                    raise ApiError(413, "UPLOAD_TOO_LARGE", "upload exceeds 100 MiB")
+                if content_length != upload["declared_size"] or content_length <= 0:
+                    raise ApiError(409, "UPLOAD_SIZE_MISMATCH", "content length differs from upload session")
+                staging.parent.mkdir(parents=True, exist_ok=True)
+                digest = hashlib.sha256()
+                remaining = content_length
+                try:
+                    with staging.open("xb") as output:
+                        created = True
+                        while remaining:
+                            chunk = stream.read(min(1024 * 1024, remaining))
+                            if not chunk:
+                                raise ApiError(400, "INCOMPLETE_UPLOAD", "upload ended before declared size")
+                            output.write(chunk)
+                            digest.update(chunk)
+                            remaining -= len(chunk)
+                except FileExistsError as error:
+                    raise ApiError(409, "UPLOAD_STAGING_EXISTS", "staged bytes already exist; start a new upload") from error
+                received_hash = digest.hexdigest()
+                transaction.stage(upload_id, received_hash)
         except Exception:
-            staging.unlink(missing_ok=True)
+            if created:
+                staging.unlink(missing_ok=True)
             raise
         return {"upload_id": upload_id, "status": "staged", "received_sha256": received_hash, "received_bytes": content_length}
 
     def complete(self, organization_id: str, project_id: str, upload_id: str,
                  completed_sha256: str) -> dict[str, Any]:
-        upload = self._upload(organization_id, project_id, upload_id)
-        if upload["status"] != "staged":
-            raise ApiError(409, "UPLOAD_STATE", "upload has no complete content")
         staging = self._scope_dir(organization_id, project_id) / "staging" / f"{upload_id}.part"
-        if not staging.is_file():
-            raise ApiError(409, "UPLOAD_MISSING_CONTENT", "staged bytes are missing")
-        with staging.open("rb") as source:
-            actual_hash = hashlib.file_digest(source, "sha256").hexdigest()
-        if actual_hash != upload["received_sha256"] or staging.stat().st_size != upload["declared_size"]:
-            raise ApiError(409, "UPLOAD_CONTENT_CHANGED", "staged bytes changed")
-        declared_hash = upload["declared_sha256"]
-        if declared_hash and declared_hash != actual_hash:
-            raise ApiError(409, "UPLOAD_HASH_MISMATCH", "declared hash does not match received bytes")
-        if completed_sha256 and completed_sha256.lower() != actual_hash:
-            raise ApiError(409, "UPLOAD_HASH_MISMATCH", "completed hash does not match received bytes")
-        file_id = new_id("file")
-        destination = self._scope_dir(organization_id, project_id) / "raw" / file_id
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        storage_key = destination.relative_to(self.runtime_root).as_posix()
-        with staging.open("rb") as source:
-            format_status = self._format_status(upload["filename"], source.read(4096))
-        os.replace(staging, destination)
+        destination = None
+        published = False
         try:
-            with self._db() as connection:
-                connection.execute("BEGIN IMMEDIATE")
-                revision = connection.execute(
-                    "SELECT COALESCE(MAX(revision), 0) + 1 FROM file_assets "
-                    "WHERE organization_id = ? AND project_id = ? AND filename = ?",
-                    (organization_id, project_id, upload["filename"]),
-                ).fetchone()[0]
-                connection.execute(
-                    "INSERT INTO file_assets(file_id, organization_id, project_id, filename, kind, content_type, "
-                    "size_bytes, sha256, storage_key, source_kind, source_ref, format_status, created_at, revision) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (file_id, organization_id, project_id, upload["filename"], "uploaded_file",
-                     mimetypes.guess_type(upload["filename"])[0] or "application/octet-stream",
-                     upload["declared_size"], actual_hash, storage_key, "local_upload", upload_id,
-                     format_status, now_iso(), revision),
-                )
-                connection.execute("UPDATE file_uploads SET status = 'completed' WHERE upload_id = ?", (upload_id,))
+            with self.repository.transaction(organization_id, project_id, write=True) as transaction:
+                upload = self._required_upload(transaction, upload_id)
+                if upload["status"] != "staged":
+                    raise ApiError(409, "UPLOAD_STATE", "upload has no complete content")
+                if not staging.is_file():
+                    raise ApiError(409, "UPLOAD_MISSING_CONTENT", "staged bytes are missing")
+                with staging.open("rb") as source:
+                    actual_hash = hashlib.file_digest(source, "sha256").hexdigest()
+                if actual_hash != upload["received_sha256"] or staging.stat().st_size != upload["declared_size"]:
+                    raise ApiError(409, "UPLOAD_CONTENT_CHANGED", "staged bytes changed")
+                if upload["declared_sha256"] and upload["declared_sha256"] != actual_hash:
+                    raise ApiError(409, "UPLOAD_HASH_MISMATCH", "declared hash does not match received bytes")
+                if completed_sha256 and completed_sha256.lower() != actual_hash:
+                    raise ApiError(409, "UPLOAD_HASH_MISMATCH", "completed hash does not match received bytes")
+                file_id = new_id("file")
+                destination = self._scope_dir(organization_id, project_id) / "raw" / file_id
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with staging.open("rb") as source:
+                    format_status = self._format_status(upload["filename"], source.read(4096))
+                revision = transaction.next_revision(upload["filename"])
+                row = {"file_id": file_id, "organization_id": organization_id, "project_id": project_id,
+                       "filename": upload["filename"], "kind": "uploaded_file",
+                       "content_type": mimetypes.guess_type(upload["filename"])[0] or "application/octet-stream",
+                       "size_bytes": upload["declared_size"], "sha256": actual_hash,
+                       "storage_key": destination.relative_to(self.runtime_root).as_posix(), "source_kind": "local_upload",
+                       "source_ref": upload_id, "format_status": format_status, "created_at": now_iso(), "revision": revision}
+                # No-overwrite publication. Leave staging until commit succeeds,
+                # so an ordinary transaction failure can be retried with bytes intact.
+                os.link(staging, destination)
+                published = True
+                transaction.insert_file(row, upload_id)
         except Exception:
-            os.replace(destination, staging)
+            if published:
+                destination.unlink(missing_ok=True)
             raise
-        return {"file_id": file_id, "status": "stored_unparsed", "sha256": actual_hash, "size_bytes": upload["declared_size"], "revision": revision}
+        try:
+            staging.unlink(missing_ok=True)
+        except OSError:
+            pass  # Committed immutable raw bytes remain valid; staging is an orphan.
+        return {"file_id": file_id, "status": "stored_unparsed", "sha256": actual_hash,
+                "size_bytes": upload["declared_size"], "revision": revision}
 
     def list_files(self, organization_id: str, project_id: str) -> dict[str, Any]:
-        with self._db() as connection:
-            rows = connection.execute(
-                "SELECT * FROM file_assets WHERE organization_id = ? AND project_id = ? ORDER BY created_at, file_id",
-                (organization_id, project_id),
-            ).fetchall()
-        return {"items": [self._public_file(row) for row in rows]}
+        with self.repository.transaction(organization_id, project_id) as transaction:
+            return {"items": [self._public_file(row) for row in transaction.files()]}
 
     def get_content(self, organization_id: str, project_id: str, file_id: str) -> tuple[dict[str, Any], Path]:
-        with self._db() as connection:
-            row = connection.execute(
-                "SELECT * FROM file_assets WHERE file_id = ? AND organization_id = ? AND project_id = ?",
-                (file_id, organization_id, project_id),
-            ).fetchone()
+        with self.repository.transaction(organization_id, project_id) as transaction:
+            row = transaction.file(file_id)
         if row is None:
             raise ApiError(404, "NOT_FOUND", "file not found")
         path = self._storage_path(row["storage_key"])
@@ -206,15 +214,8 @@ class FileService:
         return self._public_file(row), path
 
     def list_decisions(self, organization_id: str, project_id: str) -> dict[str, Any]:
-        with self._db() as connection:
-            rows = connection.execute(
-                "SELECT decision_key, value_json, source, status, source_conflict FROM project_decisions "
-                "WHERE organization_id = ? AND project_id = ? ORDER BY decision_key",
-                (organization_id, project_id),
-            ).fetchall()
-        return {"items": [{"key": row["decision_key"], "value": json.loads(row["value_json"]),
-                           "source": row["source"], "status": row["status"],
-                           "source_conflict": row["source_conflict"]} for row in rows]}
+        with self.repository.transaction(organization_id, project_id) as transaction:
+            return {"items": transaction.decisions()}
 
     def seed_ningbo(self, service: ApiService, fixture_root: Path) -> None:
         manifest = json.loads((fixture_root / "样本清单.json").read_text(encoding="utf-8"))

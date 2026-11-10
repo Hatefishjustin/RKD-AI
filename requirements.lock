@@ -1,5 +1,9 @@
 # RKD AI local verification dependencies.
-# The application backend itself uses Python's standard library; these packages
-# are pinned for optional CAD topology and contract validation checks.
+# CAD/contract checks and the real FastAPI server transport are pinned here.
 jsonschema==4.25.1
 shapely==2.1.2
+-r mvp/requirements-server.txt
+# ASGI transport regression client; the deployed server does not require it.
+httpx==0.28.1
+httpcore==1.0.9
+certifi==2026.10.23

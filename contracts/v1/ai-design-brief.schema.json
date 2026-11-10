@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:ai-design-brief:v1",
+  "title": "AIDesignBriefV1",
+  "description": "Minimal, versioned requirement-understanding brief. It is a candidate, not an approved requirement, design, quote, or construction output.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "generation", "project_context", "requirements", "site",
+    "design_intent", "assumptions", "conflicts", "open_questions", "cost",
+    "source_refs", "source_kind", "revision_no", "lifecycle_status", "validation_status"
+  ],
+  "properties": {
+    "schema_version": {"const": "rkd-ai-design-brief.v1"},
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_kind", "provider_name", "model_id", "real_model", "adapter_version", "prompt_version", "schema_version", "config_hash", "input_hash", "provider_request_id", "generated_at", "usage"],
+      "properties": {
+        "provider_kind": {"type": "string", "minLength": 1},
+        "provider_name": {"type": "string", "minLength": 1},
+        "model_id": {"type": ["string", "null"]},
+        "real_model": {"type": "boolean"},
+        "adapter_version": {"type": "string", "minLength": 1},
+        "prompt_version": {"type": "string", "minLength": 1},
+        "schema_version": {"const": "rkd-ai-design-brief.v1"},
+        "config_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "input_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "provider_request_id": {"type": ["string", "null"]},
+        "generated_at": {"type": "string", "minLength": 1},
+        "usage": {"$ref": "#/$defs/usage"}
+      }
+    },
+    "project_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_type", "service_scope", "budget", "excluded_scopes", "source_status"],
+      "properties": {
+        "project_type": {"type": "string", "minLength": 1},
+        "service_scope": {"type": "string", "minLength": 1},
+        "budget": {"$ref": "#/$defs/value"},
+        "excluded_scopes": {"type": "array", "items": {"type": "string"}},
+        "source_status": {"type": "string", "enum": ["synthetic_input_only", "project_metadata_only", "selected_content_not_available", "selected_content_extracted"]}
+      }
+    },
+    "requirements": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/item"}},
+    "site": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/item"}},
+    "design_intent": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/item"}},
+    "assumptions": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "conflicts": {"type": "array", "items": {"$ref": "#/$defs/conflict"}},
+    "open_questions": {"type": "array", "items": {"$ref": "#/$defs/question"}},
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "budget", "known_items", "unknown_items", "total_project_estimate", "formal_quote"],
+      "properties": {
+        "currency": {"const": "CNY"},
+        "budget": {"$ref": "#/$defs/value"},
+        "known_items": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+        "unknown_items": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+        "total_project_estimate": {"$ref": "#/$defs/value"},
+        "formal_quote": {"const": false}
+      }
+    },
+    "source_refs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sourceRef"}},
+    "source_kind": {"enum": ["model_output", "human_edit"]},
+    "revision_no": {"type": "integer", "minimum": 1},
+    "lifecycle_status": {"const": "candidate"},
+    "validation_status": {"enum": ["structural_check_passed", "needs_review"]}
+  },
+  "$defs": {
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "origin_kind", "locator", "content_status", "evidence_status"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "origin_kind": {"enum": ["manual_input", "project_decision", "file_asset_metadata", "file_content_extraction", "ai_inference", "program_calculation"]},
+        "locator": {"type": "string", "minLength": 1, "maxLength": 500},
+        "content_status": {"enum": ["provided", "metadata_only_not_parsed", "not_available", "content_extracted", "content_unavailable"]},
+        "evidence_status": {"enum": ["unknown", "unverified", "verified"]},
+        "content_locator": {"type": "string", "minLength": 1, "maxLength": 500},
+        "extraction_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "segment_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "sourceIds": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit", "known_status", "source_refs"],
+      "properties": {
+        "value": {"type": ["string", "number", "null"]},
+        "unit": {"type": "string", "minLength": 1},
+        "known_status": {"enum": ["known", "inferred", "unknown"]},
+        "unknown_reason": {"type": "string", "minLength": 1},
+        "source_refs": {"$ref": "#/$defs/sourceIds"}
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id", "statement", "origin_kind", "evidence_status", "known_status", "priority", "source_refs"],
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "value": {"type": ["string", "number", "null"]},
+        "unit": {"type": ["string", "null"]},
+        "origin_kind": {"enum": ["manual_input", "project_decision", "ai_inference", "program_calculation", "human_edit"]},
+        "evidence_status": {"enum": ["unknown", "unverified", "verified"]},
+        "known_status": {"enum": ["known", "inferred", "unknown"]},
+        "priority": {"enum": ["hard", "high", "medium", "low"]},
+        "unknown_reason": {"type": "string", "minLength": 1},
+        "source_refs": {"$ref": "#/$defs/sourceIds"}
+      }
+    },
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conflict_id", "statement", "resolution", "source_refs"],
+      "properties": {
+        "conflict_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "resolution": {"enum": ["pending", "human_required", "resolved"]},
+        "source_refs": {"$ref": "#/$defs/sourceIds"}
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question_id", "statement", "blocking", "reason"],
+      "properties": {
+        "question_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 500},
+        "blocking": {"type": "boolean"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "cost_amount", "currency", "cost_known_status"],
+      "properties": {
+        "input_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "output_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "cost_amount": {"type": ["number", "null"]},
+        "currency": {"const": "CNY"},
+        "cost_known_status": {"enum": ["known", "unknown", "pending_reconciliation"]}
+      }
+    }
+  }
+}

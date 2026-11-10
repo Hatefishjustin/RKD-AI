@@ -1,3 +1,4 @@
+import { ReviewTasks } from './ReviewTasks';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Download, Eye, Minus, Plus, Upload, X } from "lucide-react";
@@ -6,6 +7,8 @@ import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import "./styles.css";
 import { DesignWorkspace } from "./DesignWorkspace";
+import { ProductionPanel } from "./ProductionPanel";
+import { ChangeProductionPanel } from "./ChangeProductionPanel";
 import { AccountControls, AccountGate, AccountPanel } from "./AccountAccess";
 import { apiHeaders, checkSessionResponse, Session } from "./session";
 
@@ -128,7 +131,7 @@ type SpatialModel = {
 type ProcurementLine = { line_id: string; item_code: string; item_name: string; specification: string; ordered_quantity: string; received_quantity: string; allocated_quantity: string; remaining_quantity: string; unit: string };
 type ProcurementOrder = { order_id: string; revision_no: number; status: string; supplier_name: string; delivery_location: string; source_kind: string; source_ref: string; external_effects_enabled: boolean; version: number; created_at: string; updated_at: string; lines: ProcurementLine[]; receipts: { receipt_id: string; receipt_no: string; receiver: string; evidence_ref: string; lines: { line_id: string; quantity_text: string; unit: string }[] }[]; allocations: { allocation_id: string; line_id: string; quantity_text: string; target_area: string; recipient: string; evidence_ref: string }[] };
 type ChangeArtifact = { artifact_id: string; artifact_kind: string; filename: string; content_type: string; sha256: string; size_bytes: number };
-type ChangeRequest = { change_id: string; change_no: number; issue_id: string | null; title: string; reason: string; description: string; status: string; version: number; baseline: Record<string, unknown>; proposal: Record<string, string | null>; impact: { affected_artifact_count?: number; quantity_delta_m2?: string | null; cost_delta_net?: string | null; schedule_delta_days?: string | null; approval_status?: string; new_outputs_required?: boolean }; artifacts: ChangeArtifact[]; acceptances: { acceptance_id: string; conclusion: string; evidence_ref: string; note: string }[] };
+type ChangeRequest = { change_id: string; change_no: number; issue_id: string | null; title: string; reason: string; description: string; status: string; version: number; baseline: Record<string, unknown>; proposal: Record<string, unknown>; impact: { affected_artifact_count?: number; quantity_delta_m2?: string | null; cost_delta_net?: string | null; schedule_delta_days?: string | null; approval_status?: string; new_outputs_required?: boolean }; artifacts: ChangeArtifact[]; acceptances: { acceptance_id: string; conclusion: string; evidence_ref: string; note: string }[] };
 
 async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(path, {
@@ -253,6 +256,8 @@ function App({ session }: { session: Session }) {
   const [procurementDraft, setProcurementDraft] = useState({ supplier_name: "", delivery_location: "", item_name: "", specification: "unknown", quantity: "1", unit: "件" });
   const [procurementAction, setProcurementAction] = useState({ quantity: "1", target_area: "", recipient: "", evidence_ref: "" });
   const [changes, setChanges] = useState<ChangeRequest[]>([]);
+  const [productionRefresh, setProductionRefresh] = useState(0);
+  const manualChanges = changes.filter((change) => !change.proposal.design_program);
   const [changeDraft, setChangeDraft] = useState({ title: "", reason: "", description: "", quantity_delta_m2: "", cost_delta_net: "", schedule_delta_days: "" });
   const [changeAcceptance, setChangeAcceptance] = useState({ evidence_ref: "", note: "" });
   const [spatialDraft, setSpatialDraft] = useState({ width: "10", length: "5", deductions: [] as Deduction[], unit_cost_net: "100", cost_markup: "0.20", trial_tax_rate: "0.05" });
@@ -265,10 +270,14 @@ function App({ session }: { session: Session }) {
     [projects, selectedId],
   );
 
+  const selectedProjectRef = useRef(selected?.project_id);
+  selectedProjectRef.current = selected?.project_id;
+
   function applyEstimate(value?: Estimate) {
     setEstimate(value);
     if (!value) {
       setEstimateLineDrafts({});
+      setEstimateAssumptions({ trial_tax_rate: "0.05", construction_cost_markup: "0.20", design_cost_markup: "0.60", design_cost_net: "" });
       return;
     }
     setEstimateLineDrafts(Object.fromEntries(value.lines.map((line) => [line.line_id, {
@@ -310,6 +319,7 @@ function App({ session }: { session: Session }) {
   useEffect(() => {
     if (!selected) return;
     const projectId = selected.project_id;
+    let active = true;
     setFiles([]);
     setDecisions([]);
     setIssues([]);
@@ -319,6 +329,8 @@ function App({ session }: { session: Session }) {
     setChanges([]);
     setEstimateArtifacts([]);
     setRequirement(undefined);
+    setIssueDrafts({});
+    setSpatialDraft({ width: "10", length: "5", deductions: [], unit_cost_net: "100", cost_markup: "0.20", trial_tax_rate: "0.05" });
     applyEstimate(undefined);
     Promise.all([
       api<{ items: FileAsset[] }>(`/api/v1/projects/${projectId}/files`),
@@ -331,6 +343,12 @@ function App({ session }: { session: Session }) {
       api<{ items: ProcurementOrder[] }>(`/api/v1/projects/${projectId}/procurement/orders`),
       api<{ items: ChangeRequest[] }>(`/api/v1/projects/${projectId}/changes`),
     ]).then(async ([fileResult, decisionResult, issueResult, jobResult, estimateResult, spatialResult, requirementResult, procurementResult, changeResult]) => {
+      if (!active) return;
+      const estimateSummary = estimateResult.items[0];
+      const loadedEstimate = estimateSummary
+        ? await api<Estimate>(`/api/v1/projects/${projectId}/estimates/${estimateSummary.estimate_id}`)
+        : undefined;
+      if (!active) return;
       setFiles(fileResult.items);
       setDecisions(decisionResult.items);
       setIssues(issueResult.items);
@@ -338,10 +356,7 @@ function App({ session }: { session: Session }) {
       const model = spatialResult.items[0];
       setSpatial(model);
       if (model?.width && model.length) setSpatialDraft({ width: model.width, length: model.length, deductions: model.deductions ?? [], unit_cost_net: model.quote?.pricing.unit_cost_net ?? "", cost_markup: model.quote?.pricing.cost_markup ?? "0.20", trial_tax_rate: model.quote?.pricing.trial_tax_rate ?? "0.05" });
-      const estimateSummary = estimateResult.items[0];
-      applyEstimate(estimateSummary
-        ? await api<Estimate>(`/api/v1/projects/${projectId}/estimates/${estimateSummary.estimate_id}`)
-        : undefined);
+      applyEstimate(loadedEstimate);
       setRequirement(requirementResult.item);
       setProcurementOrders(procurementResult.items);
       setChanges(changeResult.items);
@@ -349,8 +364,17 @@ function App({ session }: { session: Session }) {
         status: issue.disposition_status,
         reason: issue.disposition_reason ?? "",
       }])));
-    }).catch((error: Error) => setMessage(error.message));
+    }).catch((error: Error) => { if (active) setMessage(error.message); });
+    return () => { active = false; };
   }, [selected?.project_id]);
+
+  useEffect(() => {
+    const projectId = selected?.project_id;
+    if (view !== "procurement" || !projectId) return;
+    let active = true;
+    void api<{ items: ProcurementOrder[] }>(`/api/v1/projects/${projectId}/procurement/orders`).then((result) => { if (active) setProcurementOrders(result.items); }).catch((e: Error) => { if (active) setMessage(e.message); });
+    return () => { active = false; };
+  }, [view, selected?.project_id]);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview.url); }, [preview]);
 
@@ -665,6 +689,7 @@ function App({ session }: { session: Session }) {
         <div className="connection-state"><span className={`state-dot ${connected ? "" : "offline"}`} />{connected ? "本地已连接" : "连接中断"}</div>
         <AccountControls session={session} />
       </header>
+      {session.mode === "accounts" && <ReviewTasks />}
 
       <main className="workspace">
         <aside className="project-rail">
@@ -674,6 +699,7 @@ function App({ session }: { session: Session }) {
               <button
                 className={`project-item ${selected?.project_id === project.project_id ? "active" : ""}`}
                 key={project.project_id}
+                disabled={busy}
                 onClick={() => setSelectedId(project.project_id)}
               >
                 <span className="project-avatar">{project.name.slice(0, 1).toUpperCase()}</span>
@@ -704,7 +730,7 @@ function App({ session }: { session: Session }) {
           {selected && <nav className="view-tabs" aria-label="项目页面"><button className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}>概览</button><button className={view === "requirements" ? "active" : ""} onClick={() => setView("requirements")}>需求草稿 <span>{requirement ? `v${requirement.revision_no}` : "-"}</span></button><button className={view === "files" ? "active" : ""} onClick={() => setView("files")}>资料与图纸 <span>{files.length}</span></button><button className={view === "issues" ? "active" : ""} onClick={() => setView("issues")}>检查与问题 <span>{issues.filter((issue) => issue.disposition_status !== "resolved").length}</span></button><button className={view === "estimate" ? "active" : ""} onClick={() => setView("estimate")}>预算与试算 <span>{estimate ? 1 : 0}</span></button><button className={view === "spatial" ? "active" : ""} onClick={() => setView("spatial")}>空间与工程量 <span>{spatial?.revision_no ?? 0}</span></button><button className={view === "procurement" ? "active" : ""} onClick={() => setView("procurement")}>采购施工 <span>{procurementOrders.length}</span></button><button className={view === "jobs" ? "active" : ""} onClick={() => setView("jobs")}>成果与任务 <span>{jobs.length}</span></button></nav>}
 
           {session.mode === "accounts" && selected && <p className="permission-notice">当前权限：{selected.role === "viewer" ? "只读 · 可以查看和下载，不能保存修改" : selected.role === "editor" ? "项目编辑 · 可保存草稿，本地验收需项目负责人" : "项目负责人"}。正式发布、外部下单和付款未开放。</p>}
-          {view === "accounts" && session.user?.is_admin ? <AccountPanel projectId={selected?.project_id} /> : selected && view === "overview" ? (
+          {view === "accounts" && session.user?.is_admin ? <AccountPanel key={selected?.project_id} projectId={selected?.project_id} /> : selected && view === "overview" ? (
             <>
               <div className="summary-grid">
                 <article className="summary-card emphasis"><span>当前状态</span><strong>已创建</strong><small>{files.length} 份文件</small></article>
@@ -722,7 +748,7 @@ function App({ session }: { session: Session }) {
               </section>
             </>
           ) : selected && view === "requirements" ? (
-            <DesignWorkspace key={selected.project_id} projectId={selected.project_id} onRequirementSaved={() => { void api<{ item: Requirement }>(`/api/v1/projects/${selected.project_id}/requirements`).then((r) => setRequirement(r.item)); }} />
+            <DesignWorkspace key={selected.project_id} projectId={selected.project_id} onRequirementSaved={() => { void api<{ item: Requirement }>(`/api/v1/projects/${selected.project_id}/requirements`).then((r) => { if (selectedProjectRef.current === selected.project_id) setRequirement(r.item); }); }} />
           ) : selected && view === "files" ? (
             <section className="file-workspace">
               <div className="section-heading"><div><span className="eyebrow">项目资料</span><h2>资料与图纸</h2></div><label className={`upload-button ${busy ? "disabled" : ""}`}><Upload size={16} /><span>上传文件</span><input type="file" onChange={uploadFile} disabled={busy} /></label></div>
@@ -800,12 +826,14 @@ function App({ session }: { session: Session }) {
             </section>
           ) : selected && view === "procurement" ? (
             <section className="operation-workspace">
-              <div className="section-heading"><div><span className="eyebrow">M4-01 采购施工闭环</span><h2>材料订单、收货与分派</h2></div><span className="saved-tag">外部下单已关闭</span></div>
+              <div className="section-heading"><div><h2>材料订单、收货与分派</h2></div><span className="saved-tag">外部下单已关闭</span></div>
+              <ProductionPanel key={selected.project_id} projectId={selected.project_id} refreshKey={String(productionRefresh)} onSaved={() => { if (selectedProjectRef.current !== selected.project_id) return; void api<{ items: ProcurementOrder[] }>(`/api/v1/projects/${selected.project_id}/procurement/orders`).then((result) => { if (selectedProjectRef.current === selected.project_id) setProcurementOrders(result.items); }).catch((e: Error) => { if (selectedProjectRef.current === selected.project_id) setMessage(e.message); }); }} />
+              <ChangeProductionPanel key={selected.project_id} projectId={selected.project_id} role={selected.role} refreshKey={String(productionRefresh)} onSaved={() => { if (selectedProjectRef.current !== selected.project_id) return; setProductionRefresh((value) => value + 1); void Promise.all([api<{ items: ProcurementOrder[] }>(`/api/v1/projects/${selected.project_id}/procurement/orders`), api<{ item: Requirement }>(`/api/v1/projects/${selected.project_id}/requirements`)]).then(([orders, req]) => { if (selectedProjectRef.current !== selected.project_id) return; setProcurementOrders(orders.items); setRequirement(req.item); }).catch((e: Error) => setMessage(e.message)); }} />
               <p className="operation-intro">这里记录采购草稿和现场事实。数量由订单→收货→分派逐步守恒；当前版本只保存本地记录，不会向供应商下单或付款。</p>
               <form className="panel edit-form" onSubmit={createProcurementOrder}><div className="edit-row"><label>供应商<input required value={procurementDraft.supplier_name} onChange={(event) => setProcurementDraft((current) => ({ ...current, supplier_name: event.target.value }))} placeholder="测试供应商" /></label><label>到货地点<input required value={procurementDraft.delivery_location} onChange={(event) => setProcurementDraft((current) => ({ ...current, delivery_location: event.target.value }))} placeholder="项目现场" /></label><label>材料名称<input required value={procurementDraft.item_name} onChange={(event) => setProcurementDraft((current) => ({ ...current, item_name: event.target.value }))} placeholder="地板" /></label><label>规格<input value={procurementDraft.specification} onChange={(event) => setProcurementDraft((current) => ({ ...current, specification: event.target.value }))} /></label><label>订单数量<input required type="number" min="0.0001" step="0.0001" value={procurementDraft.quantity} onChange={(event) => setProcurementDraft((current) => ({ ...current, quantity: event.target.value }))} /></label><label>单位<input required value={procurementDraft.unit} onChange={(event) => setProcurementDraft((current) => ({ ...current, unit: event.target.value }))} /></label><button type="submit" disabled={busy}>保存订单草稿</button></div></form>
               <div className="procurement-actions"><label>数量<input type="number" min="0.0001" step="0.0001" value={procurementAction.quantity} onChange={(event) => setProcurementAction((current) => ({ ...current, quantity: event.target.value }))} /></label><label>目标区域<input value={procurementAction.target_area} onChange={(event) => setProcurementAction((current) => ({ ...current, target_area: event.target.value }))} placeholder="接待区" /></label><label>接收班组<input value={procurementAction.recipient} onChange={(event) => setProcurementAction((current) => ({ ...current, recipient: event.target.value }))} placeholder="施工班组 A" /></label><label>证据引用<input value={procurementAction.evidence_ref} onChange={(event) => setProcurementAction((current) => ({ ...current, evidence_ref: event.target.value }))} placeholder="照片或记录编号" /></label></div>
               <div className="procurement-list">{procurementOrders.length ? procurementOrders.map((order) => <article className="procurement-card" key={order.order_id}><div className="section-heading"><div><strong>{order.supplier_name} · {order.delivery_location}</strong><small>订单草稿 v{order.revision_no} · {order.source_ref}</small></div><span className="saved-tag">{order.status}</span></div>{order.lines.map((line) => <div className="procurement-line" key={line.line_id}><div><strong>{line.item_name}</strong><small>{line.specification} · {line.unit}</small></div><span>订单 {line.ordered_quantity}</span><span>已收 {line.received_quantity}</span><span>已分派 {line.allocated_quantity}</span><span>可分派 {line.remaining_quantity}</span></div>)}<div className="section-actions"><button type="button" disabled={busy} onClick={() => void procurementActionSubmit(order, "receipts")}>记录收货</button><button type="button" disabled={busy} onClick={() => void procurementActionSubmit(order, "allocations")}>记录分派</button></div>{order.receipts.length > 0 && <small>收货记录 {order.receipts.length} 条 · 分派记录 {order.allocations.length} 条</small>}</article>) : <div className="files-empty">还没有材料订单草稿</div>}</div>
-              <div className="change-workspace"><div className="section-heading"><div><span className="eyebrow">M4-02 问题与变更</span><h3>变更影响与验收</h3></div><span className="saved-tag">旧成果保留</span></div><p className="operation-intro">变更绑定当前项目的设计/几何基线，分析会生成新的 JSON、HTML 和 manifest 草稿。验收只记录责任人的结论，不自动发布施工图或执行外部动作。</p><form className="panel edit-form" onSubmit={createChange}><div className="edit-row"><label>变更标题<input required value={changeDraft.title} onChange={(event) => setChangeDraft((current) => ({ ...current, title: event.target.value }))} placeholder="现场材料替换" /></label><label>原因<input required value={changeDraft.reason} onChange={(event) => setChangeDraft((current) => ({ ...current, reason: event.target.value }))} placeholder="供应不足" /></label><label>变更说明<input required value={changeDraft.description} onChange={(event) => setChangeDraft((current) => ({ ...current, description: event.target.value }))} placeholder="描述前后差异" /></label><label>工程量变化（m²）<input type="number" step="0.0001" value={changeDraft.quantity_delta_m2} onChange={(event) => setChangeDraft((current) => ({ ...current, quantity_delta_m2: event.target.value }))} placeholder="未知" /></label><label>未税成本变化<input type="number" step="0.01" value={changeDraft.cost_delta_net} onChange={(event) => setChangeDraft((current) => ({ ...current, cost_delta_net: event.target.value }))} placeholder="未知" /></label><label>工期变化（天）<input type="number" step="0.0001" value={changeDraft.schedule_delta_days} onChange={(event) => setChangeDraft((current) => ({ ...current, schedule_delta_days: event.target.value }))} placeholder="未知" /></label><button type="submit" disabled={busy}>保存变更请求</button></div></form><div className="procurement-actions"><label>验收证据<input value={changeAcceptance.evidence_ref} onChange={(event) => setChangeAcceptance((current) => ({ ...current, evidence_ref: event.target.value }))} placeholder="照片或签证编号" /></label><label>验收备注<input value={changeAcceptance.note} onChange={(event) => setChangeAcceptance((current) => ({ ...current, note: event.target.value }))} placeholder="责任人备注" /></label></div><div className="change-list">{changes.length ? changes.map((change) => <article className="procurement-card" key={change.change_id}><div className="section-heading"><div><strong>变更 {change.change_no} · {change.title}</strong><small>{change.reason} · v{change.version}</small></div><span className="saved-tag">{change.status}</span></div><p>{change.description}</p><div className="procurement-line"><span>影响成果 {change.impact.affected_artifact_count ?? "待分析"}</span><span>工程量 {change.impact.quantity_delta_m2 ?? "未知"}</span><span>成本 {change.impact.cost_delta_net ?? "未知"}</span><span>工期 {change.impact.schedule_delta_days ?? "未知"}</span></div><div className="section-actions">{change.status === "draft" && <button type="button" disabled={busy} onClick={() => void analyzeChange(change)}>生成影响分析</button>}{change.status === "analyzed" && <button type="button" disabled={busy} onClick={() => void acceptChange(change)}>记录验收通过</button>}</div>{change.artifacts.length > 0 && <div className="artifact-list">{change.artifacts.map((artifact) => <button type="button" key={artifact.artifact_id} onClick={() => void downloadChangeArtifact(artifact)}>{artifact.filename} · {artifact.size_bytes.toLocaleString()} bytes</button>)}</div>}{change.acceptances.length > 0 && <small>验收：{change.acceptances[change.acceptances.length - 1].conclusion} · {change.acceptances[change.acceptances.length - 1].evidence_ref}</small>}</article>) : <div className="files-empty">还没有变更请求</div>}</div></div>
+              <div className="change-workspace"><div className="section-heading"><div><span className="eyebrow">M4-02 问题与变更</span><h3>其他变更记录与验收</h3></div><span className="saved-tag">旧成果保留</span></div><p className="operation-intro">此处差量为人工填报，未经模型计算。变更绑定当前项目的设计/几何基线，分析会生成新的 JSON、HTML 和 manifest 草稿。验收只记录责任人的结论，不自动发布施工图或执行外部动作。</p><form className="panel edit-form" onSubmit={createChange}><div className="edit-row"><label>变更标题<input required value={changeDraft.title} onChange={(event) => setChangeDraft((current) => ({ ...current, title: event.target.value }))} placeholder="现场材料替换" /></label><label>原因<input required value={changeDraft.reason} onChange={(event) => setChangeDraft((current) => ({ ...current, reason: event.target.value }))} placeholder="供应不足" /></label><label>变更说明<input required value={changeDraft.description} onChange={(event) => setChangeDraft((current) => ({ ...current, description: event.target.value }))} placeholder="描述前后差异" /></label><label>工程量变化（m²）<input type="number" step="0.0001" value={changeDraft.quantity_delta_m2} onChange={(event) => setChangeDraft((current) => ({ ...current, quantity_delta_m2: event.target.value }))} placeholder="未知" /></label><label>未税成本变化<input type="number" step="0.01" value={changeDraft.cost_delta_net} onChange={(event) => setChangeDraft((current) => ({ ...current, cost_delta_net: event.target.value }))} placeholder="未知" /></label><label>工期变化（天）<input type="number" step="0.0001" value={changeDraft.schedule_delta_days} onChange={(event) => setChangeDraft((current) => ({ ...current, schedule_delta_days: event.target.value }))} placeholder="未知" /></label><button type="submit" disabled={busy}>保存变更请求</button></div></form><div className="procurement-actions"><label>验收证据<input value={changeAcceptance.evidence_ref} onChange={(event) => setChangeAcceptance((current) => ({ ...current, evidence_ref: event.target.value }))} placeholder="照片或签证编号" /></label><label>验收备注<input value={changeAcceptance.note} onChange={(event) => setChangeAcceptance((current) => ({ ...current, note: event.target.value }))} placeholder="责任人备注" /></label></div><div className="change-list">{manualChanges.length ? manualChanges.map((change) => <article className="procurement-card" key={change.change_id}><div className="section-heading"><div><strong>变更 {change.change_no} · {change.title}</strong><small>{change.reason} · v{change.version}</small></div><span className="saved-tag">{change.status}</span></div><p>{change.description}</p><div className="procurement-line"><span>影响成果 {change.impact.affected_artifact_count ?? "待分析"}</span><span>工程量 {change.impact.quantity_delta_m2 ?? "未知"}</span><span>成本 {change.impact.cost_delta_net ?? "未知"}</span><span>工期 {change.impact.schedule_delta_days ?? "未知"}</span></div><div className="section-actions">{change.status === "draft" && <button type="button" disabled={busy} onClick={() => void analyzeChange(change)}>生成影响分析</button>}{change.status === "analyzed" && <button type="button" disabled={busy} onClick={() => void acceptChange(change)}>记录验收通过</button>}</div>{change.artifacts.length > 0 && <div className="artifact-list">{change.artifacts.map((artifact) => <button type="button" key={artifact.artifact_id} onClick={() => void downloadChangeArtifact(artifact)}>{artifact.filename} · {artifact.size_bytes.toLocaleString()} bytes</button>)}</div>}{change.acceptances.length > 0 && <small>验收：{change.acceptances[change.acceptances.length - 1].conclusion} · {change.acceptances[change.acceptances.length - 1].evidence_ref}</small>}</article>) : <div className="files-empty">还没有变更请求</div>}</div></div>
             </section>
           ) : selected && view === "jobs" ? (
             <section className="operation-workspace">

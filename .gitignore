@@ -11,3 +11,6 @@ web/dist/
 web/.vite/
 web/*.tsbuildinfo
 .build_xlsx/
+
+# WorkBuddy local tool state (session memory, caches) — not project source
+.workbuddy/

@@ -48,7 +48,7 @@ export function AccountGate({ children }: { children: (session: Session) => Reac
     } catch (problem) { setError(problem instanceof Error ? problem.message : "登录失败"); }
     finally { setBusy(false); }
   }
-  if (session) return children(session);
+  if (session) return <>{session.user?.is_admin ? <OperationsNotice /> : null}{children(session)}</>;
   return <main className="account-entry">
     <div className="account-entry-brand">RKD AI 工作台</div>
     <section className="account-entry-content">
@@ -62,6 +62,31 @@ export function AccountGate({ children }: { children: (session: Session) => Reac
       </form> : <p>请先在本机运行 <code>scripts/rkd.ps1 start-secure</code> 设置管理员账号和密码。</p>}
     </section>
   </main>;
+}
+
+function OperationsNotice() {
+  type Status = { configured: boolean; available?: boolean; passed?: boolean; stale?: boolean; checked_at?: string; backup_at?: string; checks?: Record<string, boolean> };
+  const [status, setStatus] = useState<Status>();
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    async function refresh() {
+      try { const value = await accountApi<Status>('/api/v1/operations/status'); if (active) { setStatus(value); setFailed(false); } }
+      catch { if (active) setFailed(true); }
+    }
+    void refresh(); const timer = window.setInterval(() => void refresh(), 60000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
+  if (!failed && (!status || !status.configured)) return null;
+  const labels: Record<string, string> = { application_ready: '应用连接', private_https_route: '访问入口', app_container: '应用服务', database_container: '数据库', disk_space: '存储空间', backup_recent: '备份时效', latest_backup_attempt: '最近备份' };
+  const date = (value?: string) => value ? new Date(value).toLocaleString('zh-CN') : '未知';
+  const ok = !failed && status?.passed;
+  return <aside className="operations-notice" role={ok ? 'status' : 'alert'}>
+    <strong>{ok ? '服务与备份检查正常' : '服务与备份状态需要检查'}</strong>
+    <span>最近检查：{date(status?.checked_at)}；备份：{date(status?.backup_at)}。</span>
+    {!ok && <span>{failed || !status?.available ? '暂时无法获取状态，请重试或联系管理员。' : status?.stale ? '检查记录已超过3分钟，请检查巡检任务。' : Object.entries(status?.checks || {}).filter(([, passed]) => !passed).map(([name]) => labels[name] || name).join('、') + '异常，请管理员检查。'}</span>}
+    <small>每分钟刷新；仅在打开工作台时提示，外部通知暂未配置。</small>
+  </aside>;
 }
 
 export function AccountControls({ session }: { session: Session }) {
@@ -115,11 +140,12 @@ export function AccountPanel({ projectId }: { projectId?: string }) {
     {message && <p className="account-message" role="status">{message}</p>}
     {error && <p className="account-error" role="alert">{error}</p>}
     <h3>创建个人账号</h3>
+    <ReviewPositions users={users} />
     <form className="account-form account-form-wide" onSubmit={create}>
       <label>新账号<input required minLength={3} maxLength={64} pattern="[a-z0-9][a-z0-9_.\-]{2,63}" autoComplete="off" value={draft.username} onChange={e => setDraft({ ...draft, username: e.target.value })} /></label>
       <label>显示姓名<input required maxLength={100} autoComplete="off" value={draft.display_name} onChange={e => setDraft({ ...draft, display_name: e.target.value })} /></label>
-      <label>初始密码<input type="password" required minLength={15} maxLength={128} autoComplete="new-password" aria-describedby="account-password-help" value={draft.password} onChange={e => setDraft({ ...draft, password: e.target.value })} /></label>
-      <p id="account-password-help">密码为 15–128 个字符，可以使用便于记忆的长句。</p>
+      <label>初始密码<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" aria-describedby="account-password-help" value={draft.password} onChange={e => setDraft({ ...draft, password: e.target.value })} /></label>
+      <p id="account-password-help">密码为 8–128 个字符，可以使用便于记忆的长句。</p>
       <button className="dark-action" disabled={busy}>创建账号</button>
     </form>
     <h3>当前项目访问权限</h3>
@@ -130,5 +156,28 @@ export function AccountPanel({ projectId }: { projectId?: string }) {
     </form><ul className="account-member-list">{members.map(m => <li key={m.user_id}><strong>{m.display_name}</strong><span>{roleNames[m.role]}{m.active ? "" : " · 已停用"}</span></li>)}</ul>{members.length === 0 && <p>尚未分配普通成员。管理员仍可管理此项目。</p>}</> : <p>请先选择或创建一个项目。</p>}
     <h3>账号状态</h3>
     <ul className="account-member-list">{users.map(u => <li key={u.user_id}><strong>{u.display_name}（{u.username}）</strong><span>{u.is_admin ? "管理员" : u.active ? "启用" : "停用"}</span>{!u.is_admin && <button className="account-secondary" disabled={busy} onClick={() => void perform(() => accountApi(`/api/v1/auth/users/${u.user_id}`, "PATCH", { active: !u.active }), u.active ? "账号已停用，登录会话已撤销" : "账号已恢复，请重新登录")}>{u.active ? "停用账号" : "恢复账号"}</button>}</li>)}</ul>
+  </section>;
+}
+
+function ReviewPositions({ users }: { users: Account[] }) {
+  type Position = { position_key: string; name: string; active: boolean | number; version: number; user_ids: string[] };
+  const [items, setItems] = useState<Position[]>([]);
+  const [error, setError] = useState(''); const [message, setMessage] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => { let active=true; accountApi<{items:Position[]}>('/api/v1/auth/review-positions').then(r=>{if(active)setItems(r.items);}).catch(e=>{if(active)setError(e.message);}); return ()=>{active=false;}; }, []);
+  async function save(item:Position) {
+    setBusy(true); setError(''); setMessage('');
+    try { const r=await accountApi<{items:Position[]}>(`/api/v1/auth/review-positions/${item.position_key}`, 'PATCH', {...item,active:Boolean(item.active),expected_version:item.version}); setItems(r.items); setMessage('岗位配置已保存。岗位不自动授予项目访问或正式签署权限。'); }
+    catch(e){setError((e as Error).message);} finally{setBusy(false);}
+  }
+  function update(key:string, values:Partial<Position>){setItems(old=>old.map(p=>p.position_key===key?{...p,...values}:p));}
+  return <section aria-label="审核岗位管理"><h3>审核岗位管理</h3><p>为岗位分配现有账号，人员变动时在此调整。成员还需单独获得对应项目权限；岗位用于审核责任与后续待办分派，正式签署尚未开放。</p>
+    {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
+    {items.map(item=><fieldset key={item.position_key} disabled={busy}><legend>{item.name}</legend>
+      <label>岗位名称<input maxLength={100} value={item.name} onChange={e=>update(item.position_key,{name:e.target.value})}/></label>
+      <label><input type="checkbox" checked={Boolean(item.active)} onChange={e=>update(item.position_key,{active:e.target.checked})}/>启用岗位</label>
+      {users.filter(u=>u.active).map(user=><label key={user.user_id}><input type="checkbox" checked={item.user_ids.includes(user.user_id)} onChange={e=>update(item.position_key,{user_ids:e.target.checked?[...item.user_ids,user.user_id]:item.user_ids.filter(id=>id!==user.user_id)})}/>{user.display_name}（{user.username}）</label>)}
+      {!users.some(u=>u.active)&&<p>请先创建有效个人账号。</p>}
+      <button type="button" onClick={()=>void save(item)}>保存岗位</button>
+    </fieldset>)}
   </section>;
 }

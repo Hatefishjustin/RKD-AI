@@ -1,0 +1,4 @@
+# Optional M5-02 PostgreSQL backend and integration verification.
+psycopg[binary]==3.2.10
+tzdata==2026.6
+typing-extensions==4.16.0

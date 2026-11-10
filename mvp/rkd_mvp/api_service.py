@@ -1,8 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from .engine import MVPApp
+from .ai_development_repository import SQLiteAIDevelopmentRepository
+from .ai_development_service import AIDevelopmentService, AIDevelopmentServiceError
+from .ai_design_option_repository import SQLiteAIDesignOptionRepository
+from .ai_design_option_service import AIDesignOptionService, AIDesignOptionServiceError
+from .ai_requirement_repository import SQLiteAIRequirementRepository
+from .ai_requirement_service import AIRequirementService, AIRequirementServiceError
+from .professional_delivery import (AIProfessionalDeliveryError, AISourceExtractionService,
+                                    AITechnicalDeliveryService,
+                                    SQLiteAIProfessionalDeliveryRepository)
 from .estimate_service import EstimateService, EstimateServiceError
 from .models import TenantContext, new_id
 from .store import AccessDenied, ConflictError
@@ -10,9 +20,11 @@ from .task_service import TaskService, TaskServiceError
 from .spatial_service import SpatialService, SpatialServiceError
 from .requirement_service import RequirementService, RequirementServiceError
 from .design_service import DesignService
+from .production_service import ProductionService
 from .design_rules import DesignError
 from .procurement_service import ProcurementService, ProcurementServiceError
 from .change_service import ChangeService, ChangeServiceError
+from .project_inputs import project_name, project_version
 
 
 class ApiError(Exception):
@@ -33,7 +45,13 @@ class ApiService:
                  spatial_service: SpatialService | None = None,
                  requirement_service: RequirementService | None = None,
                  procurement_service: ProcurementService | None = None,
-                 change_service: ChangeService | None = None) -> None:
+                 change_service: ChangeService | None = None,
+                 ai_requirement_service: AIRequirementService | None = None,
+                 ai_design_option_service: AIDesignOptionService | None = None,
+                 ai_development_service: AIDevelopmentService | None = None,
+                 ai_source_extraction_service: AISourceExtractionService | None = None,
+                 ai_technical_delivery_service: AITechnicalDeliveryService | None = None,
+                 runtime_root: str | Path | None = None) -> None:
         self.app = app or MVPApp()
         self.file_service = file_service
         db_path = getattr(self.app.store, "db_path", None)
@@ -42,8 +60,53 @@ class ApiService:
         self.spatial_service = spatial_service or (SpatialService(db_path) if db_path else None)
         self.requirement_service = requirement_service or (RequirementService(db_path) if db_path else None)
         self.design_service = DesignService(db_path) if db_path else None
+        self.production_service = ProductionService(db_path) if db_path else None
         self.procurement_service = procurement_service or (ProcurementService(db_path) if db_path else None)
         self.change_service = change_service or (ChangeService(db_path) if db_path else None)
+        self.ai_source_extraction_service = ai_source_extraction_service or (
+            AISourceExtractionService(SQLiteAIProfessionalDeliveryRepository(db_path), self.file_service)
+            if db_path else None
+        )
+        self.ai_requirement_service = ai_requirement_service or (
+            AIRequirementService(SQLiteAIRequirementRepository(db_path), self.requirement_service,
+                                 extraction_service=self.ai_source_extraction_service)
+            if db_path and self.requirement_service else None
+        )
+
+        def ai_brief_provider(org: str, project: str) -> dict[str, Any] | None:
+            if self.ai_requirement_service is None:
+                return None
+            return self.ai_requirement_service.status(org, project)["item"]
+
+        def ai_design_context_provider(org: str, project: str) -> dict[str, Any]:
+            context: dict[str, Any] = {"width": "12", "length": "8",
+                                       "boundary_source": "test_parameters_not_site_verified", "obstacles": []}
+            if self.requirement_service is not None:
+                requirement = self.requirement_service.get_current(org, project)
+                program = requirement.get("content", {}).get("design_program") if requirement else None
+                if isinstance(program, dict):
+                    context.update({"width": program.get("width", context["width"]),
+                                    "length": program.get("length", context["length"]),
+                                    "boundary_source": program.get("boundary_source", context["boundary_source"])})
+            return context
+
+        root = Path(runtime_root) if runtime_root else (Path(db_path).parent if db_path else None)
+        self.ai_design_option_service = ai_design_option_service or (
+            AIDesignOptionService(SQLiteAIDesignOptionRepository(db_path), ai_brief_provider,
+                                  ai_design_context_provider, root)
+            if db_path and self.ai_requirement_service and root else None
+        )
+        self.ai_development_service = ai_development_service or (
+            AIDevelopmentService(SQLiteAIDevelopmentRepository(db_path),
+                                 self.ai_design_option_service, root)
+            if db_path and self.ai_design_option_service and root else None
+        )
+        self.ai_technical_delivery_service = ai_technical_delivery_service or (
+            AITechnicalDeliveryService(SQLiteAIProfessionalDeliveryRepository(db_path),
+                                       self.ai_development_service,
+                                       self.ai_source_extraction_service, root)
+            if db_path and self.ai_development_service and root else None
+        )
 
     def _files(self) -> Any:
         if self.file_service is None:
@@ -71,9 +134,10 @@ class ApiService:
         return {"items": items, "next_cursor": None}
 
     def create_project(self, organization_id: str, name: str, project_id: str | None = None, *, actor_id: str = "local-user") -> dict[str, Any]:
-        name = name.strip()
-        if not name or len(name) > 200:
-            raise ApiError(400, "INVALID_PROJECT", "name must contain 1 to 200 characters")
+        try:
+            name = project_name(name)
+        except ValueError as error:
+            raise ApiError(400, "INVALID_PROJECT", str(error)) from error
         project_id = project_id or new_id("project")
         context = self._context(organization_id, project_id, actor_id)
         if (organization_id, project_id) in self.app.store.projects:
@@ -88,10 +152,11 @@ class ApiService:
     def update_project(self, organization_id: str, project_id: str, request: dict[str, Any], *, actor_id: str = "local-user") -> dict[str, Any]:
         self._require_project(organization_id, project_id)
         context = self._context(organization_id, project_id, actor_id)
-        name = str(request.get("name", "")).strip()
-        if not name or len(name) > 200:
-            raise ApiError(400, "INVALID_PROJECT", "name must contain 1 to 200 characters")
-        expected_version = int(request.get("expected_version", -1))
+        try:
+            name = project_name(request.get("name"))
+            expected_version = project_version(request.get("expected_version"))
+        except ValueError as error:
+            raise ApiError(400, "INVALID_PROJECT", str(error)) from error
         project = self.app.store.projects[(organization_id, project_id)]
         current_version = int(project.get("version", 0))
         if expected_version != current_version:
@@ -253,12 +318,211 @@ class ApiService:
         except RequirementServiceError as error:
             raise ApiError(error.status, error.code, error.message) from error
 
+    def _ai(self) -> AIRequirementService:
+        if self.ai_requirement_service is None:
+            raise ApiError(501, "AI_REQUIREMENT_NOT_CONFIGURED", "AI 需求理解服务未配置")
+        return self.ai_requirement_service
+
+    def get_ai_requirement_status(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai().status(organization_id, project_id)
+        except AIRequirementServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def submit_ai_requirement(self, organization_id: str, project_id: str, actor_id: str,
+                              request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai().submit(organization_id, project_id, actor_id, request, idempotency_key)
+        except AIRequirementServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def get_ai_requirement_job(self, organization_id: str, project_id: str, job_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai().get_job(organization_id, project_id, job_id)
+        except AIRequirementServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def retry_ai_requirement_job(self, organization_id: str, project_id: str, job_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai().retry(organization_id, project_id, job_id)
+        except AIRequirementServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def cancel_ai_requirement_job(self, organization_id: str, project_id: str, job_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai().cancel(organization_id, project_id, job_id)
+        except AIRequirementServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def save_ai_requirement_brief(self, organization_id: str, project_id: str, actor_id: str,
+                                  request: dict[str, Any]) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai().save_brief(organization_id, project_id, actor_id, request)
+        except AIRequirementServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def _ai_options(self) -> AIDesignOptionService:
+        if self.ai_design_option_service is None:
+            raise ApiError(501, "AI_DESIGN_OPTIONS_NOT_CONFIGURED", "AI 设计候选服务未配置")
+        return self.ai_design_option_service
+
+    def get_ai_design_options(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        return self._ai_options().status(organization_id, project_id)
+
+    def submit_ai_design_options(self, organization_id: str, project_id: str, actor_id: str,
+                                 request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_options().submit(organization_id, project_id, actor_id, request, idempotency_key)
+        except AIDesignOptionServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def revise_ai_design_option(self, organization_id: str, project_id: str, actor_id: str,
+                                request: dict[str, Any]) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_options().revise(organization_id, project_id, actor_id, request)
+        except AIDesignOptionServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def adopt_ai_design_option(self, organization_id: str, project_id: str, actor_id: str,
+                               request: dict[str, Any]) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_options().adopt(organization_id, project_id, actor_id, request)
+        except AIDesignOptionServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def cancel_ai_design_option_set(self, organization_id: str, project_id: str, set_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_options().cancel(organization_id, project_id, set_id)
+        except AIDesignOptionServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def get_ai_design_option_artifact(self, organization_id: str, project_id: str,
+                                      artifact_id: str) -> tuple[dict[str, Any], Path]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_options().get_artifact(organization_id, project_id, artifact_id)
+        except AIDesignOptionServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def _ai_development(self) -> AIDevelopmentService:
+        if self.ai_development_service is None:
+            raise ApiError(501, "AI_DEVELOPMENT_NOT_CONFIGURED", "AI 深化量价服务未配置")
+        return self.ai_development_service
+
+    def get_ai_development(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        return self._ai_development().status(organization_id, project_id)
+
+    def submit_ai_development(self, organization_id: str, project_id: str, actor_id: str,
+                              request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_development().submit(organization_id, project_id, actor_id,
+                                                 request, idempotency_key)
+        except AIDevelopmentServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def get_ai_development_artifact(self, organization_id: str, project_id: str,
+                                    artifact_id: str) -> tuple[dict[str, Any], Path]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_development().get_artifact(organization_id, project_id, artifact_id)
+        except AIDevelopmentServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def _ai_sources(self) -> AISourceExtractionService:
+        if self.ai_source_extraction_service is None:
+            raise ApiError(501, "SOURCE_EXTRACTION_NOT_CONFIGURED", "原件内容解析服务未配置")
+        return self.ai_source_extraction_service
+
+    def get_ai_source_extractions(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_sources().list_extractions(organization_id, project_id)
+        except AIProfessionalDeliveryError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def submit_ai_source_extraction(self, organization_id: str, project_id: str,
+                                    request: dict[str, Any]) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_sources().extract(organization_id, project_id, request.get("file_id"))
+        except AIProfessionalDeliveryError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def _ai_technical_delivery(self) -> AITechnicalDeliveryService:
+        if self.ai_technical_delivery_service is None:
+            raise ApiError(501, "TECHNICAL_DELIVERY_NOT_CONFIGURED", "技术交付服务未配置")
+        return self.ai_technical_delivery_service
+
+    def get_ai_technical_delivery(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_technical_delivery().status(organization_id, project_id)
+        except AIProfessionalDeliveryError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def submit_ai_technical_delivery(self, organization_id: str, project_id: str, actor_id: str,
+                                     request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_technical_delivery().submit(organization_id, project_id, actor_id,
+                                                        request, idempotency_key)
+        except AIProfessionalDeliveryError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def get_ai_technical_delivery_artifact(self, organization_id: str, project_id: str,
+                                           artifact_id: str) -> tuple[dict[str, Any], Path]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_technical_delivery().get_artifact(organization_id, project_id, artifact_id)
+        except AIProfessionalDeliveryError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
     def get_design(self, organization_id: str, project_id: str, revision_no: int | None = None) -> dict:
         self._require_project(organization_id, project_id)
         if self.design_service is None:
             raise ApiError(501, "DESIGN_NOT_CONFIGURED", "design storage is not configured")
         try:
             return self.design_service.get_design(organization_id, project_id, revision_no)
+        except DesignError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def get_production(self, organization_id: str, project_id: str, revision_no: int | None = None) -> dict:
+        self._require_project(organization_id, project_id)
+        if self.production_service is None:
+            raise ApiError(501, "PRODUCTION_NOT_CONFIGURED", "production storage is not configured")
+        try:
+            return self.production_service.get(organization_id, project_id, revision_no)
+        except DesignError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def save_production_settings(self, organization_id: str, project_id: str, actor_id: str, request: dict) -> dict:
+        self._require_project(organization_id, project_id)
+        if self.production_service is None:
+            raise ApiError(501, "PRODUCTION_NOT_CONFIGURED", "production storage is not configured")
+        try:
+            return self.production_service.save_settings(organization_id, project_id, actor_id, request)
+        except (DesignError, ProcurementServiceError) as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def get_production_artifact(self, organization_id: str, project_id: str, artifact_id: str) -> tuple[dict, Any]:
+        self._require_project(organization_id, project_id)
+        if self.production_service is None:
+            raise ApiError(501, "PRODUCTION_NOT_CONFIGURED", "production storage is not configured")
+        try:
+            return self.production_service.get_artifact(organization_id, project_id, artifact_id)
         except DesignError as error:
             raise ApiError(error.status, error.code, error.message) from error
 
@@ -351,6 +615,13 @@ class ApiService:
         self._require_project(organization_id, project_id)
         try:
             return self._changes().accept_change(organization_id, project_id, change_id, actor_id, request, idempotency_key)
+        except ChangeServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def reproduce_change(self, organization_id, project_id, change_id, actor_id, request, idempotency_key):
+        self._require_project(organization_id, project_id)
+        try:
+            return self._changes().reproduce(organization_id, project_id, change_id, actor_id, request, idempotency_key)
         except ChangeServiceError as error:
             raise ApiError(error.status, error.code, error.message) from error
 

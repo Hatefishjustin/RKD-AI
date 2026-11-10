@@ -71,7 +71,7 @@ class SQLiteHttpThreadingTests(unittest.TestCase):
             with closing(SQLiteStore(db_path)) as restored:
                 self.assertEqual(restored.projects[("org-thread", project_id)]["name"], "Renamed project")
                 migrations = restored._connection().execute("SELECT version FROM schema_migrations").fetchall()
-                self.assertEqual([row[0] for row in migrations], list(range(1, 16)))
+                self.assertEqual([row[0] for row in migrations], list(range(1, 25)))
                 row = restored._connection().execute(
                     "SELECT name, version FROM projects WHERE organization_id = ? AND project_id = ?",
                     ("org-thread", project_id),

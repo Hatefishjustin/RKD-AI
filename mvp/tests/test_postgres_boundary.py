@@ -11,6 +11,13 @@ from rkd_mvp.models import CommandEnvelope
 
 
 class FakeConnection:
+    class Cursor:
+        def fetchall(self):
+            return []
+
+        def fetchone(self):
+            return None
+
     def __init__(self):
         self.calls = []
         self.committed = False
@@ -19,7 +26,7 @@ class FakeConnection:
 
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
-        return {"rows": []}
+        return self.Cursor()
 
     def commit(self):
         self.committed = True
@@ -79,6 +86,8 @@ class RepositoryConnection(FakeConnection):
         self.calls.append((sql, params))
         if "FROM rkd.command_record" in sql:
             return self.Cursor(self.command_row)
+        if "INSERT INTO rkd.command_record" in sql:
+            self.command_row = (params[8], params[9])
         if "FROM rkd.aggregate_state" in sql:
             return self.Cursor(self.aggregate_row)
         if "RETURNING organization_id, project_id, name, status" in sql:
@@ -115,15 +124,17 @@ class PostgresRepositoryTests(unittest.TestCase):
             self.assertIn(fragment, sql)
 
     def test_existing_idempotency_result_is_returned_without_new_event(self):
-        connection = RepositoryConnection(command_row=({"status": "accepted"},))
+        connection = RepositoryConnection()
         repository = PostgresRepository(PostgresStore(lambda: connection))
         context = TenantContext("org-1", "project-1", "user-1")
         command = CommandEnvelope(
             command_id="cmd-1", command_name="estimate", context=context,
             idempotency_key="idem-1", aggregate_id="estimate-1", payload={},
         )
+        first = repository.append_command_event(command, "estimate.created", {})
+        connection.calls.clear()
         result = repository.append_command_event(command, "estimate.created", {})
-        self.assertEqual(result, {"status": "accepted"})
+        self.assertEqual(result, first)
         self.assertNotIn("INSERT INTO rkd.domain_event", " ".join(call[0] for call in connection.calls))
 
 

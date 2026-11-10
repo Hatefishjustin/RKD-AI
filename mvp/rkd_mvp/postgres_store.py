@@ -20,6 +20,31 @@ class DbConnection(Protocol):
 ConnectionFactory = Callable[[], DbConnection]
 
 
+def postgres_connection_factory(dsn: str, *, application_role: bool = True) -> ConnectionFactory:
+    """No implicit SQLite fallback. Driver and connection errors fail explicitly."""
+    import psycopg
+
+    def connect() -> DbConnection:
+        connection = psycopg.connect(dsn, autocommit=True, connect_timeout=10)
+        try:
+            if application_role:
+                role = connection.execute(
+                    "SELECT rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname=current_user"
+                ).fetchone()
+                owned = connection.execute(
+                    "SELECT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+                    "WHERE n.nspname='rkd' AND pg_has_role(current_user,c.relowner,'USAGE'))"
+                ).fetchone()[0]
+                if not role or any(role) or owned:
+                    raise PermissionError("PostgreSQL application role must not own tables, bypass RLS, or administer roles/databases")
+            return connection
+        except BaseException:
+            connection.close()
+            raise
+
+    return connect
+
+
 class PostgresStore:
     """DB-API boundary for the production store; requires a PostgreSQL driver at deployment time."""
 
@@ -28,6 +53,10 @@ class PostgresStore:
 
     @contextmanager
     def tenant_transaction(self, context: TenantContext) -> Iterator[DbConnection]:
+        if not all(isinstance(value, str) and value.strip() for value in (
+            context.organization_id, context.project_id, context.actor_id,
+        )):
+            raise ValueError("organization, project and actor context are required")
         connection = self.connection_factory()
         try:
             connection.execute("BEGIN")
@@ -41,7 +70,7 @@ class PostgresStore:
             )
             yield connection
             connection.commit()
-        except Exception:
+        except BaseException:
             connection.rollback()
             raise
         finally:
@@ -79,7 +108,7 @@ class PostgresStore:
                           message.attempts, message.lease_until
                 """,
                 (context.organization_id, context.project_id, limit, worker_id, lease_seconds),
-            )
+            ).fetchall()
 
         return self.run_in_transaction(context, claim)
 
@@ -93,11 +122,11 @@ class PostgresStore:
                  WHERE message_id = %s
                    AND organization_id = %s
                    AND project_id = %s
-                   AND lease_owner = %s
+                   AND lease_owner = %s AND lease_until > now() AND published_at IS NULL
                 RETURNING message_id
                 """,
                 (message_id, context.organization_id, context.project_id, worker_id),
-            ),
+            ).fetchone(),
         )
 
     def record_inbox_once(self, context: TenantContext, message_id: str,
@@ -114,5 +143,5 @@ class PostgresStore:
                 RETURNING message_id
                 """,
                 (context.organization_id, context.project_id, message_id, consumer_name, json.dumps(result, ensure_ascii=True)),
-            ),
+            ).fetchone(),
         )

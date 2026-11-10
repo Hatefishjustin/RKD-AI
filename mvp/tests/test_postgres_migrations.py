@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -34,8 +35,9 @@ class FakeMigrationConnection:
 
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
-        if sql.startswith("SELECT version FROM rkd.schema_migration"):
-            return Result((version,) for version in sorted(self.applied))
+        if sql.startswith("SELECT version, name, sha256 FROM rkd.schema_migration"):
+            migrations = {item.version: item for item in discover_migrations(POSTGRES_ROOT)}
+            return Result((version, migrations[version].name, hashlib.sha256(migrations[version].path.read_bytes()).hexdigest()) for version in sorted(self.applied))
         if sql.startswith("INSERT INTO rkd.schema_migration"):
             self.applied.add(int(params[0]))
         return Result()
@@ -60,7 +62,7 @@ class FailingMigrationConnection(FakeMigrationConnection):
 class PostgresMigrationTests(unittest.TestCase):
     def test_migrations_are_contiguous_and_include_runtime_domains(self):
         migrations = discover_migrations(POSTGRES_ROOT)
-        self.assertEqual([migration.version for migration in migrations], [1, 2])
+        self.assertEqual([migration.version for migration in migrations], list(range(1, 15)))
         self.assertEqual(migrations[1].name, "runtime_domains")
 
     def test_legacy_outer_transaction_is_removed_for_runner(self):
@@ -72,13 +74,13 @@ class PostgresMigrationTests(unittest.TestCase):
     def test_runner_records_each_version_and_closes_connection(self):
         connection = FakeMigrationConnection()
         applied = PostgresMigrationRunner(lambda: connection, POSTGRES_ROOT).apply()
-        self.assertEqual(applied, (1, 2))
-        self.assertEqual(connection.applied, {1, 2})
+        self.assertEqual(applied, tuple(range(1, 15)))
+        self.assertEqual(connection.applied, set(range(1, 15)))
         self.assertGreaterEqual(connection.commits, 3)  # schema table + one commit per migration
         self.assertEqual(connection.rollbacks, 0)
         self.assertTrue(connection.closed)
-        self.assertIn("CREATE SCHEMA IF NOT EXISTS rkd", connection.calls[0][0])
-        self.assertIn("CREATE TABLE IF NOT EXISTS rkd.file_asset", connection.calls[-2][0])
+        self.assertTrue(any("CREATE SCHEMA IF NOT EXISTS rkd" in sql for sql, _ in connection.calls))
+        self.assertTrue(any("CREATE TABLE IF NOT EXISTS rkd.file_asset" in sql for sql, _ in connection.calls))
 
     def test_runtime_schema_covers_all_local_domains_and_rls(self):
         sql = (POSTGRES_ROOT / "002_runtime_domains.sql").read_text(encoding="utf-8")

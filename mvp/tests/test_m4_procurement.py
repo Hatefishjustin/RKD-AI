@@ -13,6 +13,28 @@ from rkd_mvp.sqlite_store import SQLiteStore
 
 
 class M4ProcurementTests(unittest.TestCase):
+    def test_multi_line_dispatch_is_atomic_and_replays_once(self):
+        order = self.service.create_procurement_order("org-local", "m4-project", "tester", {
+            "supplier_name": "Supplier", "delivery_location": "Site", "lines": [
+                {"item_code": "A", "item_name": "Floor A", "ordered_quantity": "10", "unit": "m2"},
+                {"item_code": "B", "item_name": "Floor B", "ordered_quantity": "8", "unit": "m2"},
+            ]}, "multi-order-key-0001")
+        lines = [{"line_id": row["line_id"], "quantity": row["ordered_quantity"]} for row in order["lines"]]
+        received = self.service.receive_procurement("org-local", "m4-project", order["order_id"], "tester",
+            {"receiver": "Person", "evidence_ref": "local://receipt", "lines": lines}, "multi-receive-key-0001")
+        request = {"target_area": "Room", "recipient": "Team", "evidence_ref": "local://dispatch", "lines": lines}
+        allocated = self.service.allocate_procurement("org-local", "m4-project", order["order_id"], "tester", request, "multi-dispatch-key-0001")
+        self.assertEqual(allocated["status"], "allocated")
+        self.assertEqual(len(allocated["allocations"]), 2)
+        repeated = self.service.allocate_procurement("org-local", "m4-project", order["order_id"], "tester", request, "multi-dispatch-key-0001")
+        self.assertEqual(repeated, allocated)
+        self.assertEqual([row["remaining_quantity"] for row in repeated["lines"]], ["0", "0"])
+        with self.assertRaises(ApiError) as error:
+            self.service.allocate_procurement("org-local", "m4-project", order["order_id"], "tester",
+                {**request, "target_area": "Other room"}, "multi-dispatch-key-0001")
+        self.assertEqual(error.exception.code, "IDEMPOTENCY_CONFLICT")
+        self.assertEqual(received["status"], "received")
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.db_path = Path(self.directory.name) / "app.sqlite3"

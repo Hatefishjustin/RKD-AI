@@ -1,0 +1,72 @@
+name: rkd-ai
+services:
+  database:
+    image: docker.m.daocloud.io/library/postgres:17.11-bookworm@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5
+    network_mode: host
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1", "-c", "port=15432", "-c", "password_encryption=scram-sha-256"]
+    environment:
+      POSTGRES_USER: rkd_owner
+      POSTGRES_DB: rkd_team
+      POSTGRES_PASSWORD_FILE: /run/secrets/owner_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+    secrets: [owner_password]
+    volumes: ["database:/var/lib/postgresql/data"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 15432 -U rkd_owner -d rkd_team"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    logging: &logs
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  initialize:
+    profiles: [tools]
+    image: rkd-ai:${RKD_RELEASE:?Set RKD_RELEASE}
+    build:
+      context: ../..
+      dockerfile: scripts/deploy/Dockerfile
+    network_mode: host
+    user: "0:0"
+    command: ["python", "scripts/deploy/container_entry.py", "initialize"]
+    environment: &appenv
+      RKD_POSTGRES_PORT: "15432"
+      RKD_TEAM_PORT: "18080"
+      RKD_POSTGRES_RUNTIME: /rkd/runtime
+      RKD_PUBLIC_ORIGIN: ${RKD_PUBLIC_ORIGIN:?Set RKD_PUBLIC_ORIGIN}
+      RKD_OPERATIONS_STATUS_DIR: /rkd/operations
+    secrets: [owner_password, app_password]
+    volumes: ["runtime:/rkd/runtime", "${RKD_DEPLOY_ROOT:?Set RKD_DEPLOY_ROOT}/releases/${RKD_RELEASE}/snapshot:/rkd/import:ro"]
+    depends_on:
+      database: {condition: service_healthy}
+    logging: *logs
+  app:
+    image: rkd-ai:${RKD_RELEASE:?Set RKD_RELEASE}
+    build:
+      context: ../..
+      dockerfile: scripts/deploy/Dockerfile
+    network_mode: host
+    environment: *appenv
+    secrets: [app_password]
+    volumes: ["runtime:/rkd/runtime", "${RKD_DEPLOY_ROOT}/operations/public:/rkd/operations:ro"]
+    read_only: true
+    tmpfs: ["/tmp:size=4g,mode=1777"]
+    mem_limit: 6g
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 40s
+    depends_on:
+      database: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18080/api/health/ready',timeout=4).read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    logging: *logs
+secrets:
+  owner_password: {file: "${RKD_DEPLOY_ROOT}/secrets/owner_password"}
+  app_password: {file: "${RKD_DEPLOY_ROOT}/secrets/app_password"}
+volumes:
+  database:
+  runtime:

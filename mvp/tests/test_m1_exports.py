@@ -12,6 +12,8 @@ from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID
 from rkd_mvp.sqlite_store import SQLiteStore
 from rkd_mvp.api_server import create_server
 import threading
+from unittest.mock import patch
+from rkd_mvp.estimate_repository import SQLiteEstimateTransaction
 
 
 FIXTURE_ROOT = Path(__file__).parents[2] / "fixtures" / "ningbo-xiecheng" / "2026-09"
@@ -56,6 +58,39 @@ class M1EstimateExportTests(unittest.TestCase):
         exported = self.service.export_estimate("org-local", NINGBO_PROJECT_ID, self.estimate["estimate_id"], "test-user")
         with self.assertRaises(ApiError):
             self.service.get_estimate_artifact("other-org", NINGBO_PROJECT_ID, exported["items"][0]["artifact_id"])
+
+    def test_changed_same_size_bytes_are_rejected_on_download_and_reexport(self):
+        exported = self.service.export_estimate("org-local", NINGBO_PROJECT_ID, self.estimate["estimate_id"], "test")
+        metadata, path = self.service.get_estimate_artifact("org-local", NINGBO_PROJECT_ID, exported["items"][0]["artifact_id"])
+        path.write_bytes(b"X" * metadata["size_bytes"])
+        with self.assertRaises(ApiError) as error:
+            self.service.get_estimate_artifact("org-local", NINGBO_PROJECT_ID, metadata["artifact_id"])
+        self.assertEqual(error.exception.code, "ARTIFACT_INTEGRITY")
+        with self.assertRaises(ApiError) as error:
+            self.service.export_estimate("org-local", NINGBO_PROJECT_ID, self.estimate["estimate_id"], "test")
+        self.assertEqual(error.exception.code, "ARTIFACT_INTEGRITY")
+
+    def test_failed_export_rolls_back_rows_and_retry_preserves_old_files(self):
+        previous = self.service.export_estimate("org-local", NINGBO_PROJECT_ID, self.estimate["estimate_id"], "test")
+        old = {item["artifact_id"]: self.service.get_estimate_artifact("org-local", NINGBO_PROJECT_ID, item["artifact_id"])[1].read_bytes() for item in previous["items"]}
+        self.estimates.calculate("org-local", NINGBO_PROJECT_ID, self.estimate["estimate_id"], {"expected_revision": 1, "design_cost_net": "1000"}, "test")
+        original = SQLiteEstimateTransaction.query
+        calls = []
+        def failure(tx, operation, params=()):
+            if operation == "insert_artifact":
+                calls.append(1)
+                if len(calls) == 2:
+                    raise RuntimeError("late export write failure")
+            return original(tx, operation, params)
+        with patch.object(SQLiteEstimateTransaction, "query", failure):
+            with self.assertRaises(RuntimeError):
+                self.service.export_estimate("org-local", NINGBO_PROJECT_ID, self.estimate["estimate_id"], "test")
+        with self.estimates._db() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM estimate_artifacts WHERE revision_no=2").fetchone()[0], 0)
+        latest = self.service.export_estimate("org-local", NINGBO_PROJECT_ID, self.estimate["estimate_id"], "test")
+        self.assertEqual(len(latest["items"]), 2)
+        for artifact, data in old.items():
+            self.assertEqual(self.service.get_estimate_artifact("org-local", NINGBO_PROJECT_ID, artifact)[1].read_bytes(), data)
 
     def test_http_export_and_download_return_real_bytes(self):
         server = create_server(self.service, port=0)

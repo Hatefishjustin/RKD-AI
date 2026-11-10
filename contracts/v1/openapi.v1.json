@@ -48,9 +48,109 @@
     },
     {
       "name": "Identity"
+    },
+    {
+      "name": "AI Source Content"
+    },
+    {
+      "name": "AI Technical Delivery"
     }
   ],
   "paths": {
+    "/v1/projects/{projectId}/ai/source-extractions": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ProjectId" }
+      ],
+      "get": {
+        "tags": ["AI Source Content"],
+        "summary": "List local, source-locatable content extractions of original files",
+        "operationId": "getAISourceExtractions",
+        "responses": {
+          "200": { "description": "Local extraction records; no content is sent to any model" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["AI Source Content"],
+        "summary": "Extract text from one immutable original file, or record an explicit unsupported reason",
+        "operationId": "createAISourceExtraction",
+        "parameters": [
+          { "name": "X-CSRF-Token", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["file_id"],
+                "properties": { "file_id": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Extraction record created or reused for identical bytes" },
+          "400": { "description": "Invalid file id" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "description": "Stored bytes or extraction record failed integrity checks" }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/ai/technical-delivery": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ProjectId" }
+      ],
+      "get": {
+        "tags": ["AI Technical Delivery"],
+        "summary": "Read the same-source technical handover draft and its artifacts",
+        "operationId": "getAITechnicalDelivery",
+        "responses": {
+          "200": { "description": "Technical draft status; never a construction issue" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["AI Technical Delivery"],
+        "summary": "Create a technical draft pack from the currently adopted development package",
+        "operationId": "createAITechnicalDelivery",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "name": "X-CSRF-Token", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "expected_revision": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Technical draft pack created; professional review pending" },
+          "409": { "description": "Adopted development package missing, stale, or idempotency conflict" },
+          "422": { "description": "Development package invalid" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/ai/technical-delivery/artifacts/{artifactId}/content": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "name": "artifactId", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "get": {
+        "tags": ["AI Technical Delivery"],
+        "summary": "Download one technical draft artifact with size and SHA-256 verification",
+        "operationId": "getAITechnicalDeliveryArtifact",
+        "responses": {
+          "200": { "description": "Artifact bytes" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "description": "Artifact bytes missing or changed" }
+        }
+      }
+    },
     "/v1/projects": {
       "get": {
         "tags": [
@@ -907,6 +1007,82 @@
           }
         ]
       }
+    },
+    "/v1/projects/{projectId}/ai/requirement-understanding": {
+      "parameters": [
+        {"$ref": "#/components/parameters/ProjectId"}
+      ],
+      "get": {
+        "tags": ["AI Requirements"],
+        "summary": "Read provider capability, persistent jobs and the latest candidate brief",
+        "operationId": "getAIRequirementUnderstanding",
+        "responses": {
+          "200": {"description": "Status, jobs and candidate brief", "content": {"application/json": {"schema": {"type": "object"}}}},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "post": {
+        "tags": ["AI Requirements"],
+        "summary": "Queue requirement understanding with an explicitly configured model channel",
+        "operationId": "queueAIRequirementUnderstanding",
+        "parameters": [
+          {"$ref": "#/components/parameters/IdempotencyKey"},
+          {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["natural_language"], "properties": {"natural_language": {"type": "string", "minLength": 1}, "selected_source_ids": {"type": "array", "items": {"type": "string"}}}}}}},
+        "responses": {
+          "202": {"description": "Persistent job accepted", "content": {"application/json": {"schema": {"type": "object"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "409": {"description": "Idempotency key reused with different input"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/v1/projects/{projectId}/ai/requirement-understanding/jobs/{jobId}": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "jobId", "in": "path", "required": true, "schema": {"type": "string"}}],
+      "get": {"tags": ["AI Requirements"], "summary": "Read one persistent job, model runs and brief revisions", "operationId": "getAIRequirementJob", "responses": {"200": {"description": "Persistent job", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}}
+    },
+    "/v1/projects/{projectId}/ai/requirement-understanding/jobs/{jobId}/retry": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "jobId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}],
+      "post": {"tags": ["AI Requirements"], "summary": "Explicitly retry a failed or cancelled job without duplicating business facts", "operationId": "retryAIRequirementJob", "responses": {"202": {"description": "Retry queued"}, "404": {"$ref": "#/components/responses/NotFound"}, "409": {"description": "Job state does not allow retry"}}}
+    },
+    "/v1/projects/{projectId}/ai/requirement-understanding/jobs/{jobId}/cancel": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "jobId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}],
+      "post": {"tags": ["AI Requirements"], "summary": "Cancel a queued or running job; late results are discarded", "operationId": "cancelAIRequirementJob", "responses": {"200": {"description": "Cancelled job"}, "404": {"$ref": "#/components/responses/NotFound"}, "409": {"description": "Job state does not allow cancellation"}}}
+    },
+    "/v1/projects/{projectId}/ai/requirement-understanding/briefs": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}],
+      "patch": {"tags": ["AI Requirements"], "summary": "Save a human edit as a new candidate brief revision", "operationId": "saveAIRequirementBrief", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["job_id", "expected_revision", "brief", "change_reason"], "properties": {"job_id": {"type": "string"}, "expected_revision": {"type": "integer"}, "brief": {"type": "object"}, "change_reason": {"type": "string"}}}}}}, "responses": {"200": {"description": "Saved brief revision", "content": {"application/json": {"schema": {"type": "object"}}}}, "409": {"description": "Stale revision or job"}, "422": {"description": "Brief failed versioned validation"}}}
+    },
+    "/v1/projects/{projectId}/ai/design-options": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}],
+      "get": {"tags": ["AI Design Options"], "summary": "Read candidate sets, compared options and current draft adoption", "operationId": "getAIDesignOptions", "responses": {"200": {"description": "Candidate status", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}},
+      "post": {"tags": ["AI Design Options"], "summary": "Queue generation of at least two isolated computable design candidates", "operationId": "queueAIDesignOptions", "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"obstacles": {"type": "array", "items": {"type": "object"}}}}}}}, "responses": {"202": {"description": "Candidate set accepted", "content": {"application/json": {"schema": {"type": "object"}}}}, "409": {"description": "Brief missing or idempotency conflict"}, "404": {"$ref": "#/components/responses/NotFound"}}}
+    },
+    "/v1/projects/{projectId}/ai/design-options/artifacts/{artifactId}/content": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string"}}],
+      "get": {"tags": ["AI Design Options"], "summary": "Read one verified SVG candidate drawing", "operationId": "getAIDesignOptionArtifact", "responses": {"200": {"description": "SVG bytes", "content": {"image/svg+xml": {"schema": {"type": "string", "format": "binary"}}}}, "404": {"$ref": "#/components/responses/NotFound"}, "500": {"description": "Artifact missing or integrity mismatch"}}}
+    },
+    "/v1/projects/{projectId}/ai/design-options/{optionId}/revise": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "optionId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}],
+      "post": {"tags": ["AI Design Options"], "summary": "Apply natural-language feedback as a new candidate revision", "operationId": "reviseAIDesignOption", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["expected_revision", "feedback"], "properties": {"expected_revision": {"type": "integer"}, "feedback": {"type": "string"}, "locks": {"type": "array", "items": {"type": "string"}}}}}}}, "responses": {"200": {"description": "New candidate revision and object diff"}, "409": {"description": "Stale revision or unresolved conflict"}, "422": {"description": "Feedback or model validation failed"}}}
+    },
+    "/v1/projects/{projectId}/ai/design-options/{optionId}/adopt": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "optionId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}],
+      "post": {"tags": ["AI Design Options"], "summary": "Adopt a checked candidate as the current draft without production sync", "operationId": "adoptAIDesignOption", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["expected_revision", "expected_version"], "properties": {"expected_revision": {"type": "integer"}, "expected_version": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Current draft adoption"}, "409": {"description": "Stale candidate or adoption version"}, "422": {"description": "Candidate failed hard checks"}}}
+    },
+    "/v1/projects/{projectId}/ai/design-options/sets/{setId}/cancel": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "setId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}],
+      "post": {"tags": ["AI Design Options"], "summary": "Cancel a queued or running candidate set; late results are discarded", "operationId": "cancelAIDesignOptionSet", "responses": {"200": {"description": "Cancelled set"}, "404": {"$ref": "#/components/responses/NotFound"}, "409": {"description": "Set state does not allow cancellation"}}}
+    },
+    "/v1/projects/{projectId}/ai/development-production": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}],
+      "get": {"tags": ["AI Development"], "summary": "Read same-source development, quantity and cost draft status", "operationId": "getAIDevelopmentProduction", "responses": {"200": {"description": "Development status", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}},
+      "post": {"tags": ["AI Development"], "summary": "Queue a same-source development and quantity draft from the adopted option", "operationId": "queueAIDevelopmentProduction", "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["expected_version"], "properties": {"expected_version": {"type": "integer"}, "settings": {"type": "object"}}}}}}, "responses": {"202": {"description": "Development job accepted", "content": {"application/json": {"schema": {"type": "object"}}}}, "409": {"description": "Adoption required or stale version"}, "422": {"description": "Adopted candidate invalid"}, "404": {"$ref": "#/components/responses/NotFound"}}}
+    },
+    "/v1/projects/{projectId}/ai/development-production/artifacts/{artifactId}/content": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string"}}],
+      "get": {"tags": ["AI Development"], "summary": "Download one verified development artifact", "operationId": "getAIDevelopmentArtifact", "responses": {"200": {"description": "Artifact bytes", "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}}, "404": {"$ref": "#/components/responses/NotFound"}, "500": {"description": "Artifact missing or integrity mismatch"}}}
     },
     "/v1/projects/{projectId}/estimates/{estimateId}": {
       "parameters": [
@@ -2522,6 +2698,614 @@
           }
         ]
       }
+    },
+    "/v1/projects/{projectId}/production": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Read current design-derived floor BOQ, quote and procurement draft",
+        "operationId": "getProduction",
+        "responses": {
+          "200": {
+            "description": "Immutable production snapshot, settings and history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/production/revisions/{revisionNo}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "revisionNo",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Read an immutable production revision",
+        "operationId": "getProductionRevision",
+        "responses": {
+          "200": {
+            "description": "Immutable production snapshot, settings and history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/production/settings": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Save scoped pricing/sourcing parameters and regenerate the current production draft atomically",
+        "operationId": "saveProductionSettings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expected_version",
+                  "expected_design_revision",
+                  "settings"
+                ],
+                "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "expected_design_revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "settings": {
+                    "$ref": "#/components/schemas/ProductionSettings"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Immutable production snapshot, settings and history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/production/artifacts/{artifactId}/content": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "artifactId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Download real production bytes after project authorization and integrity verification",
+        "operationId": "getProductionArtifact",
+        "responses": {
+          "200": {
+            "description": "Original artifact bytes",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/changes/{changeId}/reproduce": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ProjectId"
+        },
+        {
+          "name": "changeId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Changes"
+        ],
+        "summary": "Generate new drafts after human change review",
+        "operationId": "reproduceChange",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeReproductionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "201": {
+            "description": "New draft revisions generated, or same idempotent result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Change"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project manager required"
+          }
+        },
+        "description": "Project manager only. Single transaction and idempotent. Rejects changed requirement, design or pricing. Preserves previous outputs. No external publication, order or payment."
+      }
+    },
+    "/v1/projects/{projectId}/review-readiness": {
+      "get": {
+        "summary": "Check current floor production draft before professional review; never authorizes formal release",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current production baseline, file hashes, deterministic checks and explicit unknown professional review items. Downloadable evidence is an unsigned pre-review record."
+          },
+          "401": {
+            "description": "Login required"
+          },
+          "404": {
+            "description": "Project missing or not authorized"
+          },
+          "409": {
+            "description": "Production baseline changed during inspection"
+          }
+        }
+      }
+    },
+    "/v1/auth/review-positions": {
+      "get": {
+        "summary": "Administrator lists configurable design and commercial review positions; no formal signature grant",
+        "responses": {
+          "200": {
+            "description": "Position labels, active status, versions and member account IDs"
+          },
+          "403": {
+            "description": "Administrator required"
+          }
+        }
+      }
+    },
+    "/v1/auth/review-positions/{positionKey}": {
+      "patch": {
+        "summary": "Administrator replaces position label, active status and members with optimistic version checking",
+        "parameters": [
+          {
+            "name": "positionKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "design_reviewer",
+                "commercial_reviewer"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "active",
+                  "expected_version",
+                  "user_ids"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "expected_version": {
+                    "type": "integer"
+                  },
+                  "user_ids": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated position catalogue; does not grant project access or formal signing authority"
+          },
+          "400": {
+            "description": "Invalid or inactive/cross-organization account"
+          },
+          "403": {
+            "description": "Administrator and CSRF required"
+          },
+          "409": {
+            "description": "Position version changed"
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/review-tasks": {
+      "get": {
+        "summary": "List project draft review history and current position routing",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Immutable draft evidence and current routing; formal_release_allowed is always false"
+          },
+          "400": {
+            "description": "Invalid conclusion or note"
+          },
+          "401": {
+            "description": "Login required"
+          },
+          "403": {
+            "description": "Manager or eligible separated reviewer required"
+          },
+          "404": {
+            "description": "Missing task or project access"
+          },
+          "409": {
+            "description": "Draft incomplete, changed baseline, duplicate response or stale version"
+          }
+        }
+      },
+      "post": {
+        "summary": "Manager submits current checked baseline to review positions; identical evidence is idempotent",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Immutable draft evidence and current routing; formal_release_allowed is always false"
+          },
+          "400": {
+            "description": "Invalid conclusion or note"
+          },
+          "401": {
+            "description": "Login required"
+          },
+          "403": {
+            "description": "Manager or eligible separated reviewer required"
+          },
+          "404": {
+            "description": "Missing task or project access"
+          },
+          "409": {
+            "description": "Draft incomplete, changed baseline, duplicate response or stale version"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "evidence_sha256"
+                ],
+                "properties": {
+                  "evidence_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/review-tasks/{taskId}": {
+      "post": {
+        "summary": "Eligible position member records a draft review; creator and production author cannot self review",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Immutable draft evidence and current routing; formal_release_allowed is always false"
+          },
+          "400": {
+            "description": "Invalid conclusion or note"
+          },
+          "401": {
+            "description": "Login required"
+          },
+          "403": {
+            "description": "Manager or eligible separated reviewer required"
+          },
+          "404": {
+            "description": "Missing task or project access"
+          },
+          "409": {
+            "description": "Draft incomplete, changed baseline, duplicate response or stale version"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expected_version",
+                  "status",
+                  "note",
+                  "checklist"
+                ],
+                "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "reviewed",
+                      "changes_requested"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "checklist": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "status",
+                        "note",
+                        "artifact_ids"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "unknown",
+                            "checked",
+                            "needs_changes"
+                          ]
+                        },
+                        "note": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "artifact_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "uniqueItems": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{projectId}/review-tasks/{taskId}/evidence": {
+      "get": {
+        "summary": "Download frozen draft artifacts and unsigned review record; historical baseline remains explicit",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ZIP with actual artifact bytes, hashes and unsigned review record",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required"
+          },
+          "404": {
+            "description": "Task missing or project access revoked"
+          },
+          "409": {
+            "description": "Evidence unavailable or changed"
+          },
+          "413": {
+            "description": "Evidence exceeds size limit"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3737,6 +4521,10 @@
           },
           "schedule_delta_days": {
             "$ref": "#/components/schemas/DecimalText"
+          },
+          "design_program": {
+            "$ref": "showroom-design.schema.json#/$defs/Program",
+            "description": "Optional structured rule-layout change. Candidate model quantities and costs replace manually entered deltas."
           }
         }
       },
@@ -3783,6 +4571,11 @@
           },
           "note": {
             "type": "string"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Required for structured design changes; the frozen requirement, design and pricing baseline must still be current."
           }
         }
       },
@@ -4204,6 +4997,163 @@
           },
           "details": {
             "type": "object"
+          }
+        }
+      },
+      "ProductionSettings": {
+        "type": "object",
+        "properties": {
+          "unit_cost_net": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Unknown cost remains null; zero is explicit"
+          },
+          "cost_markup": {
+            "type": "string"
+          },
+          "trial_tax_rate": {
+            "type": "string"
+          },
+          "source_label": {
+            "type": "string"
+          },
+          "include_aisle": {
+            "type": "boolean"
+          },
+          "material_specification": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "supplier_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery_location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ProductionRevision": {
+        "type": "object",
+        "required": [
+          "production_revision_id",
+          "revision_no",
+          "design_revision_id",
+          "input_hash",
+          "baseline",
+          "quantities",
+          "quote",
+          "procurement",
+          "settings",
+          "status",
+          "artifacts"
+        ],
+        "properties": {
+          "production_revision_id": {
+            "type": "string"
+          },
+          "revision_no": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "design_revision_id": {
+            "type": "string"
+          },
+          "input_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "baseline": {
+            "type": "object"
+          },
+          "quantities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "quantity_item_id",
+                "object_id",
+                "quantity",
+                "unit",
+                "source_kind"
+              ]
+            }
+          },
+          "quote": {
+            "type": "object",
+            "description": "Decimal cost-plus trial tax calculation; unknown stays null"
+          },
+          "procurement": {
+            "type": "object",
+            "description": "Net measured quantities, unknown wastage; local-only draft"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ProductionSettings"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "superseded",
+              "source_outdated"
+            ]
+          },
+          "artifacts": {
+            "type": "array",
+            "minItems": 8,
+            "maxItems": 8,
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "ProductionPage": {
+        "type": "object",
+        "required": [
+          "settings",
+          "item",
+          "revisions"
+        ],
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/ProductionSettings"
+          },
+          "item": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ProductionRevision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revisions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "ChangeReproductionRequest": {
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
           }
         }
       }

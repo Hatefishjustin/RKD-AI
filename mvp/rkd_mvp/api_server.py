@@ -4,6 +4,7 @@ import json
 import hashlib
 import hmac
 import mimetypes
+import os
 import re
 import secrets
 import time
@@ -17,29 +18,12 @@ from .identity import DevHeaderIdentityProvider, IdentityProvider, LocalIdentity
 from .account_identity import AccountIdentityProvider, COOKIE_NAME, SESSION_SECONDS
 
 
-class ApiHandler(BaseHTTPRequestHandler):
+class ApiRoutes:
+    """Shared route dispatch; HTTP parsing belongs to each transport adapter."""
     service: ApiService
     identity_provider: IdentityProvider
     static_dir: Path | None = None
     download_secret: bytes
-
-    def log_message(self, format: str, *args: Any) -> None:
-        return None
-
-    def finish(self) -> None:
-        try:
-            super().finish()
-        finally:
-            close_thread_connection = getattr(self.service.app.store, "close_thread_connection", None)
-            if close_thread_connection:
-                close_thread_connection()
-
-    def end_headers(self) -> None:
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Referrer-Policy", "same-origin")
-        super().end_headers()
 
     @property
     def accounts(self) -> AccountIdentityProvider | None:
@@ -58,6 +42,12 @@ class ApiHandler(BaseHTTPRequestHandler):
             if self.headers.get("Sec-Fetch-Site") == "cross-site":
                 raise ApiError(403, "INVALID_ORIGIN", "拒绝跨站写入")
         self.connection.settimeout(30)
+        check_mode = getattr(self.identity_provider, "check_mode", None)
+        if check_mode and urlsplit(self.path).path.startswith("/api/"):
+            check_mode()
+        validate_route = getattr(self.service, "validate_route", None)
+        if validate_route:
+            validate_route(self.command, urlsplit(self.path).path)
 
     def _json(self, status: int, body: dict[str, Any], cookie: str | None = None) -> None:
         data = json.dumps(body, ensure_ascii=True).encode("utf-8")
@@ -194,24 +184,96 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._guard()
             path = urlsplit(self.path).path
             if path == "/api/v1/auth/config":
-                return self._json(200, {"mode": "accounts" if self.accounts else "local", "initialized": self.accounts.has_users() if self.accounts else True})
+                return self._json(200, {"mode": "accounts" if self.accounts else "local", "initialized": self.accounts.has_users() if self.accounts else True,
+                                        **getattr(self.service, "runtime_info", {})})
             if path == "/api/health/live":
                 return self._json(200, {"status": "ok"})
             if path == "/api/health/ready":
-                return self._json(200, {"status": "ready"})
+                health = getattr(self.service, "health", None)
+                return self._json(200, health() if health else {"status": "ready"})
             if self._static(path):
                 return None
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/files/([^/]+)/content", path)
             if match:
                 return self._file(self._file_identity(match.group(1), match.group(2)), match.group(1), match.group(2))
             organization_id, _ = self._identity()
+            evidence_match=re.fullmatch(r'/api/v1/projects/([^/]+)/review-tasks/([^/]+)/evidence',path)
+            if self.accounts and evidence_match:
+                from .review_evidence import package
+                data=package(self.accounts,self.service,self.authenticated_identity,*evidence_match.groups())
+                self.send_response(200)
+                self.send_header('Content-Type','application/zip')
+                self.send_header('Content-Disposition','attachment; filename="draft-review-evidence.zip"')
+                self.send_header('Content-Length',str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return None
+            task_match=re.fullmatch(r'/api/v1/projects/([^/]+)/review-tasks',path)
+            if self.accounts and task_match:
+                from .review_tasks import tasks
+                return self._json(200,tasks(self.accounts,self.service,self.authenticated_identity,task_match.group(1)))
+            review_match = re.fullmatch(r'/api/v1/projects/([^/]+)/review-readiness', path)
+            if review_match:
+                from .review_readiness import assess
+                return self._json(200, assess(self.service, organization_id, review_match.group(1)))
+            if self.accounts and path == '/api/v1/operations/status':
+                self.accounts.list_users(self.authenticated_identity)
+                from .operations_status import read_status
+                return self._json(200, read_status(os.environ.get('RKD_OPERATIONS_STATUS_DIR')))
             if self.accounts and path == "/api/v1/auth/session":
                 return self._json(200, self.accounts.session(self.authenticated_identity))
             if self.accounts and path == "/api/v1/auth/users":
                 return self._json(200, self.accounts.list_users(self.authenticated_identity))
+            if self.accounts and path == '/api/v1/auth/review-positions':
+                return self._json(200,self.accounts.review_positions(self.authenticated_identity))
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/members", path)
             if self.accounts and match:
                 return self._json(200, self.accounts.list_members(self.authenticated_identity, match.group(1)))
+            match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/technical-delivery/artifacts/([^/]+)/content", path)
+            if match:
+                metadata, file_path = self.service.get_ai_technical_delivery_artifact(organization_id, match.group(1), match.group(2))
+                self.send_response(200)
+                self.send_header("Content-Type", metadata["content_type"])
+                self.send_header("Content-Length", str(metadata["size_bytes"]))
+                self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(metadata['filename'])}")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(file_path.read_bytes())
+                return
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/technical-delivery", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_technical_delivery(organization_id, ai_match.group(1)))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/source-extractions", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_source_extractions(organization_id, ai_match.group(1)))
+            match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/development-production/artifacts/([^/]+)/content", path)
+            if match:
+                metadata, file_path = self.service.get_ai_development_artifact(organization_id, match.group(1), match.group(2))
+                self.send_response(200)
+                self.send_header("Content-Type", metadata["content_type"])
+                self.send_header("Content-Length", str(metadata["size_bytes"]))
+                self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(metadata['filename'])}")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(file_path.read_bytes())
+                return
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/development-production", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_development(organization_id, ai_match.group(1)))
+            match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/artifacts/([^/]+)/content", path)
+            if match:
+                metadata, file_path = self.service.get_ai_design_option_artifact(organization_id, match.group(1), match.group(2))
+                self.send_response(200)
+                self.send_header("Content-Type", metadata["content_type"])
+                self.send_header("Content-Length", str(metadata["size_bytes"]))
+                self.send_header("Content-Disposition", f"inline; filename*=UTF-8''{quote(metadata['filename'])}")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(file_path.read_bytes())
+                return
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_design_options(organization_id, ai_match.group(1)))
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/design/artifacts/([^/]+)/content", path)
             if match:
                 metadata, file_path = self.service.get_design_artifact(organization_id, match.group(1), match.group(2))
@@ -225,6 +287,19 @@ class ApiHandler(BaseHTTPRequestHandler):
                     while chunk := source.read(1024 * 1024):
                         self.wfile.write(chunk)
                 return
+            match = re.fullmatch(r"/api/v1/projects/([^/]+)/production/artifacts/([^/]+)/content", path)
+            if match:
+                metadata, file_path = self.service.get_production_artifact(organization_id, match.group(1), match.group(2))
+                self.send_response(200)
+                self.send_header("Content-Type", metadata["content_type"])
+                self.send_header("Content-Length", str(metadata["size_bytes"]))
+                self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(metadata['filename'])}")
+                self.end_headers()
+                self.wfile.write(file_path.read_bytes())
+                return
+            match = re.fullmatch(r"/api/v1/projects/([^/]+)/production(?:/revisions/(\d+))?", path)
+            if match:
+                return self._json(200, self.service.get_production(organization_id, match.group(1), int(match.group(2)) if match.group(2) else None))
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/design(?:/revisions/(\d+))?", path)
             if match:
                 return self._json(200, self.service.get_design(organization_id, match.group(1), int(match.group(2)) if match.group(2) else None))
@@ -269,6 +344,12 @@ class ApiHandler(BaseHTTPRequestHandler):
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/requirements", path)
             if match:
                 return self._json(200, self.service.get_requirement(organization_id, match.group(1)))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/requirement-understanding/jobs/([^/]+)", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_requirement_job(organization_id, ai_match.group(1), ai_match.group(2)))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/requirement-understanding", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_requirement_status(organization_id, ai_match.group(1)))
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/procurement/orders", path)
             if match:
                 return self._json(200, self.service.list_procurement_orders(organization_id, match.group(1)))
@@ -331,6 +412,10 @@ class ApiHandler(BaseHTTPRequestHandler):
             if self.accounts and path == "/api/v1/auth/logout":
                 self.accounts.logout(self.headers, self.authenticated_identity)
                 return self._json(200, {"status": "signed_out"}, f"{COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0")
+            task_match=re.fullmatch(r'/api/v1/projects/([^/]+)/review-tasks(?:/([^/]+))?',path)
+            if self.accounts and task_match:
+                from .review_tasks import tasks
+                return self._json(200,tasks(self.accounts,self.service,self.authenticated_identity,task_match.group(1),self._body(),task_match.group(2)))
             if self.accounts and path == "/api/v1/auth/users":
                 return self._json(201, self.accounts.create_user(self.authenticated_identity, self._body()))
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/members", path)
@@ -371,6 +456,58 @@ class ApiHandler(BaseHTTPRequestHandler):
                 return self._json(201, self.service.create_spatial_revision(
                     organization_id, match.group(1), self._body(), actor_id,
                 ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/source-extractions", path)
+            if ai_match:
+                return self._json(201, self.service.submit_ai_source_extraction(
+                    organization_id, ai_match.group(1), self._body(),
+                ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/technical-delivery", path)
+            if ai_match:
+                return self._json(202, self.service.submit_ai_technical_delivery(
+                    organization_id, ai_match.group(1), actor_id, self._body(),
+                    self.headers.get("Idempotency-Key", ""),
+                ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/development-production", path)
+            if ai_match:
+                return self._json(202, self.service.submit_ai_development(
+                    organization_id, ai_match.group(1), actor_id, self._body(),
+                    self.headers.get("Idempotency-Key", ""),
+                ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/sets/([^/]+)/cancel", path)
+            if ai_match:
+                return self._json(200, self.service.cancel_ai_design_option_set(
+                    organization_id, ai_match.group(1), ai_match.group(2),
+                ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/([^/]+)/revise", path)
+            if ai_match:
+                return self._json(200, self.service.revise_ai_design_option(
+                    organization_id, ai_match.group(1), actor_id,
+                    {**self._body(), "option_id": ai_match.group(2)},
+                ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/([^/]+)/adopt", path)
+            if ai_match:
+                return self._json(200, self.service.adopt_ai_design_option(
+                    organization_id, ai_match.group(1), actor_id,
+                    {**self._body(), "option_id": ai_match.group(2)},
+                ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options", path)
+            if ai_match:
+                return self._json(202, self.service.submit_ai_design_options(
+                    organization_id, ai_match.group(1), actor_id, self._body(),
+                    self.headers.get("Idempotency-Key", ""),
+                ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/requirement-understanding", path)
+            if ai_match:
+                return self._json(202, self.service.submit_ai_requirement(
+                    organization_id, ai_match.group(1), actor_id, self._body(),
+                    self.headers.get("Idempotency-Key", ""),
+                ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/requirement-understanding/jobs/([^/]+)/retry", path)
+            if ai_match:
+                return self._json(202, self.service.retry_ai_requirement_job(organization_id, ai_match.group(1), ai_match.group(2)))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/requirement-understanding/jobs/([^/]+)/cancel", path)
+            if ai_match:
+                return self._json(200, self.service.cancel_ai_requirement_job(organization_id, ai_match.group(1), ai_match.group(2)))
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/requirements/drafts", path)
             if match:
                 return self._json(201, self.service.create_requirement_draft(organization_id, match.group(1), actor_id, self._body()))
@@ -392,6 +529,9 @@ class ApiHandler(BaseHTTPRequestHandler):
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/changes/([^/]+)/acceptance", path)
             if match:
                 return self._json(200, self.service.accept_change(organization_id, match.group(1), match.group(2), actor_id, self._body(), self.headers.get("Idempotency-Key", "")))
+            match = re.fullmatch(r"/api/v1/projects/([^/]+)/changes/([^/]+)/reproduce", path)
+            if match:
+                return self._json(201, self.service.reproduce_change(organization_id, match.group(1), match.group(2), actor_id, self._body(), self.headers.get("Idempotency-Key", "")))
             raise ApiError(404, "NOT_FOUND", "route not found")
         except ApiError as error:
             self._error(error)
@@ -420,9 +560,20 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._guard()
             path = urlsplit(self.path).path
             organization_id, actor_id = self._identity()
+            position_match=re.fullmatch(r'/api/v1/auth/review-positions/([^/]+)',path)
+            if self.accounts and position_match:
+                return self._json(200,self.accounts.save_review_position(self.authenticated_identity,position_match.group(1),self._body()))
+            match = re.fullmatch(r"/api/v1/projects/([^/]+)/production/settings", path)
+            if match:
+                return self._json(200, self.service.save_production_settings(organization_id, match.group(1), actor_id, self._body()))
             match = re.fullmatch(r"/api/v1/auth/users/([^/]+)", path)
             if self.accounts and match:
                 return self._json(200, self.accounts.update_user(self.authenticated_identity, match.group(1), self._body()))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/requirement-understanding/briefs", path)
+            if ai_match:
+                return self._json(200, self.service.save_ai_requirement_brief(
+                    organization_id, ai_match.group(1), actor_id, self._body(),
+                ))
             match = re.fullmatch(r"/api/v1/projects/([^/]+)/requirements", path)
             if match:
                 return self._json(200, self.service.update_requirement(organization_id, match.group(1), actor_id, self._body()))
@@ -444,6 +595,28 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._error(error)
         except (ValueError, json.JSONDecodeError) as error:
             self._error(ApiError(400, "INVALID_REQUEST", str(error)))
+
+
+class ApiHandler(ApiRoutes, BaseHTTPRequestHandler):
+    """Loopback development transport. Network deployments use asgi_app."""
+
+    def log_message(self, format: str, *args: Any) -> None:
+        return None
+
+    def finish(self) -> None:
+        try:
+            super().finish()
+        finally:
+            close = getattr(self.service.app.store, "close_thread_connection", None)
+            if close:
+                close()
+
+    def end_headers(self) -> None:
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "same-origin")
+        super().end_headers()
 
 
 def create_server(service: ApiService | None = None, identity_provider: IdentityProvider | None = None,

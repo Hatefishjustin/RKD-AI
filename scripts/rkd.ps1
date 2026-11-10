@@ -1,6 +1,8 @@
-param(
-    [ValidateSet("prepare", "check", "test", "start", "start-secure")]
-    [string]$Command = "check"
+﻿param(
+    [ValidateSet("prepare", "check", "test", "start", "start-ai-synthetic", "start-ai-real", "start-secure", "postgres-prepare", "postgres-test", "postgres-api", "postgres-accounts", "postgres-backup", "postgres-restore", "backup", "restore")]
+    [string]$Command = "check",
+    [string]$Archive,
+    [string]$Destination
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,6 +44,48 @@ function Ensure-Frontend {
 }
 
 switch ($Command) {
+    "postgres-backup" {
+        $python = Resolve-ProjectPython
+        $backupArgs = @((Join-Path $Root "scripts\postgres_backup.py"), "backup")
+        if ($Archive) { $backupArgs += @("--archive", $Archive) }
+        & $python @backupArgs
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    "postgres-restore" {
+        if (-not $Archive -or -not $Destination) { throw "PG 恢复需要 -Archive 和新 -Destination，以及指向空目标数据库的维护 DSN。" }
+        $python = Resolve-ProjectPython
+        & $python (Join-Path $Root "scripts\postgres_backup.py") restore --archive $Archive --destination $Destination
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    "postgres-accounts" {
+        $python = Resolve-ProjectPython
+        & $python (Join-Path $Root "scripts\manage_accounts.py") --postgres
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    "postgres-api" {
+        $python = Resolve-ProjectPython
+        & $python (Join-Path $Root "mvp\run_postgres_api.py")
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    "backup" {
+        $python = Resolve-ProjectPython
+        & $python (Join-Path $Root "scripts\local_backup.py") backup
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    "restore" {
+        if (-not $Archive -or -not $Destination) { throw "恢复需要 -Archive 备份包路径 -Destination 新目录；不会覆盖现有运行库。" }
+        $python = Resolve-ProjectPython
+        & $python (Join-Path $Root "scripts\local_backup.py") restore $Archive $Destination
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    "postgres-prepare" {
+        & (Join-Path $PSScriptRoot "prepare_postgres.ps1")
+    }
+    "postgres-test" {
+        $python = Resolve-ProjectPython
+        & $python (Join-Path $PSScriptRoot "verify_postgres.py")
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
     "prepare" {
         $bootstrap = Resolve-BootstrapPython
         if (-not (Test-Path -LiteralPath $ProjectPython)) {
@@ -70,6 +114,30 @@ switch ($Command) {
         Invoke-EnvironmentCheck
         Ensure-Frontend
         $python = Resolve-ProjectPython
+        $env:PYTHONPATH = Join-Path $Root "mvp"
+        & $python (Join-Path $Root "mvp\run_api_server.py")
+    }
+    "start-ai-synthetic" {
+        Invoke-EnvironmentCheck
+        Ensure-Frontend
+        $python = Resolve-ProjectPython
+        $env:RKD_AI_PROVIDER = "synthetic"
+        $env:RKD_AI_DESIGN_PROVIDER = "synthetic"
+        $env:RKD_AI_EXTERNAL_CONTEXT = "false"
+        $env:PYTHONPATH = Join-Path $Root "mvp"
+        & $python (Join-Path $Root "mvp\run_api_server.py")
+    }
+    "start-ai-real" {
+        if (-not $env:RKD_AI_API_KEY) { throw "请先在终端设置 RKD_AI_API_KEY（仅当前会话，不要写入任何文件）后重试。" }
+        Invoke-EnvironmentCheck -Strict
+        Ensure-Frontend
+        $python = Resolve-ProjectPython
+        $env:RKD_AI_PROVIDER = "openai-compatible"
+        $env:RKD_AI_DESIGN_PROVIDER = "openai-compatible"
+        if (-not $env:RKD_AI_BASE_URL) { $env:RKD_AI_BASE_URL = "https://api.codelink.chat/v1" }
+        if (-not $env:RKD_AI_MODEL) { $env:RKD_AI_MODEL = "gpt-5.6-sol" }
+        if (-not $env:RKD_AI_EXTERNAL_CONTEXT) { $env:RKD_AI_EXTERNAL_CONTEXT = "false" }
+        if (-not $env:RKD_AI_RUN_LOG_DIR) { $env:RKD_AI_RUN_LOG_DIR = Join-Path $Root "var\ai-model-runs" }
         $env:PYTHONPATH = Join-Path $Root "mvp"
         & $python (Join-Path $Root "mvp\run_api_server.py")
     }

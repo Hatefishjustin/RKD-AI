@@ -1,0 +1,17 @@
+# NAS compatibility candidate; enable only after Linux/PG16 live verification.
+FROM mcr.microsoft.com/devcontainers/base:bookworm@sha256:9a5942e64b35c5497c591b9bf177f4a3002d43440bf0a5e1a14fc34667b1a5c1
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv && python3 -m venv /opt/rkd-env && rm -rf /var/lib/apt/lists/*
+ENV PATH=/opt/rkd-env/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/mvp
+WORKDIR /app
+COPY requirements.lock /app/requirements.lock
+COPY mvp/requirements-server.txt mvp/requirements-postgres.txt /app/mvp/
+RUN pip install --no-cache-dir --index-url https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.lock -r mvp/requirements-postgres.txt
+COPY mvp /app/mvp
+COPY scripts /app/scripts
+COPY contracts /app/contracts
+COPY fixtures /app/fixtures
+COPY web/dist /app/web/dist
+RUN groupadd -g 10001 rkd && useradd -u 10001 -g rkd -M -s /usr/sbin/nologin rkd
+USER 10001:10001
+CMD ["python", "scripts/deploy/container_entry.py", "serve"]

@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rkd:contracts:ai-design-option:v1",
+  "title": "AIDesignOptionV1",
+  "description": "A computable, versioned design candidate. It is not an adopted baseline, approved design, construction drawing, or quote.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "set_id", "option_id", "revision_no", "parent_revision_id", "strategy",
+    "boundary", "objects", "relationships", "circulation", "materials", "cost", "validation",
+    "lifecycle_status", "source_kind", "generation", "feedback", "diff", "conflicts",
+    "change_reason", "actor_id", "created_at", "structure_signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "rkd-ai-design-option.v1"},
+    "set_id": {"type": "string", "minLength": 1},
+    "option_id": {"type": "string", "minLength": 1},
+    "revision_no": {"type": "integer", "minimum": 1},
+    "parent_revision_id": {"type": ["string", "null"]},
+    "strategy": {"$ref": "#/$defs/strategy"},
+    "boundary": {"$ref": "#/$defs/boundary"},
+    "objects": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/object"}},
+    "relationships": {"type": "array", "items": {"$ref": "#/$defs/relationship"}},
+    "circulation": {"$ref": "#/$defs/circulation"},
+    "materials": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/material"}},
+    "cost": {"$ref": "#/$defs/cost"},
+    "validation": {"$ref": "#/$defs/validation"},
+    "lifecycle_status": {"enum": ["candidate", "adopted_draft", "superseded", "rejected"]},
+    "source_kind": {"enum": ["synthetic_design_adapter", "real_model", "human_feedback", "human_edit"]},
+    "generation": {"$ref": "#/$defs/generation"},
+    "feedback": {"$ref": "#/$defs/feedback"},
+    "diff": {"type": "array", "items": {"$ref": "#/$defs/diffEntry"}},
+    "conflicts": {"type": "array", "items": {"$ref": "#/$defs/conflict"}},
+    "change_reason": {"type": "string", "minLength": 1, "maxLength": 500},
+    "actor_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "structure_signature": {"type": "object", "additionalProperties": true}
+  },
+  "$defs": {
+    "decimal": {"type": "string", "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"},
+    "sourceIds": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "shape": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "x", "y", "width", "length"],
+      "properties": {"type": {"const": "rect"}, "x": {"$ref": "#/$defs/decimal"}, "y": {"$ref": "#/$defs/decimal"}, "width": {"$ref": "#/$defs/decimal"}, "length": {"$ref": "#/$defs/decimal"}}
+    },
+    "strategy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["strategy_id", "statement", "tradeoffs", "source_refs"],
+      "properties": {"strategy_id": {"type": "string", "minLength": 1}, "statement": {"type": "string", "minLength": 1}, "tradeoffs": {"type": "array", "items": {"type": "string"}}, "source_refs": {"$ref": "#/$defs/sourceIds"}}
+    },
+    "boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["width", "length", "unit", "boundary_source", "entrance", "obstacles"],
+      "properties": {
+        "width": {"$ref": "#/$defs/decimal"}, "length": {"$ref": "#/$defs/decimal"}, "unit": {"const": "m"},
+        "boundary_source": {"enum": ["test_parameters_not_site_verified", "manual_boundary_not_site_verified"]},
+        "entrance": {
+          "type": "object", "additionalProperties": false,
+          "required": ["side", "point", "width"],
+          "properties": {"side": {"enum": ["left", "right", "top", "bottom"]}, "point": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/decimal"}}, "width": {"$ref": "#/$defs/decimal"}}
+        },
+        "obstacles": {"type": "array", "items": {"$ref": "#/$defs/object"}}
+      }
+    },
+    "object": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_id", "kind", "name", "shape", "source_refs", "locked"],
+      "properties": {
+        "object_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["functional_zone", "display_object", "partition", "entrance_marker", "obstacle"]},
+        "name": {"type": "string", "minLength": 1},
+        "shape": {"$ref": "#/$defs/shape"},
+        "min_area_m2": {"$ref": "#/$defs/decimal"},
+        "material_id": {"type": ["string", "null"]},
+        "parent_object_id": {"type": ["string", "null"]},
+        "source_refs": {"$ref": "#/$defs/sourceIds"},
+        "locked": {"type": "boolean"},
+        "properties": {"type": "object", "additionalProperties": true}
+      }
+    },
+    "relationship": {
+      "type": "object", "additionalProperties": false,
+      "required": ["relation_id", "type", "source", "target", "statement", "source_refs"],
+      "properties": {"relation_id": {"type": "string", "minLength": 1}, "type": {"enum": ["adjacent", "separated", "contains", "connects", "faces"]}, "source": {"type": "string"}, "target": {"type": "string"}, "statement": {"type": "string"}, "source_refs": {"$ref": "#/$defs/sourceIds"}}
+    },
+    "circulation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path_id", "kind", "min_width", "segments", "connections"],
+      "properties": {
+        "path_id": {"type": "string", "minLength": 1}, "kind": {"enum": ["loop", "branch"]},
+        "min_width": {"$ref": "#/$defs/decimal"},
+        "segments": {"type": "array", "minItems": 2, "items": {"type": "object", "additionalProperties": false, "required": ["segment_id", "shape"], "properties": {"segment_id": {"type": "string"}, "shape": {"$ref": "#/$defs/shape"}}}},
+        "connections": {"type": "array", "items": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "string"}}}
+      }
+    },
+    "material": {
+      "type": "object", "additionalProperties": false,
+      "required": ["material_id", "name", "intent", "status", "source_refs"],
+      "properties": {"material_id": {"type": "string"}, "name": {"type": "string"}, "intent": {"type": "string"}, "status": {"const": "intent_only"}, "source_refs": {"$ref": "#/$defs/sourceIds"}}
+    },
+    "value": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "unit", "known_status", "source_refs"],
+      "properties": {"value": {"type": ["string", "number", "null"]}, "unit": {"type": "string"}, "known_status": {"enum": ["known", "inferred", "unknown"]}, "unknown_reason": {"type": "string"}, "source_refs": {"$ref": "#/$defs/sourceIds"}}
+    },
+    "cost": {
+      "type": "object", "additionalProperties": false,
+      "required": ["currency", "budget", "known_items", "unknown_items", "total_project_estimate", "formal_quote"],
+      "properties": {"currency": {"const": "CNY"}, "budget": {"$ref": "#/$defs/value"}, "known_items": {"type": "array", "items": {"type": "object"}}, "unknown_items": {"type": "array", "items": {"type": "object"}}, "total_project_estimate": {"$ref": "#/$defs/value"}, "formal_quote": {"const": false}}
+    },
+    "check": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "status", "message"],
+      "properties": {"code": {"type": "string"}, "status": {"enum": ["passed", "failed", "unknown"]}, "message": {"type": "string"}}
+    },
+    "validation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["rule_version", "status", "hard_checks", "professional_checks", "publication_status"],
+      "properties": {"rule_version": {"type": "string"}, "status": {"enum": ["passed", "failed", "not_checked"]}, "hard_checks": {"type": "array", "items": {"$ref": "#/$defs/check"}}, "professional_checks": {"type": "array", "items": {"$ref": "#/$defs/check"}}, "publication_status": {"const": "not_approved"}}
+    },
+    "generation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider_kind", "provider_name", "model_id", "real_model", "adapter_version", "prompt_version", "schema_version", "config_hash", "input_hash", "generated_at", "interpretation_method"],
+      "properties": {"provider_kind": {"type": "string"}, "provider_name": {"type": "string"}, "model_id": {"type": ["string", "null"]}, "real_model": {"type": "boolean"}, "adapter_version": {"type": "string"}, "prompt_version": {"type": "string"}, "schema_version": {"const": "rkd-ai-design-option.v1"}, "config_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "input_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "generated_at": {"type": "string"}, "interpretation_method": {"type": "string"}}
+    },
+    "feedback": {
+      "type": "object", "additionalProperties": false,
+      "required": ["text", "parsed_intents", "locks", "interpretation_method"],
+      "properties": {"text": {"type": ["string", "null"]}, "parsed_intents": {"type": "array", "items": {"type": "string"}}, "locks": {"type": "array", "items": {"type": "string"}}, "interpretation_method": {"type": "string"}}
+    },
+    "diffEntry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_id", "field", "before", "after", "reason"],
+      "properties": {"object_id": {"type": "string"}, "field": {"type": "string"}, "before": {}, "after": {}, "reason": {"type": "string"}}
+    },
+    "conflict": {
+      "type": "object", "additionalProperties": false,
+      "required": ["conflict_id", "statement", "resolution", "source_refs"],
+      "properties": {"conflict_id": {"type": "string"}, "statement": {"type": "string"}, "resolution": {"enum": ["pending", "human_required", "resolved"]}, "source_refs": {"$ref": "#/$defs/sourceIds"}}
+    }
+  }
+}

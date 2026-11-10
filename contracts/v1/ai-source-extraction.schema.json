@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rkd-ai.local/contracts/v1/ai-source-extraction.schema.json",
+  "title": "RKD AI original-file content extraction record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "extraction_id", "file_id", "filename", "file_sha256", "size_bytes",
+               "extractor_kind", "extractor_version", "status", "status_reason", "segment_count",
+               "segments", "text_sha256", "warnings", "truncated", "content_policy", "created_at"],
+  "properties": {
+    "schema_version": {"const": "rkd-ai-source-extraction.v1"},
+    "extraction_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "file_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "filename": {"type": "string", "minLength": 1, "maxLength": 500},
+    "file_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "size_bytes": {"type": "integer", "minimum": 1},
+    "extractor_kind": {"enum": ["plain_text", "pdf_text_layer", "unsupported"]},
+    "extractor_version": {"const": "rkd-source-content.v1"},
+    "status": {"enum": ["extracted", "no_extractable_text_layer", "unsupported_format"]},
+    "status_reason": {"type": ["string", "null"]},
+    "segment_count": {"type": "integer", "minimum": 0},
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["segment_id", "locator", "text", "char_start", "char_end"],
+        "properties": {
+          "segment_id": {"type": "string", "minLength": 1},
+          "locator": {"type": "string", "minLength": 1, "maxLength": 500},
+          "text": {"type": "string", "minLength": 1},
+          "char_start": {"type": "integer", "minimum": 0},
+          "char_end": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "text_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "truncated": {"type": "boolean"},
+    "content_policy": {"const": "local_only_not_sent_to_model_without_explicit_approval"},
+    "created_at": {"type": "string", "minLength": 1},
+    "current": {"type": "boolean"}
+  }
+}

@@ -6,6 +6,8 @@ import json
 import tempfile
 import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -15,9 +17,53 @@ from rkd_mvp.api_service import ApiError
 from rkd_mvp.engine import MVPApp
 from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID
 from rkd_mvp.sqlite_store import SQLiteStore
+from rkd_mvp.file_repository import SQLiteFileTransaction
 
 
 class RealFilesTests(unittest.TestCase):
+    def test_competing_receive_keeps_winners_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = SQLiteStore(root / "app.sqlite3")
+            self.addCleanup(store.close)
+            files = FileService(root / "app.sqlite3", root)
+            service = ApiService(MVPApp(store), files)
+            project = service.create_project("org-local", "Concurrency")
+            project_id = project["project_id"]
+            data = b"%PDF-1.7\nconcurrent bytes"
+            upload = service.initiate_upload("org-local", project_id, {"filename": "plan.pdf", "size_bytes": len(data)})["upload_id"]
+            def receive(_):
+                try:
+                    return files.receive("org-local", project_id, upload, BytesIO(data), len(data))
+                except ApiError as error:
+                    return error.code
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(receive, range(2)))
+            self.assertEqual(sum(isinstance(row, dict) for row in results), 1)
+            self.assertIn("UPLOAD_STATE", results)
+            stored = files.complete("org-local", project_id, upload, "")
+            self.assertEqual(files.get_content("org-local", project_id, stored["file_id"])[1].read_bytes(), data)
+            store.close()
+
+    def test_insert_failure_keeps_retry_bytes_and_no_raw_asset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = SQLiteStore(root / "app.sqlite3")
+            self.addCleanup(store.close)
+            files = FileService(root / "app.sqlite3", root)
+            service = ApiService(MVPApp(store), files)
+            project_id = service.create_project("org-local", "Rollback")["project_id"]
+            data = b"%PDF-1.7\nretry bytes"
+            upload = files.initiate("org-local", project_id, {"filename": "plan.pdf", "size_bytes": len(data)})["upload_id"]
+            files.receive("org-local", project_id, upload, BytesIO(data), len(data))
+            with patch.object(SQLiteFileTransaction, "insert_file", side_effect=RuntimeError("injected")):
+                with self.assertRaises(RuntimeError):
+                    files.complete("org-local", project_id, upload, "")
+            self.assertEqual(files._upload("org-local", project_id, upload)["status"], "staged")
+            self.assertEqual(list(root.rglob("raw/*")), [])
+            self.assertEqual(files.complete("org-local", project_id, upload, "")["revision"], 1)
+            store.close()
+
     def test_http_upload_receives_bytes_and_scopes_download(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

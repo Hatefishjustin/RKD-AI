@@ -6,12 +6,13 @@ import html
 import io
 import json
 import sqlite3
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Iterator
 
 from .models import new_id, now_iso
+from .estimate_repository import SQLiteEstimateRepository
 
 
 FORMULA_VERSION = "estimate-cost-markup-tax.v1"
@@ -29,8 +30,10 @@ class EstimateServiceError(Exception):
 class EstimateService:
     """Persistent estimate revisions and Decimal calculations for the local M1 workbench."""
 
-    def __init__(self, db_path: str | Path) -> None:
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: str | Path | None, *, repository=None, runtime_root=None) -> None:
+        self.db_path = Path(db_path) if db_path is not None else None
+        self.repository = repository or SQLiteEstimateRepository(self._db)
+        self.runtime_root = Path(runtime_root) if runtime_root is not None else self.db_path.parent
 
     @contextmanager
     def _db(self) -> Iterator[sqlite3.Connection]:
@@ -83,8 +86,8 @@ class EstimateService:
         )
 
     def _decisions(self, connection: sqlite3.Connection, organization_id: str, project_id: str) -> dict[str, Any]:
-        rows = connection.execute(
-            "SELECT decision_key, value_json FROM project_decisions WHERE organization_id = ? AND project_id = ?",
+        rows = connection.query(
+            'decisions',
             (organization_id, project_id),
         ).fetchall()
         return {row["decision_key"]: json.loads(row["value_json"]) for row in rows}
@@ -98,16 +101,16 @@ class EstimateService:
         if source_hash != str(extract["source"]["sha256"]).upper():
             raise RuntimeError("budget source hash does not match normalized extract")
 
-        with self._db() as connection:
-            existing = connection.execute(
-                "SELECT estimate_id FROM estimates WHERE organization_id = ? AND project_id = ? AND source_hash = ?",
+        with self.repository.transaction(organization_id, project_id, write=True) as connection:
+            existing = connection.query(
+                'by_source',
                 (organization_id, project_id, source_hash.lower()),
             ).fetchone()
             if existing:
                 estimate_id = existing["estimate_id"]
             else:
-                file_row = connection.execute(
-                    "SELECT file_id FROM file_assets WHERE organization_id = ? AND project_id = ? AND source_ref = ?",
+                file_row = connection.query(
+                    'source_file',
                     (organization_id, project_id, extract["source"]["asset_id"]),
                 ).fetchone()
                 if file_row is None:
@@ -122,28 +125,19 @@ class EstimateService:
                 }
                 estimate_id = new_id("estimate")
                 now = now_iso()
-                connection.execute("BEGIN IMMEDIATE")
-                connection.execute(
-                    "INSERT INTO estimates(estimate_id, organization_id, project_id, name, currency, status, "
-                    "source_file_id, source_hash, source_summary_json, source_notes_json, current_revision_no, created_at, updated_at) "
-                    "VALUES (?, ?, ?, ?, 'CNY', 'working', ?, ?, ?, ?, 1, ?, ?)",
+                connection.query(
+                    'insert_estimate',
                     (estimate_id, organization_id, project_id, "宁波协诚展厅预算工作副本", file_row["file_id"],
                      source_hash.lower(), self._json(extract["source_summary"]), self._json(extract["source_notes"]), now, now),
                 )
-                connection.execute(
-                    "INSERT INTO estimate_revisions(estimate_id, revision_no, organization_id, project_id, source_kind, "
-                    "change_reason, actor_id, assumptions_json, created_at) VALUES (?, 1, ?, ?, 'source_import', ?, 'system', ?, ?)",
+                connection.query(
+                    'insert_initial_revision',
                     (estimate_id, organization_id, project_id, "从只读 XLS 规范化导入", self._json(assumptions), now),
                 )
                 for order_index, line in enumerate(extract["lines"], start=1):
                     source_amount = self._source_amount(line)
-                    connection.execute(
-                        "INSERT INTO estimate_lines(estimate_id, revision_no, line_id, order_index, category, section_name, "
-                        "sequence_label, item_name, unit, quantity_text, main_material_unit_cost_text, auxiliary_unit_cost_text, "
-                        "labor_unit_cost_text, source_quantity_text, source_main_material_unit_cost_text, "
-                        "source_auxiliary_unit_cost_text, source_labor_unit_cost_text, source_amount_text, material_name, "
-                        "auxiliary_description, inclusion_status, exclusion_reason, source_scope_conflict, source_sheet, "
-                        "source_row, source_locator) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    connection.query(
+                        'insert_line',
                         (estimate_id, line["line_id"], order_index, line["category"], line["section"], line["sequence"],
                          line["name"], line["unit"], line["quantity"], line["main_material_unit_cost"],
                          line["auxiliary_unit_cost"], line["labor_unit_cost"], line["quantity"],
@@ -157,8 +151,8 @@ class EstimateService:
 
     def _require_estimate(self, connection: sqlite3.Connection, organization_id: str,
                           project_id: str, estimate_id: str) -> sqlite3.Row:
-        row = connection.execute(
-            "SELECT * FROM estimates WHERE estimate_id = ? AND organization_id = ? AND project_id = ?",
+        row = connection.query(
+            'estimate',
             (estimate_id, organization_id, project_id),
         ).fetchone()
         if row is None:
@@ -166,8 +160,8 @@ class EstimateService:
         return row
 
     def _revision(self, connection: sqlite3.Connection, estimate_id: str, revision_no: int) -> sqlite3.Row:
-        row = connection.execute(
-            "SELECT * FROM estimate_revisions WHERE estimate_id = ? AND revision_no = ?",
+        row = connection.query(
+            'revision',
             (estimate_id, revision_no),
         ).fetchone()
         if row is None:
@@ -270,8 +264,8 @@ class EstimateService:
                    estimate_id: str, revision_no: int) -> dict[str, Any]:
         estimate = self._require_estimate(connection, organization_id, project_id, estimate_id)
         revision = self._revision(connection, estimate_id, revision_no)
-        lines = connection.execute(
-            "SELECT * FROM estimate_lines WHERE estimate_id = ? AND revision_no = ? ORDER BY order_index",
+        lines = connection.query(
+            'lines',
             (estimate_id, revision_no),
         ).fetchall()
         assumptions = json.loads(revision["assumptions_json"])
@@ -287,14 +281,13 @@ class EstimateService:
         }).encode("utf-8")).hexdigest()
         run_id = new_id("calculation")
         now = now_iso()
-        connection.execute(
-            "INSERT OR IGNORE INTO calculation_runs(calculation_run_id, organization_id, project_id, estimate_id, "
-            "revision_no, formula_version, input_hash, result_json, warnings_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        connection.query(
+            'insert_calculation',
             (run_id, organization_id, project_id, estimate_id, revision_no, FORMULA_VERSION, fingerprint,
              self._json(result), self._json(warnings), now),
         )
-        row = connection.execute(
-            "SELECT * FROM calculation_runs WHERE estimate_id = ? AND revision_no = ? AND input_hash = ?",
+        row = connection.query(
+            'calculation',
             (estimate_id, revision_no, fingerprint),
         ).fetchone()
         return self._public_calculation(row)
@@ -343,25 +336,25 @@ class EstimateService:
         }
 
     def list_estimates(self, organization_id: str, project_id: str) -> dict[str, Any]:
-        with self._db() as connection:
-            rows = connection.execute(
-                "SELECT estimate_id, name, currency, status, current_revision_no, updated_at FROM estimates "
-                "WHERE organization_id = ? AND project_id = ? ORDER BY updated_at DESC",
+        with self.repository.transaction(organization_id, project_id, write=False) as connection:
+            rows = connection.query(
+                'estimates',
                 (organization_id, project_id),
             ).fetchall()
         return {"items": [dict(row) for row in rows]}
 
-    def get_estimate(self, organization_id: str, project_id: str, estimate_id: str) -> dict[str, Any]:
-        with self._db() as connection:
+    def get_estimate(self, organization_id: str, project_id: str, estimate_id: str, *, connection=None) -> dict[str, Any]:
+        context = nullcontext(connection) if connection is not None else self.repository.transaction(organization_id, project_id)
+        with context as connection:
             estimate = self._require_estimate(connection, organization_id, project_id, estimate_id)
             revision_no = int(estimate["current_revision_no"])
             revision = self._revision(connection, estimate_id, revision_no)
-            lines = connection.execute(
-                "SELECT * FROM estimate_lines WHERE estimate_id = ? AND revision_no = ? ORDER BY order_index",
+            lines = connection.query(
+                'lines',
                 (estimate_id, revision_no),
             ).fetchall()
-            calculation = connection.execute(
-                "SELECT * FROM calculation_runs WHERE estimate_id = ? AND revision_no = ? ORDER BY created_at DESC LIMIT 1",
+            calculation = connection.query(
+                'latest_calculation',
                 (estimate_id, revision_no),
             ).fetchone()
         return {
@@ -395,31 +388,21 @@ class EstimateService:
         current_revision = self._revision(connection, estimate["estimate_id"], current)
         assumptions = assumptions or json.loads(current_revision["assumptions_json"])
         now = now_iso()
-        connection.execute(
-            "INSERT INTO estimate_revisions(estimate_id, revision_no, organization_id, project_id, source_kind, "
-            "change_reason, actor_id, assumptions_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        connection.query(
+            'insert_revision',
             (estimate["estimate_id"], next_revision, estimate["organization_id"], estimate["project_id"],
              source_kind, change_reason, actor_id, self._json(assumptions), now),
         )
-        connection.execute(
-            "INSERT INTO estimate_lines(estimate_id, revision_no, line_id, order_index, category, section_name, "
-            "sequence_label, item_name, unit, quantity_text, main_material_unit_cost_text, auxiliary_unit_cost_text, "
-            "labor_unit_cost_text, source_quantity_text, source_main_material_unit_cost_text, "
-            "source_auxiliary_unit_cost_text, source_labor_unit_cost_text, source_amount_text, material_name, "
-            "auxiliary_description, inclusion_status, exclusion_reason, source_scope_conflict, source_sheet, source_row, source_locator) "
-            "SELECT estimate_id, ?, line_id, order_index, category, section_name, sequence_label, item_name, unit, quantity_text, "
-            "main_material_unit_cost_text, auxiliary_unit_cost_text, labor_unit_cost_text, source_quantity_text, "
-            "source_main_material_unit_cost_text, source_auxiliary_unit_cost_text, source_labor_unit_cost_text, source_amount_text, "
-            "material_name, auxiliary_description, inclusion_status, exclusion_reason, source_scope_conflict, source_sheet, "
-            "source_row, source_locator FROM estimate_lines WHERE estimate_id = ? AND revision_no = ?",
+        connection.query(
+            'copy_lines',
             (next_revision, estimate["estimate_id"], current),
         )
-        connection.execute(
-            "UPDATE estimates SET current_revision_no = ?, updated_at = ? WHERE estimate_id = ?",
+        connection.query(
+            'advance',
             (next_revision, now, estimate["estimate_id"]),
         )
-        connection.execute(
-            "UPDATE estimate_artifacts SET status = 'superseded' WHERE estimate_id = ?",
+        connection.query(
+            'supersede',
             (estimate["estimate_id"],),
         )
         return next_revision
@@ -449,23 +432,18 @@ class EstimateService:
         if not updates:
             raise EstimateServiceError(400, "INVALID_ESTIMATE_CHANGE", "没有可保存的预算明细变化")
 
-        with self._db() as connection:
-            connection.execute("BEGIN IMMEDIATE")
+        with self.repository.transaction(organization_id, project_id, write=True) as connection:
             estimate = self._require_estimate(connection, organization_id, project_id, estimate_id)
             if int(estimate["current_revision_no"]) != expected_revision:
                 raise EstimateServiceError(409, "STALE_ESTIMATE_REVISION", "预算修订已变化，请重新读取")
-            exists = connection.execute(
-                "SELECT 1 FROM estimate_lines WHERE estimate_id = ? AND revision_no = ? AND line_id = ?",
+            exists = connection.query(
+                'line_exists',
                 (estimate_id, expected_revision, line_id),
             ).fetchone()
             if not exists:
                 raise EstimateServiceError(404, "NOT_FOUND", "estimate line not found")
             revision_no = self._copy_revision(connection, estimate, actor_id, reason, "user_edit")
-            assignments = ", ".join(f"{column} = ?" for column in updates)
-            connection.execute(
-                f"UPDATE estimate_lines SET {assignments} WHERE estimate_id = ? AND revision_no = ? AND line_id = ?",
-                (*updates.values(), estimate_id, revision_no, line_id),
-            )
+            connection.update_line(estimate_id, revision_no, line_id, updates)
             self._calculate(connection, organization_id, project_id, estimate_id, revision_no)
         return self.get_estimate(organization_id, project_id, estimate_id)
 
@@ -473,8 +451,7 @@ class EstimateService:
                   request: dict[str, Any], actor_id: str) -> dict[str, Any]:
         reason = str(request.get("change_reason", "试算参数更新")).strip() or "试算参数更新"
         expected_revision = int(request.get("expected_revision", -1))
-        with self._db() as connection:
-            connection.execute("BEGIN IMMEDIATE")
+        with self.repository.transaction(organization_id, project_id, write=True) as connection:
             estimate = self._require_estimate(connection, organization_id, project_id, estimate_id)
             if int(estimate["current_revision_no"]) != expected_revision:
                 raise EstimateServiceError(409, "STALE_ESTIMATE_REVISION", "预算修订已变化，请重新读取")
@@ -533,39 +510,46 @@ class EstimateService:
         }
 
     def export_estimate(self, organization_id: str, project_id: str, estimate_id: str, actor_id: str = "local-user") -> dict[str, Any]:
-        estimate = self.get_estimate(organization_id, project_id, estimate_id)
-        revision = estimate["revision_no"]
-        with self._db() as connection:
-            existing = connection.execute("SELECT * FROM estimate_artifacts WHERE estimate_id = ? AND revision_no = ? ORDER BY artifact_kind", (estimate_id, revision)).fetchall()
+        with self.repository.transaction(organization_id, project_id, write=True) as connection:
+            estimate = self.get_estimate(organization_id, project_id, estimate_id, connection=connection)
+            revision = estimate["revision_no"]
+            existing = connection.query('artifacts', (estimate_id, revision)).fetchall()
             if existing:
+                for artifact in existing:
+                    self._artifact_path(artifact)
                 return {"estimate_id": estimate_id, "revision_no": revision, "items": [dict(row) for row in existing]}
-            safe_project = "".join(character if character.isalnum() or character in "-_" else "_" for character in project_id)
-            export_root = self.db_path.parent / "projects" / safe_project / "exports" / f"estimate-v{revision}"
-            export_root.mkdir(parents=True, exist_ok=True)
+            export_root = self.runtime_root / "projects" / "estimate-exports" / new_id("estimate-export")
+            export_root.mkdir(parents=True, exist_ok=False)
             items = []
             now = now_iso()
             for kind, (filename, content_type, data) in self._artifact_outputs(estimate).items():
                 path = export_root / filename
-                temporary = path.with_suffix(path.suffix + ".tmp")
-                temporary.write_bytes(data)
-                temporary.replace(path)
+                with path.open("xb") as target:
+                    target.write(data)
                 digest = hashlib.sha256(data).hexdigest()
                 artifact_id = new_id("estimate-artifact")
-                connection.execute("INSERT INTO estimate_artifacts(artifact_id, organization_id, project_id, estimate_id, revision_no, artifact_kind, filename, content_type, relative_path, sha256, size_bytes, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)", (artifact_id, organization_id, project_id, estimate_id, revision, kind, filename, content_type, str(path.relative_to(self.db_path.parent)), digest, len(data), now))
+                connection.query('insert_artifact', (artifact_id, organization_id, project_id, estimate_id, revision, kind, filename, content_type, str(path.relative_to(self.runtime_root)), digest, len(data), now))
                 items.append({"artifact_id": artifact_id, "estimate_id": estimate_id, "revision_no": revision, "artifact_kind": kind, "filename": filename, "content_type": content_type, "sha256": digest, "size_bytes": len(data), "status": "draft", "created_at": now})
         items.sort(key=lambda item: item["artifact_kind"])
         return {"estimate_id": estimate_id, "revision_no": revision, "items": items}
 
     def get_artifact(self, organization_id: str, project_id: str, artifact_id: str) -> tuple[dict[str, Any], Path]:
-        with self._db() as connection:
-            row = connection.execute("SELECT * FROM estimate_artifacts WHERE artifact_id = ? AND organization_id = ? AND project_id = ?", (artifact_id, organization_id, project_id)).fetchone()
+        with self.repository.transaction(organization_id, project_id, write=False) as connection:
+            row = connection.query('artifact', (artifact_id, organization_id, project_id)).fetchone()
         if row is None:
             raise EstimateServiceError(404, "NOT_FOUND", "预算成果不存在")
-        path = (self.db_path.parent / row["relative_path"]).resolve()
+        return dict(row), self._artifact_path(row)
+
+    def _artifact_path(self, row):
+        path = (self.runtime_root / row["relative_path"]).resolve()
         try:
-            path.relative_to(self.db_path.parent.resolve())
+            path.relative_to(self.runtime_root.resolve())
         except ValueError as error:
             raise EstimateServiceError(500, "INVALID_ARTIFACT_PATH", "预算成果路径无效") from error
         if not path.is_file():
             raise EstimateServiceError(404, "ARTIFACT_MISSING", "预算成果文件不存在")
-        return dict(row), path
+        with path.open("rb") as source:
+            digest = hashlib.file_digest(source, "sha256").hexdigest()
+        if path.stat().st_size != row["size_bytes"] or digest != row["sha256"]:
+            raise EstimateServiceError(409, "ARTIFACT_INTEGRITY", "预算成果字节与保存的版本不一致，请保留现场并检查备份")
+        return path
