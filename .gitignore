@@ -22,14 +22,5 @@ tmp/接管-git-status*.txt
 tools/blender/
 tools/assets/
 
-# Working screenshots / crops / logs
-tmp/*.png
-tmp/*.log
-# Headless-Edge scratch profiles
-tmp/edgeprof*/
-tmp/edgeshot*/
-# Scratch render/test output
-tmp/shots/
-tmp/ph/
-tmp/debug/
-tmp/*.py
+# Whole tmp/ is scratch/runtime output — keep on disk, never in Git
+tmp/
