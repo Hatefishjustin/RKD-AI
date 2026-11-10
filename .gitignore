@@ -14,3 +14,6 @@ web/*.tsbuildinfo
 
 # WorkBuddy local tool state (session memory, caches) — not project source
 .workbuddy/
+
+# Temporary handover status snapshots (not source)
+tmp/接管-git-status*.txt
