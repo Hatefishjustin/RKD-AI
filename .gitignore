@@ -24,3 +24,6 @@ tools/blender/
 # Working screenshots / crops / logs
 tmp/*.png
 tmp/*.log
+# Headless-Edge scratch profiles
+tmp/edgeprof*/
+tmp/edgeshot*/
