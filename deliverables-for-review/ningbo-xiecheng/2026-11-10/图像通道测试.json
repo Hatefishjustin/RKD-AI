@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-11-10T11:10:00+08:00",
+  "provider_requested": "https://tokeasy.ai",
+  "status": "not_tested",
+  "blocked_reason": "本会话的进程环境里没有 RKD_IMAGE_API_KEY（os.environ 中不存在该键）。按你的要求，密钥只能以环境变量形式存在于终端会话，不能写进任何文件、日志或截图，因此这一轮没有发出任何网络请求。",
+  "what_was_attempted": [
+    "读取 os.environ 检查 RKD_IMAGE_API_KEY 是否存在（不存在）",
+    "没有把密钥写进脚本、JSON、HTML、日志或截图"
+  ],
+  "capabilities": {
+    "can_generate": "unknown",
+    "models": "unknown",
+    "price_per_image": "unknown",
+    "image_to_image": "unknown"
+  },
+  "external_data_sent": "none",
+  "images_generated": 0,
+  "cost": "0（未发起请求）",
+  "previous_provider_check": {
+    "provider": "https://api.codelink.chat",
+    "result": "POST /v1/images/generations 返回 HTTP 403 {\"error\":{\"message\":\"Image generation is not enabled for this group\"}}；/v1/models 只列出 3 个文本模型",
+    "date": "2026-11-10"
+  },
+  "how_to_unblock": "在启动本工具的终端里设置环境变量后重新运行：$env:RKD_IMAGE_API_KEY=\"...\"（PowerShell）。设置后我可以先查模型列表，再生成 1 张与项目无关的示例图，并回报模型、单价与是否支持参考图。",
+  "render_fallback": "本阶段的效果图完全由本地程序化 3D 渲染器生成（scripts/render3d.py），没有使用任何图像模型，也没有把宁波的 CAD / PDF / 预算 / 现场照片发到外部。"
+}

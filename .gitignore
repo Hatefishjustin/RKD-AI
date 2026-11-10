@@ -17,3 +17,10 @@ web/*.tsbuildinfo
 
 # Temporary handover status snapshots (not source)
 tmp/接管-git-status*.txt
+
+# Portable tool binaries (Blender, ~1.3 GB) — kept on disk, never in Git
+tools/blender/
+
+# Working screenshots / crops / logs
+tmp/*.png
+tmp/*.log
