@@ -173,10 +173,42 @@ FURNITURE = [
 
 # Four round pedestals on the island top, centred on the island axis
 PEDESTALS = [
-    {"x": 10250, "y": 7700, "r": 350, "h": 300, "product": "陶罐 P1"},
-    {"x": 14750, "y": 7700, "r": 350, "h": 300, "product": "石材样块 P2"},
-    {"x": 10250, "y": 9500, "r": 350, "h": 300, "product": "金属器皿 P3"},
+    {"x": 10250, "y": 7700, "r": 350, "h": 300, "product": "石材样块 P1"},
+    {"x": 14750, "y": 7700, "r": 350, "h": 300, "product": "木饰面板样 P2"},
+    {"x": 10250, "y": 9500, "r": 350, "h": 300, "product": "金属型材段 P3"},
     {"x": 14750, "y": 9500, "r": 350, "h": 300, "product": "织物样册 P4"},
+]
+PRODUCT_NOTE = ("示意图：项目资料（施工图 / 预算 / 现场照片）里没有协诚的产品清单，"
+                "四组展台按本项目主材做成可辨认的样品——石材样块、木饰面板样、金属型材段、织物样册；"
+                "不是协诚真实展品，等产品资料到位后再替换。")
+
+# ---------------------------------------------------------------- cameras
+# eye / target in mm, lens in mm (35 mm equivalent on a 36 mm sensor)
+CAMERAS = [
+    {"id": "C0", "name": "序厅·接待", "eye": (4600, 8000, 1550), "target": (900, 12400, 1400),
+     "lens": 18, "light": "morning",
+     "note": "从序厅东南角回看：左侧接待台与接待椅，正面 R4660 弧形胡桃木品牌墙，右侧入口门洞。",
+     "light_note": "上午自然光斜射进来，接待台上有台灯作为暖色补点。"},
+    {"id": "C1", "name": "入口看中岛", "eye": (4200, 9200, 1520), "target": (11400, 8900, 1120),
+     "lens": 19, "light": "morning",
+     "note": "站在入口内侧向东：弧形品牌墙的端头在左缘，中岛居中远景，环形灯槽压住画面。",
+     "light_note": "同一时刻的上午光，与 C0 保持一致，方便对照。"},
+    {"id": "C2", "name": "中岛特写", "eye": (8100, 5450, 1460), "target": (12600, 8800, 1260),
+     "lens": 26, "light": "bright",
+     "note": "中岛西南侧 3 m 处：三级圆角台阶、四组展台样品、头顶 R2400 灯槽一次看全。",
+     "light_note": "正午偏亮的日光，灯槽与轨道射灯全开，重点照明压住台面。"},
+    {"id": "C3", "name": "北光廊", "eye": (9200, 12100, 1550), "target": (16800, 17100, 1340),
+     "lens": 22, "light": "afternoon",
+     "note": "贴着北窗向东看回西：5 道展墙翼的序列，02 / 04 斜 12° 的缺口里漏进斜光。",
+     "light_note": "下午斜阳，太阳高度角压低，窗光在地面拉出长投影，室内灯只留轨道射灯。"},
+    {"id": "C4", "name": "南侧生活场景", "eye": (6600, 6900, 1550), "target": (15600, 2600, 950),
+     "lens": 26, "light": "evening",
+     "note": "从环游动线南侧看向客厅 + 餐厅：地毯、沙发、餐桌与两盏吊灯为前景。",
+     "light_note": "傍晚暖光：室外降到暮色，吊灯、灯槽、筒灯成为主光，色温 2700K。"},
+    {"id": "C5", "name": "整体鸟瞰", "eye": (600, 500, 12800), "target": (13100, 9200, 0),
+     "lens": 18, "light": "aerial",
+     "note": "西南角 14 m 高俯瞰（天花临时隐藏）：全场分区、环形动线、中岛与各功能区的关系。",
+     "light_note": "日景鸟瞰：天光为主，室内灯开一半，只看布局关系不看氛围。"},
 ]
 
 # Bathroom sanitary ware (kept zone, new drawings)
@@ -272,6 +304,8 @@ def scene_json() -> dict[str, Any]:
         "fixtures": FIXTURES,
         "lights": {k: v for k, v in LIGHTS.items() if k != "cove"},
         "materials": MATERIALS,
+        "cameras": [dict(c) for c in CAMERAS],
+        "product_note": PRODUCT_NOTE,
         "non_orthogonal": [
             "中央中岛：三级圆角台 R1560 / R1360 / R1180",
             "吊顶环形灯槽：R2400 圆角环，与中岛同形呼应",
@@ -288,6 +322,41 @@ def scene_json() -> dict[str, Any]:
             "07 西水吧：楼梯旁服务点，接待、茶水、资料发放合一。",
         ],
     }
+
+
+def camera_svg(cam: dict[str, Any]) -> str:
+    """Camera symbol + field-of-view wedge, drawn in plan space."""
+    ex, ey = float(cam["eye"][0]), float(cam["eye"][1])
+    tx, ty = float(cam["target"][0]), float(cam["target"][1])
+    ang = math.degrees(math.atan2(ty - ey, tx - ex))
+    half = math.degrees(math.atan(18.0 / float(cam["lens"])))
+    r = 3300.0
+    ax, ay = ex + r * math.cos(math.radians(ang - half)), ey + r * math.sin(math.radians(ang - half))
+    bx, by = ex + r * math.cos(math.radians(ang + half)), ey + r * math.sin(math.radians(ang + half))
+    out = [
+        f'<path d="M {ex:.0f} {Y(ey):.0f} L {ax:.0f} {Y(ay):.0f} '
+        f'A {r:.0f} {r:.0f} 0 0 1 {bx:.0f} {Y(by):.0f} Z" fill="{ACCENT}" fill-opacity="0.055" '
+        f'stroke="{ACCENT}" stroke-width="10" stroke-opacity="0.45" stroke-dasharray="70 55"/>',
+        f'<g transform="translate({ex:.0f} {Y(ey):.0f}) rotate({-ang:.0f})">'
+        f'<rect x="-300" y="-185" width="600" height="370" rx="70" fill="#ffffff" '
+        f'stroke="{ACCENT}" stroke-width="15"/>'
+        f'<circle cx="190" cy="0" r="90" fill="{ACCENT}"/></g>',
+    ]
+    off = cam.get("label_offset")
+    if off:
+        lx, ly = ex + off[0], ey + off[1]
+    else:
+        lx = ex - 620 * math.cos(math.radians(ang))
+        ly = ey - 620 * math.sin(math.radians(ang))
+    out.append(ptext(lx, ly, 330, cam["id"], fill=ACCENT, anchor="middle", weight="700", halo=True))
+    return "".join(out)
+
+
+def camera_glyph(x: float, y: float, k: float = 0.26) -> str:
+    """Small top-view camera icon for the legend (x/y = top-left in screen space)."""
+    return (f'<g transform="translate({x:.0f} {y:.0f}) scale({k})">'
+            f'<rect x="0" y="0" width="600" height="370" rx="70" fill="#ffffff" stroke="{ACCENT}" stroke-width="22"/>'
+            f'<circle cx="410" cy="185" r="90" fill="{ACCENT}"/></g>')
 
 
 # ---------------------------------------------------------------- svg helpers
@@ -725,13 +794,18 @@ def build_plan_svg() -> str:
         "island": (12500, 8960, "middle", 420),
         "loop": (12500, 5740, "middle", 380),
     }
+    zone_sub_dy = {"arrival": -500}
     for zone in ZONES:
         x, y, anchor, size = zone_labels[zone["id"]]
         parts.append(ptext(x, y, size, f'{zone["no"]} · {zone["short"]}', fill="#3f4c55",
                            anchor=anchor, weight="700", spacing="8", halo=True))
-        sub_y = y - (size * 1.05)
+        sub_y = y - (size * 1.05) + zone_sub_dy.get(zone["id"], 0)
         body = f'{ZONE_SUB[zone["id"]]} · {zone_area_of(zone):.1f} ㎡'
         parts.append(ptext(x, sub_y, 275, body, fill="#6f7a83", anchor=anchor, spacing="6", halo=True))
+
+    # ---- render camera positions (C1–C5) with their field of view
+    for cam in CAMERAS:
+        parts.append(camera_svg(cam))
 
     # ---- element labels: every drawn element is either named in place or keyed
     parts.append(ptext(2700, 12930, 205, "弧形品牌墙 R4660", fill=MATERIALS["walnut"]["color"],
@@ -807,6 +881,15 @@ def build_plan_svg() -> str:
         legend.append(sym(kind, lx, sy, w=300, h=180))
         legend.append(stext(lx + 380, sy + 130, 195, label, fill="#3c4a56"))
         sy += 292
+
+    sy += 190
+    legend.append(stext(lx, sy, 195, "效果图视点 VIEWS", fill=GREY, weight="600", spacing="6"))
+    sy += 100
+    for cam in CAMERAS:
+        legend.append(camera_glyph(lx, sy + 10, 0.42))
+        legend.append(stext(lx + 380, sy + 145, 190, f'{cam["id"]}  {cam["name"]}', fill="#3c4a56"))
+        legend.append(stext(lx + col_w, sy + 145, 175, f'{cam["lens"]} mm', fill="#7b8895", anchor="end"))
+        sy += 268
 
     sy += 190
     legend.append(stext(lx, sy, 195, "家具与展具清单 SCHEDULE", fill=GREY, weight="600", spacing="6"))

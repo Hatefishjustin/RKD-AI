@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -282,17 +283,104 @@ M_STONE = mat_stone("stone", base=(0.655, 0.622, 0.570), rough=0.30)
 M_FABRIC = mat_fabric("fabric", (0.66, 0.575, 0.47))
 M_FABRIC2 = mat_fabric("fabric_light", (0.73, 0.68, 0.60))
 M_BRONZE, _, _ = new_mat("bronze", (0.71, 0.52, 0.33), rough=0.32, metal=1.0)
+M_BRONZE_D, _, _ = new_mat("bronze_dark", (0.30, 0.22, 0.14), rough=0.38, metal=1.0)
 M_BLACK, _, _ = new_mat("black_metal", (0.045, 0.045, 0.05), rough=0.42, metal=0.7)
 M_GLASS = mat_glass()
 M_PLANT, _, _ = new_mat("leaf", (0.11, 0.20, 0.09), rough=0.62)
 M_POT, _, _ = new_mat("pot", (0.32, 0.30, 0.28), rough=0.55)
 M_WHITE, _, _ = new_mat("gloss_white", (0.90, 0.90, 0.88), rough=0.22)
 M_SHADOW, _, _ = new_mat("shadow_gap", (0.10, 0.085, 0.07), rough=0.85)
-M_PED = mat_stone("stone_dark", base=(0.50, 0.47, 0.435), rough=0.30)
-M_STONEW = mat_stone("stone_warm", base=(0.72, 0.66, 0.58), rough=0.35)
+M_PED, _, _ = new_mat("pedestal_stone", (0.50, 0.47, 0.435), rough=0.34)
+M_STONEW, _, _ = new_mat("stone_warm", (0.62, 0.60, 0.57), rough=0.36)
 M_STRIP = mat_emit("light_strip", (1.0, 0.78, 0.52), 1.9)
 M_SKY = mat_emit("sky_panel", (0.88, 0.93, 1.0), 2.6)
 M_SOFFIT = mat_cement("soffit_paint", (0.885, 0.870, 0.840), rough=0.85, scale=120.0, bump=0.05, var=0.008)
+
+# ------------------------------------------------------------------ CC0 PBR assets
+ROOT = Path(__file__).resolve().parents[1]
+ASSETS = ROOT / "tools" / "assets"
+MANIFEST_PATH = ROOT / "assets" / "CC0-素材清单.json"
+MANIFEST = json.loads(MANIFEST_PATH.read_text(encoding="utf-8")) if MANIFEST_PATH.exists() else {"textures": {}, "models": {}}
+
+
+def _img_node(nt, mapping, path: Path, colorspace: str):
+    node = nt.nodes.new("ShaderNodeTexImage")
+    node.image = bpy.data.images.load(str(path), check_existing=True)
+    node.image.colorspace_settings.name = colorspace
+    nt.links.new(mapping.outputs["Vector"], node.inputs["Vector"])
+    return node
+
+
+def pbr_mat(name, slot, tint=(1.0, 1.0, 1.0), tile=1.0, rough_mul=1.0, normal_strength=0.35,
+            rough_override=None, base_fallback=(0.5, 0.5, 0.5)):
+    """Principled material fed by the CC0 texture set for `slot`; procedural fallback if missing."""
+    meta = MANIFEST.get("textures", {}).get(slot)
+    if not meta:
+        m, _, _ = new_mat(name, base_fallback, rough=0.6)
+        return m
+    files = meta["files"]
+    folder = ASSETS / "pbr" / slot
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    b = nt.nodes["Principled BSDF"]
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    mapping = nt.nodes.new("ShaderNodeMapping")
+    mapping.inputs["Scale"].default_value = (tile, tile, tile)
+    nt.links.new(coord.outputs["Object"], mapping.inputs["Vector"])
+
+    if "Diffuse" in files:
+        dcol = _img_node(nt, mapping, folder / files["Diffuse"]["file"], "sRGB")
+        if tuple(tint) != (1.0, 1.0, 1.0):
+            mix = nt.nodes.new("ShaderNodeMix")
+            mix.data_type = "RGBA"
+            mix.blend_type = "MULTIPLY"
+            mix.inputs["Factor"].default_value = 1.0
+            mix.inputs[7].default_value = (*tint, 1.0)          # B colour
+            nt.links.new(dcol.outputs["Color"], mix.inputs[6])   # A colour
+            nt.links.new(mix.outputs[2], b.inputs["Base Color"])
+        else:
+            nt.links.new(dcol.outputs["Color"], b.inputs["Base Color"])
+    if "Rough" in files:
+        rnode = _img_node(nt, mapping, folder / files["Rough"]["file"], "Non-Color")
+        if rough_override is not None:
+            b.inputs["Roughness"].default_value = rough_override
+        else:
+            ramp = nt.nodes.new("ShaderNodeMath")
+            ramp.operation = "MULTIPLY"
+            ramp.inputs[1].default_value = rough_mul
+            nt.links.new(rnode.outputs["Color"], ramp.inputs[0])
+            nt.links.new(ramp.outputs[0], b.inputs["Roughness"])
+    if "nor_gl" in files:
+        nnode = _img_node(nt, mapping, folder / files["nor_gl"]["file"], "Non-Color")
+        nmap = nt.nodes.new("ShaderNodeNormalMap")
+        nmap.inputs["Strength"].default_value = normal_strength
+        nt.links.new(nnode.outputs["Color"], nmap.inputs["Color"])
+        nt.links.new(nmap.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
+# real materials replace the procedural stand-ins wherever a CC0 set exists
+M_FLOOR = pbr_mat("floor_microcement_cc0", "floor_microcement", tint=(0.62, 0.60, 0.57),
+                  tile=0.34, rough_override=0.42, normal_strength=0.22, base_fallback=(0.40, 0.37, 0.34))
+M_WALL = pbr_mat("wall_plaster_cc0", "wall_plaster", tint=(1.10, 1.08, 1.05),
+                 tile=0.30, normal_strength=0.22, base_fallback=(0.90, 0.885, 0.86))
+M_CEILING = pbr_mat("ceiling_plaster_cc0", "wall_plaster", tint=(1.18, 1.17, 1.14),
+                    tile=0.30, normal_strength=0.12, base_fallback=(0.92, 0.91, 0.89))
+M_SOFFIT = pbr_mat("soffit_plaster_cc0", "wall_plaster", tint=(1.14, 1.13, 1.10),
+                   tile=0.35, normal_strength=0.15, base_fallback=(0.88, 0.87, 0.84))
+M_OAK = pbr_mat("oak_cc0", "oak", tint=(1.22, 1.18, 1.12), tile=0.85, rough_override=0.58, normal_strength=0.30,
+                base_fallback=(0.50, 0.37, 0.27))
+M_WALNUT = pbr_mat("walnut_cc0", "walnut", tint=(0.52, 0.42, 0.35), tile=0.75, rough_override=0.52, normal_strength=0.32,
+                   base_fallback=(0.26, 0.17, 0.11))
+M_STONE = pbr_mat("stone_cc0", "stone", tint=(1.05, 1.02, 0.98), tile=0.45, rough_override=0.30,
+                  normal_strength=0.18, base_fallback=(0.66, 0.63, 0.58))
+M_FABRIC = pbr_mat("fabric_cc0", "fabric", tint=(1.00, 0.92, 0.80), tile=0.55,
+                   normal_strength=0.45, base_fallback=(0.66, 0.58, 0.47))
+M_PED = pbr_mat("pedestal_stone_cc0", "stone", tint=(0.62, 0.60, 0.57), tile=1.6,
+                rough_override=0.34, normal_strength=0.10, base_fallback=(0.50, 0.47, 0.435))
+M_STONEW = pbr_mat("stone_grey_cc0", "stone", tint=(0.42, 0.43, 0.44), tile=1.1,
+                   rough_override=0.38, normal_strength=0.16, base_fallback=(0.62, 0.60, 0.57))
 
 # ------------------------------------------------------------------ ground / ceiling
 W, H, CEIL = P(DATA["site"]["width"]), P(DATA["site"]["height"]), P(DATA["site"]["ceiling"])
@@ -341,9 +429,12 @@ for i, (a, b) in enumerate(east_windows):
 # south + west walls, with the entrance opening on the west
 wall_seg("s_wall", 0, T / 2, W, T / 2, 0, CEIL, M_WALL)
 ent = DATA["fixed"]["entrance"]
-wall_seg("w_wall_a", T / 2, 0, T / 2, P(ent[1]), 0, CEIL, M_WALL)
-wall_seg("w_wall_b", T / 2, P(ent[2]), T / 2, H, 0, CEIL, M_WALL)
-wall_seg("w_wall_head", T / 2, P(ent[1]), T / 2, P(ent[2]), P(2300), CEIL, M_WALL)
+ent_y0, ent_y1 = P(ent[1]), P(ent[1] + ent[2])
+wall_seg("w_wall_a", T / 2, 0, T / 2, ent_y0, 0, CEIL, M_WALL)
+wall_seg("w_wall_b", T / 2, ent_y1, T / 2, H, 0, CEIL, M_WALL)
+wall_seg("w_wall_head", T / 2, ent_y0, T / 2, ent_y1, P(2300), CEIL, M_WALL)
+wall_seg("w_wall_jamb_a", T / 2, ent_y0 - 0.06, T / 2, ent_y0, 0, P(2300), M_BRONZE_D if False else M_WALL)
+wall_seg("w_wall_jamb_b", T / 2, ent_y1, T / 2, ent_y1 + 0.06, 0, P(2300), M_WALL)
 
 # window glazing + aluminium frame grid, set 80 mm back from the interior face
 def window_grid(prefix, horizontal, a, b, pos, inward):
@@ -466,21 +557,28 @@ def add_lathe(name, cx, cy, z0, profile, mat, steps=48, close_top=False):
 M_CLAY = mat_cement("clay", (0.52, 0.30, 0.20), rough=0.55, scale=90.0, bump=0.10, var=0.05)
 M_CLAY2 = mat_cement("clay_pale", (0.74, 0.70, 0.62), rough=0.62, scale=90.0, bump=0.10, var=0.05)
 
-# P1 tall bottle vase
-add_lathe("prod_vase", P(10250), P(7700), Z0,
-          [(0.001, 0.0), (0.105, 0.0), (0.125, 0.02), (0.128, 0.10), (0.10, 0.22),
-           (0.062, 0.34), (0.058, 0.40), (0.072, 0.44), (0.070, 0.455)], M_CLAY)
-# P2 upright stone sample
-add_box("prod_stone_base", P(14750), P(7700), Z0, Z0 + 0.03, 0.46, 0.26, M_BRONZE, bevel=0.004)
-add_box("prod_stone_slab", P(14750), P(7700), Z0 + 0.03, Z0 + 0.58, 0.44, 0.07, M_STONE, bevel=0.006)
-# P3 bronze bowl
-add_lathe("prod_bowl", P(10250), P(9500), Z0,
-          [(0.001, 0.0), (0.12, 0.0), (0.175, 0.035), (0.200, 0.10), (0.204, 0.12)], M_BRONZE)
-# P4 stacked fabric samples
-for k in range(4):
-    add_box(f"prod_swatch_{k}", P(14750) + 0.006 * k, P(9500) - 0.004 * k, Z0 + 0.026 * k,
-            Z0 + 0.026 * (k + 1), 0.30 - 0.012 * k, 0.21 - 0.008 * k,
-            M_FABRIC if k % 2 == 0 else M_CLAY2, rot=math.radians(4 * k), bevel=0.002)
+# P1 石材样块: two stone samples on a bronze base
+add_box("prod_p1_base", P(10250), P(7700), Z0, Z0 + 0.025, 0.42, 0.30, M_BRONZE, bevel=0.004)
+add_box("prod_p1_slab_a", P(10250) - 0.07, P(7700) + 0.01, Z0 + 0.025, Z0 + 0.38, 0.24, 0.14, M_STONE, bevel=0.004)
+add_box("prod_p1_slab_b", P(10250) + 0.10, P(7700) - 0.04, Z0 + 0.025, Z0 + 0.24, 0.18, 0.11, M_STONEW, bevel=0.004)
+
+# P2 木饰面板样: veneer panel standing in a bronze shoe
+add_box("prod_p2_shoe", P(14750), P(7700), Z0, Z0 + 0.03, 0.40, 0.14, M_BRONZE, bevel=0.004)
+add_box("prod_p2_panel", P(14750), P(7700), Z0 + 0.03, Z0 + 0.62, 0.36, 0.03, M_OAK, bevel=0.003)
+add_box("prod_p2_block", P(14750) + 0.16, P(7700) + 0.10, Z0 + 0.03, Z0 + 0.14, 0.12, 0.12, M_WALNUT, bevel=0.003)
+
+# P3 金属型材段: tube / angle / flat bar standing together
+add_cyl("prod_p3_tube", P(10250) - 0.12, P(9500), Z0, Z0 + 0.46, 0.035, M_BRONZE, seg=28)
+add_box("prod_p3_angle_a", P(10250) + 0.02, P(9500) - 0.06, Z0, Z0 + 0.42, 0.012, 0.09, M_BRONZE, bevel=0.0)
+add_box("prod_p3_angle_b", P(10250) + 0.07, P(9500) - 0.015, Z0, Z0 + 0.42, 0.10, 0.012, M_BRONZE, bevel=0.0)
+add_box("prod_p3_bar", P(10250) + 0.16, P(9500) + 0.06, Z0, Z0 + 0.34, 0.05, 0.012, M_BRONZE_D, bevel=0.0)
+
+# P4 织物样册: stacked swatches + a closed sample book
+for k in range(6):
+    add_box(f"prod_p4_swatch_{k}", P(14750) + 0.004 * k, P(9500) - 0.003 * k, Z0 + 0.014 * k,
+            Z0 + 0.014 * (k + 1), 0.34 - 0.010 * k, 0.24 - 0.006 * k,
+            M_FABRIC if k % 2 == 0 else M_FABRIC2, rot=math.radians(3 * k), bevel=0.0015)
+add_box("prod_p4_book", P(14750) + 0.26, P(9500) + 0.02, Z0, Z0 + 0.05, 0.22, 0.30, M_WALNUT, bevel=0.003)
 
 # ------------------------------------------------------------------ furniture# ------------------------------------------------------------------ furniture
 def f_sofa(it, name, mat):
@@ -541,8 +639,9 @@ def f_bay(it, name):
     add_box(f"{name}_cap", x, y, h - 0.03, h, w + 0.02, d + 0.02, M_BRONZE, rot=rot, bevel=0.003)
     for side in (-1, 1):
         for edge in (-1, 1):
-            ex, ey = at(x, y, rot, 0, edge * (d / 2 - 0.012))
-            add_box(f"{name}_edge{side}{edge}", ex, ey, 0.10, h - 0.03, w + 0.014, 0.024, M_BLACK, rot=rot, bevel=0.0)
+            ex, ey = at(x, y, rot, 0, edge * (d / 2 - 0.010))
+            add_box(f"{name}_edge{side}{edge}", ex, ey, 0.10, h - 0.03, w + 0.012, 0.016,
+                    M_BRONZE_D, rot=rot, bevel=0.0)
     # framed artwork on both faces
     for side in (-1, 1):
         for k, (dy, hh) in enumerate(((-0.55, 0.85), (0.55, 0.85))):
@@ -564,13 +663,120 @@ def f_plant(it, name):
     add_cyl(f"{name}_stem", x, y, 0.42, hh * 0.62, 0.028, M_POT, seg=12)
 
 
+# ------------------------------------------------------------------ CC0 furniture
+MODEL_SPEC = {
+    # kind      poly haven id            scale to design width   extra yaw (deg)
+    "sofa": ("sofa_02", True, 0.0),
+    "armchair": ("modern_arm_chair_01", True, 0.0),
+    "chair": ("dining_chair_02", True, 0.0),
+    "coffee": ("modern_coffee_table_01", True, 0.0),
+    "table": ("dining_table", True, 0.0),
+    "round": ("round_wooden_table_01", True, 0.0),
+    "stool": ("bar_chair_round_01", True, 0.0),
+    "plant": ("potted_plant_01", True, 0.0),
+}
+TEMPLATES: dict[str, dict] = {}
+
+
+def load_template(pid: str):
+    """Import a glTF once, join it, drop it on the floor and centre it; returns dims + object."""
+    if pid in TEMPLATES:
+        return TEMPLATES[pid]
+    path = ASSETS / "models" / pid / f"{pid}.gltf"
+    if not path.exists():
+        TEMPLATES[pid] = None
+        return None
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    new = [o for o in bpy.data.objects if o not in before]
+    meshes = [o for o in new if o.type == "MESH"]
+    for o in new:
+        if o.type != "MESH" and o.parent is None and o.name not in {m.name for m in meshes}:
+            pass
+    if not meshes:
+        TEMPLATES[pid] = None
+        return None
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in meshes:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    if len(meshes) > 1:
+        bpy.ops.object.join()
+    ob = bpy.context.view_layer.objects.active
+    ob.select_set(True)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    # drop to z=0 and centre in plan
+    mn = Vector((1e9, 1e9, 1e9))
+    mx = Vector((-1e9, -1e9, -1e9))
+    for c in ob.bound_box:
+        w = ob.matrix_world @ Vector(c)
+        for i in range(3):
+            mn[i] = min(mn[i], w[i])
+            mx[i] = max(mx[i], w[i])
+    cx, cy = (mn.x + mx.x) / 2, (mn.y + mx.y) / 2
+    for v in ob.data.vertices:
+        v.co.x -= cx
+        v.co.y -= cy
+        v.co.z -= mn.z
+    dims = (mx.x - mn.x, mx.y - mn.y, mx.z - mn.z)
+    ob.hide_render = True
+    ob.hide_viewport = True
+    TEMPLATES[pid] = {"object": ob, "dims": dims}
+    return TEMPLATES[pid]
+
+
+def place_model(pid: str, x: float, y: float, rot_deg: float, target_w: float, yaw_offset: float = 0.0):
+    tpl = load_template(pid)
+    if tpl is None:
+        return None
+    w, d, h = tpl["dims"]
+    if target_w <= 0 or w <= 0:
+        s = 1.0
+    else:
+        s = target_w / w
+    ob = tpl["object"].copy()
+    ob.data = tpl["object"].data
+    ob.hide_render = False
+    ob.hide_viewport = False
+    ob.location = (x, y, 0.0)
+    ob.rotation_euler = (0.0, 0.0, math.radians(rot_deg + yaw_offset))
+    ob.scale = (s, s, s)
+    scene.collection.objects.link(ob)
+    return ob
+
+
+def f_model(it, name, kind):
+    spec = MODEL_SPEC.get(kind)
+    if spec is None:
+        return None
+    pid, fit_width, yaw = spec
+    ob = place_model(pid, P(it["x"]), P(it["y"]), it.get("rot", 0), P(it["w"]) if fit_width else 0.0, yaw)
+    if ob is not None:
+        ob.name = name
+    return ob
+
+
+def f_counter(it, name):
+    """Reception counter: solid body, stone top, recessed plinth."""
+    x, y = P(it["x"]), P(it["y"])
+    w, d, h = P(it["w"]), P(it["d"]), P(it["h"])
+    rot = math.radians(it.get("rot", 0))
+    add_box(f"{name}_plinth", x, y, 0.0, 0.10, w - 0.06, d - 0.06, M_SHADOW, rot=rot, bevel=0.0)
+    add_box(f"{name}_body", x, y, 0.10, h - 0.05, w, d, M_OAK, rot=rot, bevel=0.006)
+    add_box(f"{name}_top", x, y, h - 0.05, h, w + 0.05, d + 0.05, M_STONE, rot=rot, bevel=0.004)
+    # low return desk on the working side
+    rx, ry = at(x, y, rot, 0.0, -(d / 2 + 0.32))
+    add_box(f"{name}_return", rx, ry, 0.10, 0.74, w * 0.8, 0.60, M_WALNUT, rot=rot, bevel=0.005)
+    return None
+
+
 BUILDERS = {
-    "sofa": lambda it, n: f_sofa(it, n, M_FABRIC),
-    "armchair": lambda it, n: f_sofa({**it, "w": it["w"], "d": it["d"]}, n, M_FABRIC2),
-    "chair": lambda it, n: f_chair(it, n, M_OAK if it.get("mat") == "oak" else M_FABRIC),
-    "table": lambda it, n: f_table(it, n, M_WALNUT if it.get("mat") == "walnut" else M_OAK),
-    "desk": lambda it, n: f_table(it, n, M_OAK, top=0.06, leg=0.08),
-    "coffee": lambda it, n: f_table(it, n, M_STONE, top=0.05, leg=0.05),
+    "sofa": lambda it, n: f_model(it, n, "sofa") or f_sofa(it, n, M_FABRIC),
+    "armchair": lambda it, n: f_model(it, n, "armchair") or f_sofa(it, n, M_FABRIC2),
+    "chair": lambda it, n: f_model(it, n, "chair") or f_chair(it, n, M_OAK),
+    "table": lambda it, n: f_model(it, n, "table") or f_table(it, n, M_WALNUT),
+    "desk": lambda it, n: f_counter(it, n),
+    "coffee": lambda it, n: f_model(it, n, "coffee") or f_table(it, n, M_STONE, top=0.05, leg=0.05),
     "counter": lambda it, n: (f_table(it, n, M_STONE, top=0.06, leg=0.10),
                               add_box(f"{n}_front", P(it["x"]), P(it["y"]), 0.0, P(it["h"]) - 0.06,
                                       P(it["w"]), P(it["d"]) * 0.9, M_WALNUT, bevel=0.006)),
@@ -582,15 +788,15 @@ BUILDERS = {
                                                       sx * (P(it["w"]) / 2 - 0.15), 0), 0.0,
                                      P(it["h"]) - 0.06, 0.05, 0.05, M_BLACK)
                              for i, sx in enumerate((-1, 1))]),
-    "stool": lambda it, n: (add_cyl(f"{n}_seat", P(it["x"]), P(it["y"]), P(it["h"]) - 0.05,
+    "stool": lambda it, n: f_model(it, n, "stool") or (add_cyl(f"{n}_seat", P(it["x"]), P(it["y"]), P(it["h"]) - 0.05,
                                     P(it["h"]), P(it["w"]) / 2, M_BRONZE, seg=32),
                             add_cyl(f"{n}_col", P(it["x"]), P(it["y"]), 0.0, P(it["h"]) - 0.05,
                                     0.03, M_BLACK, seg=16),
                             add_cyl(f"{n}_base", P(it["x"]), P(it["y"]), 0.0, 0.02,
                                     P(it["w"]) / 2.6, M_BLACK, seg=32)),
-    "round": lambda it, n: f_round(it, n, M_WALNUT),
+    "round": lambda it, n: f_model(it, n, "round") or f_round(it, n, M_WALNUT),
     "bay": lambda it, n: f_bay(it, n),
-    "plant": lambda it, n: f_plant(it, n),
+    "plant": lambda it, n: f_model(it, n, "plant") or f_plant(it, n),
     "rug": lambda it, n: add_box(f"{n}_rug", P(it["x"]), P(it["y"]), 0.002, 0.014,
                                  P(it["w"]), P(it["d"]), M_FABRIC2, bevel=0.002),
 }
@@ -637,16 +843,63 @@ add_box("tray_coffee", P(22000), P(10500), 0.38, 0.395, 0.42, 0.30, M_BRONZE, be
 add_box("desk_lamp", P(560), P(9800) + 0.55, 1.05, 1.42, 0.14, 0.14, M_BRONZE, bevel=0.01)
 add_cyl("desk_bowl", P(560), P(9800) - 0.55, 1.05, 1.09, 0.14, M_WHITE, seg=32)
 
+
+# ------------------------------------------------------------------ retained stair
+STAIR_X0, STAIR_X1 = 0.20, 2.30
+STEPS, RISE, GOING = 15, 0.185, 0.275
+for i in range(STEPS):
+    y0 = 7.95 - i * GOING
+    add_box(f"stair_tread_{i}", (STAIR_X0 + STAIR_X1) / 2, y0 - GOING / 2, i * RISE, (i + 1) * RISE,
+            STAIR_X1 - STAIR_X0, GOING, M_STONE, bevel=0.004)
+# stringer wall + slim railing
+add_box("stair_wall_e", STAIR_X1 + 0.06, 6.0, 0.0, 3.0, 0.12, 4.2, M_WALL, bevel=0.004)
+add_box("stair_landing", (STAIR_X0 + STAIR_X1) / 2, 7.95 - STEPS * GOING - 0.6, STEPS * RISE,
+        STEPS * RISE + 0.06, STAIR_X1 - STAIR_X0, 1.2, M_STONE, bevel=0.004)
+
+# ------------------------------------------------------------------ floor joints / skirting
+M_JOINT, _, _ = new_mat("joint_reveal", (0.14, 0.135, 0.125), rough=0.9)
+M_SKIRT = M_WALNUT
+
+# 6 mm saw-cut joints every 3 m — reads as large-format microcement panels
+for i in range(1, int(W / 3.0) + 1):
+    add_box(f"joint_x{i}", i * 3.0, H / 2, 0.0005, 0.0038, 0.008, H - 0.24, M_JOINT, bevel=0.0)
+for i in range(1, int(H / 3.0) + 1):
+    add_box(f"joint_y{i}", W / 2, i * 3.0, 0.0005, 0.0038, W - 0.24, 0.008, M_JOINT, bevel=0.0)
+
+# 90 mm skirting, 12 mm proud of the wall, with a 6 mm shadow line above it
+for name, cx, cy, sx, sy in (
+    ("sk_s", W / 2, 0.016, W, 0.024), ("sk_n", W / 2, H - 0.016, W, 0.024),
+    ("sk_w", 0.016, H / 2, 0.024, H), ("sk_e", W - 0.016, H / 2, 0.024, H),
+):
+    add_box(name, cx, cy, 0.0, 0.09, sx, sy, M_SKIRT, bevel=0.002)
+
+# 20 mm shadow gap where wall meets ceiling
+for name, cx, cy, sx, sy in (
+    ("cg_s", W / 2, 0.010, W, 0.020), ("cg_n", W / 2, H - 0.010, W, 0.020),
+    ("cg_w", 0.010, H / 2, 0.020, H), ("cg_e", W - 0.010, H / 2, 0.020, H),
+):
+    add_box(name, cx, cy, CEIL - 0.022, CEIL - 0.002, sx, sy, M_SHADOW, bevel=0.0)
+
+# slim bronze frames on the glass partitions so they read as glass, not black boxes
+for ob in list(scene.objects):
+    if ob.name.startswith(("glf_", "glb_")):
+        ob.data.materials.clear()
+        ob.data.materials.append(M_BRONZE_D)
+
 # ------------------------------------------------------------------ lighting
 world = bpy.data.worlds.new("W")
 scene.world = world
 world.use_nodes = True
-bg = world.node_tree.nodes["Background"]
-bg.inputs["Color"].default_value = (0.60, 0.69, 0.83, 1.0)
-bg.inputs["Strength"].default_value = 0.72
+BG = world.node_tree.nodes["Background"]
+BG.inputs["Color"].default_value = (0.60, 0.69, 0.83, 1.0)
+BG.inputs["Strength"].default_value = 0.80
+
+LIGHT_BASE: list[tuple[object, float]] = []
+MAT_SKY_BSDF = M_SKY.node_tree.nodes["Principled BSDF"]
+MAT_STRIP_BSDF = M_STRIP.node_tree.nodes["Principled BSDF"]
 
 
-def add_area(name, loc, sx, sy, power, color=(1.0, 0.86, 0.70), direction=(0, 0, -1), portal=False):
+def add_area(name, loc, sx, sy, power, color=(1.0, 0.93, 0.86), direction=(0, 0, -1)):
     ld = bpy.data.lights.new(name, "AREA")
     ld.shape = "RECTANGLE"
     ld.size, ld.size_y = sx, sy
@@ -656,12 +909,11 @@ def add_area(name, loc, sx, sy, power, color=(1.0, 0.86, 0.70), direction=(0, 0,
     ob.location = loc
     ob.rotation_euler = Vector(direction).to_track_quat("-Z", "Y").to_euler()
     scene.collection.objects.link(ob)
-    if portal:
-        ld.cycles.is_portal = True
+    LIGHT_BASE.append((ob, power))
     return ob
 
 
-def add_spot(name, loc, target, power, angle=40, color=(1.0, 0.84, 0.66), radius=0.05):
+def add_spot(name, loc, target, power, angle=40, color=(1.0, 0.90, 0.80), radius=0.05):
     ld = bpy.data.lights.new(name, "SPOT")
     ld.energy = power
     ld.spot_size = math.radians(angle)
@@ -673,80 +925,107 @@ def add_spot(name, loc, target, power, angle=40, color=(1.0, 0.84, 0.66), radius
     d = Vector(target) - Vector(loc)
     ob.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
     scene.collection.objects.link(ob)
+    LIGHT_BASE.append((ob, power))
     return ob
 
 
-# daylight
-sun_data = bpy.data.lights.new("sun", "SUN")
-sun_data.energy = 3.4
-sun_data.angle = math.radians(1.6)
-sun_data.color = (1.0, 0.94, 0.84)
-sun = bpy.data.objects.new("sun", sun_data)
-sun.location = (W * 0.6, H + 3.0, 5.5)
-sun.rotation_euler = Vector((0.26, -1.0, -0.42)).to_track_quat("-Z", "Y").to_euler()
-scene.collection.objects.link(sun)
+SUN_DATA = bpy.data.lights.new("sun", "SUN")
+SUN_DATA.energy = 3.4
+SUN_DATA.angle = math.radians(1.6)
+SUN_DATA.color = (1.0, 0.94, 0.84)
+SUN = bpy.data.objects.new("sun", SUN_DATA)
+SUN.location = (W * 0.6, H + 3.0, 5.5)
+SUN.rotation_euler = Vector((0.26, -1.0, -0.42)).to_track_quat("-Z", "Y").to_euler()
+scene.collection.objects.link(SUN)
 
-# bright sky plane just outside every window: reads as daylight, lights the room
+# bright sky planes just outside every window: the actual daylight source
 for i, (a, b) in enumerate(north_windows):
     add_box(f"n_sky_{i}", (a + b) / 2, H + 0.30, 0.10, 2.95, (b - a) + 0.5, 0.02, M_SKY, bevel=0.0)
 for i, (a, b) in enumerate(east_windows):
     add_box(f"e_sky_{i}", W + 0.30, (a + b) / 2, 0.10, 2.95, 0.02, (b - a) + 0.5, M_SKY, bevel=0.0)
+# daylight outside the entrance opening, otherwise the doorway reads as a black hole
+add_box("door_sky", -0.9, (ent_y0 + ent_y1) / 2, 0.02, 2.35, 0.04, (ent_y1 - ent_y0) + 1.4,
+        M_SKY, bevel=0.0)
 
-# interior downlights
-add_area("ceil_1", (P(6800), P(13200), CEIL - 0.04), 5.0, 2.4, 62, direction=(0, 0, -1))
-add_area("ceil_2", (P(19800), P(10500), CEIL - 0.04), 4.0, 3.2, 58, direction=(0, 0, -1))
-add_area("ceil_3", (P(13500), P(3600), CEIL - 0.04), 5.0, 2.4, 56, direction=(0, 0, -1))
-add_area("ceil_4", (P(3000), P(10800), CEIL - 0.04), 3.6, 3.2, 62, direction=(0, 0, -1))
-add_area("ceil_ma", (P(2500), P(15600), CEIL - 0.04), 3.2, 2.4, 34, direction=(0, 0, -1))
-add_area("ceil_mb", (P(23900), P(15500), CEIL - 0.04), 3.0, 2.4, 30, direction=(0, 0, -1))
-add_area("ceil_lounge", (P(22000), P(10800), CEIL - 0.04), 3.6, 2.6, 45, direction=(0, 0, -1))
-
-# island fill: lights the horizontal oak rings that sit outside the cove
-add_area("island_fill", (P(12500), P(8600), CEIL - 0.26), 6.2, 4.2, 34, direction=(0, 0, -1),
+# interior ceiling lights
+add_area("ceil_1", (P(6800), P(13200), CEIL - 0.04), 5.0, 2.4, 95, color=(1.0, 0.93, 0.86))
+add_area("ceil_2", (P(19800), P(10500), CEIL - 0.04), 4.0, 3.2, 88)
+add_area("ceil_3", (P(13500), P(3600), CEIL - 0.04), 5.0, 2.4, 86)
+add_area("ceil_4", (P(3000), P(10800), CEIL - 0.04), 3.6, 3.2, 95)
+add_area("ceil_ma", (P(2500), P(15600), CEIL - 0.04), 3.2, 2.4, 60)
+add_area("ceil_mb", (P(23900), P(15500), CEIL - 0.04), 3.0, 2.4, 55)
+add_area("ceil_lounge", (P(22000), P(10800), CEIL - 0.04), 3.6, 2.6, 70)
+add_area("island_fill", (P(12500), P(8600), CEIL - 0.26), 6.2, 4.2, 52,
          color=(1.0, 0.90, 0.78))
-
-# soft up-light so the white ceiling reads as painted plaster, not a dark slab
-add_area("ceil_bounce", (W * 0.45, H * 0.48, 2.30), 7.0, 9.0, 15,
+add_area("ceil_bounce", (W * 0.45, H * 0.48, 2.30), 7.0, 9.0, 45,
          color=(1.0, 0.94, 0.86), direction=(0, 0, 1))
 
-# track spots on the island pedestals + gallery bays
 for i, (sx_, sy_) in enumerate(DATA["lights"]["spots"]):
-    add_spot(f"spot_{i}", (P(sx_), P(sy_) - 0.55, CEIL - 0.28), (P(sx_), P(sy_), 0.80), 95, angle=26)
+    add_spot(f"spot_{i}", (P(sx_), P(sy_) - 0.55, CEIL - 0.28), (P(sx_), P(sy_), 0.80), 130, angle=26)
 
-# pendants over the dining table
 for i, (px, py) in enumerate(DATA["lights"]["pendants"]):
     add_cyl(f"pend_{i}_cord", P(px), P(py), 2.05, CEIL, 0.006, M_BLACK, seg=8)
     add_cyl(f"pend_{i}_shade", P(px), P(py), 1.86, 2.05, 0.13, M_BRONZE, seg=32)
     add_cyl(f"pend_{i}_bulb", P(px), P(py), 1.85, 1.87, 0.10, M_STRIP, seg=32)
-    add_spot(f"pend_{i}_light", (P(px), P(py), 1.84), (P(px), P(py), 0.0), 30, angle=110)
+    add_spot(f"pend_{i}_light", (P(px), P(py), 1.84), (P(px), P(py), 0.0), 45, angle=110)
 
-# track rail
-add_spot("wash_brand", (P(2700), P(11800), CEIL - 0.10), (P(2700), P(13200), 1.60), 70, angle=62)
-add_spot("wash_mat", (P(19900), P(4000), CEIL - 0.10), (P(20800), P(4000), 1.50), 55, angle=58)
-add_spot("wash_gallery", (P(9500), P(15000), CEIL - 0.10), (P(9500), P(16600), 1.50), 80, angle=70)
-
+add_spot("wash_brand", (P(2700), P(11800), CEIL - 0.10), (P(2700), P(13200), 1.60), 38, angle=62)
+add_spot("wash_mat", (P(19900), P(4000), CEIL - 0.10), (P(20800), P(4000), 1.50), 80, angle=58)
+add_spot("wash_gallery", (P(9500), P(15000), CEIL - 0.10), (P(9500), P(16600), 1.50), 110, angle=70)
 add_box("track_rail", P(13200), P(14300), CEIL - 0.055, CEIL - 0.025, P(14800), 0.04, M_BLACK, bevel=0.0)
 
-# ------------------------------------------------------------------ camera
+# ------------------------------------------------------------------ light presets
+# every preset only re-balances the SAME design: no geometry is touched
+PRESETS = {
+    "morning": {"world": 1.35, "sun": 3.6, "sun_dir": (0.42, -0.82, -0.55), "sun_color": (1.0, 0.95, 0.87),
+                "interior": 1.05, "strip": 3.0, "sky": 2.8, "exposure": 1.25},
+    "bright": {"world": 1.45, "sun": 4.6, "sun_dir": (0.30, -0.90, -0.62), "sun_color": (1.0, 0.96, 0.90),
+               "interior": 1.25, "strip": 2.8, "sky": 3.2, "exposure": 1.10},
+    "afternoon": {"world": 1.15, "sun": 3.9, "sun_dir": (0.72, -0.58, -0.34), "sun_color": (1.0, 0.88, 0.72),
+                  "interior": 1.10, "strip": 2.8, "sky": 2.6, "exposure": 1.35},
+    "evening": {"world": 0.55, "sun": 0.65, "sun_dir": (0.78, -0.52, -0.22), "sun_color": (1.0, 0.72, 0.48),
+                "interior": 2.50, "strip": 3.8, "sky": 0.60, "exposure": 1.55},
+    "aerial": {"world": 1.55, "sun": 4.8, "sun_dir": (0.34, -0.86, -0.72), "sun_color": (1.0, 0.96, 0.90),
+               "interior": 0.85, "strip": 2.2, "sky": 3.0, "exposure": 1.05},
+}
+
+
+def apply_preset(name: str) -> dict:
+    pre = PRESETS.get(name, PRESETS["bright"])
+    BG.inputs["Strength"].default_value = pre["world"]
+    SUN_DATA.energy = pre["sun"]
+    SUN_DATA.color = pre["sun_color"]
+    SUN.rotation_euler = Vector(pre["sun_dir"]).to_track_quat("-Z", "Y").to_euler()
+    for ob, base in LIGHT_BASE:
+        ob.data.energy = base * pre["interior"]
+    MAT_STRIP_BSDF.inputs["Emission Strength"].default_value = pre["strip"]
+    MAT_SKY_BSDF.inputs["Emission Strength"].default_value = pre["sky"]
+    scene.view_settings.exposure = pre["exposure"]
+    return pre
+
+
+# ------------------------------------------------------------------ cameras
 cam_data = bpy.data.cameras.new("cam")
-cam_data.lens = 30.0
 cam_data.sensor_width = 36.0
 cam = bpy.data.objects.new("cam", cam_data)
 scene.collection.objects.link(cam)
 scene.camera = cam
 
-if VIEW == "entrance":
-    eye = Vector((5.05, 10.55, 1.52))
-    target = Vector((10.7, 8.95, 1.12))
-elif VIEW == "island":
-    eye = Vector((6.4, 5.6, 1.60))
-    target = Vector((12.5, 8.6, 1.15))
-else:
-    eye = Vector((17.5, 15.0, 2.2))
-    target = Vector((11.0, 8.6, 0.9))
+CEILING_PARTS = ["ceiling_slab", "cove_panel", "cove_glow", "track_rail"]
 
-cam.location = eye
-cam.rotation_euler = (target - eye).to_track_quat("-Z", "Y").to_euler()
+
+def set_camera(entry: dict) -> None:
+    eye = Vector([P(v) for v in entry["eye"]])
+    target = Vector([P(v) for v in entry["target"]])
+    cam.location = eye
+    cam.rotation_euler = (target - eye).to_track_quat("-Z", "Y").to_euler()
+    cam_data.lens = float(entry["lens"])
+    hide = bool(entry.get("hide_ceiling"))
+    for name in CEILING_PARTS:
+        ob = scene.objects.get(name)
+        if ob:
+            ob.hide_render = hide
+
 
 # ------------------------------------------------------------------ render settings
 scene.render.engine = "CYCLES"
@@ -768,23 +1047,46 @@ scene.render.resolution_percentage = 100
 scene.render.film_transparent = False
 scene.render.image_settings.file_format = "PNG"
 scene.render.image_settings.color_mode = "RGB"
-scene.render.filepath = str(OUT_PNG)
 try:
     scene.view_settings.view_transform = "AgX"
     scene.view_settings.look = "AgX - Medium High Contrast"
 except Exception:
     scene.view_settings.view_transform = "Filmic"
-scene.view_settings.exposure = 0.06
+
+SHOTS = arg("--shots", "all")
+DEBUG = os.environ.get("RKD_DEBUG_CAM")
+if DEBUG:
+    ex, ey, ez, tx, ty, tz, lens = [float(v) for v in DEBUG.split(",")]
+    DATA = dict(DATA)
+    DATA["cameras"] = [{"id": "DX", "name": "debug", "eye": (ex, ey, ez), "target": (tx, ty, tz),
+                        "lens": lens, "light": "bright"}]
+wanted = DATA["cameras"] if SHOTS in ("all", "", None) else [
+    c for c in DATA["cameras"] if c["id"] in {s.strip() for s in SHOTS.split(",")}]
+OUT_DIR = Path(arg("--outdir", str(OUT_PNG.parent)))
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 t_build = time.time() - t_start
-bpy.ops.render.render(write_still=True)
+results = []
+for entry in wanted:
+    entry = dict(entry)
+    if entry.get("light") == "aerial":
+        entry["hide_ceiling"] = True
+    set_camera(entry)
+    pre = apply_preset(entry.get("light", "bright"))
+    out = OUT_DIR / f"03_效果图_{entry['id']}_{entry['name']}.png"
+    scene.render.filepath = str(out)
+    t0 = time.time()
+    bpy.ops.render.render(write_still=True)
+    results.append({"id": entry["id"], "name": entry["name"], "out": str(out),
+                    "light": entry.get("light"), "lens": entry["lens"],
+                    "eye": list(entry["eye"]), "target": list(entry["target"]),
+                    "seconds": round(time.time() - t0, 1), "preset": pre})
+
 print(json.dumps({
-    "status": "ok",
-    "out": str(OUT_PNG),
-    "build_s": round(t_build, 1),
-    "total_s": round(time.time() - t_start, 1),
+    "status": "ok", "build_s": round(t_build, 1),
     "objects": len(scene.objects),
-    "furniture": FURN_COUNTS,
-    "camera": {"eye": list(eye), "target": list(target), "lens": cam_data.lens},
+    "textures": len(MANIFEST.get("textures", {})),
+    "models": len(MANIFEST.get("models", {})),
+    "shots": results,
     "samples": SAMPLES, "size": [WIDTH, HEIGHT],
 }, ensure_ascii=False))

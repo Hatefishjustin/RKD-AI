@@ -18,8 +18,9 @@ web/*.tsbuildinfo
 # Temporary handover status snapshots (not source)
 tmp/接管-git-status*.txt
 
-# Portable tool binaries (Blender, ~1.3 GB) — kept on disk, never in Git
+# Portable tool binaries and CC0 assets (Blender ~1.3 GB, assets ~35 MB) — kept on disk, never in Git
 tools/blender/
+tools/assets/
 
 # Working screenshots / crops / logs
 tmp/*.png
@@ -27,3 +28,8 @@ tmp/*.log
 # Headless-Edge scratch profiles
 tmp/edgeprof*/
 tmp/edgeshot*/
+# Scratch render/test output
+tmp/shots/
+tmp/ph/
+tmp/debug/
+tmp/*.py

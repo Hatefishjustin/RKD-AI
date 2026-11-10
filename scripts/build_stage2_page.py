@@ -1,33 +1,35 @@
-"""Stage 2 review page (v2): concept A plan + one Blender render, in one double-clickable file."""
+"""Stage 2 review page (v3): six cameras, one plan, one PDF."""
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "var" / "deliverables" / "ningbo-xiecheng" / "2026-11-10"
+ROOT = Path(__file__).resolve().parents[1]
 
 USE_LABEL = {
-    "floor": "地面",
-    "wall": "墙面 / 天花",
-    "oak": "中岛台体、展墙翼、家具",
-    "walnut": "弧形品牌墙、接待台背板",
-    "bronze": "灯具、五金、展品底座",
-    "stone": "中岛顶层台面",
-    "fabric": "沙发、单椅、窗帘",
-    "glass": "洽谈室隔断",
+    "floor": "地面", "wall": "墙面 / 天花", "oak": "中岛台体、展墙翼、家具",
+    "walnut": "弧形品牌墙、接待台背板", "bronze": "灯具、五金、展品底座",
+    "stone": "中岛顶层台面", "fabric": "沙发、单椅、窗帘", "glass": "洽谈室隔断",
     "plant": "光廊与场景角落",
+}
+LIGHT_LABEL = {
+    "morning": "上午自然光", "bright": "正午偏亮", "afternoon": "下午斜阳",
+    "evening": "傍晚暖光", "aerial": "日景鸟瞰",
 }
 
 
 def main() -> int:
     design = json.loads((OUT / "方案A_设计数据.json").read_text(encoding="utf-8"))
+    manifest_path = ROOT / "assets" / "CC0-素材清单.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else \
+        {"textures": {}, "models": {}}
 
     area_rows = "".join(
         f"<tr><td>{r['no']}</td><td>{r['name']}{'（环形）' if r.get('ring') else ''}</td>"
-        f"<td>{r['area']:.1f}</td></tr>"
+        f"<td class='num'>{r['area']:.1f}</td></tr>"
         for r in design["area_table"])
     area_sum = sum(r["area"] for r in design["area_table"])
-
     narrative = "".join(f"<li>{n}</li>" for n in design["narrative"])
     materials = "".join(
         f"<tr><td><span class='sw' style='background:{m['color']}'></span>{m['name']}</td>"
@@ -35,18 +37,40 @@ def main() -> int:
         for k, m in design["materials"].items())
     nonorth = "".join(f"<li>{n}</li>" for n in design["non_orthogonal"])
 
+    cams = design["cameras"]
+    shots = "".join(
+        f"""<figure><img src="03_效果图_{c['id']}_{c['name']}.png" alt="{c['id']} {c['name']}">
+<figcaption><strong>{c['id']} · {c['name']}</strong>　{LIGHT_LABEL.get(c['light'], c['light'])}　{c['lens']} mm
+　·　{c['note']}</figcaption></figure>"""
+        for c in cams)
+    cam_rows = "".join(
+        f"<tr><td><strong>{c['id']}</strong></td><td>{c['name']}</td>"
+        f"<td class='num'>{c['eye'][0]/1000:.2f}, {c['eye'][1]/1000:.2f}</td>"
+        f"<td class='num'>{c['target'][0]/1000:.2f}, {c['target'][1]/1000:.2f}</td>"
+        f"<td class='num'>{c['lens']}</td><td>{LIGHT_LABEL.get(c['light'], c['light'])}</td>"
+        f"<td>{c['light_note']}</td></tr>"
+        for c in cams)
+
+    tex_rows = "".join(
+        f"<tr><td>{k}</td><td>{v['polyhaven_id']}</td><td>{v['name']}</td>"
+        f"<td><a href='{v['source_page']}'>{v['source_page'].replace('https://', '')}</a></td>"
+        f"<td>{', '.join(v.get('authors', {}).values()) or '—'}</td><td>CC0 1.0</td></tr>"
+        for k, v in manifest.get("textures", {}).items())
+    model_rows = "".join(
+        f"<tr><td>{k}</td><td>{v['name']}</td>"
+        f"<td><a href='{v['source_page']}'>{v['source_page'].replace('https://', '')}</a></td>"
+        f"<td>{', '.join(v.get('authors', {}).values()) or '—'}</td><td>CC0 1.0</td></tr>"
+        for k, v in manifest.get("models", {}).items())
+
     total = design["site"]["width"] * design["site"]["height"] / 1e6
-    furniture_n = len(design["furniture"])
-    walls_n = len(design["walls"])
-    pedestal_n = len(design["pedestals"])
 
     html = f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width"><title>宁波协诚 · 方案A · 第2版</title>
+<meta name="viewport" content="width=device-width"><title>宁波协诚 · 方案A · 六视角</title>
 <style>
 @page{{size:A3 landscape;margin:10mm}}
 *{{box-sizing:border-box}}
 body{{font:14px/1.7 "Microsoft YaHei","PingFang SC",sans-serif;color:#22303f;margin:0;background:#f4f6f8}}
-.wrap{{max-width:1360px;margin:0 auto;padding:22px}}
+.wrap{{max-width:1400px;margin:0 auto;padding:22px}}
 h1{{font-size:24px;margin:0 0 4px}}
 h2{{font-size:17px;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid #d9e0e6}}
 h3{{font-size:13.5px;margin:12px 0 6px;color:#3a4a5c}}
@@ -57,54 +81,45 @@ p{{margin:7px 0}} small{{color:#6b7a8a}}
 table{{border-collapse:collapse;width:100%;font-size:12.5px;background:#fff}}
 th,td{{padding:7px 9px;border-bottom:1px solid #e2e8ec;text-align:left;vertical-align:top}}
 th{{background:#eef2f4;color:#3a4a5c}}
+td.num{{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}}
 .sw{{display:inline-block;width:16px;height:16px;margin-right:8px;vertical-align:-3px;border:1px solid #b9c2ca}}
-figure{{margin:0 0 10px;background:#fff;border:1px solid #dfe6eb}}
+figure{{margin:0 0 14px;background:#fff;border:1px solid #dfe6eb}}
 figure img{{display:block;width:100%;height:auto}}
-figcaption{{font-size:12px;color:#6b7a8a;padding:8px 12px;border-top:1px solid #eef2f4}}
+figcaption{{font-size:12px;color:#5a6875;padding:8px 12px;border-top:1px solid #eef2f4;line-height:1.6}}
 .grid2{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
 .note{{background:#fffaf0;border:1px solid #e8d5b0;padding:10px 14px;font-size:13px}}
 .bad{{background:#fdf3f3;border:1px solid #e5c4c4;padding:10px 14px;font-size:13px}}
 ul{{margin:6px 0 12px;padding-left:20px}} li{{margin-bottom:5px}}
 .files{{list-style:none;padding:0}} .files li{{background:#fff;border:1px solid #dfe6eb;padding:9px 12px;margin:6px 0}}
 .files a{{font-weight:600;color:#1a5c86;margin-right:10px}} .files span{{color:#5c6b79;font-size:12.5px}}
-td.num{{text-align:right;font-variant-numeric:tabular-nums}}
+a{{color:#1a5c86}}
 footer{{margin:26px 0 10px;color:#6b7a8a;font-size:12px;border-top:1px solid #d9e0e0;padding-top:10px}}
 @media print{{body{{background:#fff}} .wrap{{max-width:none}}
-figure{{page-break-inside:avoid}} figure img{{max-height:470pt;width:auto;max-width:100%;margin:0 auto}}
+figure{{page-break-inside:avoid}} figure img{{max-height:430pt;width:auto;max-width:100%;margin:0 auto}}
 h2,h3{{page-break-after:avoid}} table,.grid2{{page-break-inside:auto}} tr{{page-break-inside:avoid}}}}
 </style></head><body><div class="wrap">
-<h1>宁波协诚集团样品展厅 · 方案 A · 第 2 版</h1>
+<h1>宁波协诚集团样品展厅 · 方案 A · 第 3 版（六视角）</h1>
 <p><small>中央环岛 · 环游叙事 · 概念方案（非施工图）· 2026-11-10 · 场地 26.17 × 17.92 m / 层高 3.0 m</small></p>
 
 <div class="hero">
-<strong>一句话：7.0 × 4.8 m 的中岛不再是一只方盒子——三级圆角台层层收进，头顶 R2400 环形灯槽与它同形；北墙的展墙翼斜 12° 让光漏进来，入口的胡桃木品牌墙弯成一道弧，把视线推到中岛。</strong><br>
-<span class="tag">现代轻奢</span><span class="tag">暖白橡木 + 哑光铜</span><span class="tag">微水泥地面</span>
-<span class="tag">2700–3000K</span><span class="tag">低饱和米金</span>
+<strong>这一版的核心变化：不再是“一个中岛五个角度”，而是六个机位、五套光线，每个功能区各有一张能看懂的画面。所有画面来自同一份设计数据，材质、家具、灯具全部共用。</strong><br>
+<span class="tag">6 个机位</span><span class="tag">5 套光线预设</span><span class="tag">CC0 PBR 贴图 6 套</span>
+<span class="tag">CC0 家具模型 10 件</span><span class="tag">相机符号已上图</span>
 </div>
 
-<h2>① 两张图</h2>
+<h2>① 六张效果图</h2>
+{shots}
+
+<h2>② 机位表（与平面图上的 C0–C5 一一对应）</h2>
+<table><thead><tr><th>编号</th><th>画面</th><th>机位 x, y（m）</th><th>朝向 x, y（m）</th><th>焦距</th><th>光线</th><th>光怎么打</th></tr></thead>
+<tbody>{cam_rows}</tbody></table>
+<p><small>为什么有 6 张而不是 5 张：接待台与中岛分处入口两侧（约 140° 夹角），任何单张直线透视都装不下，所以把“序厅”单独拆成 C0，C1 专注“入口看中岛”。</small></p>
+
+<h2>③ 平面布置图（带相机编号与视域）</h2>
 <figure><img src="02_方案A_平面布置图.svg" alt="方案A平面布置图">
-<figcaption>方案 A 平面布置图 1:100 · 图元全部有名称 · 含 18 项图例、家具清单、6 条设计说明、面积表（合计 {area_sum:.1f} ㎡）</figcaption></figure>
-<figure><img src="03_方案A_效果图_01.png" alt="方案A效果图">
-<figcaption>效果图 01 · 从入口（西侧）看向中央中岛 · Blender 4.2.9 Cycles 路径追踪，1400 × 880，128 采样，7 分 04 秒 · 与平面图共用同一份 <code>方案A_设计数据.json</code></figcaption></figure>
+<figcaption>1:100 平面布置图 · 橙色相机符号 + 虚线扇形为视域 · 右侧图例含“效果图视点 VIEWS”表 · 面积表合计 {area_sum:.1f} ㎡</figcaption></figure>
 
-<h2>② 你上一轮的四条意见，逐条对在哪</h2>
-<table><thead><tr><th style="width:26%">你的意见</th><th style="width:46%">这一版怎么改的</th><th style="width:28%">在图上哪里看</th></tr></thead><tbody>
-<tr><td><strong>一、中岛不要方方正正</strong>，要和头顶发光环呼应；整套里再加 ≥2 处非直角；不要“堆叠方块”</td>
-<td>中岛外轮廓仍是 7.0 × 4.8 m，但改成三级圆角台：R1560 → R1360 → R1180，逐级内收 360 mm、抬高 180 / 420 / 720 mm，顶层 5.56 × 3.36 m。头顶灯槽用 R2400 圆角环，同形不同尺寸。全场另有 3 处非直角：入口 R2600 弧形品牌墙（凹面正对入口）、展墙翼 02 与 04 各斜 12°。</td>
-<td>平面图中岛（三层不同深度填色 + 每层投影）、吊顶发光环、西北角弧形品牌墙、北光廊第 2 / 4 道翼</td></tr>
-<tr><td><strong>二、平面图整理</strong>：① 每个图元要有名称，说明不了的黑线删掉 ② 区域名和面积放大、不压家具 ③ 卫生间画洁具 ④ 面积表加“通道及其他”凑满 469 ㎡</td>
-<td>① 全图 {walls_n} 道墙、{furniture_n} 件家具、{pedestal_n} 个展台、7 件洁具、5 组窗，全部进图例（18 项）或家具清单（按编号可查），没有一条无名线；原来那些说不清的斜线、虚线已删除。② 区域名 360–440 pt、带白色描边光晕，全部挪到空地中央，加一行小字说明（例“展墙翼 5 道 · 光廊 2.0 m”）。③ 卫生间重画：3 组坐便器（水箱 + 内外椭圆 + 隔断）、台盆 ×2、淋浴间 1.5 × 1.5 m，共 6 件，与图上「洁具 6 件」一致。④ 面积表 10 个分区 + 通道及其他 117.4，合计正好 {area_sum:.1f} ㎡。</td>
-<td>平面图四周的图例 / 家具清单 / 面积表；每个色块中央的大字</td></tr>
-<tr><td><strong>三、效果图没有材质、没有家具和展品、像白模</strong>——走路线 A：免安装 Blender 放进项目工具目录</td>
-<td>Blender 4.2.9 LTS 免安装版已下载到 <code>tools/blender/</code>（386.9 MB，未装进系统，直接解压即用）。场景由 <code>方案A_设计数据.json</code> 程序化生成：微水泥 / 橡木 / 胡桃木 / 石材 / 布艺 / 铜 / 长虹玻璃共 7 类程序化材质（木纹用 Wave + 噪声扰动，石材用两层噪声 + 凹凸），3 段北窗做发光天空板 + 太阳光，室内 4 组筒灯 + 轨道射灯 + 灯槽发光环 + 铜质吊灯，{furniture_n} 件家具、4 组展品（车削陶瓶、立石、铜钵、叠放布样）、绿植。相机 1.50 m 人眼高度，30 mm 广角，从入口看向中岛。</td>
-<td>效果图：地面微水泥、中岛木纹与石台面、北侧窗光与斜翼投影、头顶发光环、展台上的展品</td></tr>
-<tr><td><strong>四、验收标准</strong>：要像设计公司给客户的效果图；达不到就如实说</td>
-<td>见第 ⑥ 节。这一版比上一版有本质变化（真材质、真光影、有家具展品），但**仍然达不到设计公司交付级**，差距写在第 ⑥ 节，没有藏。</td>
-<td>第 ⑥ 节</td></tr>
-</tbody></table>
-
-<h2>③ 设计说明</h2>
+<h2>④ 设计说明</h2>
 <div class="grid2">
 <div>
 <h3>空间组织（七步叙事）</h3>
@@ -115,77 +130,76 @@ h2,h3{{page-break-after:avoid}} table,.grid2{{page-break-inside:auto}} tr{{page-
 <ul>{nonorth}</ul>
 <h3>与场地条件的关系</h3>
 <ul>
-<li><strong>保留</strong>：外墙、北向 3 段窗带、东墙 2 段窗、西南楼梯（2.4 × 8.0 m）、东南卫生间（4.17 × 4.7 m）。</li>
-<li><strong>未发现结构柱</strong>，中岛可放场地正中，不受柱网限制。</li>
-<li><strong>拆改</strong>：原奥创设计的 U 形展台墙、六边形展台全部取消；两间洽谈室沿用原隔墙位置，改为玻璃隔断。</li>
-<li><strong>入口</strong>：西门厅进入先看到 R2600 弧形胡桃木品牌墙，视线顺着弧面转向中岛。</li>
+<li><strong>保留</strong>：外墙、北向 3 段窗带、东墙 2 段窗、西南楼梯（2.4 × 8.0 m，本次已建出踏步）、东南卫生间（4.17 × 4.7 m）。</li>
+<li><strong>未发现结构柱</strong>，中岛可放场地正中。</li>
+<li><strong>拆改</strong>：原 U 形展台墙、六边形展台取消；两间洽谈室沿用原隔墙位置改玻璃隔断。</li>
 </ul>
 </div>
 </div>
 
-<h2>④ 面积与分区（合计 {area_sum:.1f} ㎡）</h2>
+<h2>⑤ 面积与材料</h2>
 <div class="grid2">
 <table><thead><tr><th>编号</th><th>区域</th><th style="text-align:right">面积（㎡）</th></tr></thead>
 <tbody>{area_rows}
 <tr><td>—</td><td><strong>合计</strong></td><td class="num"><strong>{area_sum:.1f}</strong></td></tr>
-<tr><td>—</td><td><small>场地外包尺寸 26.17 × 17.92</small></td><td class="num"><small>{total:.1f}（含墙体）</small></td></tr>
+<tr><td>—</td><td><small>场地外包 26.17 × 17.92</small></td><td class="num"><small>{total:.1f}</small></td></tr>
 </tbody></table>
 <div>
 <table><thead><tr><th>材料</th><th>用在哪</th></tr></thead><tbody>{materials}</tbody></table>
-<p><small>材料表与效果图、平面图出自同一份 JSON，改一处三处同步。</small></p>
+<p><small>材料色块与渲染里的贴图出自同一份数据 + 同一套 CC0 贴图，改一处三处同步。</small></p>
 </div>
 </div>
 
-<h2>⑤ 灯光</h2>
-<table><thead><tr><th style="width:18%">部位</th><th style="width:40%">做法</th><th>色温 / 照度</th></tr></thead><tbody>
-<tr><td>中岛发光环</td><td>吊顶 R2400 圆角环形灯槽，槽内藏灯带向下洗石材台面</td><td>2700K，台面 500 lx</td></tr>
-<tr><td>北光廊</td><td>轨道射灯 4 只 25° 洗展墙翼；斜置翼 02 / 04 让光从缝里漏到地面</td><td>3000K，墙面 300 lx</td></tr>
-<tr><td>场景区</td><td>餐桌双吊灯（铜质灯罩），距桌面 750 mm；客厅落地灯</td><td>2700K，桌面 200 lx</td></tr>
-<tr><td>基础照明</td><td>3 条东西向线性灯槽 + 窗侧日光，白天可只开 30%</td><td>3000K，环境 150 lx</td></tr>
-<tr><td>洽谈室</td><td>每间 2 只筒灯 + 桌面台灯，玻璃隔断保持通透</td><td>3000K，桌面 300 lx</td></tr>
-</tbody></table>
+<h2>⑥ CC0 素材来源（Poly Haven，全部 CC0 1.0，可商用）</h2>
+<h3>PBR 贴图</h3>
+<table><thead><tr><th>用途</th><th>素材 ID</th><th>名称</th><th>来源</th><th>作者</th><th>授权</th></tr></thead><tbody>{tex_rows}</tbody></table>
+<h3>家具与器物模型</h3>
+<table><thead><tr><th>用途</th><th>名称</th><th>来源</th><th>作者</th><th>授权</th></tr></thead><tbody>{model_rows}</tbody></table>
+<p><small>下载脚本 <code>scripts/fetch_cc0_assets.py</code>；文件存在 <code>tools/assets/</code>（不进版本库），来源与 SHA-256 记在 <code>assets/CC0-素材清单.json</code>（进版本库）。</small></p>
 
-<h2>⑥ 这一版做到哪、没做到哪（如实）</h2>
+<h2>⑦ 展品说明（按项目资料核实的结果）</h2>
+<div class="note"><p>{design.get("product_note", "")}</p>
+<p><small>依据：施工图 DWG/PDF、装修预算 xls、3 张现场照片里都没有出现协诚的产品清单或样品照片；现场照片是毛坯状态。因此不做“猜产品”，改为按本项目主材做四组可辨认的样品。</small></p></div>
+
+<h2>⑧ 这一版做到哪、没做到哪（如实）</h2>
 <div class="note">
-<p><strong>做到了：</strong>材质不再是灰白体块——木纹、石材、微水泥、布艺、铜、玻璃在渲染里都能分辨；有窗光斜投影、有灯槽溢光、有软阴影；有 {furniture_n} 件家具、4 组展品、绿植；相机在人眼高度；平面图与效果图由同一份数据生成，不会各说各话。</p>
+<p><strong>做到了：</strong>6 个机位、5 套光线（上午 / 正午 / 下午斜阳 / 傍晚 / 日景鸟瞰）；6 套 CC0 PBR 贴图（木饰面、石材、微水泥、布艺、乳胶漆、胡桃木）与 10 件 CC0 家具模型；地面 3 m 分缝、90 mm 踢脚、墙顶 20 mm 阴影缝；玻璃隔断改成细铜框；接待台改为实体前台；补出保留楼梯；四组样品重做；相机位置与朝向写进 <code>方案A_设计数据.json</code> 并画在平面图上。</p>
 </div>
 <div class="bad">
-<p><strong>仍然不像设计公司成果的地方（我自己的判断，不是等你挑）：</strong></p>
+<p><strong>仍然不像设计公司成果的地方：</strong></p>
 <ul>
-<li><strong>模型是体块级，不是家具级</strong>：沙发是圆角方块加靠背，椅子是壳 + 四条腿，展墙翼是平板。真实效果图里沙发的坐垫塌陷、缝线、木饰面的拼缝、石材的对纹，这里一样都没有。近处的家具一看就是“几何体”。</li>
-<li><strong>全部是程序化材质，没有一张贴图</strong>：木纹是波形 + 噪声算出来的，走近看会重复、会“塑料”；石材没有真实纹理和拼缝；微水泥没有批刀痕。真实项目用的是扫描贴图（PBR）。</li>
-<li><strong>石材台面像抹灰</strong>：中岛顶层 300 mm 石材台面没有纹理走向、没有拼缝，边缘倒圆过软，远看像一整块石膏或泡沫板。</li>
-<li><strong>展台像水泥墩</strong>：四个展台是圆柱 + 车削体，近处的立石、铜钵、布样都只是几何体，撑不起“样品展厅”的说服力；北墙那道木饰面展墙在画面里读成了一扇木门。</li>
-<li><strong>画面左侧三分之一偏暗、偏空</strong>：入口区只有弧形墙与接待台，玻璃隔断在暗部只读成一圈黑框，缺一个近景层次（台面上的物件、地面导向、人的尺度参照）。</li>
-<li><strong>没有反射</strong>：微水泥地面近乎全哑，看不到家具和窗的倒影；玻璃隔断也没有反射与折射层次。</li>
-<li><strong>没有人物、没有软装细节</strong>：书、器皿、挂画、地毯纹理、窗帘褶皱都缺。设计公司的效果图里，这些“非结构物”占了画面的可信度一大半。</li>
-<li><strong>只有 1 张图、1 个视角</strong>：设计公司交付至少 3–5 个角度（入口、中岛近景、洽谈区、场景区、俯视），且互相能对上。</li>
+<li><strong>石材台面仍偏“奶白”</strong>：贴图是大理石／莱姆石，但 M_STONE 提亮后纹理细节被压平，中岛顶层远看仍像一整块浅色石膏。</li>
+<li><strong>家具是“缩放到尺寸”的通用模型</strong>：沙发、餐椅、吧椅都不是这个方案指定的款式；只对齐了宽度，高度略有出入，坐垫、缝线、木饰拼缝的精致度达不到样板展厅要求。</li>
+<li><strong>展品是示意样品</strong>：石材样块、木饰面板、金属型材、织物样册都是几何体搭的，不是真实产品模型；协诚到底展什么，资料里查不到。</li>
+<li><strong>展墙翼仍像“木盒子”</strong>：翼墙上挂的画框是纯色块、没有内容；与地面的收口只有一条深色踢脚。</li>
+<li><strong>窗户过曝</strong>：为压住室内亮度，窗外天空板接近纯白，窗框偏黑；每张图的窗光强度是固定的，没有真正的时间变化。</li>
+<li><strong>没有人物、没有软装细节</strong>：书、器皿、挂画内容、窗帘褶皱、地毯绒毛都缺，画面里没有人的尺度参照。</li>
+<li><strong>鸟瞰是“揭掉天花”的做法</strong>：能看到布局，但露出墙顶截面，不是正规轴测图或剖轴测。</li>
+<li><strong>只有 6 张静态图</strong>：立面图、天花图、材料板、节点都还没有，按“设计成果标准”仍差 4 类成果。</li>
 </ul>
-<p><small>结论：这一版是“可信的空间研究图”，不是“客户交付级效果图”。按你的标准，<strong>我不把它算通过</strong>。要继续往上，最短的路是：① 用真实 PBR 贴图替换程序化材质；② 家具换成带细节的模型（自建或开源模型库）；③ 补天光 + 环境光遮蔽，压掉暗盘；④ 加人物与软装。这需要你点头我才往下做。</small></p>
+<p><small>结论：这一版比第 2 版在“看得懂”上前进了一大步（六个功能区各自成立、光线有区别、材质是真实贴图），但仍<strong>不是客户交付级</strong>。我不把它算通过。</small></p>
 </div>
 
-<h2>⑦ 等你决定</h2>
+<h2>⑨ 等你确认</h2>
 <ol>
-<li><strong>中岛形态</strong>：三级圆角 + R2400 灯槽这个方向对不对？要不要更“薄”（顶层再薄 60 mm）或更“厚”（加一圈铜边）。</li>
-<li><strong>两处斜翼 12°</strong>：斜度够不够？现在是 12°，可以到 20° 但会占掉光廊 0.3 m 净宽。</li>
-<li><strong>效果图往哪条路走</strong>：A 继续在 Blender 里加真实贴图 + 精修家具（不外发任何项目文件）；B 用图像通道在本地白模截图上增强（需要 <code>RKD_IMAGE_API_KEY</code>，且只发白模截图与文字提示词）。你定，我不自己选。</li>
+<li>六个机位选得对不对？有没有哪个功能区还缺一张（例如洽谈室内景、水吧、卫生间）。</li>
+<li>五套光线的差别够不够？现在 C3 是下午斜阳、C4 是傍晚，其余是白天。</li>
+<li>展品方向：等协诚的产品资料，还是先按“材料样品”继续深化？</li>
 </ol>
 
-<h2>⑧ 文件</h2>
+<h2>⑩ 文件</h2>
 <ul class="files">
-<li><a href="02_方案A_平面布置图.svg" target="_blank">02_方案A_平面布置图.svg</a><span>1:100 平面布置图（第 2 版），浏览器直接打开，可放大到看清每个图元名称</span></li>
-<li><a href="03_方案A_效果图_01.png" target="_blank">03_方案A_效果图_01.png</a><span>1400 × 880，Blender Cycles 110 采样，入口看向中岛</span></li>
-<li><a href="方案A_设计数据.json" target="_blank">方案A_设计数据.json</a><span>平面图与 3D 共用的一份数据（分区、墙、家具、展台、洁具、材料、灯）</span></li>
-<li><a href="阶段2_方案A.pdf" target="_blank">阶段2_方案A.pdf</a><span>本页导出的 PDF，可直接发客户</span></li>
-<li><a href="01_真实场地底图.svg" target="_blank">01_真实场地底图.svg</a><span>阶段 1 底图（已确认通过，本版未改）</span></li>
-<li><a href="阶段1_底图核对.pdf" target="_blank">阶段1_底图核对.pdf</a><span>阶段 1 核对页</span></li>
+<li><a href="02_方案A_平面布置图.svg" target="_blank">02_方案A_平面布置图.svg</a><span>1:100，含相机编号 C0–C5 与视域扇形</span></li>
+<li><a href="03_效果图_C0_序厅·接待.png" target="_blank">03_效果图_C0–C5（6 张）</a><span>1400 × 880，Blender 4.2.9 Cycles，110 采样</span></li>
+<li><a href="方案A_设计数据.json" target="_blank">方案A_设计数据.json</a><span>分区、墙、家具、展台、洁具、材料、灯、相机（含 eye/target/lens/light）</span></li>
+<li><a href="阶段2_方案A.pdf" target="_blank">阶段2_方案A.pdf</a><span>本页导出的 PDF</span></li>
 </ul>
 
-<footer>方案 A 第 2 版到此为止，停下等你确认。设计与效果是否成立只由你评价，本页不自评通过。管理配套（PG / NAS / 账号 / 岗位审查 / 备份恢复）本阶段全部冻结。渲染图未经过任何外部图像模型，全部本机 Blender 直出，本轮外发图片 0 张、费用 0。</footer>
+<footer>方案 A 第 3 版到此为止，停下等你确认。设计与效果是否成立只由你评价，本页不自评通过。管理配套（PG / NAS / 账号 / 岗位审查 / 备份恢复）本阶段全部冻结。六张图全部本机 Blender 直出，本轮外发图片 0 张、费用 0。</footer>
 </div></body></html>"""
     target = OUT / "打开我看.html"
     target.write_text(html, encoding="utf-8")
-    print(json.dumps({"page": str(target), "area_sum": area_sum, "rows": len(design["area_table"])}, ensure_ascii=False))
+    print(json.dumps({"page": str(target), "cameras": len(cams), "area_sum": area_sum}, ensure_ascii=False))
     return 0
 
 
