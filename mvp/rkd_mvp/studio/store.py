@@ -290,8 +290,10 @@ class Store:
         revs = self.reviews(project_id)
         gates = self.gates(project_id)
         runs = self.runs(project_id)
-        usage = {"tokens_in": sum(m["tokens_in"] for m in msgs),
-                 "tokens_out": sum(m["tokens_out"] for m in msgs)}
+        # The runs table is the authoritative ledger. Message-level counters are
+        # per-call diagnostics and must not be summed into a project total.
+        usage = {"tokens_in": sum(r["tokens_in"] or 0 for r in runs),
+                 "tokens_out": sum(r["tokens_out"] or 0 for r in runs)}
         usage["tokens_total"] = usage["tokens_in"] + usage["tokens_out"]
         return {"project": project, "messages": msgs, "artifacts": arts, "reviews": revs,
                 "gates": gates, "runs": runs, "usage": usage}

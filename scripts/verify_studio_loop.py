@@ -36,7 +36,7 @@ def plan(option: str, revision: int = 1) -> dict:
                        for i in range(4))) / 2 / 1e6
         zs.append({"id": zid, "name": name, "role": role, "polygon": poly, "area_sqm": round(area, 1)})
     total = sum(z["area_sqm"] for z in zs)
-    return {
+    data = {
         "contract_version": "rkd-spatial-plan.v1",
         "project_id": "ningbo-xiecheng",
         "option_id": option,
@@ -69,10 +69,16 @@ def plan(option: str, revision: int = 1) -> dict:
         "open_questions": ["协诚的产品清单缺失，展品只能做示意"],
         "standards_cited": ["STD-001", "STD-003", "STD-005"],
     }
+    # A revision must change real objects, not merely claim to have changed them.
+    if revision > 1:
+        data["ceiling"]["fixtures"].append(
+            {"id": "L4", "type": "spot", "x": 11800, "y": 14500, "kelvin": 3000})
+        data["circulation"][0]["width_mm"] = 2100
+    return data
 
 
 class FakeClient:
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         self.usage = Usage()
         self.config = type("C", (), {"model": "fake-model", "run_token_limit": 600_000,
                                      "project_token_limit": 2_000_000, "configured": True})()
@@ -94,6 +100,18 @@ class FakeClient:
             text = "问你两件事：这个项目你想让人记住什么？天花和重点照明你打算怎么做，我好留空。"
         elif "概念与材质" in system and "刚刚问你" in last:
             text = "记忆点放在中央那一圈光，人绕着走。天花做环形灯槽压住中岛，北墙只用轨道洗墙，别做满吊顶。"
+        elif '"responses"' in last:
+            revised = plan("A", 2)
+            text = json.dumps({
+                "responses": [
+                    {"issue_id": "I1", "action": "accept", "change": "南侧加 1.2m 过渡带", "reason": ""},
+                    {"issue_id": "I2", "action": "accept", "change": "北光廊补到 7 个射灯", "reason": ""},
+                    {"issue_id": "I3", "action": "reject", "change": "", "reason": "B 不在本轮深化范围"},
+                    {"issue_id": "I4", "action": "accept", "change": "品牌墙改 R4660 弧墙", "reason": ""},
+                    {"issue_id": "I5", "action": "accept", "change": "面积表拆出楼梯与卫生间", "reason": ""},
+                ],
+                "plan": revised,
+            }, ensure_ascii=False)
         elif "空间规划" in system and "候选 B" in last:
             text = json.dumps(plan("B"), ensure_ascii=False)
         elif "空间规划" in system and "候选 A" in last:

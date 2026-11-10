@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import "./studio.css";
 
 const API = "http://127.0.0.1:8099";
@@ -15,9 +15,13 @@ type Artifact = {
   payload?: any; svg_url?: string;
 };
 type Gate = { id: string; title: string; detail: string; status: string; decision?: string | null; comment?: string | null };
+type Run = {
+  id: string; status: string; started_at: string; ended_at?: string | null;
+  tokens_in: number; tokens_out: number; error?: string | null;
+};
 type State = {
   project: { id: string; name: string; site: any; requirement: any };
-  messages: Message[]; artifacts: Artifact[]; gates: Gate[];
+  messages: Message[]; artifacts: Artifact[]; gates: Gate[]; runs: Run[];
   reviews: Array<{ id: string; verdict: string; summary: string; issues: any[] }>;
   usage: { tokens_in: number; tokens_out: number; tokens_total: number };
   roster: Role[];
@@ -105,6 +109,15 @@ export function StudioView({ projectId }: { projectId?: string }) {
   const waitingGate = state.gates.find((g) => g.status === "waiting");
   const plans = state.artifacts.filter((a) => a.kind === "spatial-plan");
   const sketches = state.artifacts.filter((a) => a.kind === "plan-sketch");
+  const runs = state.runs ?? [];
+  const totalTokens = runs.reduce((s, r) => s + (r.tokens_in || 0) + (r.tokens_out || 0), 0);
+  const feed = state.messages.filter((m) => m.kind !== "tool").map((m) => {
+    let ri = -1;
+    runs.forEach((r, k) => {
+      if (new Date(r.started_at).getTime() <= new Date(m.created_at).getTime() + 1500) ri = k;
+    });
+    return { m, ri };
+  });
 
   return (
     <section className="studio">
@@ -117,8 +130,8 @@ export function StudioView({ projectId }: { projectId?: string }) {
           <span className={state.channel.configured ? "chip ok" : "chip warn"}>
             {state.channel.configured ? `通道 ${state.channel.model}` : "通道未配置（无密钥）"}
           </span>
-          <span className="chip">本轮 {state.usage.tokens_total.toLocaleString()} tokens</span>
-          <span className="chip">上限 {(state.channel.run_limit / 1000).toFixed(0)}k / 回路</span>
+          <span className="chip">累计 {totalTokens.toLocaleString()} tokens</span>
+          <span className="chip">上限 {(state.channel.project_limit / 1000).toFixed(0)}k / 项目</span>
           <button className="studio-run" onClick={() => void run()} disabled={busy || state.running}>
             {state.running ? "正在开会…" : "开一轮（A1）"}
           </button>
@@ -160,34 +173,50 @@ export function StudioView({ projectId }: { projectId?: string }) {
               </div>
             </div>
           )}
-          {state.messages.filter((m) => m.kind !== "tool").map((m) => {
+          {feed.map(({ m, ri }, i) => {
             const role = state.roster.find((r) => r.id === m.role);
+            const run = runs[ri];
+            const showSep = i === 0 || feed[i - 1].ri !== ri;
+            const runLabel = run
+              ? `${ri + 1} 轮 · ${run.status === "incomplete" ? "未完成（不算通过）"
+                  : run.status === "running" ? "进行中"
+                  : run.status === "succeeded" ? "流程走完（未验收）" : run.status}`
+              : "开轮前的记录";
             return (
-              <article className="msg" key={m.id}>
-                <span className="avatar small" style={{ background: role?.color || "#8b96a1" }}>
-                  {role?.initial || "?"}
-                </span>
-                <div className="msg-body">
-                  <div className="msg-head">
-                    <strong>{role?.name || (m.role === "BOSS" ? "老板" : m.role)}</strong>
-                    <span className={`kind kind-${m.kind}`}>{KIND_LABEL[m.kind] || m.kind}</span>
-                    <time>{new Date(m.created_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</time>
+              <Fragment key={m.id}>
+                {showSep && (
+                  <div className={`round-sep ${run?.status === "incomplete" ? "bad" : ""}`}>
+                    <b>第 {runLabel}</b>
+                    {run && <span>{((run.tokens_in || 0) + (run.tokens_out || 0)).toLocaleString()} tokens</span>}
+                    {run?.error && <small>{run.error.slice(0, 150)}</small>}
                   </div>
-                  <p className="msg-text">{m.body}</p>
-                  {m.evidence?.length > 0 && (
-                    <button className="ev-toggle" onClick={() => setOpenEvidence(openEvidence === m.id ? null : m.id)}>
-                      依据 {m.evidence.length} 条 {openEvidence === m.id ? "▾" : "▸"}
-                    </button>
-                  )}
-                  {openEvidence === m.id && (
-                    <ul className="ev-list">
-                      {m.evidence.map((e, i) => (
-                        <li key={i}><code>{String(e.type)}</code> {JSON.stringify(e).slice(0, 320)}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </article>
+                )}
+                <article className="msg">
+                  <span className="avatar small" style={{ background: role?.color || "#8b96a1" }}>
+                    {role?.initial || "?"}
+                  </span>
+                  <div className="msg-body">
+                    <div className="msg-head">
+                      <strong>{role?.name || (m.role === "BOSS" ? "老板" : m.role)}</strong>
+                      <span className={`kind kind-${m.kind}`}>{KIND_LABEL[m.kind] || m.kind}</span>
+                      <time>{new Date(m.created_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</time>
+                    </div>
+                    <p className="msg-text">{readable(m.body)}</p>
+                    {m.evidence?.length > 0 && (
+                      <button className="ev-toggle" onClick={() => setOpenEvidence(openEvidence === m.id ? null : m.id)}>
+                        依据 {m.evidence.length} 条 {openEvidence === m.id ? "▾" : "▸"}
+                      </button>
+                    )}
+                    {openEvidence === m.id && (
+                      <ul className="ev-list">
+                        {m.evidence.map((e, k) => (
+                          <li key={k}><code>{String(e.type)}</code> {evidenceText(e)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </article>
+              </Fragment>
             );
           })}
           {state.messages.length === 0 && (
@@ -239,6 +268,65 @@ export function StudioView({ projectId }: { projectId?: string }) {
       </div>
     </section>
   );
+}
+
+/** Turn a structured deliverable into something a person can actually read. */
+function readable(body: string): string {
+  const t = (body || "").trim();
+  if (!t.startsWith("{") && !t.startsWith("[")) return t;
+  try {
+    const d = JSON.parse(t);
+    const only = Object.keys(d);
+    if (only.length === 1 && ["response", "reply", "answer", "text", "content", "message"].includes(only[0])
+        && typeof d[only[0]] === "string") return d[only[0]];
+    if (d.goal) {
+      const must: string[] = d.must_have || [];
+      const open: string[] = d.open_questions || [];
+      return `任务书｜${d.goal}\n必须项 ${must.length} 条：${must.slice(0, 4).join("；")}${must.length > 4 ? "…" : ""}`
+        + `\n待老板确认 ${open.length} 条：${open.slice(0, 2).join("；")}`;
+    }
+    if (d.strategy) {
+      const s = d.strategy || {};
+      const trade: string[] = s.tradeoffs || [];
+      return `候选「${s.name || "未命名"}」｜${s.narrative || ""}\n取舍：${trade.slice(0, 2).join("；")}`
+        + `\n分区 ${(d.zones || []).length} 个 · 家具 ${(d.furniture || []).length} 件 · `
+        + `灯位 ${((d.ceiling || {}).fixtures || []).length} 个 · 非直角 ${(s.non_orthogonal || []).length} 处`;
+    }
+    if (d.verdict) {
+      const issues: any[] = d.issues || [];
+      const blockers = issues.filter((x) => x.severity === "blocker").length;
+      const lines = issues.slice(0, 5).map((x) =>
+        `· ${x.severity} ${x.rule_id} → ${(x.objects || []).join("/")}：${x.evidence || ""}｜改法：${x.suggest || ""}`);
+      return `评审｜${d.verdict}，意见 ${issues.length} 条（blocker ${blockers}）\n${d.summary || ""}\n${lines.join("\n")}`;
+    }
+    if (d.responses) {
+      const rs: any[] = d.responses || [];
+      const acc = rs.filter((r) => r.action === "accept").length;
+      const lines = rs.slice(0, 5).map((r) => `· ${r.issue_id} ${r.action}：${r.change || r.reason || ""}`);
+      return `逐条回应 ${rs.length} 条，接受 ${acc} 条\n${lines.join("\n")}\n（修订后的完整数据在右侧成果栏）`;
+    }
+    return Object.entries(d).slice(0, 6)
+      .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)?.slice(0, 100)}`).join("\n");
+  } catch {
+    return t;
+  }
+}
+
+function evidenceText(e: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (e.name) parts.push(String(e.name));
+  if (e.label) parts.push(String(e.label));
+  if (e.instruction) parts.push("指令：" + String(e.instruction).slice(0, 140));
+  if (e.context_chars !== undefined) parts.push(`上下文 ${e.context_chars} 字`);
+  if (e.tools_allowed) parts.push("可用工具 " + (e.tools_allowed as string[]).join("/"));
+  if (e.args) parts.push("参数 " + JSON.stringify(e.args).slice(0, 120));
+  if (e.result) parts.push("返回：" + String(e.result).slice(0, 180));
+  if (e.tokens_in !== undefined) parts.push(`本次 ${e.tokens_in}+${e.tokens_out} tokens`);
+  if (e.id) parts.push(String(e.id));
+  if (e.reason) parts.push(String(e.reason));
+  if (e.changed) parts.push("改动对象 " + (e.changed as string[]).slice(0, 8).join("、"));
+  if (e.items) parts.push("条目 " + (e.items as unknown[]).length + " 条");
+  return parts.length ? parts.join(" · ") : JSON.stringify(e).slice(0, 220);
 }
 
 function relTime(iso: string) {

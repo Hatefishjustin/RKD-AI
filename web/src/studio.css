@@ -21,6 +21,11 @@
 .roster-row small { display: block; font-size: 11px; color: #6b7a8a; }
 .roster-row em { display: block; font-size: 11px; color: #9aa5af; font-style: normal; margin-top: 2px; }
 .studio-timeline { max-height: 72vh; overflow: auto; }
+.round-sep { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin: 14px 0 4px; padding: 7px 9px; background: #f3f6f8; border-left: 3px solid #8ba0b2; font-size: 12px; color: #425466; }
+.round-sep b { color: #22303f; }
+.round-sep span { color: #6b7a8a; margin-left: auto; }
+.round-sep small { flex-basis: 100%; color: #8c5a3b; }
+.round-sep.bad { background: #fdf3f3; border-left-color: #b23b3b; }
 .msg { display: flex; gap: 9px; padding: 10px 0; border-bottom: 1px solid #f0f3f5; }
 .msg:last-child { border-bottom: 0; }
 .msg-body { min-width: 0; flex: 1; }
