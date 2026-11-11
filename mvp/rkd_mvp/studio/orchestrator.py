@@ -13,13 +13,17 @@ import threading
 import traceback
 from typing import Any, Callable
 
-from . import sketch, tools as toolbox
+from . import sketch, tools as toolbox, vision
 from .tools import check_plan
 from .llm import BudgetExceeded, Client, ModelError, Usage, extract_json
 from .roles import ROLES, Role
 from .store import Store
 
 Event = Callable[[dict], None]
+
+# The boss's rule: a designer may be sent back automatically at most twice;
+# a third round must be decided by the boss, never by the agents.
+MAX_AUTO_REWORK = 2
 
 # The channel sometimes wraps every answer in a single-key JSON object.
 _WRAPPER_KEYS = ("response", "reply", "answer", "text", "content", "message",
@@ -74,10 +78,14 @@ def plan_is_valid(plan: dict) -> tuple[bool, str]:
         poly = z.get("polygon") or []
         if not isinstance(poly, list) or len(poly) < 3:
             return False, f"分区 {z.get('id', '?')} 没有可用的多边形轮廓"
-    if not str((plan.get("strategy") or {}).get("name") or "").strip():
+    strategy = plan.get("strategy") if isinstance(plan.get("strategy"), dict) else {}
+    if not str(strategy.get("name") or "").strip():
         return False, "没有方案名称/主张"
-    if not (plan.get("area_table") or []):
-        return False, "缺面积表"
+    table = plan.get("area_table") or []
+    if not isinstance(table, list) or not table:
+        return False, f"面积表不是非空数组（实际是 {type(table).__name__}）"
+    if any(not isinstance(r, dict) for r in table):
+        return False, "面积表有条目不是对象（每行应为 name + area_sqm）"
     return True, ""
 
 
@@ -102,6 +110,41 @@ def _changed_objects(before: dict, after: dict) -> list[str]:
             if a.get(oid) != b.get(oid):
                 changed.append(f"ceiling.{sub}:{oid}")
     return sorted(changed)
+
+
+def _qc(plan: dict, site: dict) -> dict:
+    """Deterministic figures only. This never says a design is good."""
+    try:
+        ck = check_plan(plan, site)
+    except Exception as exc:  # a malformed draft becomes a blocker, not a crash
+        return {"blocker": 1, "major": 0, "area_gap_sqm": 0.0,
+                "issues": [{"severity": "blocker", "rule_id": "GEO-000",
+                            "message": f"几何校验无法处理这份数据：{type(exc).__name__}: {exc}"}],
+                "metrics": {"zone_area_sum_sqm": 0.0, "area_table_sum_sqm": 0.0},
+                "tool_error": True}
+    m = ck["metrics"]
+    return {
+        "blocker": sum(1 for i in ck["issues"] if i["severity"] == "blocker"),
+        "major": sum(1 for i in ck["issues"] if i["severity"] == "major"),
+        "area_gap_sqm": round(abs(m["zone_area_sum_sqm"] - m["area_table_sum_sqm"]), 1),
+        "issues": ck["issues"],
+        "metrics": m,
+    }
+
+
+def _worse(base: dict, now: dict) -> tuple[bool, str]:
+    """Did the revision get measurably worse than the reference version?"""
+    if now["blocker"] > base["blocker"]:
+        return True, f"blocker 从 {base['blocker']} 增到 {now['blocker']}"
+    if now["blocker"] == base["blocker"] and now["major"] > base["major"]:
+        return True, f"major 从 {base['major']} 增到 {now['major']}"
+    if now["area_gap_sqm"] > base["area_gap_sqm"] + 0.5:
+        return True, f"面积对账差从 {base['area_gap_sqm']}㎡ 增到 {now['area_gap_sqm']}㎡"
+    return False, ""
+
+
+def _qc_text(q: dict) -> str:
+    return f"blocker {q['blocker']} / major {q['major']} / 面积差 {q['area_gap_sqm']}㎡"
 
 
 class Studio:
@@ -206,6 +249,15 @@ class Studio:
                                tokens_out=final_tokens[1], model=client.config.model)
         return text
 
+    def _gate(self, project_id: str, title: str, detail: str) -> str:
+        """Never open a second undecided gate; append to the one still waiting on the boss."""
+        waiting = [g for g in self.store.gates(project_id) if g["status"] == "waiting"]
+        if waiting:
+            gid = waiting[-1]["id"]
+            self.store.amend_gate(gid, detail, title=title)
+            return gid
+        return self.store.open_gate(project_id, title, detail)
+
     # ---------------------------------------------------------------- A1 script
     def run_a1(self, project_id: str, background: bool = True) -> dict:
         with self._lock:
@@ -230,26 +282,26 @@ class Studio:
                 status, error = "budget_stopped", str(exc)
                 self.store.add_message(project_id, "P", "gate", f"预算闸口：{exc}",
                                        evidence=[{"type": "budget"}])
-                self.store.open_gate(project_id, "预算已到上限", str(exc))
+                self._gate(project_id, "预算已到上限", str(exc))
             except IncompleteArtifact as exc:
                 status, error = "incomplete", str(exc)
                 detail = (f"本轮没有交出可用成果：{exc}。按老板的规矩不算通过，"
                           "不进入下一步，也不把空方案摆到成果栏。请决定重跑还是换做法。")
                 self.store.add_message(project_id, "P", "gate", detail,
                                        evidence=[{"type": "incomplete", "reason": str(exc)}])
-                self.store.open_gate(project_id, "本轮未完成：请决定重跑还是换做法", detail)
+                self._gate(project_id, "本轮未完成：请决定重跑还是换做法", detail)
             except ModelError as exc:
                 status, error = "model_failed", str(exc)
                 detail = f"模型通道问题，回路中断：{exc}"
                 self.store.add_message(project_id, "P", "gate", detail,
                                        evidence=[{"type": "channel"}])
-                self.store.open_gate(project_id, "通道中断：请决定是否重跑", detail)
+                self._gate(project_id, "通道中断：请决定是否重跑", detail)
             except Exception as exc:  # noqa: BLE001 - never lose the trace
                 status, error = "failed", f"{type(exc).__name__}: {exc}"
                 self.store.add_message(project_id, "P", "gate",
                                        f"回路异常中断：{error}",
                                        evidence=[{"type": "trace", "detail": traceback.format_exc()[-1500:]}])
-                self.store.open_gate(project_id, "回路异常中断：请决定是否重跑", error)
+                self._gate(project_id, "回路异常中断：请决定是否重跑", error)
             finally:
                 self.store.finish_run(run_id, status, client.usage.tokens_in,
                                       client.usage.tokens_out, error)
@@ -409,78 +461,254 @@ class Studio:
                                str(review.get("summary") or ""), issues)
         self.store.update_task(task_r, "done")
 
-        # 5. D2 responds point by point and revises the chosen one
+        # 4b. The director looks at our own images: impression only, never a verdict
+        visual_summary, visual_images = "", 0
+        try:
+            images: list[tuple[bytes, str]] = []
+            image_notes: list[dict] = []
+            for opt in ("A", "B"):
+                plan = options[opt]["plan"]
+                svg = sketch.render(plan, project["site"],
+                                    f"候选 {opt} · {plan.get('strategy', {}).get('name', '')}")
+                data = vision.svg_to_jpeg(svg)
+                images.append((data, "image/jpeg"))
+                image_notes.append({"type": "image", "label": f"候选 {opt} 平面草案",
+                                    "source": "本轮候选设计数据 → sketch.render → 本地转位图",
+                                    "bytes": len(data)})
+            try:
+                ref = vision.reference_jpeg()
+                images.append((ref, "image/jpeg"))
+                image_notes.append({"type": "image", "label": "案例参照",
+                                    "source": vision.REFERENCE_NOTE, "bytes": len(ref)})
+            except Exception as exc:
+                image_notes.append({"type": "image_error", "label": "案例参照",
+                                    "detail": str(exc)[:200]})
+            visual_images = len(images)
+            prompt = (
+                "下面是本项目自己生成的图：前两张是本轮候选 A / B 的平面草案（由候选设计数据程序绘制），"
+                "第三张是案例参照（宁波方案A第3版效果图，人工编写的手工样板，只作观感对比，不是系统成果）。\n"
+                "请以设计总监身份做看图自评：分别说每个候选看得到什么、有没有明显的方块堆叠感、"
+                "天花与灯光有没有被表达；再和案例参照对比，指出最接近与差得最远的一处。\n"
+                "每条挂到具体对象或图面位置；只写看得见的观感，不要猜数据，不要写「通过」或「建议通过」，"
+                "不要给合格判定，也不要用检查清单打分。\n"
+                "只输出 JSON：{\"summary\":\"一段话总观感\",\"observations\":[{\"target\":\"A|B|案例对比\","
+                "\"observation\":\"看到什么\",\"gap\":\"与案例的差距\",\"suggest\":\"若认同可怎么改\"}],"
+                "\"limits\":\"你看不出来的地方\"}。")
+            resp = client.chat_vision(
+                [{"role": "system", "content": ROLES["R"].system},
+                 {"role": "user", "content": prompt}],
+                images, temperature=0.45, max_tokens=1400, json_only=True)
+            vr = _safe_json(resp["content"])
+            if vr.get("parse_error"):
+                visual_summary = resp["content"][:600]
+            else:
+                visual_summary = str(vr.get("summary") or "")[:600]
+            self.store.add_message(
+                pid, "R", "visual-review", resp["content"], task_id=task_r,
+                evidence=[{"type": "vision", "model": resp["model"],
+                           "image_count": resp["image_count"], "images": image_notes,
+                           "usage": resp["usage"],
+                           "note": "观感意见，不作判据；不得据此宣布通过"}] + image_notes,
+                tokens_in=resp["usage"]["in"], tokens_out=resp["usage"]["out"],
+                model=resp["model"])
+        except Exception as exc:
+            self.store.add_message(
+                pid, "R", "note",
+                f"看图自评没能完成：{type(exc).__name__}: {str(exc)[:200]}。"
+                "这一项不计入评审结论，也不假装看过图。",
+                evidence=[{"type": "vision_failed", "detail": str(exc)[:300]}])
+
+        # 5. D2 responds point by point and revises. An invalid or measurably
+        #    worse revision is sent back automatically (at most MAX_AUTO_REWORK).
         target = review.get("better") if review.get("better") in ("A", "B") else "A"
         task_rev = self.store.create_task(pid, "D2", f"逐条回应评审并修订候选 {target}", round_no=2)
-        rev_raw = self._speak(
-            ROLES["D2"], client, pid, task_rev,
-            f"总监的评审意见如下：{json.dumps(issues, ensure_ascii=False)[:3000]}\n"
-            f"请对候选 {target} 做两件事：① 逐条回应（接受就写改了什么，不接受就写清理由）；"
-            f"② 给出修订后的完整 JSON（契约同上，revision=2，parent_revision=1）。\n"
-            "只输出 JSON：{\"responses\":[{\"issue_id\":\"I1\",\"action\":\"accept|reject\","
-            "\"change\":\"改了什么\",\"reason\":\"不接受的理由（若接受则简述）\"}],\"plan\":{...}}。\n"
-            f"- 被接受的 issue 必须真的改到 plan 里（分区、家具、灯位、面积表按意见调整）；\n"
-            f"- {self._TOOL_BUDGET}\n"
-            "- 只改被指出的问题，不要顺手重做整个方案。",
-            context=ctx + "\n【原候选】" + json.dumps(options[target]["plan"], ensure_ascii=False)[:4000],
-            tools=self._tools_for(project, "D2")[0], handlers=self._tools_for(project, "D2")[1],
-            json_only=True, kind="revise", label="逐条回应 + 修订", max_steps=5)
-        rev = _safe_json(rev_raw)
-        new_plan = rev.get("plan") or {}
-        responses = rev.get("responses") or []
-        ok2, why2 = plan_is_valid(new_plan)
-        if not responses or not ok2:
-            raise IncompleteArtifact(
-                f"修订无效：逐条回应 {len(responses)} 条；{why2 or 'plan 可用'}。"
-                "评审意见没有被落实，不算完成往返。")
-        new_plan.update({"contract_version": "rkd-spatial-plan.v1", "project_id": pid,
-                         "option_id": target, "revision": 2, "parent_revision": 1, "author": "D2"})
-        aid2 = self.store.save_artifact(pid, "spatial-plan", new_plan, "D2", option_id=target,
-                                        revision=2, parent_revision=1, task_id=task_rev)
-        self.store.save_artifact(pid, "plan-sketch",
-                                 {"svg": sketch.render(new_plan, project["site"],
-                                                       f"候选 {target} 修订版 · {new_plan.get('strategy', {}).get('name', '')}")},
-                                 "D2", option_id=target, revision=2, parent_revision=1, task_id=task_rev)
-        accepted = sum(1 for r in responses if r.get("action") == "accept")
-        changed = _changed_objects(options[target]["plan"], new_plan)
-        if accepted and not changed:
-            raise IncompleteArtifact(f"逐条回应接受了 {accepted} 条，但 v1→v2 没有任何对象发生变化")
-        self.store.add_message(
-            pid, "D2", "note",
-            f"已逐条回应 {len(responses)} 条意见，接受 {accepted} 条；候选 {target} v2 实际改动 "
-            f"{len(changed)} 个对象：{'、'.join(changed[:8]) or '无'}。",
-            task_id=task_rev,
-            evidence=[{"type": "artifact", "id": aid2, "revision": 2},
-                      {"type": "responses", "items": responses[:10]},
-                      {"type": "diff", "changed": changed}])
+        site = project["site"]
+        base_plan = options[target]["plan"]
+        best_qc, best_rev = _qc(base_plan, site), 1
+        prev_qc = best_qc
+        current_plan, current_rev, current_aid = base_plan, 1, options[target]["id"]
+        new_plan, aid2 = base_plan, current_aid
+        now_qc = _qc(base_plan, site)
+        rework_count = 0
+        rework_log: list[dict] = []
+        responses: list[dict] = []
+        accepted = 0
+        changed: list[str] = []
+        accepted_any = False
+        stop_reason = ""
+
+        for attempt in range(1, 2 + MAX_AUTO_REWORK):
+            if attempt == 1:
+                task_id = task_rev
+                instruction = (
+                    f"总监的评审意见如下：{json.dumps(issues, ensure_ascii=False)[:3000]}\n"
+                    f"请对候选 {target} 做两件事：① 逐条回应（接受就写改了什么，不接受就写清理由）；"
+                    f"② 给出修订后的完整 JSON（契约同上，revision=2，parent_revision=1）。\n"
+                    "只输出 JSON：{\"responses\":[{\"issue_id\":\"I1\",\"action\":\"accept|reject\","
+                    "\"change\":\"改了什么\",\"reason\":\"不接受的理由（若接受则简述）\"}],\"plan\":{...}}。\n"
+                    f"- 被接受的 issue 必须真的改到 plan 里（分区、家具、灯位、面积表按意见调整）；\n"
+                    "- 每个 zones[] 条目都必须有 polygon 轮廓；面积表行不要塞进 zones；\n"
+                    f"- {self._TOOL_BUDGET}\n"
+                    f"【总监看图观感（只作参考，不作判据）】{visual_summary[:400] or '本轮未取得观感意见'}\n"
+                    "- 只改被指出的问题，不要顺手重做整个方案。")
+                label = "逐条回应 + 修订"
+                context = ctx + "\n【原候选】" + json.dumps(base_plan, ensure_ascii=False)[:4000]
+            else:
+                task_id = self.store.create_task(
+                    pid, "D2", f"自动打回第 {rework_count} 轮重做", round_no=1 + rework_count)
+                instruction = (
+                    f"这是第 {rework_count} 次自动打回。前一稿的问题：{stop_reason}\n"
+                    f"请在这份数据上改：{json.dumps(current_plan, ensure_ascii=False)[:3500]}\n"
+                    "只输出修订后的完整空间规划 JSON（直接输出 JSON 对象，不要外层 plan 字段，"
+                    "也不要 responses）。\n"
+                    "硬性要求：① 每个 zones[] 条目都有 polygon 且面积与 area_sqm 一致；"
+                    "② 分区互不重叠；③ area_table 合计等于分区轮廓合计加『通道及其他』，"
+                    "接近场地 469㎡；④ 保留天花灯槽与灯具点位；⑤ 不要新增 blocker。\n"
+                    f"- {self._TOOL_BUDGET}\n"
+                    "- 交付前用 validate_plan 自检一次。")
+                label = f"自动打回第 {rework_count} 轮重做"
+                context = ctx
+            raw = self._speak(
+                ROLES["D2"], client, pid, task_id, instruction, context=context,
+                tools=self._tools_for(project, "D2")[0],
+                handlers=self._tools_for(project, "D2")[1],
+                json_only=True, kind="revise", label=label, max_steps=5)
+            data = _safe_json(raw)
+            candidate = data.get("plan") if isinstance(data.get("plan"), dict) else data
+            if attempt == 1:
+                responses = data.get("responses") or []
+                accepted = sum(1 for r in responses
+                               if isinstance(r, dict) and r.get("action") == "accept")
+            ok, why = plan_is_valid(candidate)
+            qc_cand = _qc(candidate, site) if ok else None
+            problem = ""
+            if attempt == 1 and not responses:
+                problem = "没有逐条回应评审意见"
+            elif not ok:
+                problem = f"修订稿不符合契约：{why}"
+            else:
+                why_best = _worse(best_qc, qc_cand)[1]
+                why_prev = _worse(prev_qc, qc_cand)[1] if attempt > 1 else ""
+                problem = why_best or why_prev
+
+            if not problem:
+                changed_preview = _changed_objects(current_plan, candidate)
+                if attempt == 1 and accepted and not changed_preview:
+                    problem = f"逐条回应接受了 {accepted} 条，但 v1→v2 没有任何对象发生变化"
+                else:
+                    next_rev = attempt + 1  # every submitted draft gets its own version number
+                    candidate.update({"contract_version": "rkd-spatial-plan.v1",
+                                     "project_id": pid, "option_id": target,
+                                     "revision": next_rev, "parent_revision": current_rev,
+                                     "author": "D2"})
+                    aid = self.store.save_artifact(
+                        pid, "spatial-plan", candidate, "D2", option_id=target,
+                        revision=next_rev, parent_revision=current_rev, task_id=task_id)
+                    self.store.save_artifact(
+                        pid, "plan-sketch",
+                        {"svg": sketch.render(
+                            candidate, site,
+                            f"候选 {target} v{next_rev} · {candidate.get('strategy', {}).get('name', '')}")},
+                        "D2", option_id=target, revision=next_rev,
+                        parent_revision=current_rev, task_id=task_id)
+                    changed = _changed_objects(base_plan, candidate)
+                    self.store.add_message(
+                        pid, "D2", "note",
+                        (f"已逐条回应 {len(responses)} 条意见，接受 {accepted} 条；" if attempt == 1
+                         else f"第 {rework_count} 次自动重做完成；")
+                        + f"v{next_rev} {_qc_text(qc_cand)}，相对上一版改动 {len(changed_preview)} 个对象："
+                        + f"{'、'.join(changed_preview[:6]) or '无'}。",
+                        task_id=task_id,
+                        evidence=[{"type": "artifact", "id": aid, "revision": next_rev},
+                                  {"type": "responses", "items": responses[:10]},
+                                  {"type": "diff", "changed": changed_preview},
+                                  {"type": "qc", "text": _qc_text(qc_cand)}])
+                    if task_id != task_rev:
+                        self.store.update_task(task_id, "done")
+                        rework_log.append({"rev": next_rev, "qc": _qc_text(qc_cand),
+                                           "reason": "重做后被接受"})
+                    prev_qc, now_qc = qc_cand, qc_cand
+                    current_plan, current_rev, current_aid = candidate, next_rev, aid
+                    new_plan, aid2 = candidate, aid
+                    accepted_any = True
+                    if not _worse(best_qc, qc_cand)[0]:
+                        best_qc, best_rev = qc_cand, next_rev
+                    break
+
+            if problem:
+                stop_reason = problem
+                if rework_count >= MAX_AUTO_REWORK:
+                    break
+                rework_count += 1
+                blockers = [i["message"] for i in (qc_cand or now_qc)["issues"]
+                            if i["severity"] == "blocker"][:3]
+                detail = (
+                    f"数字/契约校验判定这一稿不能用：{problem}。"
+                    f"当前基准 v{best_rev} {_qc_text(best_qc)}。"
+                    f"主要 blocker：{'；'.join(blockers) or '见证据'}。\n"
+                    f"按公司规矩自动打回第 {rework_count} 轮（最多 {MAX_AUTO_REWORK} 轮，"
+                    "之后第 3 轮必须由老板决定）。只修这些问题，不要重做整个方案。")
+                self.store.add_message(
+                    pid, "P", "rework", detail, task_id=task_rev,
+                    evidence=[{"type": "qc", "reference_revision": best_rev,
+                               "current_revision": current_rev,
+                               "reference": _qc_text(best_qc),
+                               "current": _qc_text(qc_cand) if qc_cand else "无效稿",
+                               "reason": problem},
+                              {"type": "rule", "id": "AUTO-REWORK-01",
+                               "rule": "修订变差或无效自动打回，最多 2 轮，第 3 轮交老板"}])
         self.store.update_task(task_rev, "done")
+        still_worse, why_still = _worse(best_qc, now_qc)
 
-        # 6. P opens the gate — with the deterministic QC figures, not a claim of success
-        def _count(ck: dict, severity: str) -> int:
-            return sum(1 for i in ck["issues"] if i["severity"] == severity)
-
-        qc_before = check_plan(options[target]["plan"], project["site"])
-        qc_after = check_plan(new_plan, project["site"])
-        b0, m0 = _count(qc_before, "blocker"), _count(qc_before, "major")
-        b1, m1 = _count(qc_after, "blocker"), _count(qc_after, "major")
-        qc_line = (f"程序硬校验：v1 blocker {b0} / major {m0}；v2 blocker {b1} / major {m1}。"
-                   + ("修订版仍有 blocker，不能当作可用方案。" if b1 else "修订版没有 blocker，但仍不等于设计合格。")
-                   + "程序只量几何与面积，不替老板判断好不好看。")
-        gate_title = ("本轮成果仍有硬伤：请决定是否继续打回" if b1
-                      else "选一个方向继续（A1 回路到此）")
+        # 6. P opens the gate — every figure on the table, still the boss decides
+        b0, m0 = best_qc["blocker"], best_qc["major"]
+        b1, m1 = now_qc["blocker"], now_qc["major"]
+        if not accepted_any:
+            qc_line = (f"程序硬校验：基准 v{best_rev} {_qc_text(best_qc)}；"
+                       f"自动打回 {rework_count} 轮后仍没有一稿被接受"
+                       f"（最后拦下的原因：{stop_reason or '无'}）。"
+                       "本轮不产出修订版，不能当作可用方案。程序只量几何与面积，不替老板判断好不好看。")
+        else:
+            qc_line = (f"程序硬校验：基准 v{best_rev} {_qc_text(best_qc)}；"
+                       f"当前 v{current_rev} {_qc_text(now_qc)}。"
+                       + (f"当前版本仍比基准差（{why_still}），不能当作可用方案。" if still_worse
+                          else "当前版本没有比基准更差，但仍不等于设计合格。")
+                       + "程序只量几何与面积，不替老板判断好不好看。")
+        rework_text = "；".join(f"v{r['rev']} {r['qc']}" for r in rework_log)
+        gate_title = (
+            f"自动打回已用尽 {MAX_AUTO_REWORK} 轮仍无有效修订：请决定第 3 轮怎么做"
+            if not accepted_any
+            else f"自动打回已用尽 {MAX_AUTO_REWORK} 轮，方案仍变差：请决定第 3 轮怎么做"
+            if rework_count >= MAX_AUTO_REWORK and still_worse
+            else "本轮成果仍有硬伤：请决定是否继续打回" if b1
+            else "选一个方向继续（A1 回路到此）")
         gate_detail = (
             f"总监建议：{review.get('verdict')}，倾向选择 {target}（{review.get('why') or ''}）。\n"
             f"本轮实数：2 个候选、{len(issues)} 条评审意见、{len(responses)} 条逐条回应、"
-            f"v2 改动 {len(changed)} 个对象。\n{qc_line}\n"
+            f"自动打回 {rework_count} 次"
+            + (f"（{rework_text}）" if rework_text else "")
+            + f"；被接受的修订版：{'v' + str(current_rev) if accepted_any else '无'}，"
+            f"相对 v1 改动 {len(changed)} 个对象。\n"
+            + (f"最后拦截原因：{stop_reason}\n" if stop_reason else "")
+            + f"总监看图自评：发出 {visual_images} 张自家生成的图（含案例参照），"
+            f"观感：{(visual_summary[:220] or '未完成，见时间线')}。观感不作判据。\n"
+            f"{qc_line}\n"
             "注意：总监只能建议；流程走完不等于方案通过，是否成立由你决定。")
-        gid = self.store.open_gate(pid, gate_title, gate_detail)
+        # An undecided gate from an earlier round stays undecided: append, never replace.
+        gid = self._gate(pid, gate_title, gate_detail)
         self.store.add_message(pid, "P", "gate", gate_detail,
                                evidence=[{"type": "gate", "id": gid},
-                                         {"type": "artifact", "id": aid2, "revision": 2},
+                                         {"type": "artifact", "id": aid2, "revision": current_rev},
                                          {"type": "qc", "v1": {"blocker": b0, "major": m0},
-                                          "v2": {"blocker": b1, "major": m1}}])
+                                          "final": {"blocker": b1, "major": m1}},
+                                         {"type": "rework", "count": rework_count,
+                                          "log": rework_log}])
         self.store.add_message(pid, "P", "note",
-                               f"本轮流程走完。成果栏里有候选 A/B、{target} 的修订版 v2 和三张草案缩略图。"
-                               + qc_line,
+                               f"本轮流程走完。成果栏里有候选 A/B"
+                               + (f" 与候选 {target} 的 v{current_rev}" if accepted_any
+                                  else "；本轮没有可用修订版")
+                               + f"（自动打回 {rework_count} 次）；总监看图观感已留在时间线，"
+                               "属观感不作判据。" + qc_line,
                                evidence=[{"type": "usage", "tokens": client.usage.total},
-                                         {"type": "qc", "v2_issues": qc_after["issues"][:6]}])
+                                         {"type": "qc", "final_issues": now_qc["issues"][:6]},
+                                         {"type": "vision", "image_count": visual_images}])

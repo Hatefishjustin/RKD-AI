@@ -6,6 +6,7 @@ run can be stopped at the budget.
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import time
@@ -154,6 +155,48 @@ class Client:
         return {"content": (choice.get("content") or "").strip(),
                 "tool_calls": choice.get("tool_calls") or [],
                 "usage": {"in": tin, "out": tout}, "model": self.config.model}
+
+
+    # ------------------------------------------------------------------ vision
+    def chat_vision(self, messages: list[dict], images: list[tuple[bytes, str]],
+                    temperature: float = 0.4, max_tokens: int = 1000,
+                    json_only: bool = False) -> dict:
+        """One visual turn. `images` are (jpeg_bytes, mime) pairs.
+
+        Used only for the director's impression of our own generated images.
+        The answer stays an opinion; it is never a pass/fail verdict.
+        """
+        body_messages: list[dict] = []
+        for idx, m in enumerate(messages):
+            if idx == len(messages) - 1 and m["role"] == "user":
+                content: list[dict] = [{"type": "text", "text": m["content"]}]
+                for data, mime in images:
+                    content.append({"type": "image_url", "image_url": {
+                        "url": f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"}})
+                body_messages.append({"role": "user", "content": content})
+            else:
+                body_messages.append(m)
+        body: dict = {"model": self.config.model, "messages": body_messages,
+                      "temperature": temperature, "max_tokens": max_tokens}
+        if json_only:
+            body["response_format"] = {"type": "json_object"}
+        self._guard(projected=max_tokens)
+        try:
+            raw = self._post("/chat/completions", body)
+        except ModelError:
+            if "response_format" in body:
+                body.pop("response_format", None)
+                raw = self._post("/chat/completions", body)
+            else:
+                raise
+        choice = raw["choices"][0]["message"]
+        usage = raw.get("usage") or {}
+        tin = int(usage.get("prompt_tokens") or 0)
+        tout = int(usage.get("completion_tokens") or 0)
+        self.usage.add(tin, tout)
+        return {"content": (choice.get("content") or "").strip(),
+                "usage": {"in": tin, "out": tout}, "model": self.config.model,
+                "image_count": len(images)}
 
 
 def extract_json(text: str) -> dict:

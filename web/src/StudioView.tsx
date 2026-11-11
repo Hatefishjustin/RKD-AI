@@ -31,7 +31,8 @@ type State = {
 
 const KIND_LABEL: Record<string, string> = {
   task: "派活", say: "发言", discussion: "讨论", artifact: "交付", review: "评审",
-  revise: "修订", gate: "闸口", note: "记录", tool: "工具", boss: "老板", decision: "决定",
+  revise: "修订", rework: "自动打回", "visual-review": "看图自评", gate: "闸口",
+  note: "记录", tool: "工具", boss: "老板", decision: "决定",
 };
 
 export function StudioView({ projectId }: { projectId?: string }) {
@@ -277,8 +278,18 @@ function readable(body: string): string {
   try {
     const d = JSON.parse(t);
     const only = Object.keys(d);
-    if (only.length === 1 && ["response", "reply", "answer", "text", "content", "message"].includes(only[0])
-        && typeof d[only[0]] === "string") return d[only[0]];
+    if (only.length === 1 && ["response", "reply", "answer", "text", "content", "message"].includes(only[0])) {
+      const v = d[only[0]];
+      if (typeof v === "string") return v;
+      if (v && typeof v === "object") return readable(JSON.stringify(v));
+    }
+    if (d.summary && d.observations) {
+      const obs: any[] = d.observations || [];
+      return `看图自评（观感，不作判据）｜${d.summary}\n`
+        + obs.slice(0, 4).map((x) =>
+          `· ${x.target}：${x.observation}${x.gap ? "｜差距：" + x.gap : ""}${x.suggest ? "｜" + x.suggest : ""}`).join("\n")
+        + (d.limits ? `\n看不出来的：${d.limits}` : "");
+    }
     if (d.goal) {
       const must: string[] = d.must_have || [];
       const open: string[] = d.open_questions || [];
@@ -326,6 +337,16 @@ function evidenceText(e: Record<string, unknown>): string {
   if (e.reason) parts.push(String(e.reason));
   if (e.changed) parts.push("改动对象 " + (e.changed as string[]).slice(0, 8).join("、"));
   if (e.items) parts.push("条目 " + (e.items as unknown[]).length + " 条");
+  if (e.image_count !== undefined) parts.push(`图片 ${e.image_count} 张`);
+  if (e.images) parts.push("来源：" + (e.images as any[])
+    .map((x) => `${x.label}（${x.source || x.detail || ""}）`).join("；").slice(0, 260));
+  if (e.note) parts.push(String(e.note));
+  if (e.reference) parts.push(`基准 ${e.reference} → 当前 ${e.current || ""}`);
+  if (e.rule) parts.push(String(e.rule));
+  if (e.count !== undefined) parts.push(`次数 ${e.count}`);
+  if (e.log) parts.push("打回记录 " + (e.log as any[]).map((x) => `v${x.rev} ${x.qc}`).join("；"));
+  if (e.usage) parts.push(`token ${(e.usage as any).in}+${(e.usage as any).out}`);
+  if (e.reused) parts.push("沿用老板尚未决定的闸口");
   return parts.length ? parts.join(" · ") : JSON.stringify(e).slice(0, 220);
 }
 

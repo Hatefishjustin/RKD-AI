@@ -20,6 +20,11 @@ from rkd_mvp.studio.store import Store  # noqa: E402
 
 W, H = 26170, 17920
 
+# Plumbing-only stand-in: this test must not depend on a local headless browser
+# or Pillow. Real visual reviews run inside the service process with real
+# rasters (see docs/evidence/a1-studio-vision-review.png).
+FAKE_JPEG = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00" + b"\x00" * 32 + b"\xff\xd9"
+
 
 def plan(option: str, revision: int = 1) -> dict:
     zones = [
@@ -74,6 +79,9 @@ def plan(option: str, revision: int = 1) -> dict:
         data["ceiling"]["fixtures"].append(
             {"id": "L4", "type": "spot", "x": 11800, "y": 14500, "kelvin": 3000})
         data["circulation"][0]["width_mm"] = 2100
+    if revision == 2:
+        # Deliberately worse area reconciliation: exercises the auto rework path.
+        data["area_table"] = [{"name": "全部（错误示例）", "area_sqm": 800.0}]
     return data
 
 
@@ -87,7 +95,9 @@ class FakeClient:
         system = messages[0]["content"]
         last = messages[-1]["content"]
         self.usage.add(1200, 400)
-        if "项目经理" in system:
+        if "这是第" in last and "自动打回" in last:
+            text = json.dumps(plan("A", 3), ensure_ascii=False)
+        elif "项目经理" in system:
             text = "这一轮先做三件事：定任务书、出两个拓扑不同的空间候选、总监评审后改一版。交付物是两份候选和一份修订；做完等老板选。"
         elif "需求分析" in system:
             text = json.dumps({"goal": "做一个能带客户看样品、也能坐下来谈的展厅",
@@ -157,6 +167,16 @@ class FakeClient:
         return {"content": text, "tool_calls": [], "usage": {"in": 1200, "out": 400},
                 "model": self.config.model}
 
+    def chat_vision(self, messages, images, temperature=0.4, max_tokens=1000, json_only=False):
+        self.usage.add(1500, 300)
+        return {"content": json.dumps({
+            "summary": "（假模型）两张草案都偏方块感，天花的表达弱于案例参照。",
+            "observations": [{"target": "A", "observation": "矩形分区", "gap": "缺圆弧",
+                              "suggest": "入口做弧墙"}],
+            "limits": "假模型不真的看图，仅验证管线"}, ensure_ascii=False),
+            "usage": {"in": 1500, "out": 300}, "model": "fake-model",
+            "image_count": len(images)}
+
 
 def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="studio-test-"))
@@ -164,6 +184,8 @@ def main() -> int:
     studio = orchestrator.Studio(store)
     studio.seed_from_fixtures()
     orchestrator.Client = FakeClient  # type: ignore[assignment]
+    orchestrator.vision.svg_to_jpeg = lambda svg, limit=720: FAKE_JPEG  # type: ignore[assignment]
+    orchestrator.vision.reference_jpeg = lambda limit=720: FAKE_JPEG  # type: ignore[assignment]
     studio.run_a1("ningbo-xiecheng", background=False)
 
     state = store.project_state("ningbo-xiecheng")
@@ -175,11 +197,14 @@ def main() -> int:
         "有任务拆解": "task" in kinds,
         "有讨论": "discussion" in kinds,
         "有两个候选": len({p["option_id"] for p in plans if p["revision"] == 1}) == 2,
-        "有修订版": any(p["revision"] == 2 for p in plans),
+        "有修订版": any(p["revision"] >= 2 for p in plans),
         "有缩略图": len(sketches) >= 3,
         "有评审": bool(state["reviews"]) and len(state["reviews"][0]["issues"]) >= 5,
         "有逐条回应": any("逐条回应" in m["body"] for m in msgs),
         "有闸口": any(g["status"] == "waiting" for g in state["gates"]),
+        "有自动打回": "rework" in kinds,
+        "有看图自评": "visual-review" in kinds,
+        "有重做版本": any(p["revision"] >= 3 for p in plans),
         "总监没说通过": all("通过" not in (r["verdict"] or "") for r in state["reviews"]),
     }
     for k, v in checks.items():

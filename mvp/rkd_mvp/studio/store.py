@@ -244,6 +244,16 @@ class Store:
                       (gid, project_id, title, detail, "waiting", now()))
         return gid
 
+    def amend_gate(self, gate_id: str, extra: str, title: str | None = None) -> None:
+        """Append a later round's findings to a gate the boss has NOT decided yet."""
+        with self._lock, self._conn() as c:
+            if title:
+                c.execute("UPDATE gates SET title=?, detail=detail || ? WHERE id=? AND status='waiting'",
+                          (title, "\n\n【后续轮次补充】" + extra, gate_id))
+            else:
+                c.execute("UPDATE gates SET detail=detail || ? WHERE id=? AND status='waiting'",
+                          ("\n\n【后续轮次补充】" + extra, gate_id))
+
     def decide_gate(self, gate_id: str, decision: str, comment: str) -> None:
         with self._lock, self._conn() as c:
             c.execute("UPDATE gates SET status='decided', decision=?, comment=?, decided_at=? WHERE id=?",

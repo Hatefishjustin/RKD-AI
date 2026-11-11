@@ -37,6 +37,7 @@ def render(plan: dict, site: dict, title: str = "") -> str:
     out.append(f'<rect x="0" y="0" width="{W}" height="{H}" fill="#fbfaf8" stroke="{INK}" stroke-width="120"/>')
 
     for z in plan.get("zones") or []:
+        if not isinstance(z, dict): continue
         poly = z.get("polygon") or []
         if len(poly) < 3:
             continue
@@ -52,6 +53,7 @@ def render(plan: dict, site: dict, title: str = "") -> str:
                        f'text-anchor="middle">{float(z["area_sqm"]):.1f} ㎡</text>')
 
     for p in plan.get("platforms") or []:
+        if not isinstance(p, dict): continue
         poly = p.get("polygon") or []
         if len(poly) < 3:
             continue
@@ -59,6 +61,7 @@ def render(plan: dict, site: dict, title: str = "") -> str:
         out.append(f'<polygon points="{pts}" fill="#c9a077" fill-opacity="0.85" stroke="#8a6a45" stroke-width="40"/>')
 
     for c in plan.get("circulation") or []:
+        if not isinstance(c, dict): continue
         path = c.get("path") or []
         if len(path) < 2:
             continue
@@ -68,6 +71,7 @@ def render(plan: dict, site: dict, title: str = "") -> str:
         out.append(f'<path d="{d}" fill="none" stroke="#8a5a2f" stroke-width="22" stroke-dasharray="150 110"/>')
 
     for f in plan.get("furniture") or []:
+        if not isinstance(f, dict): continue
         w = float(f.get("w_mm") or 600)
         d = float(f.get("d_mm") or 600)
         x = float(f.get("x") or 0)
