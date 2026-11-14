@@ -1,0 +1,32 @@
+[
+  {
+    "layout": "layout-A",
+    "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+    ],
+    "manifest_entries_missing_from_zip": [
+      "render.png"
+    ],
+    "loose_file_hash_mismatches": []
+  },
+  {
+    "layout": "layout-B",
+    "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+    ],
+    "manifest_entries_missing_from_zip": [
+      "render.png"
+    ],
+    "loose_file_hash_mismatches": []
+  }
+]

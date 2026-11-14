@@ -1,0 +1,860 @@
+{
+ "task_id": "W2-收口整改",
+ "schema_version": "rkd-w2-closeout-packet-checks.v1",
+ "generated_at": "2026-11-14T23:19:42+08:00",
+ "review_baseline": "b1f1747",
+ "environment": {
+  "python": "3.12.14 (.venv)",
+  "renderer": "Blender 4.2.9 Cycles CPU",
+  "databases": "isolated SQLite per run",
+  "external_calls": 0,
+  "keys_used": false,
+  "cost_amount_or_null": null
+ },
+ "totals": {
+  "repro": {
+   "before_pass": 4,
+   "before_fail": 11,
+   "after_pass": 15,
+   "after_fail": 0
+  },
+  "w2_script": {
+   "observed_pass": 7,
+   "observed_fail": 0
+  },
+  "browser": true,
+  "unittest": {
+   "modules": 43,
+   "ran": 262,
+   "failures": 0,
+   "errors": 0,
+   "skipped": 0,
+   "status": "ok"
+  },
+  "frontend": {
+   "tsc_exit": 0,
+   "build_exit": 0
+  }
+ },
+ "items": [
+  {
+   "id": "W2C-R1-01",
+   "name": "同一文件集合生成清单与 ZIP，清单所列文件全部在 ZIP 内且字节一致",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "render.png",
+      "scene.json"
+     ],
+     "manifest_listed": [
+      "cost.html",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "render.png",
+      "scene.json"
+     ],
+     "problems": [],
+     "self_check": {
+      "ok": true,
+      "problems": [],
+      "checked": 6,
+      "zip_bytes": 10039,
+      "zip_sha256": "6a0755bfb84652326ba649cf55074d723defe0a50917a145d1fe0a46c65ea145",
+      "entries": [
+       "cost.html",
+       "plan.svg",
+       "quantity.csv",
+       "quantity.json",
+       "render.png",
+       "scene.json"
+      ]
+     }
+    },
+    "before_evidence": {
+     "api": "finalize_files(add_rendered)",
+     "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ],
+     "render_in_zip": false,
+     "manifest_render_in_zip": false,
+     "note": "整改前 add_rendered 只写清单不写 ZIP"
+    }
+   }
+  },
+  {
+   "id": "W2C-R1-02",
+   "name": "render=false 时清单与 ZIP 都不声明 PNG",
+   "before": "observed_pass",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ],
+     "manifest_listed": [
+      "cost.html",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ]
+    },
+    "before_evidence": {
+     "api": "legacy",
+     "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ]
+    }
+   }
+  },
+  {
+   "id": "W2C-R3-01",
+   "name": "L 形手算 24/22，独立复算与主算法不同路径，完成面量保持 unknown",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "gross": 24.0,
+     "net": 22.0,
+     "net_name": "功能分区几何净面积（非完成面工程量）",
+     "engine_where": "geometric_only_not_a_finish_quantity",
+     "independent": 22.0,
+     "independent_method": "vertical_strip_union_v1",
+     "finish": {
+      "value": null,
+      "known_status": "unknown",
+      "unknown_reason": "功能分区几何净面积不等于铺装/饰面范围；本批没有显式材料面或铺装范围依据，不得据此推出完成面工程量"
+     },
+     "quantity_ids": [
+      "Q-FLOOR-GROSS",
+      "Q-KEEPOUT-DEDUCT",
+      "Q-FLOOR-GEOMETRIC-NET",
+      "Q-FLOOR-FINISH",
+      "Q-PLATFORM-ENVELOPE",
+      "Q-PARTITION-LENGTH",
+      "Q-CEILING-AREA",
+      "Q-DOOR-WINDOW"
+     ]
+    },
+    "before_evidence": {
+     "gross": 24.0,
+     "net": 22.0,
+     "net_name": "地坪完成面净面积",
+     "engine_where": null,
+     "independent": 22.0,
+     "independent_method": null,
+     "finish": {
+      "value": null,
+      "known_status": null,
+      "unknown_reason": null
+     },
+     "quantity_ids": [
+      "Q-FLOOR-GROSS",
+      "Q-KEEPOUT-DEDUCT",
+      "Q-FLOOR-NET",
+      "Q-PLATFORM-ENVELOPE",
+      "Q-PARTITION-LENGTH",
+      "Q-CEILING-AREA",
+      "Q-DOOR-WINDOW"
+     ]
+    }
+   }
+  },
+  {
+   "id": "W2C-R3-02",
+   "name": "扣除规则：相交扣区不重复扣、外置扣区为 0、跨边界只扣区内部分",
+   "before": "observed_pass",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "intersecting_deduct": 3.25,
+     "intersecting_net": 20.75,
+     "expected_union_deduct": 3.25,
+     "outside_deduct": 0.0,
+     "cross_boundary_deduct": 1.0,
+     "expected_cross_deduct": 1.0,
+     "note": "跨边界扣区只有落在分区内的 0.5×2=1.0㎡ 计入；外置扣区不产生负面积"
+    },
+    "before_evidence": {
+     "intersecting_deduct": 3.25,
+     "intersecting_net": 20.75,
+     "expected_union_deduct": 3.25,
+     "outside_deduct": 0.0,
+     "cross_boundary_deduct": 1.0,
+     "expected_cross_deduct": 1.0,
+     "note": "跨边界扣区只有落在分区内的 0.5×2=1.0㎡ 计入；外置扣区不产生负面积"
+    }
+   }
+  },
+  {
+   "id": "W2C-R3-03",
+   "name": "材料面切片需显式来源；单价不能掩盖未知范围",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "accepts_finish_scope": true,
+     "finish": {
+      "value": 22.0,
+      "known_status": "known",
+      "basis_source": {
+       "declared_by": "executor_manual_fixture",
+       "declaration": "人工夹具：按手算 L 形铺装范围切片，未经现场复核",
+       "kind": "material_face_slice",
+       "unit": "mm",
+       "deduction_basis": "keepouts_within_scope",
+       "site_verified": false
+      },
+      "material_groups": [
+       {
+        "material_id": "M-CEMENT",
+        "material_name": "微水泥",
+        "material_spec_status": "assumption",
+        "area_m2": 22.0,
+        "area_objects": [
+         "FA1"
+        ]
+       }
+      ]
+     },
+     "cost_without_price": [],
+     "cost_with_price": [
+      {
+       "item": "微水泥（按输入假设单价试算）",
+       "material_id": "M-CEMENT",
+       "quantity_ref": "Q-FLOOR-FINISH/M-CEMENT",
+       "quantity_m2": 22.0,
+       "unit_price_cny": 800,
+       "amount_cny": 17600.0,
+       "basis": "caller_provided_assumption_not_a_quote",
+       "area_basis_source": "executor_manual_fixture",
+       "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+      }
+     ],
+     "cost_price_but_no_scope": []
+    },
+    "before_evidence": {
+     "accepts_finish_scope": false,
+     "finish": {
+      "value": null,
+      "known_status": null,
+      "basis_source": null,
+      "material_groups": null
+     },
+     "cost_without_price": [],
+     "cost_with_price": [],
+     "cost_price_but_no_scope": []
+    }
+   }
+  },
+  {
+   "id": "W2C-R1-03",
+   "name": "真实 HTTP 下载 ZIP→空目录解压→逐项核对清单（含 PNG 与单下载一致）",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "zip_bytes": 11595,
+     "manifest_files": [
+      "cost.html",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "render.png",
+      "scene.json"
+     ],
+     "problems": [],
+     "render_matches_separate_download": true,
+     "separate_render_bytes": 712
+    },
+    "before_evidence": {
+     "zip_bytes": 10219,
+     "manifest_files": [
+      "render.png",
+      "cost.html",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ],
+     "problems": [
+      "缺少 render.png"
+     ],
+     "render_matches_separate_download": false,
+     "separate_render_bytes": 712
+    }
+   }
+  },
+  {
+   "id": "W2C-R1-04",
+   "name": "真实入口 render=false：ZIP 与清单均无 PNG",
+   "before": "observed_pass",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ],
+     "manifest_files": [
+      "cost.html",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ]
+    },
+    "before_evidence": {
+     "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ],
+     "manifest_files": [
+      "cost.html",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "scene.json"
+     ]
+    }
+   }
+  },
+  {
+   "id": "W2C-R2-01",
+   "name": "生成中取消为单调终态，晚到渲染不得复活，失败/取消不登记半份成果",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "cancel_status": 200,
+     "cancel_body": "cancelled",
+     "final_status": "cancelled",
+     "final_phase": "measurement",
+     "revisions_registered": 0,
+     "second_cancel": 200
+    },
+    "before_evidence": {
+     "cancel_status": 404,
+     "cancel_body": null,
+     "final_status": "succeeded",
+     "final_phase": "completed",
+     "revisions_registered": 0,
+     "second_cancel": 404
+    }
+   }
+  },
+  {
+   "id": "W2C-R2-02",
+   "name": "换版后旧成果标历史预览，当前成果按 job/修订查询",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "binding_a": "historical_preview",
+     "binding_b": "current_adopted",
+     "binding_a_facts": {
+      "adopted_at_submit": true,
+      "adopted_option_revision_id": "ai-option-revision_07c31da5da39",
+      "adoption_version": 4,
+      "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览",
+      "status_at_generation": "current_adopted"
+     },
+     "current_job": "ai-spatial-job_4115ead9b190",
+     "job_a": "ai-spatial-job_9c91e2ae7249",
+     "job_b": "ai-spatial-job_4115ead9b190",
+     "revisions_listed": 4
+    },
+    "before_evidence": {
+     "jobs": [
+      "succeeded",
+      "succeeded"
+     ],
+     "revisions": [],
+     "note": "旧成果被最新成功成果覆盖"
+    }
+   }
+  },
+  {
+   "id": "W2C-R2-03",
+   "name": "失败后显式重试关联原任务，同一幂等键不偷偷重跑",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "failed_status": "failed",
+     "failed_error": "SPATIAL_OUTPUT_FAILED",
+     "half_registered": false,
+     "idempotent_reuse": true,
+     "retry_status_code": 202,
+     "retried_status": "succeeded",
+     "retry_of": "ai-spatial-job_dea6fe8eeaea",
+     "original": "ai-spatial-job_dea6fe8eeaea"
+    },
+    "before_evidence": {
+     "failed_status": "failed",
+     "failed_error": "SPATIAL_OUTPUT_FAILED",
+     "half_registered": false,
+     "idempotent_reuse": true,
+     "retry_status_code": 404,
+     "retried_status": null,
+     "retry_of": null,
+     "original": "ai-spatial-job_aea0551faef6"
+    }
+   }
+  },
+  {
+   "id": "W2C-R2-04",
+   "name": "共用表内深化量价成果不污染本页当前成果",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "before_revision": "ai-production-revision_75badbbd887c",
+     "after_revision": "ai-production-revision_75badbbd887c",
+     "revisions_listed": 5,
+     "foreign_revisions_in_list": 0,
+     "note": "深化量价修订插入共用表后，本页当前成果仍须可见且其修订不得混入本页列表"
+    },
+    "before_evidence": {
+     "before_revision": null,
+     "after_revision": null,
+     "revisions_listed": 0,
+     "foreign_revisions_in_list": 0,
+     "note": "深化量价修订插入共用表后，本页当前成果仍须可见且其修订不得混入本页列表"
+    }
+   }
+  },
+  {
+   "id": "W2C-R1-05",
+   "name": "渲染无产出时不得交出成功完整包",
+   "before": "observed_pass",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "status_code": 202,
+     "job_status": "failed",
+     "error": "SPATIAL_OUTPUT_FAILED",
+     "registered": 0
+    },
+    "before_evidence": {
+     "status_code": 202,
+     "job_status": "failed",
+     "error": "SPATIAL_OUTPUT_FAILED",
+     "registered": 0
+    }
+   }
+  },
+  {
+   "id": "W2C-R1-06",
+   "name": "清单字节被改动后拒绝据其校验交付文件",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "status": 500,
+     "error_code": "MANIFEST_HASH_MISMATCH",
+     "note": "清单被改动后必须拒绝，不能把未经校验的清单当可信哈希来源"
+    },
+    "before_evidence": {
+     "status": 404,
+     "error_code": "FILE_NOT_REGISTERED",
+     "note": "清单被改动后必须拒绝，不能把未经校验的清单当可信哈希来源"
+    }
+   }
+  },
+  {
+   "id": "W2C-R2-05",
+   "name": "A/B 反序完成与重启恢复：按 job 关联、只恢复本批中断任务",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "job_a": "succeeded",
+     "job_b": "succeeded",
+     "finished_order": {
+      "ai-spatial-job_06cb948d8b89": "2026-11-14T15:08:59.295562+00:00",
+      "ai-spatial-job_2d90c8935321": "2026-11-14T15:08:59.347626+00:00"
+     },
+     "mapped": true,
+     "recovered": [
+      "ai-spatial-job_6670cbaef5b8"
+     ],
+     "orphan_status": "failed",
+     "orphan_error": "WORKER_RESTARTED",
+     "historical_bytes_readable": [
+      "ai-spatial-job_06cb948d8b89",
+      "ai-spatial-job_0a9909c26615",
+      "ai-spatial-job_0f35ecb55308",
+      "ai-spatial-job_2c21a7dacfee",
+      "ai-spatial-job_2d90c8935321",
+      "ai-spatial-job_4115ead9b190",
+      "ai-spatial-job_9c91e2ae7249",
+      "ai-spatial-job_af9c5dff500f"
+     ]
+    },
+    "before_evidence": {
+     "error": "AttributeError: 'AISpatialOutputService' object has no attribute 'recover'",
+     "trace": [
+      "    recovered = stack.spatial_ai.recover(ORG, stack.project_id)",
+      "                ^^^^^^^^^^^^^^^^^^^^^^^^",
+      "AttributeError: 'AISpatialOutputService' object has no attribute 'recover'"
+     ]
+    }
+   }
+  },
+  {
+   "id": "W2C-R3-04",
+   "name": "真实入口冻结材料面与假设单价；成本与面积依据同页且不矛盾",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "evidence": {
+    "after_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-after.json",
+    "before_file": "var\\evidence\\roadmap\\W2-收口整改\\repro-before.json",
+    "after_evidence": {
+     "finish": {
+      "value": 84.6,
+      "expected": 84.6,
+      "known_status": "known",
+      "material_groups": [
+       {
+        "area_m2": 51.0,
+        "area_objects": [
+         "FA1"
+        ],
+        "material_id": "M-A",
+        "material_name": "微水泥",
+        "material_spec_status": "assumption"
+       },
+       {
+        "area_m2": 33.6,
+        "area_objects": [
+         "FA2"
+        ],
+        "material_id": "M-B",
+        "material_name": "橡木地板",
+        "material_spec_status": "assumption"
+       }
+      ]
+     },
+     "known_items": [
+      {
+       "amount_cny": 40800.0,
+       "area_basis_source": "executor_manual_fixture",
+       "basis": "caller_provided_assumption_not_a_quote",
+       "item": "微水泥（按输入假设单价试算）",
+       "material_id": "M-A",
+       "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺",
+       "quantity_m2": 51.0,
+       "quantity_ref": "Q-FLOOR-FINISH/M-A",
+       "unit_price_cny": 800.0
+      }
+     ],
+     "unpriced_groups": [
+      {
+       "impact": "33.6 ㎡ 的金额保持 unknown",
+       "material_id": "M-B",
+       "quantity_ref": "Q-FLOOR-FINISH/M-B",
+       "statement": "橡木地板 没有对应价源（材料/工艺/损耗/起订量）"
+      }
+     ],
+     "html_contradiction": false,
+     "csv_has_finish_row": true
+    },
+    "before_evidence": {
+     "finish": {
+      "value": null,
+      "expected": 84.6,
+      "known_status": null,
+      "material_groups": null
+     },
+     "known_items": [],
+     "unpriced_groups": [],
+     "html_contradiction": false,
+     "csv_has_finish_row": false
+    }
+   }
+  },
+  {
+   "id": "W2-01",
+   "name": "一个冻结的精确模型修订生成同源成果（平面/净量/成本/清单/包）",
+   "before": "not_independently_rerun",
+   "after": "observed_pass",
+   "evidence": {
+    "file": "var\\evidence\\roadmap\\W2-收口整改\\after-w2-script\\checks.json",
+    "detail": {
+     "status": 202,
+     "job_status": "succeeded",
+     "job_error": null,
+     "artifacts": [
+      "cost.html",
+      "quantity.json",
+      "manifest.json",
+      "package.zip",
+      "plan.svg",
+      "quantity.csv"
+     ]
+    }
+   }
+  },
+  {
+   "id": "W2-02",
+   "name": "下载逐文件可用；ZIP 解压后清单所列文件全部存在、大小与 SHA 一致，PNG 与单下载一致",
+   "before": "not_independently_rerun",
+   "after": "observed_pass",
+   "evidence": {
+    "file": "var\\evidence\\roadmap\\W2-收口整改\\after-w2-script\\checks.json",
+    "detail": {
+     "files": {
+      "plan.svg": {
+       "status": 200,
+       "bytes": 10455,
+       "sha": "18720b76637f"
+      },
+      "render.png": {
+       "status": 200,
+       "bytes": 600811,
+       "sha": "e7beddbb0bdd"
+      },
+      "quantity.csv": {
+       "status": 200,
+       "bytes": 1368,
+       "sha": "d58081d170a3"
+      },
+      "cost.html": {
+       "status": 200,
+       "bytes": 2597,
+       "sha": "27f4a4f9f5d1"
+      },
+      "manifest.json": {
+       "status": 200,
+       "bytes": 9720,
+       "sha": "e798d8729201"
+      },
+      "package.zip": {
+       "status": 200,
+       "bytes": 612469,
+       "sha": "7eb106672b44"
+      }
+     },
+     "zip_entries": [
+      "cost.html",
+      "manifest.json",
+      "plan.svg",
+      "quantity.csv",
+      "quantity.json",
+      "render.png",
+      "scene.json"
+     ],
+     "manifest_file_count": 6,
+     "zip_problems": [],
+     "render_in_zip": true,
+     "render_matches_separate": true
+    }
+   }
+  },
+  {
+   "id": "W2-03",
+   "name": "平面包含分区/面积表/图例/尺寸/机位与未建模缺项，且标注非施工图",
+   "before": "not_independently_rerun",
+   "after": "observed_pass",
+   "evidence": {
+    "file": "var\\evidence\\roadmap\\W2-收口整改\\after-w2-script\\checks.json",
+    "detail": {
+     "has_area_table": true,
+     "has_legend": true,
+     "has_dimension": true,
+     "has_camera": true,
+     "has_missing": true,
+     "bytes": 9652
+    }
+   }
+  },
+  {
+   "id": "W2-04",
+   "name": "非矩形几何净量经独立扫描线复算一致；bbox 结果故意不同且不用于计量",
+   "before": "not_independently_rerun",
+   "after": "observed_pass",
+   "evidence": {
+    "file": "var\\evidence\\roadmap\\W2-收口整改\\after-w2-script\\checks.json",
+    "detail": {
+     "net": 233.03,
+     "independent": 233.03,
+     "bbox": 234.31,
+     "bbox_delta": 1.28,
+     "method": "exact_union_minus_keepouts"
+    }
+   }
+  },
+  {
+   "id": "W2-05",
+   "name": "成本：没有价源时金额为 unknown、不是报价；量已知而钱未知",
+   "before": "not_independently_rerun",
+   "after": "observed_pass",
+   "evidence": {
+    "file": "var\\evidence\\roadmap\\W2-收口整改\\after-w2-script\\checks.json",
+    "detail": {
+     "known_items": [],
+     "total": {
+      "known_status": "unknown",
+      "unknown_reason": "没有价源；不把地坪小计当项目总造价",
+      "value": null
+     },
+     "unknown_count": 3
+    }
+   }
+  },
+  {
+   "id": "W2-06",
+   "name": "两种不同布局由同一生成器出平面与效果图（源/模型哈希/相机可查）",
+   "before": "not_independently_rerun",
+   "after": "observed_pass",
+   "evidence": {
+    "file": "var\\evidence\\roadmap\\W2-收口整改\\after-w2-script\\checks.json",
+    "detail": {
+     "layout_a_net": 233.03,
+     "layout_b_net": 229.08,
+     "model_hashes": [
+      "4acf2208014e",
+      "d81a1fe44753"
+     ],
+     "cameras": [
+      [
+       1200.0,
+       11200.0
+      ],
+      [
+       1200.0,
+       11200.0
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "W2-07",
+   "name": "四种受控变更：几何改平面/三维/净量；材料改材质；只改相机不改量；只改单价不改几何",
+   "before": "not_independently_rerun",
+   "after": "observed_pass",
+   "evidence": {
+    "file": "var\\evidence\\roadmap\\W2-收口整改\\after-w2-script\\checks.json",
+    "detail": {
+     "geometry_net": [
+      233.03,
+      229.19
+     ],
+     "material_plan_changed": true,
+     "material_scene_changed": true,
+     "camera_plan_changed": true,
+     "camera_quantity_same": true,
+     "price_quantity_same": true,
+     "price_plan_same": true,
+     "price_amounts": [
+      33600.0,
+      40320.0
+     ],
+     "price_without_scope_known_items": 0
+    }
+   }
+  },
+  {
+   "id": "W2C-BROWSER-01",
+   "name": "真实 Edge 浏览器：选修订→生成→平面/人眼图/数量/下载字节/SHA/390px",
+   "before": "not_independently_rerun",
+   "after": "observed_pass",
+   "evidence": {
+    "file": "var\\evidence\\roadmap\\W2-收口整改\\browser\\verification.json",
+    "panel_errors": [],
+    "downloads": {
+     "plan.svg": {
+      "status": 200,
+      "bytes": 10461,
+      "sha256": "763a734fcc3224db176083b3aa87f68a2b0600f210f1bb7e5121ebe30d9db8a1"
+     },
+     "render.png": {
+      "status": 200,
+      "bytes": 1033605,
+      "sha256": "ec77105c579d102146991cef023e95f45812c214fd4df5047ab2151455d4dec6"
+     },
+     "package.zip": {
+      "status": 200,
+      "bytes": 1045403,
+      "sha256": "ea03274bee5ea3ca7bac4472154e82036148af3ae02b839fd5a19adcacbe460f"
+     }
+    },
+    "mobile_scroll_width": 390
+   }
+  }
+ ],
+ "not_run": [
+  "PostgreSQL 下的取消/重试/恢复条件更新",
+  "多进程并发取消与恢复",
+  "断电/进程被杀后的文件残留清理",
+  "W3 真实模型调用（本批未获新增费用授权）",
+  "R4 表达质量（仍属 W2 主线，本批未动）"
+ ],
+ "runtime": {
+  "full_unittest_log": "deliverables-for-review/roadmap/W2-收口整改/runtime/full-unittest.log",
+  "frontend_build_log": "deliverables-for-review/roadmap/W2-收口整改/runtime/frontend-build.log",
+  "unittest_invocation": "PYTHONPATH=\".;mvp\" .venv/Scripts/python.exe -B var/tmp/run_full_unittest.py",
+  "unittest_invocation_note": "mvp/tests 无 __init__.py，discover 两种入口都会丢模块；改为逐模块加载等价全量。mvp/tests/test_review_tasks.py 本批未改动（最后修改 ed6e32f）。"
+ }
+}

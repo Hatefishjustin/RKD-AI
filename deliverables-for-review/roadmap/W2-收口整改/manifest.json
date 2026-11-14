@@ -1,0 +1,200 @@
+{
+ "task_id": "W2-收口整改",
+ "schema_version": "rkd-review-packet.v1",
+ "built_at": "2026-11-14T23:38:19+08:00",
+ "code_baseline": {
+  "compare_base": "b1f1747",
+  "compare_base_subject": "W2 同源成果切片（架构复核未放行）",
+  "code_commit": "c4487fa",
+  "batch_commit": null,
+  "rebuild_command": "git diff b1f1747 -- mvp web scripts",
+  "diff_shortstat": "9 files changed, 1778 insertions(+), 203 deletions(-)",
+  "patch_bytes": 145459,
+  "migrations_added": 0,
+  "tables_added": 0,
+  "new_tables_note": "复用 ai_development_jobs / ai_development_revisions / ai_development_artifacts，零迁移"
+ },
+ "generator_versions": {
+  "generator": "rkd-spatial-outputs.v2",
+  "plan": "rkd-spatial-plan.v3",
+  "scene": "rkd-spatial-scene.v1",
+  "quantity": "rkd-spatial-quantity.v2",
+  "cost": "rkd-spatial-cost.v2",
+  "manifest": "rkd-spatial-output-manifest.v2",
+  "finish_scope": "rkd-spatial-finish-scope.v1",
+  "independent_area": "vertical_strip_union_v1",
+  "renderer": "blender-4.2.9 / CYCLES CPU"
+ },
+ "packet_files": {
+  "browser/browser-observations.json": {
+   "bytes": 3637,
+   "sha256": "5a12f05d688f18a908ae124ca83d5d3eb0f5e2ed73a75504e9f32ab7b83b7d74"
+  },
+  "browser/w2-outputs-desktop.png": {
+   "bytes": 369094,
+   "sha256": "96ece7366dee329a47c1007b03f8b5bac6da4622f9d721071a88b2c0da132264"
+  },
+  "browser/w2-outputs-mobile.png": {
+   "bytes": 237910,
+   "sha256": "8fd2867b66de15b0439258923b33f1c7846f51e77fa351a16f88699cc67b709f"
+  },
+  "changes.patch": {
+   "bytes": 145459,
+   "sha256": "cc689ff54e595155710bc7c9b11449df78fdd4daf676494d0c1339645090e43e"
+  },
+  "checks.json": {
+   "bytes": 25785,
+   "sha256": "219515c4c651f0d0f0a73e0632cc9b889324f459f3709af4fd6e0e11b8262dd3"
+  },
+  "code-diff.md": {
+   "bytes": 4046,
+   "sha256": "fd5b7c2e1d0f7aeda0161f55465b872b014f1e73f059c52e2f3e8ffe5f4c3f72"
+  },
+  "index.html": {
+   "bytes": 9515,
+   "sha256": "eae9d1e55e8df479c7c3e2169eb379fc96f6013dffd902f70045f72cd53193d8"
+  },
+  "l-shape-handcheck.md": {
+   "bytes": 3476,
+   "sha256": "73dae6a8d3f9673991e6fe190f100222831d176fb0315077723b52e3dcce432e"
+  },
+  "outputs/layout-A/cost.html": {
+   "bytes": 2597,
+   "sha256": "27f4a4f9f5d19c3c555fc935fdd8a3c27b00207b0e3be72897c930366b69ccd0"
+  },
+  "outputs/layout-A/manifest.json": {
+   "bytes": 9720,
+   "sha256": "e798d8729201bfc045674d94a9ef1d20752c8af2d24d26bccae1271aba5d40c2"
+  },
+  "outputs/layout-A/package.zip": {
+   "bytes": 612469,
+   "sha256": "7eb106672b4404225c2425a0700ca17addb8f9f3b2a29efbab7359af82cf04a4"
+  },
+  "outputs/layout-A/plan.svg": {
+   "bytes": 10455,
+   "sha256": "18720b76637f54ff891d062b3ae672b74dc440bcfbaad81b7d1248a50ca10d39"
+  },
+  "outputs/layout-A/quantity.csv": {
+   "bytes": 1368,
+   "sha256": "d58081d170a3d11cd3da263f5df284c1949060b24fc0e9da92d5e08074ccbc56"
+  },
+  "outputs/layout-A/quantity.json": {
+   "bytes": 2949,
+   "sha256": "cb2ef01683b2d6f95d0d2febcc2184202b6ab8d71e6f40646f849c61cc5733de"
+  },
+  "outputs/layout-A/render.png": {
+   "bytes": 600811,
+   "sha256": "e7beddbb0bddd5f2aa8f0928dcf454bddb594d51f735d7722c2d4937d5e08fda"
+  },
+  "outputs/layout-A/scene.json": {
+   "bytes": 2439,
+   "sha256": "b794ec84c7ad490d868ccc041aed2e93dbcc999d41b947dac272c5afae7426b1"
+  },
+  "outputs/layout-B/cost.html": {
+   "bytes": 2598,
+   "sha256": "5b2107b9f228fdca5f1fd3a6c06d0ce0e22a30f233570fb3ff92e96cb7bd4213"
+  },
+  "outputs/layout-B/manifest.json": {
+   "bytes": 9719,
+   "sha256": "45fc3fff7b11fa5b190c213e46ae78450b06665c92db083bc546b59248bf7dab"
+  },
+  "outputs/layout-B/package.zip": {
+   "bytes": 612733,
+   "sha256": "d42bc4037b74b77ffa48cb43ce611df40f8d956330ca01ac56b5ac3fbc0eb4a2"
+  },
+  "outputs/layout-B/plan.svg": {
+   "bytes": 10448,
+   "sha256": "a698c73a149d4bd62b62c4b751371d87c0139bff00018050febe765cfb8b5716"
+  },
+  "outputs/layout-B/quantity.csv": {
+   "bytes": 1369,
+   "sha256": "bbbe03d675f0c03d906963dbcd0789a6cd9538010fa6abc225ff7fdcf8cb7746"
+  },
+  "outputs/layout-B/quantity.json": {
+   "bytes": 2949,
+   "sha256": "91fdc9b6296e4df8032fb889c678f42aeae8cb6a2b808e4612ea3b6b02c35ab0"
+  },
+  "outputs/layout-B/render.png": {
+   "bytes": 601092,
+   "sha256": "d336c5def2e8a6c3e172a8d23e62eddf569b706b384c964f384bb64a2e0e4be2"
+  },
+  "outputs/layout-B/scene.json": {
+   "bytes": 2443,
+   "sha256": "c29508b1271d148618de0a3d5b288813b7b1d3fa0e0715e5219755d6823dfc17"
+  },
+  "positive-negative-cases.md": {
+   "bytes": 5696,
+   "sha256": "adfe749b5a9904e673f61e3f6d79d5273e1b1ad7982b6c457aecf0f53b9fdffe"
+  },
+  "q10-matrix.md": {
+   "bytes": 4454,
+   "sha256": "e47930d98649e507eea97b09ca19b858809796f349b6e196435f8d4dc82af372"
+  },
+  "review-packet.md": {
+   "bytes": 8551,
+   "sha256": "e58dc2a9441b9b9382f803c8f8729e6684d9a27645c9095082175a154fef60ba"
+  },
+  "runtime/frontend-build.log": {
+   "bytes": 959,
+   "sha256": "178ae59565ea2c9f4641bb90d09aa0447d2a7e6cbfb68f892069a1e665d67ca7"
+  },
+  "runtime/full-unittest.log": {
+   "bytes": 727,
+   "sha256": "d9215a2be7d9aadcff1164e92abe34b391b9324e57d3d87e8bf08ac3bdf0eeeb"
+  }
+ },
+ "hash_basis": "sha256 计算的是构建时工作区文件字节；git 提交时文本文件可能被规范化为 LF，因此从 git 检出后再算哈希，文本文件（md/json/html/log/svg/csv/patch）可能不一致，二进制文件（png/zip）一致。以工作区文件为准。",
+ "source_files": {
+  "mvp/rkd_mvp/ai_spatial_outputs.py": {
+   "bytes": 49144,
+   "sha256": "de4caca8ec3fb8b174756bbb936aa50b21d6eb66c6cf6ff83fc1740506a902e1"
+  },
+  "mvp/rkd_mvp/ai_spatial_output_service.py": {
+   "bytes": 31111,
+   "sha256": "b4a2e71e38440642dd60592140df4776ca74a3fc44044e8b3464c21b5095dbf0"
+  },
+  "mvp/rkd_mvp/ai_development_repository.py": {
+   "bytes": 14258,
+   "sha256": "b79f9e16d3bdc2460dbe9808f6bb557098be54a6f4be9b9f46e14e614d54cc42"
+  },
+  "mvp/rkd_mvp/ai_development_service.py": {
+   "bytes": 18102,
+   "sha256": "38f0c4e88d8ce6ba72190e1394ebd7e23e0c025e0a3ca891c9fe0d356e71ebeb"
+  },
+  "mvp/rkd_mvp/api_service.py": {
+   "bytes": 47998,
+   "sha256": "76b3b7c5b1c8f2667d8d45454d69ac6a096bdcfb979f1f18ca73faa05af5fa6b"
+  },
+  "mvp/rkd_mvp/api_server.py": {
+   "bytes": 43510,
+   "sha256": "13c4070dea0800392d2ebd4a6c27b87e073d622faddfca17d2a3c10e928d217f"
+  },
+  "web/src/AiSpatialOutputsPanel.tsx": {
+   "bytes": 14311,
+   "sha256": "a217092b0bdf9297bcae4a2e77785541aa478ae15a2cf69fcea385e8b1d07e53"
+  },
+  "scripts/verify_w2_spatial_outputs.py": {
+   "bytes": 23051,
+   "sha256": "922588ebef3b33ac5568a4db6a0a8b72841a4eb5b4c4fad2749a1d860e4b6391"
+  },
+  "scripts/w2_closeout_repro.py": {
+   "bytes": 46890,
+   "sha256": "12e2ebe6927dcd8aa9afa55023a3ccd5fa0786e29deb9611c30d09d9f86e4ca8"
+  }
+ },
+ "external_calls": 0,
+ "cost_amount_or_null": null,
+ "cost_status": "no_external_calls_zero_cost",
+ "keys_used": false,
+ "image_counts": {
+  "blender_render_png": 2,
+  "browser_screenshot_png": 2,
+  "note": "2 张真实 Blender 渲染（layout-A/B 各 1，整改后复跑一次）；2 张浏览器截图（桌面/390px）。无生成式图像调用。"
+ },
+ "adjudication": {
+  "AD01-AD08": "未改判",
+  "design_stage": "未确认",
+  "w2_release": "未宣布，等架构师复核",
+  "w3_w4": "未启动"
+ }
+}

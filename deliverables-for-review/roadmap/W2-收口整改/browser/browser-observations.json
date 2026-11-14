@@ -1,0 +1,92 @@
+{
+  "revisionId": "ai-option-revision_82b33300017e",
+  "revision_options": [
+    "（选择带精确 spatial 的修订）",
+    "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-browser v1 · candidate"
+  ],
+  "panel_errors": [],
+  "panel_text_head": "同源成果（W2 切片） 精确模型 · 内部评审 平面、几何净量与成本都从同一个冻结的候选修订生成；几何依据是精确多边形，包围盒只用于兼容显示。几何净面积不是铺装/完成面工程量；没有材料面依据时完成面量保持 unknown。效果图机位、材质与家具高度是渲染假设，不当实测事实。本页不产生正式报价、采购、发布或施工图。 模型修订 （选择带精确 spatial 的修订） studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-browser v1 · candidate 生成人眼效果图 生成同源成果 尚无同源成果；选择修订后生成。",
+  "job_status": "succeeded",
+  "job_phase": "completed",
+  "production_revision_id": "ai-production-revision_cd258746a532",
+  "baseline": {
+    "binding": {
+      "adopted_at_submit": true,
+      "adopted_option_revision_id": "ai-option-revision_82b33300017e",
+      "adoption_version": 1,
+      "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览",
+      "status_at_generation": "current_adopted"
+    },
+    "design_origin": {
+      "declaration": "labelled_local_fixture",
+      "declared_by": "studio_artifact.diagnostics.source",
+      "kind": "fixture",
+      "run_refs": [
+        "run-w2-browser",
+        "group-w2-browser"
+      ]
+    },
+    "frozen_at": "2026-11-14T23:15:51+08:00",
+    "generator_version": "rkd-spatial-outputs.v2",
+    "geometry_authority": "spatial.zones[].polygon_mm",
+    "legacy_bbox_used_for_measurement": false,
+    "materials_version": "studio-material-unspecified/intent_only",
+    "model_hash": "6deae43e234d1878f41d4a8fa1993f122e5e59f85b5d77cf52d7e98ee1a03c90",
+    "object_versions": [
+      "ZA1",
+      "ZA2",
+      "ZA3",
+      "ZA4",
+      "ZA5",
+      "ZA6"
+    ],
+    "option_id": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-browser",
+    "option_revision_id": "ai-option-revision_82b33300017e",
+    "parent_link_status": "source_root",
+    "project_id": "project_ningbo_xiecheng_2026",
+    "revision_no": 1,
+    "root_revision_uid": "uid-w2-browser",
+    "schema_version": "rkd-spatial-frozen-input.v1",
+    "source_artifact_id": "art_9870913a55",
+    "source_parent_revision_uid": null,
+    "source_revision_uid": "uid-w2-browser",
+    "source_sha256": "219976f7464ffeece42fd4e622409b1a24a7327303877a5c3fabf7feb2db37e3",
+    "views_version": "derived_camera_assumption_v1"
+  },
+  "artifact_names": [
+    "cost.html",
+    "quantity.json",
+    "manifest.json",
+    "package.zip",
+    "plan.svg",
+    "quantity.csv"
+  ],
+  "plan_is_blob": true,
+  "render_is_blob": true,
+  "quantity_rows": 8,
+  "panel_has_missing": true,
+  "panel_has_unknown": true,
+  "panel_has_boundary": true,
+  "downloads": {
+    "plan.svg": {
+      "status": 200,
+      "bytes": 10461,
+      "sha256": "763a734fcc3224db176083b3aa87f68a2b0600f210f1bb7e5121ebe30d9db8a1"
+    },
+    "render.png": {
+      "status": 200,
+      "bytes": 1033605,
+      "sha256": "ec77105c579d102146991cef023e95f45812c214fd4df5047ab2151455d4dec6"
+    },
+    "package.zip": {
+      "status": 200,
+      "bytes": 1045403,
+      "sha256": "ea03274bee5ea3ca7bac4472154e82036148af3ae02b839fd5a19adcacbe460f"
+    }
+  },
+  "manifest_sha_match": true,
+  "artifact_sha_match": true,
+  "mobile_scroll_width": 390,
+  "page_errors": [],
+  "passed": true
+}

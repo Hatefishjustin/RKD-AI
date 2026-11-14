@@ -1,0 +1,173 @@
+{
+  "task_id": "W2 同源成果切片",
+  "schema_version": "rkd-w2-spatial-checks.v1",
+  "executed_at": "2026-11-14T22:50:51+08:00",
+  "code_head": "b1f1747734e8d3eff1ba29596b92bf7cb5b5bf5b",
+  "environment": {
+    "python": "3.12.14",
+    "renderer": "blender-4.2.9 Cycles CPU",
+    "isolated_main_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-architect-review\\runtime\\app.sqlite3",
+    "isolated_studio_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-architect-review\\runtime\\studio.db",
+    "model_channel": "labelled local fixtures only",
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "W2-01",
+      "name": "一个冻结的精确模型修订生成同源成果（平面/净量/成本/清单/包）",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 202,
+        "job_status": "succeeded",
+        "job_error": null,
+        "artifacts": [
+          "cost.html",
+          "quantity.json",
+          "manifest.json",
+          "package.zip",
+          "plan.svg",
+          "quantity.csv"
+        ]
+      }
+    },
+    {
+      "id": "W2-02",
+      "name": "下载逐文件可用：平面/效果图/量/成本/清单/包，清单登记 SHA 与字节一致",
+      "result": "observed_pass",
+      "evidence": {
+        "files": {
+          "plan.svg": {
+            "status": 200,
+            "bytes": 10016,
+            "sha": "a00be17b147d"
+          },
+          "render.png": {
+            "status": 200,
+            "bytes": 600606,
+            "sha": "48269d94b090"
+          },
+          "quantity.csv": {
+            "status": 200,
+            "bytes": 1007,
+            "sha": "6634fd84fa5d"
+          },
+          "cost.html": {
+            "status": 200,
+            "bytes": 1986,
+            "sha": "6a466cdc1d7e"
+          },
+          "manifest.json": {
+            "status": 200,
+            "bytes": 7984,
+            "sha": "1823f6e5e46a"
+          },
+          "package.zip": {
+            "status": 200,
+            "bytes": 10237,
+            "sha": "b72c751e0d21"
+          }
+        },
+        "zip_entries": [
+          "cost.html",
+          "manifest.json",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ],
+        "manifest_file_count": 6
+      }
+    },
+    {
+      "id": "W2-03",
+      "name": "平面包含分区/面积表/图例/尺寸/机位与未建模缺项，且标注非施工图",
+      "result": "observed_pass",
+      "evidence": {
+        "has_area_table": true,
+        "has_legend": true,
+        "has_dimension": true,
+        "has_camera": true,
+        "has_missing": true,
+        "bytes": 9293
+      }
+    },
+    {
+      "id": "W2-04",
+      "name": "非矩形净量独立复算一致；bbox 结果故意不同且不用于计量",
+      "result": "observed_pass",
+      "evidence": {
+        "net": 233.03,
+        "independent": 233.03,
+        "bbox": 234.31,
+        "bbox_delta": 1.28,
+        "method": "exact_union_minus_keepouts"
+      }
+    },
+    {
+      "id": "W2-05",
+      "name": "成本：没有价源时金额为 unknown、不是报价；量已知而钱未知",
+      "result": "observed_pass",
+      "evidence": {
+        "known_items": [],
+        "total": {
+          "known_status": "unknown",
+          "unknown_reason": "没有价源；不把地坪小计当项目总造价",
+          "value": null
+        },
+        "unknown_count": 3
+      }
+    },
+    {
+      "id": "W2-06",
+      "name": "两种不同布局由同一生成器出平面与效果图（源/模型哈希/相机可查）",
+      "result": "observed_pass",
+      "evidence": {
+        "layout_a_net": 233.03,
+        "layout_b_net": 229.08,
+        "model_hashes": [
+          "d2a276c4c1d2",
+          "c939bdb32518"
+        ],
+        "cameras": [
+          [
+            1200.0,
+            11200.0
+          ],
+          [
+            1200.0,
+            11200.0
+          ]
+        ]
+      }
+    },
+    {
+      "id": "W2-07",
+      "name": "四种受控变更：几何改平面/三维/净量；材料改材质；只改相机不改量；只改单价不改几何",
+      "result": "observed_pass",
+      "evidence": {
+        "geometry_net": [
+          233.03,
+          229.19
+        ],
+        "material_plan_changed": true,
+        "material_scene_changed": true,
+        "camera_plan_changed": true,
+        "camera_quantity_same": true,
+        "price_quantity_same": true,
+        "price_plan_same": true,
+        "price_amounts": [
+          233030.0,
+          279636.0
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 7,
+    "observed_fail": 0
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost"
+}

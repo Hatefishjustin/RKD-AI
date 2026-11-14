@@ -1,0 +1,2474 @@
+diff --git a/mvp/rkd_mvp/ai_development_repository.py b/mvp/rkd_mvp/ai_development_repository.py
+index b2532c8..8b5f8c2 100644
+--- a/mvp/rkd_mvp/ai_development_repository.py
++++ b/mvp/rkd_mvp/ai_development_repository.py
+@@ -136,6 +136,32 @@ class _DevelopmentTransaction:
+             (attempt, self._time(now), *self.scope, job_id),
+         )
+ 
++    def touch_job(self, job_id: str, phase: str, now: str,
++                  *, only_status: str = "running") -> bool:
++        """Conditional phase update: a cancelled job can never move forward."""
++        cursor = self.db.execute(
++            f"UPDATE {self.job_table} SET phase={self._p},updated_at={self._time_p} "
++            f"WHERE organization_id={self._p} AND project_id={self._p} AND job_id={self._p} "
++            f"AND status={self._p}",
++            (phase, self._time(now), *self.scope, job_id, only_status),
++        )
++        return bool(cursor.rowcount)
++
++    def close_job(self, job_id: str, status: str, phase: str, now: str, *,
++                  error_code: str | None = None, error_message: str | None = None,
++                  only_status: tuple[str, ...] = ("queued", "running")) -> bool:
++        """Conditional terminal transition (succeeded/failed/cancelled)."""
++        marks = ",".join(self._p for _ in only_status)
++        cursor = self.db.execute(
++            f"UPDATE {self.job_table} SET status={self._p},phase={self._p},"
++            f"error_code={self._p},error_message={self._p},updated_at={self._time_p} "
++            f"WHERE organization_id={self._p} AND project_id={self._p} AND job_id={self._p} "
++            f"AND status IN ({marks})",
++            (status, phase, error_code, error_message, self._time(now),
++             *self.scope, job_id, *only_status),
++        )
++        return bool(cursor.rowcount)
++
+     def recover_running(self, now: str, active_job_ids: tuple[str, ...] = ()) -> None:
+         exclusion = ""
+         args: tuple[Any, ...] = ("WORKER_RESTARTED", "服务重启，深化量价任务等待显式重试", self._time(now), *self.scope)
+@@ -148,10 +174,20 @@ class _DevelopmentTransaction:
+             args,
+         )
+ 
+-    def latest_succeeded_revision(self) -> dict[str, Any] | None:
+-        rows = self._rows(
+-            f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} AND project_id={self._p} ORDER BY created_at DESC, production_revision_id DESC LIMIT 1",
+-            self.scope)
++    def latest_succeeded_revision(self, output_version: str | None = None) -> dict[str, Any] | None:
++        """Latest revision, optionally restricted to one output contract.
++
++        The table is shared by the development and spatial-output services, so an
++        unfiltered "latest" would let one batch silently take over the other's page.
++        """
++        if output_version is None:
++            rows = self._rows(
++                f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} AND project_id={self._p} ORDER BY created_at DESC, production_revision_id DESC LIMIT 1",
++                self.scope)
++        else:
++            rows = self._rows(
++                f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} AND project_id={self._p} AND output_version={self._p} ORDER BY created_at DESC, production_revision_id DESC LIMIT 1",
++                (*self.scope, output_version))
+         return self._public_revision(rows[0]) if rows else None
+ 
+     def revision(self, production_revision_id: str) -> dict[str, Any] | None:
+diff --git a/mvp/rkd_mvp/ai_development_service.py b/mvp/rkd_mvp/ai_development_service.py
+index e6ec4f3..1bfc718 100644
+--- a/mvp/rkd_mvp/ai_development_service.py
++++ b/mvp/rkd_mvp/ai_development_service.py
+@@ -248,7 +248,7 @@ class AIDevelopmentService:
+         adoption = option_state.get("adoption")
+         with self.repository.transaction(organization_id, project_id) as tx:
+             jobs = tx.jobs()
+-            revision = tx.latest_succeeded_revision()
++            revision = tx.latest_succeeded_revision(OUTPUT_VERSION)
+             current = None
+             if revision:
+                 artifacts = tx.artifacts(revision["production_revision_id"])
+diff --git a/mvp/rkd_mvp/ai_spatial_output_service.py b/mvp/rkd_mvp/ai_spatial_output_service.py
+index 806a680..6dbe74a 100644
+--- a/mvp/rkd_mvp/ai_spatial_output_service.py
++++ b/mvp/rkd_mvp/ai_spatial_output_service.py
+@@ -3,6 +3,13 @@
+ Reuses the existing AI-DEVELOPMENT job/revision/artifact tables (no migration,
+ no second authoritative model). The generated package is a DRAFT: no formal
+ quote, no purchase, no publish.
++
++W2-R1: every byte that is registered is also inside ``package.zip``; the file
++set, the manifest and the archive come from one dict and the archive is
++re-opened and checked before the single registration transaction.
++W2-R2: the job is bound to the model revision *and* to the adoption version at
++submit time; cancellation is a monotone terminal state; retry is explicit and
++linked to the original job; queries are per job/revision, never "latest wins".
+ """
+ from __future__ import annotations
+ 
+@@ -15,8 +22,9 @@ from pathlib import Path
+ from typing import Any, Callable
+ 
+ from .ai_spatial_outputs import (
+-    COST_VERSION, GENERATOR_VERSION, MANIFEST_VERSION, QUANTITY_VERSION,
+-    add_rendered, build_package, finalize_files, sha256_bytes,
++    COST_VERSION, GENERATOR_VERSION, MANIFEST_VERSION, PLAN_VERSION, QUANTITY_VERSION,
++    SCENE_VERSION, build_package, finalize_package, model_hash, normalize_finish_scope,
++    sha256_bytes,
+ )
+ from .models import new_id, now_iso
+ 
+@@ -24,6 +32,16 @@ ROOT = Path(__file__).resolve().parents[2]
+ BLENDER = ROOT / "tools" / "blender" / "blender-4.2.9-windows-x64" / "blender.exe"
+ RENDER_SCRIPT = ROOT / "scripts" / "render_spatial_scene.py"
+ 
++JOB_KIND = "spatial_outputs"
++MEASUREMENT_PREFIX = "rkd-spatial-outputs"
++TERMINAL = {"succeeded", "failed", "cancelled"}
++# ai_development_artifacts.artifact_kind has a CHECK list fixed by migration 023.
++# A render PNG therefore has no own artifact row; it is registered in manifest.json
++# (whose own SHA is anchored by the manifest_json artifact row) and shipped inside
++# package.zip. Everything registered here must be inside the archive as well.
++ARTIFACT_KINDS = {"plan_svg", "development_json", "quantity_csv", "cost_html",
++                  "manifest_json", "package_zip"}
++
+ 
+ class AISpatialOutputError(Exception):
+     def __init__(self, status: int, code: str, message: str) -> None:
+@@ -54,7 +72,30 @@ def _settings(request: dict) -> dict:
+         raise AISpatialOutputError(400, "INVALID_RENDER_SETTINGS", "采样数需为 8—128 的整数")
+     if not isinstance(render, bool):
+         raise AISpatialOutputError(400, "INVALID_BOOLEAN", "render 必须是布尔值")
+-    return {"width": width, "height": height, "samples": samples, "render": render}
++    price = raw.get("floor_unit_price_cny")
++    if price is not None and (not isinstance(price, (int, float)) or isinstance(price, bool)
++                              or price <= 0):
++        raise AISpatialOutputError(400, "INVALID_UNIT_PRICE",
++                                   "假设单价必须是大于 0 的数值（不是报价）")
++    prices = raw.get("material_unit_prices") or {}
++    if not isinstance(prices, dict) or len(prices) > 50:
++        raise AISpatialOutputError(400, "INVALID_UNIT_PRICE",
++                                   "材料假设单价必须是材料编号到数值的对象")
++    for key, value in prices.items():
++        if not isinstance(key, str) or not key:
++            raise AISpatialOutputError(400, "INVALID_UNIT_PRICE", "材料编号必须是非空字符串")
++        if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
++            raise AISpatialOutputError(400, "INVALID_UNIT_PRICE",
++                                       f"材料 {key} 的假设单价必须是大于 0 的数值")
++    scope = raw.get("finish_scope")
++    try:
++        scope = normalize_finish_scope(scope)
++    except ValueError as error:
++        raise AISpatialOutputError(400, "INVALID_FINISH_SCOPE", str(error)) from error
++    return {"width": width, "height": height, "samples": samples, "render": render,
++            "floor_unit_price_cny": price,
++            "material_unit_prices": {str(k): float(v) for k, v in prices.items()},
++            "finish_scope": scope}
+ 
+ 
+ def run_blender(scene_path: Path, out_png: Path, width: int, height: int,
+@@ -94,6 +135,29 @@ class AISpatialOutputService:
+         self._lock = threading.Lock()
+         self._active: set[str] = set()
+ 
++    # ------------------------------------------------------------------ helpers
++    def _adoption(self, organization_id: str, project_id: str) -> dict:
++        return self.option_service.status(organization_id, project_id).get("adoption") or {}
++
++    def _binding_facts(self, organization_id: str, project_id: str,
++                       option_revision_id: str) -> dict:
++        """Which version this output is bound to, at the time of the call."""
++        adoption = self._adoption(organization_id, project_id)
++        adopted = adoption.get("option_revision_id")
++        status = ("current_adopted" if adopted == option_revision_id
++                  else "historical_preview" if adopted else "candidate_preview")
++        return {
++            "adopted_option_revision_id": adopted,
++            "adoption_version": int(adoption.get("expected_revision") or 0),
++            "adopted_at_submit": adopted == option_revision_id,
++            "status_at_generation": status,
++            "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览",
++        }
++
++    @staticmethod
++    def _is_spatial_job(job: dict | None) -> bool:
++        return bool(job) and (job.get("config") or {}).get("kind") == JOB_KIND
++
+     # ------------------------------------------------------------------ submit
+     def submit(self, organization_id: str, project_id: str, actor_id: str,
+                request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+@@ -114,19 +178,28 @@ class AISpatialOutputService:
+                 "该修订没有精确 spatial 载荷；旧矩形候选不能进入 W2 成果链")
+         if (revision.get("validation") or {}).get("status") != "passed":
+             raise AISpatialOutputError(422, "MODEL_NOT_VALIDATED", "模型修订未通过硬检查")
+-        if settings["render"] and not BLENDER.exists():
++        if settings["render"] and self.renderer is run_blender and not BLENDER.exists():
+             raise AISpatialOutputError(503, "RENDERER_UNAVAILABLE", "本机没有可用的 Blender 执行器")
+-        adoption = self.option_service.status(organization_id, project_id).get("adoption") or {}
+-        adopted = adoption.get("option_revision_id") == option_revision_id
+-        input_hash = _digest({"model": revision["model_hash"] if "model_hash" in revision else None,
++        return self._create_job(organization_id, project_id, actor_id, option_revision_id,
++                                revision, settings, idempotency_key, retry_of=None)
++
++    def _create_job(self, organization_id: str, project_id: str, actor_id: str,
++                    option_revision_id: str, revision: dict, settings: dict,
++                    idempotency_key: str, *, retry_of: str | None) -> dict[str, Any]:
++        binding = self._binding_facts(organization_id, project_id, option_revision_id)
++        input_hash = _digest({"model_hash": model_hash(revision["model"]),
+                               "option_revision_id": option_revision_id,
+-                              "settings": settings, "generator": GENERATOR_VERSION})
+-        config = {"kind": "spatial_outputs", "generator_version": GENERATOR_VERSION,
+-                  "plan_version": "rkd-spatial-plan.v2", "scene_version": "rkd-spatial-scene.v1",
++                              "settings": settings, "generator": GENERATOR_VERSION,
++                              "retry_of": retry_of})
++        config = {"kind": JOB_KIND, "generator_version": GENERATOR_VERSION,
++                  "plan_version": PLAN_VERSION, "scene_version": SCENE_VERSION,
+                   "quantity_version": QUANTITY_VERSION, "cost_version": COST_VERSION,
+-                  "renderer": "blender-4.2.9/CYCLES-CPU",
+-                  "baseline_status": ("adopted_draft" if adopted
+-                                      else "candidate_preview_not_adopted")}
++                  "renderer": ("blender-4.2.9/CYCLES-CPU" if self.renderer is run_blender
++                               else "injected_renderer"),
++                  "binding_at_submit": binding,
++                  "finish_scope_declared_by": (settings.get("finish_scope") or {}).get(
++                      "declared_by"),
++                  "retry_of": retry_of}
+         now = now_iso()
+         job_id = new_id("ai-spatial-job")
+         with self.repository.transaction(organization_id, project_id, write=True) as tx:
+@@ -138,7 +211,7 @@ class AISpatialOutputService:
+                 return {"item": existing, "reused": True}
+             tx.insert_job({
+                 "job_id": job_id, "option_revision_id": option_revision_id,
+-                "adoption_version": int(adoption.get("expected_revision") or 0),
++                "adoption_version": int(binding["adoption_version"] or 0),
+                 "input_hash": input_hash, "status": "queued", "phase": "queued",
+                 "attempt_count": 0, "settings": settings, "config": config,
+                 "error_code": None, "error_message": None,
+@@ -153,12 +226,56 @@ class AISpatialOutputService:
+         self._launch(organization_id, project_id, job_id)
+         return {"item": item, "reused": False}
+ 
++    def retry(self, organization_id: str, project_id: str, actor_id: str,
++              job_id: str, request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
++        """Explicit retry of a failed/cancelled job; linked via config.retry_of."""
++        with self.repository.transaction(organization_id, project_id) as tx:
++            original = tx.job(job_id)
++        if not original or not self._is_spatial_job(original):
++            raise AISpatialOutputError(404, "JOB_NOT_FOUND", "找不到该同源成果任务")
++        if original["status"] == "succeeded":
++            raise AISpatialOutputError(409, "RETRY_NOT_ALLOWED",
++                                       "该任务已完成；要出新成果请提交新任务，不要重试覆盖")
++        if original["status"] in {"queued", "running"}:
++            raise AISpatialOutputError(409, "JOB_STILL_ACTIVE", "任务仍在进行，先把取消做完")
++        settings = _settings({"settings": {**(original.get("settings") or {}),
++                                           **((request or {}).get("settings") or {})}})
++        if settings["render"] and self.renderer is run_blender and not BLENDER.exists():
++            raise AISpatialOutputError(503, "RENDERER_UNAVAILABLE", "本机没有可用的 Blender 执行器")
++        revision = self.option_service.revision_by_id(
++            organization_id, project_id, original["option_revision_id"])
++        if not revision:
++            raise AISpatialOutputError(404, "MODEL_REVISION_NOT_FOUND", "原任务的模型修订已不存在")
++        return self._create_job(organization_id, project_id, actor_id,
++                                original["option_revision_id"], revision, settings,
++                                idempotency_key, retry_of=job_id)
++
++    def cancel(self, organization_id: str, project_id: str, job_id: str) -> dict[str, Any]:
++        """Cancellation is monotone: nothing may move a cancelled job forward."""
++        with self.repository.transaction(organization_id, project_id, write=True) as tx:
++            job = tx.job(job_id)
++            if not job or not self._is_spatial_job(job):
++                raise AISpatialOutputError(404, "JOB_NOT_FOUND", "找不到该同源成果任务")
++            if job["status"] == "cancelled":
++                return {"item": job, "already_cancelled": True}
++            if job["status"] in {"succeeded", "failed"}:
++                raise AISpatialOutputError(
++                    409, "CANNOT_CANCEL", f"任务已{job['status']}；已完成的历史字节保留，不能撤回")
++            tx.close_job(job_id, "cancelled", job["phase"], now_iso(),
++                         error_code="CANCELLED_BY_USER",
++                         error_message="用户取消；晚到的渲染结果会被丢弃，不登记成果")
++            return {"item": tx.job(job_id), "already_cancelled": False}
++
+     def _launch(self, organization_id: str, project_id: str, job_id: str) -> None:
+         with self._lock:
+             self._active.add(job_id)
+         threading.Thread(target=self._run, args=(organization_id, project_id, job_id),
+                          name=f"rkd-spatial-{job_id}", daemon=True).start()
+ 
++    def _touch(self, organization_id: str, project_id: str, job_id: str, phase: str) -> bool:
++        with self.repository.transaction(organization_id, project_id, write=True) as tx:
++            return tx.touch_job(job_id, phase, now_iso(), only_status="running")
++
+     def _run(self, organization_id: str, project_id: str, job_id: str) -> None:
+         try:
+             with self.repository.transaction(organization_id, project_id, write=True) as tx:
+@@ -173,47 +290,50 @@ class AISpatialOutputService:
+             if not revision or not (revision.get("model") or {}).get("spatial"):
+                 raise AISpatialOutputError(422, "SPATIAL_PAYLOAD_REQUIRED", "模型缺少 spatial")
+             model = revision["model"]
+-            with self.repository.transaction(organization_id, project_id, write=True) as tx:
+-                tx.update_job(job_id, status="running", phase="geometry", updated_at=now_iso())
++            self._touch(organization_id, project_id, job_id, "geometry")
++            binding = self._binding_facts(organization_id, project_id, revision_id)
+             package = build_package(model, project_id=project_id,
+-                                    option_revision_id=revision_id, settings=settings)
+-            with self.repository.transaction(organization_id, project_id, write=True) as tx:
+-                tx.update_job(job_id, status="running", phase="measurement", updated_at=now_iso())
+-            # render outside any DB transaction
+-            revision_dir = (self.runtime_root / "projects" / "ai-spatial-outputs"
+-                            / job_id)
++                                    option_revision_id=revision_id, settings=settings,
++                                    binding=binding)
++            self._touch(organization_id, project_id, job_id, "measurement")
++            revision_dir = self.runtime_root / "projects" / "ai-spatial-outputs" / job_id
+             revision_dir.mkdir(parents=True, exist_ok=True)
+             scene_path = revision_dir / "scene.json"
+             scene_path.write_bytes(_json(package["scene"]))
++            files = dict(package["files"])
+             render_meta = None
+-            png = b""
+             if settings["render"]:
+                 png_path = revision_dir / "render.png"
+                 render_meta = self.renderer(scene_path, png_path, settings["width"],
+                                             settings["height"], settings["samples"])
+                 png = png_path.read_bytes()
+-                add_rendered(package["manifest"], filename="render.png", png=png,
+-                             render_meta={**render_meta,
+-                                          "assumption": "机位/材质/家具高度为渲染假设，非实测"})
+-            with self.repository.transaction(organization_id, project_id, write=True) as tx:
+-                tx.update_job(job_id, status="running", phase="pricing", updated_at=now_iso())
+-            files = finalize_files(package["files"], package["manifest"])
+-            # write every file, then register in ONE transaction
++                files["render.png"] = ("render_png", "image/png", png)
++                package["manifest"]["render"] = {
++                    **render_meta,
++                    "assumption": "机位/材质/家具高度为渲染假设，非实测"}
++            # cancellation may have arrived while rendering: discard, never register
++            with self.repository.transaction(organization_id, project_id) as tx:
++                state = tx.job(job_id)
++            if not state or state["status"] != "running":
++                self._discard(revision_dir)
++                return
++            self._touch(organization_id, project_id, job_id, "pricing")
++            built = finalize_package(files, package["manifest"])
++            for name, (_kind, _ctype, data) in built["files"].items():
++                (revision_dir / name).write_bytes(data)
++            production_revision_id = new_id("ai-production-revision")
+             written: list[tuple[str, str, str, bytes, str]] = []
+             seen_kinds: set[str] = set()
+-            for name, (kind, ctype, data) in files.items():
+-                path = revision_dir / name
+-                path.write_bytes(data)
+-                # one artifact row per (revision, kind); the rest stay in the
+-                # manifest + package.zip with their own sha256
++            manifest_only: list[str] = []
++            for name, (kind, ctype, data) in built["files"].items():
++                if kind not in ARTIFACT_KINDS:
++                    manifest_only.append(name)
++                    continue
+                 if kind in seen_kinds:
+                     continue
+                 seen_kinds.add(kind)
+                 written.append((name, kind, ctype, data,
+-                                path.relative_to(self.runtime_root).as_posix()))
+-            if png:
+-                (revision_dir / "render.png").write_bytes(png)
+-            production_revision_id = new_id("ai-production-revision")
++                                (revision_dir / name).relative_to(self.runtime_root).as_posix()))
+             with self.repository.transaction(organization_id, project_id, write=True) as tx:
+                 job_now = tx.job(job_id)
+                 if not job_now or job_now["status"] != "running":
+@@ -222,25 +342,29 @@ class AISpatialOutputService:
+                     "production_revision_id": production_revision_id,
+                     "job_id": job_id, "option_revision_id": revision_id,
+                     "set_id": revision["set_id"], "option_id": revision["option_id"],
+-                    "adoption_version": job["adoption_version"],
+-                    "input_hash": job["input_hash"],
++                    "adoption_version": job_now["adoption_version"],
++                    "input_hash": job_now["input_hash"],
+                     "baseline": package["frozen"],
+                     "package": {"schema_version": MANIFEST_VERSION,
+                                 "render": package["manifest"].get("render"),
+-                                "missing": package["manifest"]["missing"]},
++                                "missing": package["manifest"]["missing"],
++                                "binding": binding,
++                                "package_check": built["check"],
++                                "manifest_only_files": sorted(manifest_only)},
+                     "quantities": package["quantities"], "cost": package["cost"],
+                     "objects": {"zones": model["spatial"]["zones"],
+                                 "furniture": model["spatial"]["furniture"],
+                                 "platforms": model["spatial"].get("platforms") or []},
+                     "materials": {"main": model["materials"],
+-                                  "spatial": model["spatial"]["materials"]},
++                                  "spatial": model["spatial"]["materials"],
++                                  "finish_scope": package["finish_scope"]},
+                     "unknowns": package["cost"]["unknown_items"],
+                     "view_mapping": {"camera": package["camera"],
+-                                     "plan_version": "rkd-spatial-plan.v2"},
++                                     "plan_version": PLAN_VERSION},
+                     "formula_version": QUANTITY_VERSION,
+                     "measurement_version": GENERATOR_VERSION,
+                     "output_version": MANIFEST_VERSION,
+-                    "actor_id": job["actor_id"], "created_at": now_iso(),
++                    "actor_id": job_now["actor_id"], "created_at": now_iso(),
+                 })
+                 for name, kind, ctype, data, relative in written:
+                     tx.insert_artifact({
+@@ -251,13 +375,8 @@ class AISpatialOutputService:
+                         "sha256": sha256_bytes(data), "size_bytes": len(data),
+                         "created_at": now_iso(),
+                     })
+-                tx.update_job(job_id, status="succeeded", phase="completed",
+-                              updated_at=now_iso())
+-            with self.repository.transaction(organization_id, project_id, write=True) as tx:
+-                job2 = tx.job(job_id)
+-                if job2 and job2["status"] == "running":
+-                    tx.update_job(job_id, status="succeeded", phase="completed",
+-                                  updated_at=now_iso())
++                tx.close_job(job_id, "succeeded", "completed", now_iso(),
++                             only_status=("running",))
+         except AISpatialOutputError as error:
+             self._fail(organization_id, project_id, job_id, error.code, error.message)
+         except subprocess.TimeoutExpired:
+@@ -270,33 +389,95 @@ class AISpatialOutputService:
+             with self._lock:
+                 self._active.discard(job_id)
+ 
++    def _discard(self, revision_dir: Path) -> None:
++        """Cancelled while rendering: the late bytes are dropped, not registered."""
++        for name in ("render.png", "render.png.meta.json", "scene.json", "plan.svg",
++                     "quantity.json", "quantity.csv", "cost.html", "manifest.json",
++                     "package.zip"):
++            path = revision_dir / name
++            if path.exists():
++                path.unlink()
++        try:
++            revision_dir.rmdir()
++        except OSError:
++            pass
++
+     def _fail(self, organization_id: str, project_id: str, job_id: str,
+               code: str, message: str) -> None:
+         with self.repository.transaction(organization_id, project_id, write=True) as tx:
+             job = tx.job(job_id)
+-            if not job or job["status"] in {"succeeded", "cancelled"}:
++            if not job or job["status"] in TERMINAL:
+                 return
+-            tx.update_job(job_id, status="failed", phase="failed", updated_at=now_iso(),
+-                          error_code=code, error_message=message)
++            tx.close_job(job_id, "failed", "failed", now_iso(),
++                         error_code=code, error_message=message,
++                         only_status=("queued", "running"))
++
++    # ------------------------------------------------------------------ recovery
++    def recover(self, organization_id: str, project_id: str) -> dict[str, Any]:
++        """Only this batch's interrupted jobs; finished bytes stay readable."""
++        with self.repository.transaction(organization_id, project_id) as tx:
++            jobs = [j for j in tx.jobs(limit=100) if self._is_spatial_job(j)]
++        with self._lock:
++            active = set(self._active)
++        stale = [j["job_id"] for j in jobs
++                 if j["status"] in {"queued", "running"} and j["job_id"] not in active]
++        recovered = []
++        for job_id in stale:
++            with self.repository.transaction(organization_id, project_id, write=True) as tx:
++                if tx.close_job(job_id, "failed", "failed", now_iso(),
++                                error_code="WORKER_RESTARTED",
++                                error_message="服务重启，本任务中断；请显式重试",
++                                only_status=("queued", "running")):
++                    recovered.append(job_id)
++        return {"recovered": recovered, "checked": len(jobs)}
+ 
+     # -------------------------------------------------------------------- read
+-    def status(self, organization_id: str, project_id: str) -> dict[str, Any]:
++    def status(self, organization_id: str, project_id: str, *,
++               job_id: str | None = None,
++               production_revision_id: str | None = None) -> dict[str, Any]:
++        self.recover(organization_id, project_id)
++        adoption = self._adoption(organization_id, project_id)
+         with self.repository.transaction(organization_id, project_id) as tx:
+-            jobs = [j for j in tx.jobs(limit=50)
+-                    if (j.get("config") or {}).get("kind") == "spatial_outputs"]
+-            job = jobs[0] if jobs else None
++            jobs = [j for j in tx.jobs(limit=50) if self._is_spatial_job(j)]
++            revisions = [r for r in tx.revisions(limit=50)
++                         if str(r.get("measurement_version") or "").startswith(
++                             MEASUREMENT_PREFIX)]
++            job = next((j for j in jobs if j["job_id"] == job_id), None) if job_id else None
++            if job_id and job is None:
++                raise AISpatialOutputError(404, "JOB_NOT_FOUND", "找不到该同源成果任务")
++            if job is None:
++                job = jobs[0] if jobs else None
++            adopted = adoption.get("option_revision_id")
++            for item in revisions:
++                bound = (item.get("package") or {}).get("binding") or {}
++                if adopted and adopted == item["option_revision_id"]:
++                    item["binding_status"] = "current_adopted"
++                elif adopted:
++                    item["binding_status"] = "historical_preview"
++                else:
++                    item["binding_status"] = "candidate_preview"
++                item["bound_option_revision_id"] = bound.get("adopted_option_revision_id")
++                item["is_current"] = item["binding_status"] == "current_adopted"
+             revision = None
+-            artifacts = []
+-            if job and job["status"] == "succeeded":
+-                revision = tx.latest_succeeded_revision()
+-                if revision and revision["job_id"] != job["job_id"]:
+-                    revision = None
+-                if revision:
+-                    artifacts = tx.artifacts(revision["production_revision_id"])
+-            return {"job": job, "jobs": jobs[:5], "revision": revision,
+-                    "artifacts": artifacts,
++            if production_revision_id:
++                revision = next((r for r in revisions
++                                 if r["production_revision_id"] == production_revision_id),
++                                None)
++                if revision is None:
++                    raise AISpatialOutputError(404, "OUTPUT_NOT_FOUND", "找不到该成果修订")
++            elif job and job["status"] == "succeeded":
++                revision = next((r for r in revisions if r["job_id"] == job["job_id"]), None)
++            if revision is None:
++                revision = next((r for r in revisions if r["is_current"]), None) or \
++                    (revisions[0] if revisions else None)
++            artifacts = tx.artifacts(revision["production_revision_id"]) if revision else []
++            return {"job": job, "jobs": jobs[:10], "revision": revision,
++                    "revisions": revisions,
++                    "artifacts": artifacts, "adoption": adoption,
+                     "boundary": {"formal_quote": False, "purchase": False,
+-                                 "publish": False, "renderer": "blender/CYCLES-CPU"}}
++                                 "publish": False,
++                                 "renderer": "blender/CYCLES-CPU"
++                                 if self.renderer is run_blender else "injected_renderer"}}
+ 
+     def file(self, organization_id: str, project_id: str,
+              production_revision_id: str, filename: str) -> tuple[dict, bytes]:
+@@ -315,14 +496,21 @@ class AISpatialOutputService:
+                     raise AISpatialOutputError(500, "FILE_HASH_MISMATCH",
+                                                "文件字节与登记哈希不一致")
+                 return a, data
+-        # render.png / scene.json are listed in manifest.json, not separate rows
++        # render.png / scene.json are listed in manifest.json, not separate rows.
++        # The manifest itself must match its registered SHA before it is trusted.
+         manifest_file = next((a for a in artifacts if a["filename"] == "manifest.json"), None)
+         if manifest_file:
+-            manifest = json.loads((self.runtime_root / manifest_file["relative_path"])
+-                                  .read_text(encoding="utf-8"))
++            manifest_path = self.runtime_root / manifest_file["relative_path"]
++            if not manifest_path.exists():
++                raise AISpatialOutputError(500, "FILE_MISSING", "成果清单缺失")
++            manifest_bytes = manifest_path.read_bytes()
++            if sha256_bytes(manifest_bytes) != manifest_file["sha256"]:
++                raise AISpatialOutputError(500, "MANIFEST_HASH_MISMATCH",
++                                           "成果清单字节与登记哈希不一致，拒绝据其校验文件")
++            manifest = json.loads(manifest_bytes.decode("utf-8"))
+             for entry in manifest.get("files", []):
+                 if entry["filename"] == filename:
+-                    path = (self.runtime_root / manifest_file["relative_path"]).parent / filename
++                    path = manifest_path.parent / filename
+                     if not path.exists():
+                         raise AISpatialOutputError(500, "FILE_MISSING", "登记的文件不存在")
+                     data = path.read_bytes()
+diff --git a/mvp/rkd_mvp/ai_spatial_outputs.py b/mvp/rkd_mvp/ai_spatial_outputs.py
+index 11bcf61..1e32a91 100644
+--- a/mvp/rkd_mvp/ai_spatial_outputs.py
++++ b/mvp/rkd_mvp/ai_spatial_outputs.py
+@@ -24,12 +24,13 @@ from typing import Any
+ from shapely.geometry import Polygon, box
+ from shapely.ops import unary_union
+ 
+-GENERATOR_VERSION = "rkd-spatial-outputs.v1"
+-PLAN_VERSION = "rkd-spatial-plan.v2"
++GENERATOR_VERSION = "rkd-spatial-outputs.v2"
++PLAN_VERSION = "rkd-spatial-plan.v3"
+ SCENE_VERSION = "rkd-spatial-scene.v1"
+-QUANTITY_VERSION = "rkd-spatial-quantity.v1"
+-COST_VERSION = "rkd-spatial-cost.v1"
+-MANIFEST_VERSION = "rkd-spatial-output-manifest.v1"
++QUANTITY_VERSION = "rkd-spatial-quantity.v2"
++COST_VERSION = "rkd-spatial-cost.v2"
++MANIFEST_VERSION = "rkd-spatial-output-manifest.v2"
++FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v1"
+ 
+ MM2 = 1_000_000.0
+ 
+@@ -140,12 +141,161 @@ def _shoelace_mm2(points: list) -> float:
+     return abs(area) / 2.0
+ 
+ 
+-def measure(model: dict) -> dict:
+-    """Deterministic quantities from EXACT polygons (bbox values kept only to prove they differ)."""
++# ------------------------------------------------- independent area (no Shapely)
++def _scanline_intervals(points: list, x: float) -> list[tuple[float, float]]:
++    """Interior y-intervals of one polygon at abscissa x (even-odd crossings)."""
++    crossings: list[float] = []
++    for i, (x1, y1) in enumerate(points):
++        x2, y2 = points[(i + 1) % len(points)]
++        if x1 == x2:
++            continue
++        if min(x1, x2) < x < max(x1, x2):
++            crossings.append(y1 + (y2 - y1) * (x - x1) / (x2 - x1))
++    crossings.sort()
++    return [(crossings[i], crossings[i + 1]) for i in range(0, len(crossings) - 1, 2)]
++
++
++def _merge(intervals: list[tuple[float, float]]) -> list[tuple[float, float]]:
++    out: list[list[float]] = []
++    for low, high in sorted(intervals):
++        if out and low <= out[-1][1] + 1e-9:
++            out[-1][1] = max(out[-1][1], high)
++        else:
++            out.append([low, high])
++    return [(a, b) for a, b in out]
++
++
++def _subtract(intervals: list[tuple[float, float]],
++              holes: list[tuple[float, float]]) -> list[tuple[float, float]]:
++    result = list(intervals)
++    for hole_low, hole_high in holes:
++        nxt: list[tuple[float, float]] = []
++        for low, high in result:
++            if hole_high <= low or hole_low >= high:
++                nxt.append((low, high))
++                continue
++            if low < hole_low:
++                nxt.append((low, hole_low))
++            if hole_high < high:
++                nxt.append((hole_high, high))
++        result = nxt
++    return result
++
++
++def _length(intervals: list[tuple[float, float]]) -> float:
++    return sum(high - low for low, high in intervals)
++
++
++def scanline_area(polys: list[list[list[float]]]) -> float:
++    """Exact area of the UNION of polygons by vertical-strip integration.
++
++    Deliberately independent of Shapely: stripes are cut at every vertex
++    abscissa and sampled at the mid-point, so overlapping polygons are unioned
++    (not summed) and no GEOS predicate is reused.
++    """
++    xs = sorted({float(p[0]) for poly in polys for p in poly})
++    total = 0.0
++    for a, b in zip(xs, xs[1:]):
++        if b - a <= 0:
++            continue
++        mid = (a + b) / 2.0
++        intervals: list[tuple[float, float]] = []
++        for poly in polys:
++            intervals.extend(_scanline_intervals(poly, mid))
++        total += (b - a) * _length(_merge(intervals))
++    return total
++
++
++def scanline_area_minus(polys: list[list[list[float]]],
++                        holes: list[list[list[float]]]) -> float:
++    """Union(polys) minus Union(holes), same strip method; holes never double-deduct."""
++    if not holes:
++        return scanline_area(polys)
++    xs = sorted({float(p[0]) for poly in polys + holes for p in poly})
++    total = 0.0
++    for a, b in zip(xs, xs[1:]):
++        if b - a <= 0:
++            continue
++        mid = (a + b) / 2.0
++        inside: list[tuple[float, float]] = []
++        for poly in polys:
++            inside.extend(_scanline_intervals(poly, mid))
++        holes_at: list[tuple[float, float]] = []
++        for poly in holes:
++            holes_at.extend(_scanline_intervals(poly, mid))
++        total += (b - a) * _length(_subtract(_merge(inside), _merge(holes_at)))
++    return total
++
++
++def _polygon_pts(obj: dict) -> list[list[float]]:
++    return [[float(p[0]), float(p[1])] for p in obj.get("polygon_mm") or []]
++
++
++def normalize_finish_scope(scope: dict | None) -> dict | None:
++    """Validate an explicitly declared material-face / paving scope.
++
++    The scope must carry its own provenance: it is the only thing that may turn
++    a geometric zone union into a supported finish quantity.
++    """
++    if scope is None:
++        return None
++    if not isinstance(scope, dict):
++        raise ValueError("finish_scope 必须是对象")
++    areas = scope.get("areas")
++    if not isinstance(areas, list) or not areas:
++        raise ValueError("finish_scope.areas 必须是非空数组")
++    declared_by = scope.get("declared_by")
++    if not isinstance(declared_by, str) or not declared_by:
++        raise ValueError("finish_scope.declared_by 必须标明来源（人工/夹具/依据）")
++    parsed = []
++    for index, area in enumerate(areas):
++        pts = _polygon_pts(area)
++        if len(pts) < 3:
++            raise ValueError(f"finish_scope.areas[{index}] 多边形少于 3 点")
++        material = area.get("material_ref") or {}
++        if not material.get("material_id") and area.get("material_id"):
++            material = {"material_id": area.get("material_id"),
++                        "name": area.get("material_name"),
++                        "spec_status": area.get("material_spec_status")}
++        if not material.get("material_id"):
++            raise ValueError(f"finish_scope.areas[{index}] 缺少 material_ref.material_id")
++        parsed.append({
++            "object_id": str(area.get("object_id") or f"FA{index + 1}"),
++            "name": str(area.get("name") or f"材料面 {index + 1}"),
++            "polygon_mm": pts,
++            "material_id": str(material["material_id"]),
++            "material_name": material.get("name"),
++            "material_spec_status": material.get("spec_status") or "unknown",
++            "unit": area.get("unit") or "m2",
++        })
++    return {"schema_version": FINISH_SCOPE_VERSION,
++            "kind": scope.get("kind") or "material_face_slice",
++            "declared_by": declared_by,
++            "declaration": scope.get("declaration"),
++            "unit": scope.get("unit") or "mm",
++            "deduction_basis": scope.get("deduction_basis") or "keepouts_within_scope",
++            "site_verified": False,
++            "areas": parsed}
++
++
++def measure(model: dict, *, finish_scope: dict | None = None) -> dict:
++    """Deterministic quantities from EXACT polygons.
++
++    Two different things are deliberately kept apart:
++
++    * ``Q-FLOOR-GEOMETRIC-NET`` — geometric net area of the functional zones
++      (zones minus keep-outs). Computable, and NOT a finished-floor quantity.
++    * ``Q-FLOOR-FINISH`` — supported finish/paving net area. Only known when an
++      explicitly sourced material-face scope is supplied; otherwise unknown.
++
++    The independent recompute never reuses the Shapely deduction value: it runs a
++    vertical-strip union/subtraction over the raw vertex lists.
++    """
+     zones = _zone_polygons(model)
+     union = unary_union([p for _oid, p in zones])
+     keepouts = _keepouts(model)
+-    keep_union = unary_union([p for _oid, p in keepouts]) if keepouts else None
++    keep_polys = [p for _oid, p in keepouts]
++    keep_union = unary_union(keep_polys) if keep_polys else None
+     deducted = (union.intersection(keep_union).area if keep_union else 0.0)
+     gross = union.area
+     net = gross - deducted
+@@ -153,9 +303,27 @@ def measure(model: dict) -> dict:
+     bbox_gross = bbox_union.area
+     bbox_net = bbox_gross - (bbox_union.intersection(keep_union).area
+                              if keep_union else 0.0)
+-    independent = sum(_shoelace_mm2([(float(p[0]), float(p[1]))
+-                                     for p in z["polygon_mm"]])
+-                      for z in model["spatial"]["zones"]) / MM2
++
++    # independent path: raw vertices only, no Shapely geometry objects
++    zone_pts = [_polygon_pts(z) for z in model["spatial"]["zones"]]
++    keep_pts = []
++    for o in model["boundary"]["obstacles"]:
++        s = o["shape"]
++        x, y = float(s["x"]) * 1000, float(s["y"]) * 1000
++        w, l = float(s["width"]) * 1000, float(s["length"]) * 1000
++        keep_pts.append([[x, y], [x + w, y], [x + w, y + l], [x, y + l]])
++    independent_gross = scanline_area(zone_pts) / MM2
++    independent_net = scanline_area_minus(zone_pts, keep_pts) / MM2
++
++    # zone overlap: sum of zones is only equal to the union when zones are disjoint
++    overlap = 0.0
++    for i, (_oid_a, pa) in enumerate(zones):
++        for _oid_b, pb in zones[i + 1:]:
++            if pa.intersects(pb):
++                overlap += pa.intersection(pb).area
++    shoelace_sum = sum(_shoelace_mm2(_polygon_pts(z))
++                       for z in model["spatial"]["zones"]) / MM2
++
+     declared = sum(float(z.get("area_sqm") or 0) for z in model["spatial"]["zones"])
+     deductions = []
+     for oid, poly in keepouts:
+@@ -166,6 +334,10 @@ def measure(model: dict) -> dict:
+     for p in model["spatial"].get("platforms") or []:
+         if len(p.get("polygon_mm") or []) >= 3:
+             platform_area += Polygon([(q[0], q[1]) for q in p["polygon_mm"]]).area
++
++    scope = normalize_finish_scope(finish_scope)
++    finish_item = _finish_quantity(scope, keep_pts)
++
+     items = [
+         {"quantity_id": "Q-FLOOR-GROSS", "name": "功能区地坪总面积（未扣）",
+          "value": round(gross / MM2, 3), "unit": "m2", "known_status": "known",
+@@ -176,14 +348,22 @@ def measure(model: dict) -> dict:
+          "value": round(deducted / MM2, 3), "unit": "m2", "known_status": "known",
+          "method": "exact_intersection_with_keepouts", "formula_version": QUANTITY_VERSION,
+          "source_objects": [d["object_id"] for d in deductions], "deductions": deductions},
+-        {"quantity_id": "Q-FLOOR-NET", "name": "地坪完成面净面积",
++        {"quantity_id": "Q-FLOOR-GEOMETRIC-NET", "name": "功能分区几何净面积（非完成面工程量）",
+          "value": round(net / MM2, 3), "unit": "m2", "known_status": "known",
+          "method": "exact_union_minus_keepouts", "formula_version": QUANTITY_VERSION,
++         "engineering_status": "geometric_only_not_a_finish_quantity",
+          "source_objects": [oid for oid, _p in zones],
+-         "independent_recompute_m2": round(independent - deducted / MM2, 3),
++         "independent_recompute_m2": round(independent_net, 3),
++         "independent_gross_m2": round(independent_gross, 3),
++         "independent_method": "vertical_strip_union_v1",
++         "independent_delta_m2": round(independent_net - net / MM2, 4),
++         "sum_of_zones_m2": round(shoelace_sum, 3),
++         "zone_overlap_m2": round(overlap / MM2, 3),
+          "bbox_value_m2": round(bbox_net / MM2, 3),
+          "bbox_delta_m2": round((bbox_net - net) / MM2, 3),
+-         "note": "bbox 结果仅用于证明不能据包围盒计量；权威值是精确多边形"},
++         "note": "功能分区并集减保留区；可计算但不等于铺装/饰面完成面范围，"
++                 "不得直接流入已知工程量或正式报价。bbox 结果仅证明不能据包围盒计量"},
++        finish_item,
+         {"quantity_id": "Q-PLATFORM-ENVELOPE", "name": "展台包络面积（非实体量）",
+          "value": round(platform_area / MM2, 3), "unit": "m2",
+          "known_status": "intent_only", "method": "exact_polygon_union",
+@@ -203,56 +383,128 @@ def measure(model: dict) -> dict:
+     return {"schema_version": QUANTITY_VERSION, "items": items,
+             "declared_area_sum_m2": round(declared, 3),
+             "declared_vs_exact_delta_m2": round(declared - net / MM2, 3),
+-            "coverage": "只覆盖功能区地坪与保留区扣除；隔断/天花/门窗/机电未建模，保持 unknown"}
++            "finish_scope": scope,
++            "coverage": "只覆盖功能区几何面积与保留区扣除，以及可选的、显式标注来源的材料面切片；"
++                        "隔断/天花/门窗/机电未建模，保持 unknown"}
++
++
++def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
++    if scope is None:
++        return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积",
++                "value": None, "unit": "m2", "known_status": "unknown",
++                "unknown_reason": "功能分区几何净面积不等于铺装/饰面范围；"
++                                  "本批没有显式材料面或铺装范围依据，"
++                                  "不得据此推出完成面工程量",
++                "required_basis": "显式材料面切片（铺装范围 + 材料引用 + 计量单位 + 扣除依据 + 来源）"}
++    groups: dict[str, dict] = {}
++    total = 0.0
++    for area in scope["areas"]:
++        pts = area["polygon_mm"]
++        net = scanline_area_minus([pts], keep_pts) / MM2
++        total += net
++        gid = area["material_id"]
++        group = groups.setdefault(gid, {
++            "material_id": gid, "material_name": area["material_name"],
++            "material_spec_status": area["material_spec_status"],
++            "area_m2": 0.0, "area_objects": []})
++        group["area_m2"] = round(group["area_m2"] + net, 3)
++        group["area_objects"].append(area["object_id"])
++    return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积（按材料面切片）",
++            "value": round(total, 3), "unit": "m2", "known_status": "known",
++            "method": "declared_finish_scope_minus_keepouts",
++            "formula_version": QUANTITY_VERSION,
++            "source_objects": [a["object_id"] for a in scope["areas"]],
++            "basis_source": {"declared_by": scope["declared_by"],
++                             "declaration": scope["declaration"],
++                             "kind": scope["kind"], "unit": scope["unit"],
++                             "deduction_basis": scope["deduction_basis"],
++                             "site_verified": False},
++            "material_groups": sorted(groups.values(), key=lambda g: g["material_id"]),
++            "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；"
++                    "材料规格与产品选型仍为假设，单价缺失时金额保持 unknown"}
+ 
+ 
+ # --------------------------------------------------------------------- cost
+ def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
+-    """A cost draft. Money is unknown unless the caller supplies an explicit
+-    ASSUMPTION price; such an amount is labelled and is never a quote."""
++    """A cost draft. An amount is only shown when BOTH the area basis and an
++    explicit ASSUMPTION unit price exist; it is never a quote."""
+     settings = settings or {}
+-    net = next((q["value"] for q in quantities["items"]
+-                if q["quantity_id"] == "Q-FLOOR-NET"), None)
+-    price = settings.get("floor_unit_price_cny")
+-    known_items = []
+-    pricing_basis = {"unit_prices": "unknown", "loss_rate": "unknown",
+-                     "labor_and_process": "unknown",
+-                     "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+-                     "markup": "user_confirmed_but_not_applied_without_price_source"}
+-    if isinstance(price, (int, float)) and not isinstance(price, bool) and price > 0 and net:
+-        known_items.append({
+-            "item": "地坪完成面（按输入假设单价试算）", "quantity_ref": "Q-FLOOR-NET",
+-            "quantity_m2": net, "unit_price_cny": price,
+-            "amount_cny": round(net * price, 2),
+-            "basis": "caller_provided_assumption_not_a_quote",
+-            "note": "单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺",
+-        })
+-        pricing_basis["unit_prices"] = "provided_by_caller_assumption"
+-    unknown = [
+-        {"statement": "地坪完成面单价（材料/工艺/损耗/起订量）未提供",
+-         "quantity_ref": "Q-FLOOR-NET", "impact": "无法形成地坪金额"},
++    finish = next((q for q in quantities["items"]
++                   if q["quantity_id"] == "Q-FLOOR-FINISH"), None)
++    groups = (finish or {}).get("material_groups") or []
++    prices = settings.get("material_unit_prices")
++    prices = prices if isinstance(prices, dict) else {}
++    legacy_price = settings.get("floor_unit_price_cny")
++    if (not prices and isinstance(legacy_price, (int, float))
++            and not isinstance(legacy_price, bool) and legacy_price > 0 and groups):
++        prices = {groups[0]["material_id"]: legacy_price}
++    basis = {"area_basis": "unknown", "unit_prices": "unknown", "loss_rate": "unknown",
++             "labor_and_process": "unknown",
++             "tax_rate": "user_confirmed_but_not_applied_without_price_source",
++             "markup": "user_confirmed_but_not_applied_without_price_source"}
++    known_items: list[dict] = []
++    unknown: list[dict] = []
++    if (finish or {}).get("known_status") != "known" or not groups:
++        basis["area_basis"] = "missing_finish_scope"
++        unknown.append({"statement": "地坪完成面铺装范围/材料面未提供，面积依据 unknown",
++                        "quantity_ref": "Q-FLOOR-FINISH",
++                        "impact": "即使给了单价也不试算金额，避免用假设单价掩盖未知范围"})
++    else:
++        basis["area_basis"] = (finish.get("basis_source") or {}).get("declared_by") or "declared"
++        for group in groups:
++            price = prices.get(group["material_id"])
++            if isinstance(price, (int, float)) and not isinstance(price, bool) and price > 0:
++                known_items.append({
++                    "item": f"{group.get('material_name') or group['material_id']}"
++                            f"（按输入假设单价试算）",
++                    "material_id": group["material_id"],
++                    "quantity_ref": f"Q-FLOOR-FINISH/{group['material_id']}",
++                    "quantity_m2": group["area_m2"], "unit_price_cny": price,
++                    "amount_cny": round(group["area_m2"] * price, 2),
++                    "basis": "caller_provided_assumption_not_a_quote",
++                    "area_basis_source": basis["area_basis"],
++                    "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，"
++                            "不是价源、不是报价、不含损耗与工艺",
++                })
++            else:
++                unknown.append({
++                    "statement": f"{group.get('material_name') or group['material_id']}"
++                                 f" 没有对应价源（材料/工艺/损耗/起订量）",
++                    "material_id": group["material_id"],
++                    "quantity_ref": f"Q-FLOOR-FINISH/{group['material_id']}",
++                    "impact": f"{group['area_m2']} ㎡ 的金额保持 unknown"})
++        basis["unit_prices"] = ("partially_provided_by_caller_assumption" if known_items
++                                else "not_provided")
++    unknown.extend([
+         {"statement": "隔断、天花、门窗工程量未建模", "quantity_ref": "Q-PARTITION-LENGTH",
+          "impact": "相关金额保持 unknown"},
+-        {"statement": "税率与成本加成虽有用户口径，但没有价源，本批不做金额试算",
+-         "quantity_ref": None, "impact": "不输出合计金额"},
+-    ]
++        {"statement": "税率与成本加成虽有用户口径，但没有价源，本批不做合计试算",
++         "quantity_ref": None, "impact": "不输出项目合计金额"},
++    ])
+     return {
+         "schema_version": COST_VERSION, "currency": "CNY",
+         "known_items": known_items,
+         "unknown_items": unknown,
++        "assumption_trial_total_cny": (round(sum(i["amount_cny"] for i in known_items), 2)
++                                       if known_items else None),
+         "total_project_estimate": {"value": None, "known_status": "unknown",
+                                    "unknown_reason": "没有价源；不把地坪小计当项目总造价"},
+         "formal_quote": False,
+-        "pricing_basis": pricing_basis,
+-        "note": "本批只证明净量与缺项口径；金额一律 unknown，不填 0",
++        "pricing_basis": basis,
++        "note": ("本页金额全部为调用方假设单价的试算，不是报价；" if known_items
++                 else "本页没有金额：面积依据或价源缺失；") + "金额一律不填 0",
+     }
+ 
+ 
+ def cost_html(cost: dict, quantities: dict) -> bytes:
+-    rows = []
+     qmap = {q["quantity_id"]: q for q in quantities["items"]}
+-    for item in cost["known_items"]:
+-        rows.append(f"<tr><td>{escape(str(item))}</td></tr>")
++    known_rows = "".join(
++        f"<tr><td>{escape(i['item'])}</td>"
++        f"<td>{escape(str(i.get('material_id') or '-'))}</td>"
++        f"<td>{i['quantity_m2']} ㎡</td><td>{i['unit_price_cny']}</td>"
++        f"<td>{i['amount_cny']}</td>"
++        f"<td>{escape(i.get('area_basis_source') or 'unknown')}</td></tr>"
++        for i in cost["known_items"])
+     unknown_rows = "".join(
+         f"<tr><td>{escape(u['statement'])}</td><td>{escape(str(u.get('quantity_ref') or '-'))}</td>"
+         f"<td>{escape(u['impact'])}</td></tr>" for u in cost["unknown_items"])
+@@ -260,17 +512,34 @@ def cost_html(cost: dict, quantities: dict) -> bytes:
+         f"<tr><td>{escape(q['name'])}</td><td>{'' if q['value'] is None else q['value']}</td>"
+         f"<td>{escape(q['unit'])}</td><td>{escape(q['known_status'])}</td></tr>"
+         for q in quantities["items"])
++    finish = qmap.get("Q-FLOOR-FINISH") or {}
++    scope = finish.get("basis_source") or {}
++    if cost["known_items"]:
++        headline = ("以下金额是<b>假设单价试算</b>，面积依据同时列出；不是报价、不是合同、"
++                    "不含损耗/工艺/税，采购与发布未触发。")
++    else:
++        headline = ("本页没有金额：面积依据或价源缺失，所有金额保持 unknown。"
++                    "不把几何净量当作造价，也不把草案当报价或合同。")
++    scope_note = ("材料面来源：{}；说明：{}；现场复核：未做".format(
++        escape(str(scope.get("declared_by") or "unknown")),
++        escape(str(scope.get("declaration") or "未声明"))) if scope
++        else "材料面来源：未提供（完成面工程量 unknown）")
++    empty_known = '<tr><td colspan="6">无（面积依据或价源缺失）</td></tr>'
+     html = f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+ <title>成本缺项表（草案）</title>
+ <style>body{{font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif;margin:32px;color:#1f2937}}
+ h1{{font-size:20px}}table{{border-collapse:collapse;width:100%;margin:12px 0 24px}}
+ th,td{{border:1px solid #d7dee6;padding:6px 8px;text-align:left}}th{{background:#f1f5f9}}
+-.warn{{background:#fff7ed;border-left:4px solid #c2410c;padding:10px 12px}}</style>
++.warn{{background:#fff7ed;border-left:4px solid #c2410c;padding:10px 12px}}
++.scope{{background:#f8fafc;border-left:4px solid #64748b;padding:8px 12px;font-size:13px}}</style>
+ <h1>成本缺项表 · 草案（非正式报价）</h1>
+-<div class="warn">本页没有金额：单价、损耗、工艺与产品选型均未提供，所有金额保持 unknown。
+-不把地坪净量当作造价，也不把草案当报价或合同。</div>
+-<h2>净量（已知）</h2><table><thead><tr><th>项目</th><th>数值</th><th>单位</th><th>状态</th></tr></thead>
++<div class="warn">{headline}</div>
++<div class="scope">{scope_note}</div>
++<h2>数量（按来源标注）</h2><table><thead><tr><th>项目</th><th>数值</th><th>单位</th><th>状态</th></tr></thead>
+ <tbody>{qrows}</tbody></table>
++<h2>假设单价试算（非报价）</h2><table><thead><tr><th>项目</th><th>材料</th><th>面积</th>
++<th>假设单价</th><th>金额</th><th>面积依据来源</th></tr></thead>
++<tbody>{known_rows or empty_known}</tbody></table>
+ <h2>金额缺项</h2><table><thead><tr><th>缺项</th><th>关联量</th><th>影响</th></tr></thead>
+ <tbody>{unknown_rows}</tbody></table>
+ <p>正式报价：关闭。外部下单/付款：未发生。</p></html>"""
+@@ -425,13 +694,27 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
+                      f'{escape(z["name"])}</text>')
+         parts.append(f'<text x="{lx+250}" y="{yy}" font-size="10" text-anchor="end" '
+                      f'fill="#0f172a">{z.get("area_sqm")} ㎡</text>')
+-    net_item = next(q for q in quantities["items"] if q["quantity_id"] == "Q-FLOOR-NET")
+-    parts.append(f'<text x="{lx}" y="{ty+38+len(spatial["zones"])*18+8}" font-size="10" '
+-                 f'font-weight="600" fill="#0f172a">地坪净面积（扣保留区）</text>')
+-    parts.append(f'<text x="{lx+250}" y="{ty+38+len(spatial["zones"])*18+8}" font-size="10" '
++    net_item = next(q for q in quantities["items"]
++                    if q["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")
++    base_y = ty + 38 + len(spatial["zones"]) * 18 + 8
++    parts.append(f'<text x="{lx}" y="{base_y}" font-size="10" '
++                 f'font-weight="600" fill="#0f172a">功能分区几何净面积</text>')
++    parts.append(f'<text x="{lx+250}" y="{base_y}" font-size="10" '
+                  f'text-anchor="end" font-weight="600" fill="#0f172a">{net_item["value"]} ㎡</text>')
++    parts.append(f'<text x="{lx}" y="{base_y+14}" font-size="9" fill="#b91c1c">'
++                 f'（几何量，不是铺装/完成面工程量）</text>')
++    finish_item = next(q for q in quantities["items"] if q["quantity_id"] == "Q-FLOOR-FINISH")
++    parts.append(f'<text x="{lx}" y="{base_y+30}" font-size="10" fill="#0f172a">'
++                 f'地坪完成面饰面净面积</text>')
++    parts.append(f'<text x="{lx+250}" y="{base_y+30}" font-size="10" text-anchor="end" '
++                 f'fill="#0f172a">'
++                 f'{finish_item["value"] if finish_item["value"] is not None else "unknown"}'
++                 f'{" ㎡" if finish_item["value"] is not None else ""}</text>')
++    if finish_item["value"] is None:
++        parts.append(f'<text x="{lx}" y="{base_y+44}" font-size="9" fill="#b91c1c">'
++                     f'（没有材料面/铺装范围依据，不填 0）</text>')
+     # missing items
+-    my = ty + 38 + (len(spatial["zones"]) + 1) * 18 + 26
++    my = base_y + 62
+     parts.append(f'<text x="{lx}" y="{my}" font-size="12" font-weight="700" fill="#b91c1c">'
+                  f'未建模 / 缺项</text>')
+     missing = ["墙体构造与门窗（未建模，不画框线冒充）", "洁具（未建模）",
+@@ -511,12 +794,24 @@ def build_scene(model: dict, camera: dict) -> dict:
+ 
+ # ------------------------------------------------------------------ package
+ def build_package(model: dict, *, project_id: str, option_revision_id: str,
+-                  settings: dict | None = None) -> dict:
++                  settings: dict | None = None, finish_scope: dict | None = None,
++                  binding: dict | None = None) -> dict:
+     settings = settings or {}
++    scope = normalize_finish_scope(finish_scope if finish_scope is not None
++                                   else settings.get("finish_scope"))
+     frozen = freeze_input(model, project_id=project_id,
+                           option_revision_id=option_revision_id)
++    if scope:
++        frozen["finish_scope"] = {"kind": scope["kind"], "declared_by": scope["declared_by"],
++                                  "declaration": scope["declaration"],
++                                  "areas": [{"object_id": a["object_id"],
++                                             "material_id": a["material_id"],
++                                             "polygon_mm": a["polygon_mm"]}
++                                            for a in scope["areas"]]}
++    if binding:
++        frozen["binding"] = binding
+     camera = derive_camera(model)
+-    quantities = measure(model)
++    quantities = measure(model, finish_scope=scope)
+     cost = build_cost(quantities, settings=settings)
+     plan = build_plan_svg(model, camera, quantities)
+     scene = build_scene(model, camera)
+@@ -524,14 +819,15 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
+         "plan.svg": ("plan_svg", "image/svg+xml", plan),
+         "quantity.json": ("development_json", "application/json", _json(quantities)),
+         "quantity.csv": ("quantity_csv", "text/csv; charset=utf-8",
+-                          _quantity_csv(quantities)),
++                         _quantity_csv(quantities)),
+         "cost.html": ("cost_html", "text/html; charset=utf-8",
+-                       cost_html(cost, quantities)),
++                      cost_html(cost, quantities)),
+         "scene.json": ("development_json", "application/json", _json(scene)),
+     }
+     manifest = {
+         "schema_version": MANIFEST_VERSION,
+         "baseline": frozen,
++        "binding": binding or {},
+         "camera": camera,
+         "quantities": quantities,
+         "cost": cost,
+@@ -541,7 +837,7 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
+     }
+     return {"frozen": frozen, "camera": camera, "quantities": quantities,
+             "cost": cost, "scene": scene, "plan": plan, "files": files,
+-            "manifest": manifest, "settings": settings}
++            "manifest": manifest, "settings": settings, "finish_scope": scope}
+ 
+ 
+ def _quantity_csv(quantities: dict) -> bytes:
+@@ -554,28 +850,67 @@ def _quantity_csv(quantities: dict) -> bytes:
+     return ("\n".join(lines) + "\n").encode("utf-8")
+ 
+ 
+-def add_rendered(manifest: dict, *, filename: str, png: bytes, render_meta: dict) -> dict:
+-    manifest["files"].append({"filename": filename, "kind": "render_png",
+-                              "content_type": "image/png",
+-                              "sha256": sha256_bytes(png), "size_bytes": len(png)})
+-    manifest["render"] = render_meta
+-    return manifest
++def finalize_package(files: dict, manifest: dict) -> dict:
++    """ONE file set -> manifest + ZIP.
+ 
+-
+-def finalize_files(files: dict, manifest: dict) -> dict:
+-    out = dict(files)
+-    listed = {entry["filename"] for entry in manifest.get("files", [])}
+-    for name, (kind, ctype, data) in sorted(files.items()):
+-        if name in listed:
+-            continue
+-        manifest.setdefault("files", []).append(
+-            {"filename": name, "kind": kind, "content_type": ctype,
+-             "sha256": sha256_bytes(data), "size_bytes": len(data)})
+-    out["manifest.json"] = ("manifest_json", "application/json",
+-                            json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8"))
++    Registration, manifest and archive are built from the same dict, so a render
++    that exists is always inside the archive and a manifest that lists a file
++    always points at real bytes. The finished ZIP is then re-opened and checked
++    against the manifest before anything is registered.
++    """
++    content = {name: tuple(value) for name, value in files.items()}
++    if any(name in {"manifest.json", "package.zip"} for name in content):
++        raise ValueError("内容集合不能包含 manifest.json / package.zip 自身")
++    entries = []
++    for name in sorted(content):
++        kind, ctype, data = content[name]
++        entries.append({"filename": name, "kind": kind, "content_type": ctype,
++                        "sha256": sha256_bytes(data), "size_bytes": len(data)})
++    manifest = dict(manifest)
++    manifest["files"] = entries
++    manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
++    out = dict(content)
++    out["manifest.json"] = ("manifest_json", "application/json", manifest_bytes)
+     buf = io.BytesIO()
+     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+-        for name, (_kind, _ctype, data) in sorted(out.items()):
+-            zf.writestr(name, data)
++        for name in sorted(out):
++            zf.writestr(name, out[name][2])
+     out["package.zip"] = ("package_zip", "application/zip", buf.getvalue())
+-    return out
++    check = check_zip_against_manifest(buf.getvalue(), manifest_bytes)
++    if not check["ok"]:
++        raise ValueError(f"交付包自检失败：{check['problems']}")
++    return {"files": out, "manifest": manifest, "check": check}
++
++
++def check_zip_against_manifest(zip_bytes: bytes, manifest_bytes: bytes) -> dict:
++    """Re-open the archive and compare every manifest entry byte-for-byte."""
++    problems: list[str] = []
++    try:
++        manifest = json.loads(manifest_bytes.decode("utf-8"))
++    except Exception as error:  # noqa: BLE001
++        return {"ok": False, "problems": [f"清单不是合法 JSON：{error}"], "checked": 0}
++    listed = {entry.get("filename"): entry for entry in manifest.get("files") or []}
++    try:
++        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
++            names = set(zf.namelist())
++            if "manifest.json" not in names:
++                problems.append("ZIP 内没有 manifest.json")
++            if zf.read("manifest.json") != manifest_bytes:
++                problems.append("ZIP 内清单字节与登记清单不一致")
++            for name, entry in listed.items():
++                if name not in names:
++                    problems.append(f"清单登记但 ZIP 缺少：{name}")
++                    continue
++                data = zf.read(name)
++                if len(data) != entry.get("size_bytes"):
++                    problems.append(f"大小不一致：{name}")
++                if sha256_bytes(data) != entry.get("sha256"):
++                    problems.append(f"SHA 不一致：{name}")
++            extra = names - set(listed) - {"manifest.json"}
++            if extra:
++                problems.append(f"ZIP 有未登记文件：{sorted(extra)}")
++    except zipfile.BadZipFile as error:
++        problems.append(f"ZIP 无法读取：{error}")
++    return {"ok": not problems, "problems": problems, "checked": len(listed),
++            "zip_bytes": len(zip_bytes), "zip_sha256": sha256_bytes(zip_bytes),
++            "entries": sorted(listed)}
+diff --git a/mvp/rkd_mvp/api_server.py b/mvp/rkd_mvp/api_server.py
+index 80e94fd..ff46eaa 100644
+--- a/mvp/rkd_mvp/api_server.py
++++ b/mvp/rkd_mvp/api_server.py
+@@ -287,8 +287,12 @@ class ApiRoutes:
+                 return
+             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs", path)
+             if ai_match:
++                query = parse_qs(urlsplit(self.path).query)
+                 return self._json(200, self.service.get_ai_spatial_outputs(
+-                    organization_id, ai_match.group(1)))
++                    organization_id, ai_match.group(1),
++                    job_id=(query.get("job_id", [""])[0] or None),
++                    production_revision_id=(query.get("production_revision_id", [""])[0]
++                                            or None)))
+             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-sources", path)
+             if ai_match:
+                 return self._json(200, self.service.get_ai_design_studio_sources(
+@@ -520,6 +524,15 @@ class ApiRoutes:
+                     organization_id, ai_match.group(1), actor_id,
+                     {**self._body(), "option_id": ai_match.group(2)},
+                 ))
++            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs/([^/]+)/cancel", path)
++            if ai_match:
++                return self._json(200, self.service.cancel_ai_spatial_output(
++                    organization_id, ai_match.group(1), ai_match.group(2)))
++            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs/([^/]+)/retry", path)
++            if ai_match:
++                return self._json(202, self.service.retry_ai_spatial_output(
++                    organization_id, ai_match.group(1), actor_id, ai_match.group(2),
++                    self._body(), self.headers.get("Idempotency-Key", "")))
+             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs", path)
+             if ai_match:
+                 return self._json(202, self.service.submit_ai_spatial_outputs(
+diff --git a/mvp/rkd_mvp/api_service.py b/mvp/rkd_mvp/api_service.py
+index d84d234..4c310e5 100644
+--- a/mvp/rkd_mvp/api_service.py
++++ b/mvp/rkd_mvp/api_service.py
+@@ -432,9 +432,34 @@ class ApiService:
+         except AISpatialOutputError as error:
+             raise ApiError(error.status, error.code, error.message) from error
+ 
+-    def get_ai_spatial_outputs(self, organization_id: str, project_id: str) -> dict[str, Any]:
++    def get_ai_spatial_outputs(self, organization_id: str, project_id: str,
++                               job_id: str | None = None,
++                               production_revision_id: str | None = None) -> dict[str, Any]:
+         self._require_project(organization_id, project_id)
+-        return self._ai_spatial().status(organization_id, project_id)
++        try:
++            return self._ai_spatial().status(organization_id, project_id,
++                                             job_id=job_id,
++                                             production_revision_id=production_revision_id)
++        except AISpatialOutputError as error:
++            raise ApiError(error.status, error.code, error.message) from error
++
++    def cancel_ai_spatial_output(self, organization_id: str, project_id: str,
++                                 job_id: str) -> dict[str, Any]:
++        self._require_project(organization_id, project_id)
++        try:
++            return self._ai_spatial().cancel(organization_id, project_id, job_id)
++        except AISpatialOutputError as error:
++            raise ApiError(error.status, error.code, error.message) from error
++
++    def retry_ai_spatial_output(self, organization_id: str, project_id: str,
++                                actor_id: str, job_id: str, request: dict[str, Any],
++                                idempotency_key: str) -> dict[str, Any]:
++        self._require_project(organization_id, project_id)
++        try:
++            return self._ai_spatial().retry(organization_id, project_id, actor_id,
++                                            job_id, request, idempotency_key)
++        except AISpatialOutputError as error:
++            raise ApiError(error.status, error.code, error.message) from error
+ 
+     def get_ai_spatial_output_file(self, organization_id: str, project_id: str,
+                                    production_revision_id: str,
+diff --git a/scripts/verify_w2_spatial_outputs.py b/scripts/verify_w2_spatial_outputs.py
+index 70d0a33..14bb6ca 100644
+--- a/scripts/verify_w2_spatial_outputs.py
++++ b/scripts/verify_w2_spatial_outputs.py
+@@ -10,6 +10,7 @@ import hashlib
+ import io
+ import json
+ import sys
++import tempfile
+ import zipfile
+ from datetime import datetime, timezone
+ from http.client import HTTPConnection
+@@ -196,15 +197,39 @@ def main() -> int:
+                               "sha": hashlib.sha256(raw).hexdigest()[:12]}
+         manifest = json.loads(http("GET", f"{base}/spatial-outputs/"
+                                     f"{revision_a['production_revision_id']}/files/manifest.json")[2])
+-        zc = zipfile.ZipFile(io.BytesIO(http(
+-            "GET", f"{base}/spatial-outputs/{revision_a['production_revision_id']}"
+-                    f"/files/package.zip")[2]))
+-        zip_names = sorted(zc.namelist())
+-        check("W2-02", "下载逐文件可用：平面/效果图/量/成本/清单/包，清单登记 SHA 与字节一致",
++        zip_bytes = http("GET", f"{base}/spatial-outputs/"
++                         f"{revision_a['production_revision_id']}/files/package.zip")[2]
++        with tempfile.TemporaryDirectory() as tmp:
++            target = Path(tmp) / "unzip"
++            target.mkdir()
++            with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zc:
++                zc.extractall(target)
++                zip_names = sorted(zc.namelist())
++            zip_problems = []
++            for entry in manifest["files"]:
++                path = target / entry["filename"]
++                if not path.is_file():
++                    zip_problems.append(f"缺少 {entry['filename']}")
++                    continue
++                data = path.read_bytes()
++                if len(data) != entry["size_bytes"] or sha256_bytes(data) != entry["sha256"]:
++                    zip_problems.append(f"字节不符 {entry['filename']}")
++            listed = {e["filename"] for e in manifest["files"]}
++            if listed - set(zip_names):
++                zip_problems.append(f"清单有但 ZIP 无：{sorted(listed - set(zip_names))}")
++            if set(zip_names) - listed - {"manifest.json"}:
++                zip_problems.append(f"ZIP 有但清单无：{sorted(set(zip_names) - listed)}")
++            png_separate = http("GET", f"{base}/spatial-outputs/"
++                                f"{revision_a['production_revision_id']}/files/render.png")[2]
++            png_same = (target / "render.png").is_file() and \
++                (target / "render.png").read_bytes() == png_separate
++        check("W2-02", "下载逐文件可用；ZIP 解压后清单所列文件全部存在、大小与 SHA 一致，PNG 与单下载一致",
+               bool(all(v["status"] == 200 and v["bytes"] > 0 for v in files_ok.values())
+-                   and manifest["files"] and zip_names),
++                   and manifest["files"] and not zip_problems and png_same),
+               {"files": files_ok, "zip_entries": zip_names,
+-               "manifest_file_count": len(manifest.get("files") or [])})
++               "manifest_file_count": len(manifest.get("files") or []),
++               "zip_problems": zip_problems, "render_in_zip": "render.png" in zip_names,
++               "render_matches_separate": png_same})
+ 
+         # plan content
+         plan_svg = http("GET", f"{base}/spatial-outputs/"
+@@ -217,8 +242,8 @@ def main() -> int:
+                "has_missing": "未建模" in plan_svg, "bytes": len(plan_svg)})
+ 
+         q = revision_a["quantities"]["items"]
+-        net = next(x for x in q if x["quantity_id"] == "Q-FLOOR-NET")
+-        check("W2-04", "非矩形净量独立复算一致；bbox 结果故意不同且不用于计量",
++        net = next(x for x in q if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")
++        check("W2-04", "非矩形几何净量经独立扫描线复算一致；bbox 结果故意不同且不用于计量",
+               bool(abs(net["independent_recompute_m2"] - net["value"]) < 0.01
+                    and abs(net["bbox_delta_m2"]) > 0.2
+                    and net["method"].startswith("exact")),
+@@ -250,11 +275,13 @@ def main() -> int:
+               bool(code == 202 and st_b["revision"]
+                    and st_b["revision"]["baseline"]["model_hash"]
+                    != revision_a["baseline"]["model_hash"]
+-                   and st_b["revision"]["quantities"]["items"][2]["value"]
++                   and next(x for x in st_b["revision"]["quantities"]["items"]
++                            if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
+                    != net["value"]),
+               {"layout_a_net": net["value"],
+-               "layout_b_net": st_b["revision"]["quantities"]["items"][2]["value"]
+-               if st_b["revision"] else None,
++               "layout_b_net": (next((x["value"] for x in st_b["revision"]["quantities"]["items"]
++                                      if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET"), None)
++                                if st_b["revision"] else None),
+                "model_hashes": [revision_a["baseline"]["model_hash"][:12],
+                                 (st_b["revision"] or {}).get("baseline", {}).get("model_hash", "")[:12]],
+                "cameras": [revision_a["view_mapping"]["camera"]["position_mm"],
+@@ -284,40 +311,55 @@ def main() -> int:
+         from rkd_mvp.ai_spatial_outputs import build_plan_svg, build_scene
+         cam_plan = build_plan_svg(model_a, cam2, base_pkg["quantities"])
+         cam_scene = build_scene(model_a, cam2)
+-        # 4) price only
++        # 4) price only — money moves, geometry does not (needs an explicit
++        #    material-face scope, otherwise the area basis is unknown and no
++        #    amount may be produced at all)
++        scope = {"kind": "material_face_slice", "declared_by": "executor_manual_fixture",
++                 "declaration": "夹具：中岛分区铺装范围", "unit": "mm",
++                 "deduction_basis": "keepouts_within_scope",
++                 "areas": [{"object_id": "FA1", "name": "中岛材料面（夹具）",
++                            "polygon_mm": model_a["spatial"]["zones"][1]["polygon_mm"],
++                            "material_ref": {"material_id": "M1", "name": "试验材料",
++                                             "spec_status": "assumption"}}]}
+         price_low = build_package(model_a, project_id=PID, option_revision_id="x",
+-                                  settings={"floor_unit_price_cny": 1000})
++                                  settings={"floor_unit_price_cny": 1000},
++                                  finish_scope=scope)
+         price_pkg = build_package(model_a, project_id=PID, option_revision_id="x",
+-                                  settings={"floor_unit_price_cny": 1200})
++                                  settings={"floor_unit_price_cny": 1200},
++                                  finish_scope=scope)
++        price_no_scope = build_package(model_a, project_id=PID, option_revision_id="x",
++                                       settings={"floor_unit_price_cny": 1200})
+         q0 = base_pkg["quantities"]["items"]
+         q1 = geo_pkg["quantities"]["items"]
+         check("W2-07", "四种受控变更：几何改平面/三维/净量；材料改材质；只改相机不改量；只改单价不改几何",
+               bool(base_pkg["plan"] != geo_pkg["plan"]
+                    and base_pkg["scene"] != geo_pkg["scene"]
+-                   and next(x for x in q1 if x["quantity_id"] == "Q-FLOOR-NET")["value"]
+-                   != next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-NET")["value"]
++                   and next(x for x in q1 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
++                   != next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
+                    and base_pkg["plan"] != mat_pkg["plan"]
+                    and base_pkg["scene"] != mat_pkg["scene"]
+                    and next(x for x in mat_pkg["quantities"]["items"]
+-                            if x["quantity_id"] == "Q-FLOOR-NET")["value"]
+-                   == next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-NET")["value"]
++                            if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
++                   == next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
+                    and cam_plan != base_pkg["plan"] and cam_scene != base_pkg["scene"]
+                    and cam_pkg["quantities"] == base_pkg["quantities"]
+-                   and price_pkg["quantities"] == base_pkg["quantities"]
+-                   and price_pkg["plan"] == base_pkg["plan"]
++                   and price_pkg["quantities"] == price_low["quantities"]
++                   and price_pkg["plan"] == price_low["plan"]
+                    and base_pkg["cost"]["known_items"] == []
++                   and price_no_scope["cost"]["known_items"] == []
+                    and price_pkg["cost"]["known_items"][0]["amount_cny"]
+                    > price_low["cost"]["known_items"][0]["amount_cny"]),
+-              {"geometry_net": [next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-NET")["value"],
+-                                next(x for x in q1 if x["quantity_id"] == "Q-FLOOR-NET")["value"]],
++              {"geometry_net": [next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"],
++                                next(x for x in q1 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]],
+                "material_plan_changed": base_pkg["plan"] != mat_pkg["plan"],
+                "material_scene_changed": base_pkg["scene"] != mat_pkg["scene"],
+                "camera_plan_changed": cam_plan != base_pkg["plan"],
+                "camera_quantity_same": cam_pkg["quantities"] == base_pkg["quantities"],
+-               "price_quantity_same": price_pkg["quantities"] == base_pkg["quantities"],
+-               "price_plan_same": price_pkg["plan"] == base_pkg["plan"],
++               "price_quantity_same": price_pkg["quantities"] == price_low["quantities"],
++               "price_plan_same": price_pkg["plan"] == price_low["plan"],
+                "price_amounts": [(price_low["cost"]["known_items"] or [{}])[0].get("amount_cny"),
+-                                 (price_pkg["cost"]["known_items"] or [{}])[0].get("amount_cny")]})
++                                 (price_pkg["cost"]["known_items"] or [{}])[0].get("amount_cny")],
++               "price_without_scope_known_items": len(price_no_scope["cost"]["known_items"])})
+     finally:
+         server.shutdown(); server.server_close(); thread.join(3)
+         main_store.close()
+diff --git a/web/src/AiSpatialOutputsPanel.tsx b/web/src/AiSpatialOutputsPanel.tsx
+index 4efd318..6257b8f 100644
+--- a/web/src/AiSpatialOutputsPanel.tsx
++++ b/web/src/AiSpatialOutputsPanel.tsx
+@@ -1,16 +1,19 @@
+ import { useCallback, useEffect, useMemo, useState } from "react";
+ import { apiHeaders, checkSessionResponse } from "./session";
+ 
+-type Job = { job_id: string; status: string; phase: string; error_code?: string | null; error_message?: string | null; settings?: Record<string, any>; config?: Record<string, any> };
+-type Quantity = { quantity_id: string; name: string; value: number | null; unit: string; known_status: string; unknown_reason?: string; note?: string };
++type Job = { job_id: string; status: string; phase: string; error_code?: string | null; error_message?: string | null; option_revision_id?: string; settings?: Record<string, any>; config?: Record<string, any>; created_at?: string };
++type Quantity = { quantity_id: string; name: string; value: number | null; unit: string; known_status: string; unknown_reason?: string; note?: string; engineering_status?: string; material_groups?: { material_id: string; material_name?: string; area_m2: number }[]; basis_source?: Record<string, any> };
++type CostItem = { item: string; material_id?: string; quantity_m2?: number; unit_price_cny?: number; amount_cny?: number; area_basis_source?: string; basis?: string };
++type Binding = { status_at_generation?: string; adopted_option_revision_id?: string; adoption_version?: number };
+ type Revision = {
+-  production_revision_id: string; option_revision_id: string; option_id: string;
+-  baseline: Record<string, any>; quantities: { items: Quantity[]; declared_vs_exact_delta_m2: number };
+-  cost: { unknown_items: { statement: string; impact: string }[]; total_project_estimate: { value: null } };
+-  package: { missing: string[]; render?: Record<string, any> };
++  production_revision_id: string; job_id: string; option_revision_id: string; option_id: string;
++  baseline: Record<string, any>; binding_status?: string; is_current?: boolean;
++  quantities: { items: Quantity[]; declared_vs_exact_delta_m2: number };
++  cost: { known_items: CostItem[]; assumption_trial_total_cny: number | null; unknown_items: { statement: string; impact: string }[]; total_project_estimate: { value: null }; formal_quote: boolean };
++  package: { missing: string[]; render?: Record<string, any>; binding?: Binding; manifest_only_files?: string[]; package_check?: Record<string, any> };
+ };
+ type Artifact = { artifact_id: string; filename: string; content_type: string; size_bytes: number; sha256: string };
+-type Status = { job: Job | null; jobs: Job[]; revision: Revision | null; artifacts: Artifact[]; boundary: Record<string, any> };
++type Status = { job: Job | null; jobs: Job[]; revision: Revision | null; revisions: Revision[]; artifacts: Artifact[]; adoption: Record<string, any> | null; boundary: Record<string, any> };
+ type Option = { option_revision_id: string; option_id: string; revision_no: number; lifecycle_status: string; model: Record<string, any> };
+ 
+ async function request<T>(path: string, method = "GET", body?: unknown, extra?: Record<string, string>): Promise<T> {
+@@ -25,6 +28,12 @@ async function request<T>(path: string, method = "GET", body?: unknown, extra?:
+   return result as T;
+ }
+ 
++const BINDING_LABEL: Record<string, string> = {
++  current_adopted: "当前采用版本成果",
++  historical_preview: "历史候选预览（已换版）",
++  candidate_preview: "候选预览（未采用）",
++};
++
+ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+   const base = `/api/v1/projects/${projectId}/ai`;
+   const [status, setStatus] = useState<Status | null>(null);
+@@ -35,6 +44,7 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+   const [error, setError] = useState("");
+   const [message, setMessage] = useState("");
+   const [blobs, setBlobs] = useState<Record<string, string>>({});
++  const [pickedRevision, setPickedRevision] = useState("");
+ 
+   const load = useCallback(async () => {
+     const [outputs, design] = await Promise.all([
+@@ -45,6 +55,7 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+     const spatial = (design.item?.options || []).filter((o) => Boolean(o.model?.spatial));
+     setOptions(spatial);
+     setSelected((current) => current || spatial[0]?.option_revision_id || "");
++    setPickedRevision((current) => current || outputs.revision?.production_revision_id || "");
+   }, [base]);
+ 
+   useEffect(() => { void load().catch((e) => setError((e as Error).message)); }, [load]);
+@@ -56,7 +67,15 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+     return () => window.clearInterval(timer);
+   }, [pending, load]);
+ 
+-  const revision = status?.revision || null;
++  const revision = useMemo(() => {
++    if (!status) return null;
++    if (pickedRevision) {
++      const hit = (status.revisions || []).find((r) => r.production_revision_id === pickedRevision);
++      if (hit) return hit;
++    }
++    return status.revision;
++  }, [status, pickedRevision]);
++
+   const downloadBase = revision
+     ? `${base}/spatial-outputs/${revision.production_revision_id}/files` : "";
+ 
+@@ -88,7 +107,28 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+       await request(`${base}/spatial-outputs`, "POST",
+         { option_revision_id: selected, settings: { render, width: 1280, height: 800, samples: 40 } },
+         { "Idempotency-Key": crypto.randomUUID() });
+-      setMessage("已提交同源成果生成；平面、净量与成本缺项先出，效果图渲染随后完成。");
++      setMessage("已提交同源成果生成；平面、几何净量与成本缺项先出，效果图渲染随后完成。");
++      await load();
++    } catch (e) { setError((e as Error).message); }
++    finally { setBusy(false); }
++  }
++
++  async function cancelJob(jobId: string) {
++    setBusy(true); setError(""); setMessage("");
++    try {
++      await request(`${base}/spatial-outputs/${jobId}/cancel`, "POST", {});
++      setMessage("任务已取消；晚到的渲染结果会被丢弃，不登记成果。已完成的历史成果字节保留。");
++      await load();
++    } catch (e) { setError((e as Error).message); }
++    finally { setBusy(false); }
++  }
++
++  async function retryJob(jobId: string) {
++    setBusy(true); setError(""); setMessage("");
++    try {
++      await request(`${base}/spatial-outputs/${jobId}/retry`, "POST", {},
++        { "Idempotency-Key": crypto.randomUUID() });
++      setMessage("已按原任务参数重试；新任务与原任务关联，不覆盖旧记录。");
+       await load();
+     } catch (e) { setError((e as Error).message); }
+     finally { setBusy(false); }
+@@ -101,7 +141,7 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+ 
+   return <section className="ai-spatial-panel" aria-busy={busy}>
+     <header className="section-heading"><h3>同源成果（W2 切片）</h3><span className="design-status">精确模型 · 内部评审</span></header>
+-    <p className="ai-boundary">平面、净量与成本都从同一个冻结的候选修订生成；几何依据是精确多边形，包围盒只用于兼容显示。效果图机位、材质与家具高度是渲染假设，不当实测事实。本页不产生正式报价、采购、发布或施工图。</p>
++    <p className="ai-boundary">平面、几何净量与成本都从同一个冻结的候选修订生成；几何依据是精确多边形，包围盒只用于兼容显示。几何净面积<b>不是</b>铺装/完成面工程量；没有材料面依据时完成面量保持 unknown。效果图机位、材质与家具高度是渲染假设，不当实测事实。本页不产生正式报价、采购、发布或施工图。</p>
+     {error && <p className="design-feedback error" role="alert">{error}</p>}
+     {message && <p className="design-feedback" role="status">{message}</p>}
+     <div className="ai-options-toolbar">
+@@ -116,11 +156,26 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+       <label><input type="checkbox" checked={render} onChange={(e) => setRender(e.target.checked)} />生成人眼效果图</label>
+       <button type="button" className="dark-action" data-testid="spatial-generate" disabled={busy || !selected} onClick={() => void generate()}>生成同源成果</button>
+       {status?.job && <small>任务 {status.job.status} · {phaseText[status.job.phase] ?? status.job.phase}</small>}
++      {pending && status?.job && <button type="button" data-testid="spatial-cancel" disabled={busy} onClick={() => void cancelJob(status.job!.job_id)}>取消本次任务</button>}
++      {status?.job && (status.job.status === "failed" || status.job.status === "cancelled") &&
++        <button type="button" data-testid="spatial-retry" disabled={busy} onClick={() => void retryJob(status.job!.job_id)}>按原参数重试</button>}
+     </div>
+     {status?.job?.error_message && <p className="design-feedback error" role="alert">{status.job.error_message}</p>}
++    {(status?.revisions?.length ?? 0) > 1 && <div className="spatial-history">
++      <strong>成果历史（按任务关联，不按完成顺序推断）</strong>
++      <ul>
++        {status!.revisions.map((r) => <li key={r.production_revision_id}>
++          <button type="button" className={r.production_revision_id === revision?.production_revision_id ? "dark-action" : ""}
++            onClick={() => setPickedRevision(r.production_revision_id)}>
++            {r.option_id} v{r.baseline?.revision_no} · {BINDING_LABEL[r.binding_status || ""] ?? r.binding_status}
++          </button>
++          <small> 任务 {(r.job_id || "").slice(-6)} · 模型 {String(r.baseline?.model_hash).slice(0, 8)}</small>
++        </li>)}
++      </ul>
++    </div>}
+     {!revision ? <p className="files-empty">尚无同源成果；选择修订后生成。</p> : <div className="spatial-output">
+       <div className="spatial-output-head">
+-        <strong>{revision.option_id} v{revision.baseline?.revision_no}</strong>
++        <strong data-testid="spatial-binding">{revision.option_id} v{revision.baseline?.revision_no} · {BINDING_LABEL[revision.binding_status || ""] ?? revision.binding_status}</strong>
+         <span>模型 {String(revision.baseline?.model_hash).slice(0, 12)}…</span>
+         <span>源 {revision.baseline?.source_artifact_id}</span>
+         <span>基线 {revision.baseline?.geometry_authority}</span>
+@@ -137,18 +192,35 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+           <figcaption>人眼 1.5m · 24mm（机位为推导假设）{revision.package?.render ? ` · ${revision.package.render.seconds}s` : ""}</figcaption>
+         </figure>
+       </div>
+-      <table className="ledger-table" data-testid="spatial-quantities"><thead><tr><th>净量</th><th>数值</th><th>单位</th><th>状态</th></tr></thead>
+-        <tbody>{revision.quantities.items.map((q) => <tr key={q.quantity_id}>
+-          <td>{q.name}</td><td>{q.value === null ? "unknown" : q.value}</td><td>{q.unit}</td><td>{q.known_status}</td>
++      <table className="ledger-table" data-testid="spatial-quantities"><thead><tr><th>数量</th><th>数值</th><th>单位</th><th>状态</th></tr></thead>
++        <tbody>{revision.quantities.items.map((q) => <tr key={q.quantity_id} data-quantity={q.quantity_id}>
++          <td>{q.name}{q.engineering_status === "geometric_only_not_a_finish_quantity" && <small> · 非工程量</small>}</td>
++          <td>{q.value === null ? "unknown" : q.value}</td><td>{q.unit}</td><td>{q.known_status}</td>
+         </tr>)}</tbody></table>
+-      <p className="ai-boundary">面积对账：模型自报合计与精确多边形净量差 {revision.quantities.declared_vs_exact_delta_m2} ㎡；包围盒仅供对照，不用于计量。</p>
++      <p className="ai-boundary">面积对账：模型自报合计与精确多边形几何净量差 {revision.quantities.declared_vs_exact_delta_m2} ㎡；包围盒仅供对照，不用于计量。</p>
+       <div className="spatial-missing"><strong>缺项（不编数值）</strong><ul>{revision.package?.missing?.map((m) => <li key={m}>{m}</li>)}</ul></div>
+       <div className="spatial-downloads">
+         {["plan.svg", "render.png", "quantity.csv", "cost.html", "package.zip", "manifest.json"].filter((name) =>
+           status?.artifacts.some((a) => a.filename === name) || name === "render.png").map((name) =>
+           <a key={name} href={`${downloadBase}/${name}`} target="_blank" rel="noreferrer">{name}</a>)}
+       </div>
+-      <p className="ai-boundary">成本：金额全部 unknown（没有价源），不是报价；采购与发布未触发。</p>
++      <div data-testid="spatial-cost">
++        <strong>成本（草案，非报价）</strong>
++        {revision.cost.known_items.length === 0
++          ? <p className="ai-boundary">没有金额：面积依据或价源缺失，金额保持 unknown，不是 0。</p>
++          : <table className="ledger-table"><thead><tr><th>项目</th><th>面积</th><th>假设单价</th><th>金额</th><th>面积依据</th></tr></thead>
++            <tbody>{revision.cost.known_items.map((i) => <tr key={i.item}>
++              <td>{i.item}</td><td>{i.quantity_m2} ㎡</td><td>{i.unit_price_cny}</td>
++              <td>{i.amount_cny}</td><td>{i.area_basis_source}</td>
++            </tr>)}</tbody></table>}
++        {revision.cost.known_items.length > 0 &&
++          <p className="ai-boundary">以上为假设单价试算（合计 {revision.cost.assumption_trial_total_cny} 元），面积依据与单价假设同时列出；不是报价，不含损耗/工艺/税。</p>}
++        <ul>{revision.cost.unknown_items.map((u) => <li key={u.statement}>{u.statement} · {u.impact}</li>)}</ul>
++      </div>
++      {revision.package?.package_check && <p className="ai-boundary" data-testid="spatial-package-check">
++        交付包自检：{revision.package.package_check.ok ? "通过" : "未通过"} ·
++        清单 {revision.package.package_check.checked} 个文件全部在 ZIP 内且字节一致
++      </p>}
+     </div>}
+   </section>;
+ }
+diff --git a/scripts/w2_closeout_repro.py b/scripts/w2_closeout_repro.py
+new file mode 100644
+index 0000000..b76be71
+--- /dev/null
++++ b/scripts/w2_closeout_repro.py
+@@ -0,0 +1,864 @@
++"""W2 收口整改同一负例：对整改前/后源码各跑一次，逐项记录真实结果。
++
++用法（整改前）：
++  RKD_VERIFY_ROOT="var/evidence/roadmap/W2-收口整改/before-code" \
++  ./.venv/Scripts/python.exe scripts/w2_closeout_repro.py --label before --out <dir>
++用法（整改后）：
++  ./.venv/Scripts/python.exe scripts/w2_closeout_repro.py --label after --out <dir>
++
++只读本地夹具与隔离 SQLite；0 外部模型调用、0 密钥、0 费用。
++渲染用可控渲染桩（不依赖 Blender），另在 verify_w2_closeout.py 保留一次真实 Blender 链。
++"""
++from __future__ import annotations
++
++import argparse
++import copy
++import hashlib
++import io
++import json
++import os
++import sys
++import tempfile
++import threading
++import time
++import traceback
++import zipfile
++from datetime import datetime, timezone
++from http.client import HTTPConnection
++from pathlib import Path
++
++ROOT = Path(os.environ.get("RKD_VERIFY_ROOT") or
++            Path(__file__).resolve().parents[1]).resolve()
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++sys.path.insert(0, str(ROOT))
++
++CHECKS: list[dict] = []
++PORT = 0
++ORG = "org-local"
++
++
++def record(cid: str, name: str, fn) -> None:
++    try:
++        ok, evidence = fn()
++    except Exception as error:  # noqa: BLE001
++        ok, evidence = False, {"error": f"{type(error).__name__}: {error}",
++                               "trace": traceback.format_exc(limit=3).splitlines()[-3:]}
++    CHECKS.append({"id": cid, "name": name,
++                   "result": "observed_pass" if ok else "observed_fail",
++                   "evidence": evidence})
++    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++
++
++def sha(data: bytes) -> str:
++    return hashlib.sha256(data).hexdigest()
++
++
++# ------------------------------------------------------------------ fixtures
++def l_shape_model(keepouts: list[dict] | None = None) -> dict:
++    """手算 L 形：毛 24㎡，1×2 扣除 2㎡，净 22㎡；包围盒 30㎡（扣后 28㎡）。"""
++    zone = {"object_id": "ZL1", "name": "L 形试验分区", "role": "test",
++            "polygon_mm": [[0, 0], [6000, 0], [6000, 2000], [4000, 2000],
++                           [4000, 5000], [0, 5000]],
++            "area_sqm": 24.0, "finish_material": {}}
++    return {
++        "option_id": "l-shape-fixture", "revision_no": 1,
++        "strategy": {"statement": "手算 L 形试验夹具（非设计方案）"},
++        "boundary": {"width": 6.0, "length": 5.0, "unit": "m",
++                     "entrance": {"side": "left", "point": [0.0, 0.0], "width": 1.8},
++                     "obstacles": keepouts or []},
++        "spatial": {
++            "schema_version": "rkd-spatial-model.v1", "unit": "mm",
++            "origin": {"coordinate_system": "southwest_origin_x_east_y_north",
++                       "boundary_mm": [6000, 5000]},
++            "zones": [zone], "circulation": [], "platforms": [], "furniture": [],
++            "ceiling": {"fixtures": []}, "materials": [],
++            "source": {"origin_kind": "manual_fixture", "artifact_id": "art-l-shape",
++                       "sha256": "0" * 64, "revision_uid": "uid-l-shape",
++                       "design_origin": {"kind": "fixture", "declared_by": "executor",
++                                         "declaration": "手算 L 形夹具，非设计成果",
++                                         "run_refs": []},
++                       "site_source": {"ceiling_mm": 3000}},
++        },
++    }
++
++
++def keepout(oid: str, x: float, y: float, w: float, l: float) -> dict:
++    return {"object_id": oid, "name": oid,
++            "shape": {"x": x, "y": y, "width": w, "length": l}}
++
++
++def find_q(quantities: dict, *ids: str) -> dict | None:
++    for item in quantities.get("items") or []:
++        if item.get("quantity_id") in ids:
++            return item
++    return None
++
++
++# --------------------------------------------------------------- function tests
++def f_r1_package_complete():
++    """R1：同一文件集合 → 清单 + ZIP；有渲染必须打包 PNG，清单与 ZIP 完全对应。"""
++    import rkd_mvp.ai_spatial_outputs as outs
++    pkg = outs.build_package(l_shape_model(), project_id="p", option_revision_id="r")
++    png = b"\x89PNG\r\n\x1a\n" + os.urandom(512)
++    files = dict(pkg["files"])
++    files["render.png"] = ("render_png", "image/png", png)
++    finalize = getattr(outs, "finalize_package", None)
++    if finalize is None:
++        legacy = outs.finalize_files(pkg["files"], outs.add_rendered(
++            pkg["manifest"], filename="render.png", png=png, render_meta={"seconds": 0}))
++        zf = zipfile.ZipFile(io.BytesIO(legacy["package.zip"][2]))
++        names = sorted(zf.namelist())
++        return False, {"api": "finalize_files(add_rendered)", "zip_entries": names,
++                       "render_in_zip": "render.png" in names,
++                       "manifest_render_in_zip": "render.png" in names,
++                       "note": "整改前 add_rendered 只写清单不写 ZIP"}
++    built = finalize(files, pkg["manifest"])
++    out = built["files"]
++    manifest = built["manifest"]
++    zf = zipfile.ZipFile(io.BytesIO(out["package.zip"][2]))
++    entries = {i.filename: zf.read(i.filename) for i in zf.infolist()}
++    listed = {e["filename"]: e for e in manifest["files"]}
++    problems = []
++    for name, entry in listed.items():
++        if name not in entries:
++            problems.append(f"清单有但 ZIP 无：{name}")
++        elif sha(entries[name]) != entry["sha256"] or len(entries[name]) != entry["size_bytes"]:
++            problems.append(f"字节不一致：{name}")
++    extra = set(entries) - set(listed) - {"manifest.json"}
++    if extra:
++        problems.append(f"ZIP 有但清单没登记：{sorted(extra)}")
++    check = built.get("check") or {}
++    return (not problems and "render.png" in listed and "render.png" in entries
++            and check.get("ok") is True), {
++        "zip_entries": sorted(entries), "manifest_listed": sorted(listed),
++        "problems": problems, "self_check": check}
++
++
++def f_r1_no_render_no_png():
++    """R1 正例：render=false 时清单不能声明 PNG，ZIP 也不能有 PNG。"""
++    import rkd_mvp.ai_spatial_outputs as outs
++    pkg = outs.build_package(l_shape_model(), project_id="p", option_revision_id="r")
++    if not hasattr(outs, "finalize_package"):
++        legacy = outs.finalize_files(pkg["files"], pkg["manifest"])
++        zf = zipfile.ZipFile(io.BytesIO(legacy["package.zip"][2]))
++        names = sorted(zf.namelist())
++        return "render.png" not in names, {"api": "legacy", "zip_entries": names}
++    built = outs.finalize_package(dict(pkg["files"]), pkg["manifest"])
++    zf = zipfile.ZipFile(io.BytesIO(built["files"]["package.zip"][2]))
++    names = sorted(zf.namelist())
++    listed = [e["filename"] for e in built["manifest"]["files"]]
++    return (not any(n.endswith(".png") for n in names)
++            and not any(n.endswith(".png") for n in listed)), {
++        "zip_entries": names, "manifest_listed": listed}
++
++
++def f_r3_l_shape_handcheck():
++    """R3：L 形手算 24/22；独立复算不能复用主算法的 deducted；完成面量不得已知。"""
++    import rkd_mvp.ai_spatial_outputs as outs
++    model = l_shape_model([keepout("K1", 1.0, 1.0, 1.0, 2.0)])
++    qty = outs.measure(model)
++    gross = find_q(qty, "Q-FLOOR-GROSS")
++    net = find_q(qty, "Q-FLOOR-GEOMETRIC-NET", "Q-FLOOR-NET")
++    finish = find_q(qty, "Q-FLOOR-FINISH")
++    independent = (net or {}).get("independent_recompute_m2")
++    return (gross and abs(gross["value"] - 24.0) < 1e-6
++            and net and abs(net["value"] - 22.0) < 1e-6
++            and independent is not None and abs(independent - 22.0) < 1e-3
++            and (net or {}).get("engineering_status")
++            == "geometric_only_not_a_finish_quantity"
++            and finish is not None and finish.get("value") is None
++            and finish.get("known_status") == "unknown"), {
++        "gross": (gross or {}).get("value"), "net": (net or {}).get("value"),
++        "net_name": (net or {}).get("name"),
++        "engine_where": (net or {}).get("engineering_status"),
++        "independent": independent,
++        "independent_method": (net or {}).get("independent_method"),
++        "finish": {"value": (finish or {}).get("value"),
++                   "known_status": (finish or {}).get("known_status"),
++                   "unknown_reason": (finish or {}).get("unknown_reason")},
++        "quantity_ids": [i["quantity_id"] for i in qty["items"]]}
++
++
++def f_r3_deduction_rules():
++    """R3 负例：跨边界扣除、两扣除区相交不重复扣、完全外置扣除为 0。"""
++    import rkd_mvp.ai_spatial_outputs as outs
++    # 相交两个扣区：A 1×2 @ (1,1)，B 1×2 @ (1.5,1.5) 相交 0.5×1.5=0.75 → 并集 3.25
++    inter = outs.measure(l_shape_model([keepout("K1", 1.0, 1.0, 1.0, 2.0),
++                                       keepout("K2", 1.5, 1.5, 1.0, 2.0)]))
++    # 完全外置：扣区在场地外
++    outside = outs.measure(l_shape_model([keepout("K3", 20.0, 20.0, 1.0, 1.0)]))
++    # 跨边界：1×2 扣区跨 L 形缺口边界（x 3.5—4.5, y 2—4），只有落在分区内的部分算扣除
++    cross = outs.measure(l_shape_model([keepout("K4", 3.5, 2.0, 1.0, 2.0)]))
++    ded_inter = find_q(inter, "Q-KEEPOUT-DEDUCT")["value"]
++    deq_out = find_q(outside, "Q-KEEPOUT-DEDUCT")["value"]
++    ded_cross = find_q(cross, "Q-KEEPOUT-DEDUCT")["value"]
++    net_inter = find_q(inter, "Q-FLOOR-GEOMETRIC-NET", "Q-FLOOR-NET")["value"]
++    return (abs(ded_inter - 3.25) < 1e-3 and abs(net_inter - 20.75) < 1e-3
++            and abs(deq_out) < 1e-9 and abs(ded_cross - 1.0) < 1e-3), {
++        "intersecting_deduct": ded_inter, "intersecting_net": net_inter,
++        "expected_union_deduct": 3.25, "outside_deduct": deq_out,
++        "cross_boundary_deduct": ded_cross, "expected_cross_deduct": 1.0,
++        "note": "跨边界扣区只有落在分区内的 0.5×2=1.0㎡ 计入；外置扣区不产生负面积"}
++
++
++def f_r3_finish_scope():
++    """R3：只有显式标注来源的材料面切片才进入饰面净量；单价不能掩盖未知范围。"""
++    import inspect
++
++    import rkd_mvp.ai_spatial_outputs as outs
++    measure = outs.measure
++    accepts_scope = "finish_scope" in inspect.signature(measure).parameters
++    scope = {"kind": "material_face_slice", "declared_by": "executor_manual_fixture",
++             "declaration": "人工夹具：按手算 L 形铺装范围切片，未经现场复核",
++             "unit": "mm", "deduction_basis": "keepouts_within_scope",
++             "areas": [{"object_id": "FA1", "name": "试验材料面（手算夹具）",
++                        "polygon_mm": [[0, 0], [6000, 0], [6000, 2000], [4000, 2000],
++                                       [4000, 5000], [0, 5000]],
++                        "material_ref": {"material_id": "M-CEMENT", "name": "微水泥",
++                                         "spec_status": "assumption"}}]}
++    qty_no_scope = measure(l_shape_model([keepout("K1", 1.0, 1.0, 1.0, 2.0)]))
++    qty_scope = measure(l_shape_model([keepout("K1", 1.0, 1.0, 1.0, 2.0)]),
++                        finish_scope=scope) if accepts_scope else qty_no_scope
++    finish = find_q(qty_scope, "Q-FLOOR-FINISH")
++    cost_scope = outs.build_cost(qty_scope, settings={"finish_scope": scope})
++    cost_priced = outs.build_cost(qty_scope, settings={
++        "finish_scope": scope, "material_unit_prices": {"M-CEMENT": 800}})
++    cost_price_no_scope = outs.build_cost(qty_no_scope,
++                                          settings={"material_unit_prices": {"M-CEMENT": 800}})
++    return (accepts_scope and finish is not None and finish.get("value") is not None
++            and abs(finish["value"] - 22.0) < 1e-3
++            and (finish.get("basis_source") or {}).get("declared_by") == "executor_manual_fixture"
++            and cost_scope["known_items"] == []
++            and len(cost_priced["known_items"]) == 1
++            and abs(cost_priced["known_items"][0]["amount_cny"] - 22 * 800) < 0.01
++            and cost_price_no_scope["known_items"] == []), {
++        "accepts_finish_scope": accepts_scope,
++        "finish": {"value": (finish or {}).get("value"),
++                   "known_status": (finish or {}).get("known_status"),
++                   "basis_source": (finish or {}).get("basis_source"),
++                   "material_groups": (finish or {}).get("material_groups")},
++        "cost_without_price": cost_scope["known_items"],
++        "cost_with_price": cost_priced["known_items"],
++        "cost_price_but_no_scope": cost_price_no_scope["known_items"]}
++
++
++# ------------------------------------------------------------------- HTTP tests
++def http(method: str, path: str, body=None, extra=None):
++    payload = json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
++    headers = {"X-Organization-Id": ORG, "Content-Type": "application/json"}
++    headers.update(extra or {})
++    if payload is not None:
++        headers["Content-Length"] = str(len(payload))
++    conn = HTTPConnection("127.0.0.1", PORT, timeout=120)
++    conn.request(method, path, payload, headers)
++    resp = conn.getresponse()
++    raw = resp.read()
++    conn.close()
++    try:
++        data = json.loads(raw.decode("utf-8"))
++    except Exception:
++        data = {"_raw": raw[:300].decode("utf-8", "replace")}
++    return resp.status, data, raw
++
++
++class Stack:
++    """一次装配：隔离 SQLite + 真实 HTTP + 可控渲染桩。"""
++
++    def __init__(self, runtime: Path) -> None:
++        global PORT
++        from arc_first_batch_stub import SITE, valid_proposal
++        from rkd_mvp.ai_design_option_provider import (
++            DesignOptionConfig, build_design_option_provider)
++        from rkd_mvp.ai_design_option_repository import SQLiteAIDesignOptionRepository
++        from rkd_mvp.ai_design_option_service import AIDesignOptionService
++        from rkd_mvp.ai_design_studio_adapter import StudioProposalSource
++        from rkd_mvp.ai_development_repository import SQLiteAIDevelopmentRepository
++        from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider
++        from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository
++        from rkd_mvp.ai_requirement_service import AIRequirementService
++        from rkd_mvp.ai_spatial_output_service import AISpatialOutputService
++        from rkd_mvp.api_server import create_server
++        from rkd_mvp.api_service import ApiService
++        from rkd_mvp.engine import MVPApp
++        from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID
++        from rkd_mvp.requirement_service import RequirementService
++        from rkd_mvp.sqlite_store import SQLiteStore
++        from rkd_mvp.studio import orchestrator, validation
++        from rkd_mvp.studio.store import Store
++
++        runtime.mkdir(parents=True, exist_ok=True)
++        self.runtime = runtime
++        self.main_db = runtime / "app.sqlite3"
++        self.studio_db = runtime / "studio.db"
++        for f in (self.main_db, self.studio_db):
++            if f.exists():
++                f.unlink()
++        self.gate = threading.Event()
++        self.entered = threading.Event()
++        self.render_delay: dict[str, float] = {}
++        # 隔离工作树没有 tools/blender（.gitignore 排除）。整改前代码用“渲染器是否存在”
++        # 卡住提交，因此只在显式声明时放一个占位文件满足存在性检查；真正渲染由可控桩完成。
++        self.placeholder_renderer = None
++        if os.environ.get("RKD_PLACEHOLDER_RENDERER") == "1":
++            from rkd_mvp.ai_spatial_output_service import BLENDER
++            if not Path(BLENDER).exists():
++                Path(BLENDER).parent.mkdir(parents=True, exist_ok=True)
++                Path(BLENDER).write_bytes(b"placeholder-for-renderer-existence-check")
++                self.placeholder_renderer = Path(BLENDER)
++
++        studio = Store(self.studio_db)
++        orchestrator.Studio(studio).seed_from_fixtures()
++        source = StudioProposalSource(studio)
++        self.arts = {}
++        for letter in ("A", "B"):
++            rep = validation.validate_proposal(
++                valid_proposal(letter), project={"id": "ningbo-xiecheng", "site": SITE},
++                option_id=letter, revision=1, parent_revision=None)
++            assert rep["ok"], rep["repair_feedback"][:300]
++            aid = studio.save_artifact(
++                "ningbo-xiecheng", "spatial-plan", rep["plan"], "D2", option_id=letter,
++                revision=1, status="valid_candidate", contract_status="valid_candidate",
++                revision_uid=f"uid-w2-{letter}", run_id=f"run-w2-{letter}",
++                candidate_group_id=f"group-w2-{letter}",
++                input_hash_value=hashlib.sha256(
++                    json.dumps(rep["plan"], sort_keys=True).encode()).hexdigest(),
++                check_report_id=f"check-w2-{letter}",
++                diagnostics={"source": "labelled_local_fixture"})
++            self.arts[letter] = studio.artifact_by_id(aid)
++
++        self.main_store = SQLiteStore(self.main_db)
++        self.files = FileService(self.main_db, runtime)
++        requirements = RequirementService(self.main_db)
++        brief_config = AIProviderConfig(
++            kind="synthetic", name="本地合成测试通道（非真实 AI）", model_id=None,
++            base_url=None, api_key_present=False, adapter_version="rkd-model-provider.v1",
++            prompt_version="requirement-understanding.zh-CN.v1",
++            schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++            max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++            real_model=False, configuration_errors=[])
++        option_config = DesignOptionConfig(
++            kind="synthetic", name="本地合成设计通道（非真实 AI）",
++            adapter_version="rkd-design-option-provider.v1",
++            prompt_version="design-option-strategy.zh-CN.v1",
++            schema_version="rkd-ai-design-option.v1", max_candidates=2,
++            real_model=False, configuration_errors=[])
++        self.requirement_ai = AIRequirementService(
++            SQLiteAIRequirementRepository(self.main_db), requirements,
++            config=brief_config, provider_factory=lambda config: build_provider(config))
++        self.options_ai = AIDesignOptionService(
++            SQLiteAIDesignOptionRepository(self.main_db),
++            lambda org, project: self.requirement_ai.status(org, project)["item"],
++            lambda org, project: {"width": "12", "length": "8",
++                                  "boundary_source": "test_parameters_not_site_verified",
++                                  "obstacles": []},
++            runtime, config=option_config,
++            provider=build_design_option_provider(option_config), studio_source=source)
++        self.dev_repo = SQLiteAIDevelopmentRepository(self.main_db)
++        self.spatial_ai = AISpatialOutputService(
++            self.dev_repo, self.options_ai, runtime, start_workers=True,
++            renderer=self._renderer)
++        self.service = ApiService(MVPApp(self.main_store), self.files,
++                                  requirement_service=requirements,
++                                  ai_requirement_service=self.requirement_ai,
++                                  ai_design_option_service=self.options_ai,
++                                  ai_spatial_output_service=self.spatial_ai,
++                                  runtime_root=runtime, studio_source=source)
++        self.files.seed_ningbo(self.service, ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09")
++        self.server = create_server(self.service, port=0, static_dir=ROOT / "web" / "dist")
++        PORT = self.server.server_port
++        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
++        self.thread.start()
++        self.project_id = NINGBO_PROJECT_ID
++        self.base = f"/api/v1/projects/{self.project_id}/ai"
++
++    def _renderer(self, scene_path: Path, out_png: Path, width: int, height: int,
++                   samples: int) -> dict:
++        """可控渲染桩：默认立即返回；wait 模式下用屏障卡住，不靠 sleep 碰运气。"""
++        mode = os.environ.get("RKD_STUB_RENDER_MODE", "fast")
++        if mode == "wait":
++            self.entered.set()
++            self.gate.wait(timeout=30)
++        out_png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"stub-render" * 64)
++        return {"seconds": 0.0, "engine": "stub", "width": width, "height": height,
++                "samples": samples, "stub": True}
++
++    def close(self) -> None:
++        try:
++            self.server.shutdown(); self.server.server_close(); self.thread.join(3)
++        finally:
++            self.main_store.close()
++            if self.placeholder_renderer and self.placeholder_renderer.exists():
++                self.placeholder_renderer.unlink()
++
++    # ---------------------------------------------------------- helpers
++    def import_layout(self, letter: str) -> dict:
++        code, imp, _ = http("POST", f"{self.base}/design-options/import-studio", {
++            "studio_project_id": "ningbo-xiecheng",
++            "studio_artifact_id": self.arts[letter]["id"],
++            "expected_source_sha256": self.arts[letter]["sha256"], "expected_unit": "mm"})
++        assert code == 200, imp
++        return imp["item"]
++
++    def adopt(self, revision: dict, expected_version: int | None = None) -> None:
++        if expected_version is None:
++            adoption = (http("GET", f"{self.base}/design-options")[1].get("adoption") or {})
++            expected_version = int(adoption.get("expected_revision") or 0)
++        code, data, _ = http("POST", f"{self.base}/design-options/"
++                             f"{revision['option_id']}/adopt",
++                             {"expected_revision": revision["revision_no"],
++                              "expected_version": expected_version})
++        assert code == 200, data
++
++    def submit(self, revision: dict, key: str, **settings) -> dict:
++        payload = {"option_revision_id": revision["option_revision_id"],
++                   "settings": {"render": True, "width": 320, "height": 240, "samples": 8,
++                                **settings}}
++        return http("POST", f"{self.base}/spatial-outputs", payload,
++                    {"Idempotency-Key": key})
++
++    def wait_job(self, job_id: str, timeout: float = 30.0) -> dict:
++        deadline = time.monotonic() + timeout
++        last = {}
++        while time.monotonic() < deadline:
++            code, data, _ = http("GET", f"{self.base}/spatial-outputs?job_id={job_id}")
++            jobs = data.get("jobs") or []
++            match = [j for j in jobs if j["job_id"] == job_id]
++            last = match[0] if match else (data.get("job") or {})
++            if last.get("status") in {"succeeded", "failed", "cancelled"}:
++                return last
++            time.sleep(0.02)
++        raise AssertionError(f"等待任务超时：{job_id} 最后状态 {last.get('status')}")
++
++    def state(self, query: str = "") -> dict:
++        return http("GET", f"{self.base}/spatial-outputs{query}")[1]
++
++
++def h_r1_zip_roundtrip(stack: Stack):
++    """R1：真实 HTTP 下载 ZIP，在空临时目录解压，逐个核对清单文件。"""
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    code, gen, _ = stack.submit(rev, "w2c-r1-zip-0001")
++    job = stack.wait_job(gen["item"]["job_id"])
++    state = stack.state()
++    revision = state.get("revision") or {}
++    if job["status"] != "succeeded" or not revision:
++        return False, {"submit": code, "job": job.get("status"), "error": job.get("error_code")}
++    rid = revision["production_revision_id"]
++    raw_manifest = http("GET", f"{stack.base}/spatial-outputs/{rid}/files/manifest.json")[2]
++    raw_zip = http("GET", f"{stack.base}/spatial-outputs/{rid}/files/package.zip")[2]
++    manifest = json.loads(raw_manifest)
++    with tempfile.TemporaryDirectory() as tmp:
++        target = Path(tmp) / "unzip"
++        target.mkdir()
++        with zipfile.ZipFile(io.BytesIO(raw_zip)) as zf:
++            zf.extractall(target)
++        problems = []
++        for entry in manifest["files"]:
++            path = target / entry["filename"]
++            if not path.is_file():
++                problems.append(f"缺少 {entry['filename']}")
++                continue
++            data = path.read_bytes()
++            if len(data) != entry["size_bytes"]:
++                problems.append(f"大小不符 {entry['filename']}")
++            if sha(data) != entry["sha256"]:
++                problems.append(f"SHA 不符 {entry['filename']}")
++        separate = http("GET", f"{stack.base}/spatial-outputs/{rid}/files/render.png")[2]
++        zip_png = (target / "render.png")
++        png_same = zip_png.is_file() and zip_png.read_bytes() == separate
++    return (not problems and png_same), {
++        "zip_bytes": len(raw_zip), "manifest_files": [e["filename"] for e in manifest["files"]],
++        "problems": problems, "render_matches_separate_download": png_same,
++        "separate_render_bytes": len(separate)}
++
++
++def h_r1_render_off(stack: Stack):
++    """R1 正例：render=false 走真实入口，清单与 ZIP 都不得出现 PNG。"""
++    rev = stack.import_layout("B")
++    stack.adopt(rev)
++    code, gen, _ = stack.submit(rev, "w2c-r1-norender-0001", render=False)
++    job = stack.wait_job(gen["item"]["job_id"])
++    state = stack.state(f"?job_id={gen['item']['job_id']}")
++    revision = state.get("revision") or {}
++    if job["status"] != "succeeded" or not revision:
++        return False, {"job": job.get("status"), "error": job.get("error_code")}
++    rid = revision["production_revision_id"]
++    manifest = json.loads(http("GET", f"{stack.base}/spatial-outputs/{rid}"
++                                f"/files/manifest.json")[2])
++    raw_zip = http("GET", f"{stack.base}/spatial-outputs/{rid}/files/package.zip")[2]
++    names = zipfile.ZipFile(io.BytesIO(raw_zip)).namelist()
++    return (not any(n.endswith(".png") for n in names)
++            and not any(e["filename"].endswith(".png") for e in manifest["files"])), {
++        "zip_entries": sorted(names),
++        "manifest_files": [e["filename"] for e in manifest["files"]]}
++
++
++def h_r2_cancel_monotone(stack: Stack):
++    """R2：生成中取消为单调终态，晚到渲染不得把 cancelled 改回 running/succeeded。"""
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    os.environ["RKD_STUB_RENDER_MODE"] = "wait"
++    stack.gate.clear(); stack.entered.clear()
++    try:
++        code, gen, _ = stack.submit(rev, "w2c-r2-cancel-0001")
++        job_id = gen["item"]["job_id"]
++        if not stack.entered.wait(timeout=20):
++            return False, {"stage": "render_not_entered", "job": job_id}
++        ccode, cdata, _ = http("POST", f"{stack.base}/spatial-outputs/{job_id}/cancel", {})
++        cancel_ok = ccode == 200 and cdata.get("item", {}).get("status") == "cancelled"
++        stack.gate.set()
++        job = stack.wait_job(job_id)
++        state = stack.state(f"?job_id={job_id}")
++        # 晚到的阶段更新/登记不得复活任务
++        again = http("POST", f"{stack.base}/spatial-outputs/{job_id}/cancel", {})
++        revisions = [r for r in state.get("revisions") or [] if r["job_id"] == job_id]
++        return (cancel_ok and job["status"] == "cancelled" and not revisions
++                and again[0] in (200, 409)), {
++            "cancel_status": ccode, "cancel_body": cdata.get("item", {}).get("status"),
++            "final_status": job["status"], "final_phase": job.get("phase"),
++            "revisions_registered": len(revisions), "second_cancel": again[0]}
++    finally:
++        os.environ["RKD_STUB_RENDER_MODE"] = "fast"
++        stack.gate.set()
++
++
++def h_r2_binding_matrix(stack: Stack):
++    """R2：当前采用版本换版后，旧成果必须是历史预览，不得冒充当前成果。"""
++    rev_a = stack.import_layout("A")
++    stack.adopt(rev_a)
++    _, gen_a, _ = stack.submit(rev_a, "w2c-r2-bind-a-0001")
++    job_a = stack.wait_job(gen_a["item"]["job_id"])
++    rev_b = stack.import_layout("B")
++    stack.adopt(rev_b)
++    _, gen_b, _ = stack.submit(rev_b, "w2c-r2-bind-b-0001")
++    job_b = stack.wait_job(gen_b["item"]["job_id"])
++    state = stack.state()
++    revs = {r["job_id"]: r for r in state.get("revisions") or []}
++    ra, rb = revs.get(job_a["job_id"]), revs.get(job_b["job_id"])
++    if not ra or not rb:
++        return False, {"jobs": [job_a["status"], job_b["status"]],
++                       "revisions": list(revs), "note": "旧成果被最新成功成果覆盖"}
++    current = state.get("revision") or {}
++    return (ra.get("binding_status") == "historical_preview"
++            and rb.get("binding_status") == "current_adopted"
++            and current.get("job_id") == job_b["job_id"]
++            and ra.get("option_revision_id") == rev_a["option_revision_id"]), {
++        "binding_a": ra.get("binding_status"), "binding_b": rb.get("binding_status"),
++        "binding_a_facts": (ra.get("package") or {}).get("binding"),
++        "current_job": current.get("job_id"),
++        "job_a": job_a["job_id"], "job_b": job_b["job_id"],
++        "revisions_listed": len(state.get("revisions") or [])}
++
++
++def h_r2_failed_then_retry(stack: Stack):
++    """R2：失败不登记半份成果；显式重试关联原任务；幂等键语义清晰。"""
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    # 让本次渲染抛错
++    original = stack.spatial_ai.renderer
++
++    def boom(*_a, **_k):
++        raise RuntimeError("stub render failure")
++
++    stack.spatial_ai.renderer = boom
++    try:
++        code, gen, _ = stack.submit(rev, "w2c-r2-fail-0001")
++        job_id = gen["item"]["job_id"]
++        failed = stack.wait_job(job_id)
++    finally:
++        stack.spatial_ai.renderer = original
++    state = stack.state(f"?job_id={job_id}")
++    no_revision = not [r for r in state.get("revisions") or [] if r["job_id"] == job_id]
++    # 同一幂等键不得偷偷重跑
++    again = stack.submit(rev, "w2c-r2-fail-0001")
++    reuse_same = again[1].get("reused") is True and \
++        again[1]["item"]["job_id"] == job_id
++    rcode, retry, _ = http("POST", f"{stack.base}/spatial-outputs/{job_id}/retry",
++                           {"settings": {"render": True, "width": 320, "height": 240,
++                                         "samples": 8}},
++                           {"Idempotency-Key": "w2c-r2-retry-0001"})
++    retried = {}
++    if rcode in (200, 202):
++        retried = stack.wait_job(retry["item"]["job_id"])
++    config = (retry.get("item") or {}).get("config") or {}
++    return (failed["status"] == "failed" and no_revision and reuse_same
++            and rcode in (200, 202) and retried.get("status") == "succeeded"
++            and config.get("retry_of") == job_id), {
++        "failed_status": failed["status"], "failed_error": failed.get("error_code"),
++        "half_registered": not no_revision, "idempotent_reuse": reuse_same,
++        "retry_status_code": rcode, "retried_status": retried.get("status"),
++        "retry_of": config.get("retry_of"), "original": job_id}
++
++
++def h_r2_shared_table_isolation(stack: Stack):
++    """R2：共用表内深化量价成果不得污染本页；本页成果也不得被它挤掉。"""
++    from rkd_mvp.models import new_id, now_iso
++    state_before = stack.state()
++    current = state_before.get("revision") or {}
++    dev_job_id = new_id("ai-development-job")
++    with stack.dev_repo.transaction(ORG, stack.project_id, write=True) as tx:
++        tx.insert_job({
++            "job_id": dev_job_id, "option_revision_id": current.get("option_revision_id") or "x",
++            "adoption_version": 0, "input_hash": "0" * 64, "status": "succeeded",
++            "phase": "completed", "attempt_count": 1,
++            "settings": {}, "config": {"kind": "ai_development_production"},
++            "error_code": None, "error_message": None,
++            "idempotency_key": f"dev-{dev_job_id}", "actor_id": "tool",
++            "created_at": now_iso(), "updated_at": now_iso()})
++        tx.insert_revision({
++            "production_revision_id": new_id("ai-production-revision"),
++            "job_id": dev_job_id,
++            "option_revision_id": current.get("option_revision_id") or "x",
++            "set_id": "s", "option_id": "o", "adoption_version": 0,
++            "input_hash": "0" * 64, "baseline": {}, "package": {},
++            "quantities": {}, "cost": {}, "objects": {}, "materials": {},
++            "unknowns": [], "view_mapping": {},
++            "formula_version": "ai-development-quantity.v1",
++            "measurement_version": "ai-development-measurement.v1",
++            "output_version": "ai-development-outputs.v1",
++            "actor_id": "tool", "created_at": now_iso(),
++        })
++    after = stack.state()
++    before_rev = current.get("production_revision_id")
++    listed = after.get("revisions") or []
++    after_ids = {r["production_revision_id"] for r in listed}
++    foreign = [r for r in listed
++               if (r.get("output_version") or "").startswith("ai-development-outputs")]
++    return (bool(before_rev) and before_rev in after_ids and not foreign
++            and (after.get("revision") or {}).get("production_revision_id") == before_rev), {
++        "before_revision": before_rev,
++        "after_revision": (after.get("revision") or {}).get("production_revision_id"),
++        "revisions_listed": len(listed),
++        "foreign_revisions_in_list": len(foreign),
++        "note": "深化量价修订插入共用表后，本页当前成果仍须可见且其修订不得混入本页列表"}
++
++
++def h_r1_missing_render(stack: Stack):
++    """R1 负例：渲染没有产出文件时不得交出“成功完整包”。"""
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    original = stack.spatial_ai.renderer
++
++    def no_file(scene_path, out_png, *_a):
++        return {"seconds": 0.0, "engine": "stub", "wrote_file": False}
++
++    stack.spatial_ai.renderer = no_file
++    try:
++        code, gen, _ = stack.submit(rev, "w2c-r1-missing-0001")
++        job = stack.wait_job(gen["item"]["job_id"])
++    finally:
++        stack.spatial_ai.renderer = original
++    state = stack.state(f"?job_id={gen['item']['job_id']}")
++    registered = [r for r in state.get("revisions") or []
++                  if r["job_id"] == gen["item"]["job_id"]]
++    return (job["status"] == "failed" and not registered), {
++        "status_code": code, "job_status": job["status"],
++        "error": job.get("error_code"), "registered": len(registered)}
++
++
++def h_r1_corrupt_manifest(stack: Stack):
++    """R1 负例：清单字节被改动后，不得仍据其校验并交出文件。"""
++    rev = stack.import_layout("B")
++    stack.adopt(rev)
++    code, gen, _ = stack.submit(rev, "w2c-r1-corrupt-0001")
++    job = stack.wait_job(gen["item"]["job_id"])
++    state = stack.state(f"?job_id={gen['item']['job_id']}")
++    revision = state.get("revision") or {}
++    if job["status"] != "succeeded":
++        return False, {"job": job["status"], "error": job.get("error_code")}
++    rid = revision["production_revision_id"]
++    manifest_path = (stack.runtime / "projects" / "ai-spatial-outputs"
++                     / gen["item"]["job_id"] / "manifest.json")
++    original = manifest_path.read_bytes()
++    tampered = json.loads(original.decode("utf-8"))
++    tampered["files"] = [e for e in tampered["files"] if e["filename"] != "render.png"]
++    manifest_path.write_bytes(json.dumps(tampered, ensure_ascii=False).encode("utf-8"))
++    try:
++        scode, body, _ = http("GET", f"{stack.base}/spatial-outputs/{rid}/files/render.png")
++    finally:
++        manifest_path.write_bytes(original)
++    return (scode == 500 and body.get("error_code") == "MANIFEST_HASH_MISMATCH"), {
++        "status": scode, "error_code": body.get("error_code"),
++        "note": "清单被改动后必须拒绝，不能把未经校验的清单当可信哈希来源"}
++
++
++def h_r2_reverse_order_and_restart(stack: Stack):
++    """R2：A 慢 B 快反序完成；查询按 job 关联；重启只恢复本批中断任务。"""
++    rev_a = stack.import_layout("A")
++    rev_b = stack.import_layout("B")
++    stack.adopt(rev_a)
++    original = stack.spatial_ai.renderer
++    slow_gate = threading.Event()
++
++    def slow_render(scene_path, out_png, width, height, samples):
++        slow_gate.wait(timeout=30)
++        out_png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"slow" * 64)
++        return {"seconds": 0.0, "engine": "stub"}
++
++    stack.spatial_ai.renderer = slow_render
++    try:
++        _, gen_a, _ = stack.submit(rev_a, "w2c-r2-order-a-0001")
++        stack.spatial_ai.renderer = original
++        _, gen_b, _ = stack.submit(rev_b, "w2c-r2-order-b-0001")
++        job_b = stack.wait_job(gen_b["item"]["job_id"])
++        slow_gate.set()
++        job_a = stack.wait_job(gen_a["item"]["job_id"])
++    finally:
++        stack.spatial_ai.renderer = original
++        slow_gate.set()
++    stack.adopt(rev_b)
++    state = stack.state()
++    revs = {r["job_id"]: r for r in state.get("revisions") or []}
++    mapped = {job_a["job_id"]: rev_a["option_revision_id"],
++              job_b["job_id"]: rev_b["option_revision_id"]}
++    mapped_ok = all(revs.get(j) and revs[j]["option_revision_id"] == oid
++                    for j, oid in mapped.items())
++    # 重启恢复：手工造一个“上一进程遗留 running”任务，只有它被标失败
++    from rkd_mvp.models import new_id, now_iso
++    orphan = new_id("ai-spatial-job")
++    with stack.dev_repo.transaction(ORG, stack.project_id, write=True) as tx:
++        tx.insert_job({"job_id": orphan, "option_revision_id": rev_a["option_revision_id"],
++                       "adoption_version": 0, "input_hash": "0" * 64, "status": "running",
++                       "phase": "measurement", "attempt_count": 1, "settings": {},
++                       "config": {"kind": "spatial_outputs"}, "error_code": None,
++                       "error_message": None, "idempotency_key": f"orphan-{orphan}",
++                       "actor_id": "tool", "created_at": now_iso(),
++                       "updated_at": now_iso()})
++    recovered = stack.spatial_ai.recover(ORG, stack.project_id)
++    after = stack.state()
++    orphan_job = next((j for j in after.get("jobs") or [] if j["job_id"] == orphan), {})
++    still_there = {r["job_id"] for r in after.get("revisions") or []}
++    ordering = {job_a["job_id"]: job_a.get("updated_at"), job_b["job_id"]: job_b.get("updated_at")}
++    return (mapped_ok and orphan in (recovered.get("recovered") or [])
++            and orphan_job.get("status") == "failed"
++            and orphan_job.get("error_code") == "WORKER_RESTARTED"
++            and {job_a["job_id"], job_b["job_id"]} <= still_there), {
++        "job_a": job_a["status"], "job_b": job_b["status"],
++        "finished_order": ordering, "mapped": mapped_ok,
++        "recovered": recovered.get("recovered"),
++        "orphan_status": orphan_job.get("status"),
++        "orphan_error": orphan_job.get("error_code"),
++        "historical_bytes_readable": sorted(still_there)}
++
++
++def h_r3_entry_basis(stack: Stack):
++    """R3：通过真实入口冻结材料面与假设单价，成本与面积依据同页对账。"""
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    scope = {"kind": "material_face_slice", "declared_by": "executor_manual_fixture",
++             "declaration": "人工夹具：两块手写铺装范围，未经现场复核",
++             "unit": "mm", "deduction_basis": "keepouts_within_scope",
++             "areas": [
++                 {"object_id": "FA1", "name": "主展区材料面（夹具）",
++                  "polygon_mm": [[5400, 1800], [20400, 1800], [20400, 5200], [5400, 5200]],
++                  "material_ref": {"material_id": "M-A", "name": "微水泥",
++                                   "spec_status": "assumption"}},
++                 {"object_id": "FA2", "name": "中岛材料面（夹具）",
++                  "polygon_mm": [[9000, 6200], [16000, 6200], [16000, 11000], [9000, 11000]],
++                  "material_ref": {"material_id": "M-B", "name": "橡木地板",
++                                   "spec_status": "assumption"}}]}
++    code, gen, _ = stack.submit(rev, "w2c-r3-basis-0001", finish_scope=scope,
++                                material_unit_prices={"M-A": 800})
++    job = stack.wait_job(gen["item"]["job_id"])
++    state = stack.state(f"?job_id={gen['item']['job_id']}")
++    revision = state.get("revision") or {}
++    if job["status"] != "succeeded" or not revision:
++        return False, {"job": job.get("status"), "error": job.get("error_code"),
++                       "message": job.get("error_message")}
++    items = revision["quantities"]["items"]
++    finish = find_q({"items": items}, "Q-FLOOR-FINISH")
++    cost = revision["cost"]
++    html = http("GET", f"{stack.base}/spatial-outputs/"
++                f"{revision['production_revision_id']}/files/cost.html")[2].decode("utf-8")
++    csv_text = http("GET", f"{stack.base}/spatial-outputs/"
++                    f"{revision['production_revision_id']}/files/quantity.csv")[2].decode("utf-8")
++    fa1 = (20400 - 5400) * (5200 - 1800) / 1e6           # 40.8 ㎡
++    fb = (16000 - 9000) * (11000 - 6200) / 1e6            # 33.6 ㎡
++    priced = [k for k in cost["known_items"] if k["quantity_ref"].endswith("M-A")
++              or k.get("material_id") == "M-A"]
++    unpriced = [k for k in cost.get("unknown_items", []) if "M-B" in json.dumps(k, ensure_ascii=False)]
++    # 页面上不能一边写“本页没有金额”一边列出假设金额
++    contradiction = ("本页没有金额" in html) and bool(cost["known_items"])
++    return (finish is not None and abs((finish.get("value") or 0) - (fa1 + fb)) < 0.05
++            and len(cost["known_items"]) == 1
++            and abs(cost["known_items"][0]["amount_cny"] - fa1 * 800) < 1.0
++            and bool(unpriced) and not contradiction
++            and "假设" in html and "Q-FLOOR-FINISH" in csv_text), {
++        "finish": {"value": (finish or {}).get("value"), "expected": round(fa1 + fb, 3),
++                   "known_status": (finish or {}).get("known_status"),
++                   "material_groups": (finish or {}).get("material_groups")},
++        "known_items": cost["known_items"], "unpriced_groups": unpriced,
++        "html_contradiction": contradiction,
++        "csv_has_finish_row": "Q-FLOOR-FINISH" in csv_text}
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--label", default="after")
++    parser.add_argument("--out", default=str(ROOT / "var/evidence/roadmap/W2-收口整改"))
++    args = parser.parse_args()
++    raw_out = Path(args.out)
++    out_dir = raw_out if raw_out.is_absolute() else (ROOT / raw_out)
++    out_dir.mkdir(parents=True, exist_ok=True)
++
++    # 函数级（不需要服务）
++    record("W2C-R1-01", "同一文件集合生成清单与 ZIP，清单所列文件全部在 ZIP 内且字节一致",
++           f_r1_package_complete)
++    record("W2C-R1-02", "render=false 时清单与 ZIP 都不声明 PNG", f_r1_no_render_no_png)
++    record("W2C-R3-01", "L 形手算 24/22，独立复算与主算法不同路径，完成面量保持 unknown",
++           f_r3_l_shape_handcheck)
++    record("W2C-R3-02", "扣除规则：相交扣区不重复扣、外置扣区为 0、跨边界只扣区内部分",
++           f_r3_deduction_rules)
++    record("W2C-R3-03", "材料面切片需显式来源；单价不能掩盖未知范围", f_r3_finish_scope)
++
++    runtime = out_dir / f"runtime-{args.label}"
++    stack = Stack(runtime)
++    try:
++        record("W2C-R1-03", "真实 HTTP 下载 ZIP→空目录解压→逐项核对清单（含 PNG 与单下载一致）",
++               lambda: h_r1_zip_roundtrip(stack))
++        record("W2C-R1-04", "真实入口 render=false：ZIP 与清单均无 PNG",
++               lambda: h_r1_render_off(stack))
++        record("W2C-R2-01", "生成中取消为单调终态，晚到渲染不得复活，失败/取消不登记半份成果",
++               lambda: h_r2_cancel_monotone(stack))
++        record("W2C-R2-02", "换版后旧成果标历史预览，当前成果按 job/修订查询",
++               lambda: h_r2_binding_matrix(stack))
++        record("W2C-R2-03", "失败后显式重试关联原任务，同一幂等键不偷偷重跑",
++               lambda: h_r2_failed_then_retry(stack))
++        record("W2C-R2-04", "共用表内深化量价成果不污染本页当前成果",
++               lambda: h_r2_shared_table_isolation(stack))
++        record("W2C-R1-05", "渲染无产出时不得交出成功完整包", lambda: h_r1_missing_render(stack))
++        record("W2C-R1-06", "清单字节被改动后拒绝据其校验交付文件",
++               lambda: h_r1_corrupt_manifest(stack))
++        record("W2C-R2-05", "A/B 反序完成与重启恢复：按 job 关联、只恢复本批中断任务",
++               lambda: h_r2_reverse_order_and_restart(stack))
++        record("W2C-R3-04", "真实入口冻结材料面与假设单价；成本与面积依据同页且不矛盾",
++               lambda: h_r3_entry_basis(stack))
++    finally:
++        stack.close()
++
++    failed = sum(1 for c in CHECKS if c["result"] != "observed_pass")
++    payload = {
++        "task_id": "W2-收口整改",
++        "schema_version": "rkd-w2-closeout-checks.v1",
++        "label": args.label,
++        "source_root": str(ROOT),
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "environment": {"python": sys.version.split()[0],
++                        "renderer": "controllable stub (no Blender in repro)",
++                        "stack": "isolated SQLite + real HTTP server",
++                        "external_calls": 0, "keys_used": False},
++        "checks": CHECKS,
++        "totals": {"observed_pass": len(CHECKS) - failed, "observed_fail": failed},
++        "external_calls": 0, "tokens": 0, "cost_amount_or_null": None,
++        "cost_status": "no_external_calls_zero_cost",
++    }
++    path = out_dir / f"repro-{args.label}.json"
++    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"label": args.label, "passed": len(CHECKS) - failed,
++                      "failed": failed, "out": str(path)}, ensure_ascii=False))
++    return 0 if failed == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

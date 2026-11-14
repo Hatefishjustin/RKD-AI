@@ -1,0 +1,70 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<title>W2 收口整改复核包</title>
+<style>
+body{font:14px/1.65 system-ui,"Microsoft YaHei",sans-serif;margin:0;color:#111827;background:#f6f7f9}
+main{max-width:1080px;margin:0 auto;padding:32px 24px 64px;background:#fff}
+h1{font-size:23px;margin:0 0 6px} h2{font-size:16px;margin:28px 0 8px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+.meta{color:#475569;font-size:12.5px;margin-bottom:18px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin:8px 0 18px}
+th,td{border:1px solid #e2e8f0;padding:5px 7px;text-align:left;vertical-align:top}
+th{background:#f1f5f9;font-weight:600}
+.ok{color:#166534;font-weight:600} .bad{color:#b91c1c;font-weight:600} .na{color:#6b7280}
+.warn{background:#fff7ed;border-left:4px solid #c2410c;padding:10px 14px;margin:14px 0;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+figure{margin:0} img{width:100%;border:1px solid #e2e8f0;background:#fff}
+figcaption{font-size:12px;color:#475569;padding-top:4px}
+a{color:#1d4ed8}
+code{background:#f1f5f9;padding:1px 4px;border-radius:3px;font-size:12px}
+ul{margin:6px 0 6px 18px;padding:0} li{margin:3px 0;font-size:13px}
+@media print{body{background:#fff} main{padding:0} .grid{page-break-inside:avoid}}
+</style>
+<main>
+<h1>W2 收口整改复核包</h1>
+<div class="meta">审查基线 <code>b1f1747</code> · 业务提交 <code>40049fd</code> · 编制时间 2026-11-14T23:19:42+08:00<br>
+结论口径：R1—R3 工程收口，<b>不等于 W2 放行</b>，不进入 W3/W4，不改 AD01—AD08，不代替用户阶段确认。</div>
+
+<div class="warn"><b>先说结论</b>：R1 完整包、R2 任务生命周期/Q10、R3 计量语义三组已按架构意见整改，同一负例
+整改前 <b>4 通过 / 11 失败</b> → 整改后
+<b>15 / 15 全部通过</b>；真实 Blender 验收 7/7；
+真实浏览器 通过；全量单测 <b>262 tests 0 失败</b>（43 模块）；前端 <code>tsc --noEmit</code> 与 <code>npm run build</code> EXIT=0。<br>
+<b>图面仍是灰盒内部试验级</b>（色块地面、灰盒家具、无墙体门窗柱网），<b>不是客户交付成果</b>；R4 仍在 W2 内。</div>
+
+<h2>1. 逐项结果（同一脚本，整改前 → 整改后）</h2>
+<table><thead><tr><th>编号</th><th>判据</th><th>整改前</th><th>整改后</th></tr></thead>
+<tbody><tr><td>W2C-R1-01</td><td>同一文件集合生成清单与 ZIP，清单所列文件全部在 ZIP 内且字节一致</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R1-02</td><td>render=false 时清单与 ZIP 都不声明 PNG</td><td class='ok'>observed_pass</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R3-01</td><td>L 形手算 24/22，独立复算与主算法不同路径，完成面量保持 unknown</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R3-02</td><td>扣除规则：相交扣区不重复扣、外置扣区为 0、跨边界只扣区内部分</td><td class='ok'>observed_pass</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R3-03</td><td>材料面切片需显式来源；单价不能掩盖未知范围</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R1-03</td><td>真实 HTTP 下载 ZIP→空目录解压→逐项核对清单（含 PNG 与单下载一致）</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R1-04</td><td>真实入口 render=false：ZIP 与清单均无 PNG</td><td class='ok'>observed_pass</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R2-01</td><td>生成中取消为单调终态，晚到渲染不得复活，失败/取消不登记半份成果</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R2-02</td><td>换版后旧成果标历史预览，当前成果按 job/修订查询</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R2-03</td><td>失败后显式重试关联原任务，同一幂等键不偷偷重跑</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R2-04</td><td>共用表内深化量价成果不污染本页当前成果</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R1-05</td><td>渲染无产出时不得交出成功完整包</td><td class='ok'>observed_pass</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R1-06</td><td>清单字节被改动后拒绝据其校验交付文件</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R2-05</td><td>A/B 反序完成与重启恢复：按 job 关联、只恢复本批中断任务</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-R3-04</td><td>真实入口冻结材料面与假设单价；成本与面积依据同页且不矛盾</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr><tr><td>W2-01</td><td>一个冻结的精确模型修订生成同源成果（平面/净量/成本/清单/包）</td><td class='na'>not_independently_rerun</td><td class='ok'>observed_pass</td></tr><tr><td>W2-02</td><td>下载逐文件可用；ZIP 解压后清单所列文件全部存在、大小与 SHA 一致，PNG 与单下载一致</td><td class='na'>not_independently_rerun</td><td class='ok'>observed_pass</td></tr><tr><td>W2-03</td><td>平面包含分区/面积表/图例/尺寸/机位与未建模缺项，且标注非施工图</td><td class='na'>not_independently_rerun</td><td class='ok'>observed_pass</td></tr><tr><td>W2-04</td><td>非矩形几何净量经独立扫描线复算一致；bbox 结果故意不同且不用于计量</td><td class='na'>not_independently_rerun</td><td class='ok'>observed_pass</td></tr><tr><td>W2-05</td><td>成本：没有价源时金额为 unknown、不是报价；量已知而钱未知</td><td class='na'>not_independently_rerun</td><td class='ok'>observed_pass</td></tr><tr><td>W2-06</td><td>两种不同布局由同一生成器出平面与效果图（源/模型哈希/相机可查）</td><td class='na'>not_independently_rerun</td><td class='ok'>observed_pass</td></tr><tr><td>W2-07</td><td>四种受控变更：几何改平面/三维/净量；材料改材质；只改相机不改量；只改单价不改几何</td><td class='na'>not_independently_rerun</td><td class='ok'>observed_pass</td></tr><tr><td>W2C-BROWSER-01</td><td>真实 Edge 浏览器：选修订→生成→平面/人眼图/数量/下载字节/SHA/390px</td><td class='na'>not_independently_rerun</td><td class='ok'>observed_pass</td></tr></tbody></table>
+
+<h2>2. 实际图面（同一生成器，两种布局）</h2>
+<div class="grid">
+<figure><img src="outputs/layout-A/plan.svg" alt="布局A平面"><figcaption>布局 A 平面（几何净面积 233.03 ㎡；完成面量 unknown）</figcaption></figure>
+<figure><img src="outputs/layout-A/render.png" alt="布局A人眼图"><figcaption>布局 A 人眼图 1.5m · 24mm（机位为推导假设）</figcaption></figure>
+<figure><img src="outputs/layout-B/plan.svg" alt="布局B平面"><figcaption>布局 B 平面（几何净面积 229.08 ㎡）</figcaption></figure>
+<figure><img src="outputs/layout-B/render.png" alt="布局B人眼图"><figcaption>布局 B 人眼图（同一生成器，不手工修图）</figcaption></figure>
+</div>
+
+<h2>3. 页面与下载</h2>
+<div class="grid">
+<figure><img src="browser/w2-outputs-desktop.png" alt="桌面"><figcaption>同源成果页（桌面）</figcaption></figure>
+<figure><img src="browser/w2-outputs-mobile.png" alt="390px"><figcaption>390px 窄屏（无横向溢出）</figcaption></figure>
+</div>
+
+<h2>4. 仍然不像设计公司成果的地方</h2>
+<ul>
+<li>平面：分区是多边形，但没有墙厚、门窗、柱网、洁具、隔断构造；尺寸链只有总尺寸与分区外包尺寸。</li>
+<li>人眼图：色块地面、统一灰盒家具、无真实材质纹理、无软装绿植人物、灯光只有点位。</li>
+<li>材料：没有规格、样板、产品选型；材料面切片是人工夹具，<b>不是</b> AI 生成的设计。</li>
+<li>因此本批只能证明“同源、可算、可下载、生命周期正确”，<b>不能证明设计成立</b>。</li>
+</ul>
+
+<h2>5. 文件索引</h2>
+<ul>
+<li><a href="review-packet.md">review-packet.md</a> — 架构意见逐条落实、未做项、图面差距、下一步</li>
+<li><a href="checks.json">checks.json</a> — 逐项 observed_pass/observed_fail/not_run 与证据引用</li>
+<li><a href="q10-matrix.md">q10-matrix.md</a> — Q10 检查矩阵（同源 8 项 + 生命周期 9 项 + not_run 4 项）</li>
+<li><a href="l-shape-handcheck.md">l-shape-handcheck.md</a> — 可手算 L 形 24/2/22 与 30/28 的分解依据</li>
+<li><a href="positive-negative-cases.md">positive-negative-cases.md</a> — 正负例与复跑命令</li>
+<li><a href="code-diff.md">code-diff.md</a> / <a href="changes.patch">changes.patch</a> — 改动范围与可定位补丁</li>
+<li><a href="manifest.json">manifest.json</a> — 源码基线、产物字节数与 SHA</li>
+<li><code>runtime/</code> — <a href="runtime/full-unittest.log">full-unittest.log</a>（262 tests OK）、<a href="runtime/frontend-build.log">frontend-build.log</a>（tsc/build EXIT=0）</li>
+<li><code>outputs/layout-A|B/</code> — 平面 SVG、人眼 PNG、量 CSV、成本 HTML、清单、ZIP（可离线打开）</li>
+</ul>
+</main></html>
