@@ -2,7 +2,7 @@
 
 日期：2026-11-12（北京时间）
 执行委托：`docs/25-架构师交接与执行AI质量约定.md` 第 5 节「首批」（ARC-01—04、直接相关的 ARC-06 规则修正；ARC-05 只交适配说明）
-基线 commit：`d6501a9b5b963b0a11a9e148b32eda269f18414b`（A1 收口）
+基线 commit：`d6501a9b5b963b0a11a9e148b32eda269f18414b`（A1 收口）；本批已提交并推送为 `eb6513c`，复核差异请用 `git diff d6501a9..eb6513c` 或随附 `changes.patch`。
 工作区基线状态：仅 `docs/25` 一个未跟踪文件；本批未 reset / checkout、未清理任何既有改动或原件。完整差异见 `deliverables-for-review/arc-first-batch/changes.patch` 与 `code-diff.md`；若已提交可用 `git diff d6501a9..HEAD` 复核，未提交时可用工作区 `git diff`。
 性质：工程控制整改与可复核证据。**不是功能完成证明，不是设计通过，不是 AD 验收。**
 

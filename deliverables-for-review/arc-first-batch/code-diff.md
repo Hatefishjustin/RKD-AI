@@ -9,7 +9,7 @@ git add -N <下列新增文件>
 git diff --no-color -- . ':!web/dist' ':!deliverables-for-review' > changes.patch
 ```
 
-基线 commit：`d6501a9b5b963b0a11a9e148b32eda269f18414b`（A1 收口）。
+基线 commit：`d6501a9b5b963b0a11a9e148b32eda269f18414b`（A1 收口）；本批已提交并推送为 `eb6513c`，复核差异请用 `git diff d6501a9..eb6513c` 或随附 `changes.patch`。
 复核方式：若本批差异已提交，用 `git diff d6501a9..HEAD`；若仍为工作区差异，用 `git diff`。`changes.patch` 保留完整快照，两种状态都可逐段阅读。
 
 ## 1. 变更文件清单（20 个）
