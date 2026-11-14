@@ -1,21 +1,18 @@
 {
   "schema_version": "rkd-roadmap-manifest.v1",
   "batch": "W0-收口",
-  "generated_at": "2026-11-14T12:37:00+08:00",
+  "generated_at": "2026-11-14T12:37:43+08:00",
   "time_axis": {
     "compiled_date": "2026-11-14（北京时间）",
     "before_reproduction_executed_at": "2026-11-14T11:53:38+08:00",
     "after_reproduction_executed_at": "见 after/reproduction.json 的 checked_at",
     "browser_checked_at": "见 browser/verification.json 的 checked_at",
     "primary_code_committed_at": "2026-11-14T12:34:27+08:00",
-    "supplement_committed_at": "2026-11-14T12:35:53+08:00",
     "note": "编制/执行/提交分别标时间与代码基线，不混用日期；历史证据字节未回写"
   },
   "source_baseline": "957cf775e1d835cf25bbdf196de4e7f3f51280fa",
-  "primary_code_commit": "4ef7c724d90bf2e0d9263a26368bde81fb628fae",
-  "head_commit": "666f7d0cabef17464641786353fc2a4f8138e0a4",
-  "head_subject": "docs: W0 复核包补提交号、标准补丁与文件清单",
-  "head_note": "补录提交仅含复核包清单/补丁/提交号，无业务代码改动",
+  "code_head": "4ef7c724d90bf2e0d9263a26368bde81fb628fae",
+  "head_policy": "复核包含纯文档补录提交，故本清单不记录易变的 HEAD；实际值用 git rev-parse HEAD，代码差异固定用 git diff 957cf77..4ef7c72。这是 R3 时间/版本口径原则在本批自身的应用。",
   "model_versions": {
     "design_model": "local-model-stub (explicitly labelled; NOT a real AI design result)",
     "material_spec": "not_applicable_no_material_artifacts",
@@ -167,15 +164,15 @@
     },
     {
       "path": "code-diff.md",
-      "bytes": 5212,
-      "sha256": "df9e8a043b59c1c89662ee41d6e83fa030618f234fe5fcb9ddcdb43f7a932b68",
+      "bytes": 5258,
+      "sha256": "2d9d5a914ed327c28a7254270b0fbbe927032871953cd8a894a3831f51daf833",
       "role": "review_document",
       "origin": "written_by_w0"
     },
     {
       "path": "commit-reference.md",
-      "bytes": 2369,
-      "sha256": "6fa4e1cafd40507c2b160dd920cef0ae9ddc45b468f7c1fc6ae7bb2605e91012",
+      "bytes": 2506,
+      "sha256": "aa21404514d56f9cafdb70dffa2f3fc2a1498192f9181a30f4b5f43f7a13e3f5",
       "role": "review_document",
       "origin": "written_by_w0"
     },
@@ -195,8 +192,8 @@
     },
     {
       "path": "review-packet.md",
-      "bytes": 14863,
-      "sha256": "4a309fad1c9693964c2c0c18ddac1117a0bb0ad0d268a425b3e57a2f74188cff",
+      "bytes": 15079,
+      "sha256": "51601cf715bbf71728de0c8818b1fa112ca24cb67e57e28ee4e829454743dc09",
       "role": "review_document",
       "origin": "written_by_w0"
     }

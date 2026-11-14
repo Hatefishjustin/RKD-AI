@@ -1,9 +1,9 @@
 # W0 代码差异与复核定位
 
 - **base**：`957cf775e1d835cf25bbdf196de4e7f3f51280fa`（`957cf77`）
-- **业务代码主体提交**：`4ef7c724d90bf2e0d9263a26368bde81fb628fae`（`4ef7c72`）
-- **当前 HEAD**：`666f7d0cabef17464641786353fc2a4f8138e0a4`（`666f7d0`，仅追加清单/补丁/提交号，
-  无业务代码改动；复核代码差异请用 `git diff 957cf77..4ef7c72`）
+- **业务代码提交（稳定基线）**：`4ef7c724d90bf2e0d9263a26368bde81fb628fae`（`4ef7c72`）
+- **HEAD**：复核包含纯文档补录提交，实际值以 `git rev-parse HEAD` 为准；
+  代码差异固定用 `git diff 957cf77..4ef7c72`，不受文档补录影响。
 - 复核差异命令：`git diff 957cf77..HEAD -- mvp/rkd_mvp/studio web/src scripts`
 - 标准补丁：同目录 `changes.patch`（由 `git diff 957cf77..<本批主体提交>` 导出，可 `git apply --check`）
 - 本批**未** reset / checkout / 删除用户既有改动；`source/` 原件与上一批历史成果字节未动。

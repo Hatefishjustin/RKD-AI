@@ -8,9 +8,10 @@
   2026-11-14T12:35:53+08:00）`docs: W0 复核包补提交号、标准补丁与文件清单`
   —— 仅追加本文件、`changes.patch`、`manifest.json`，并把 `4ef7c72` 写进
   `review-packet.md` / `code-diff.md` 的表头；**不含任何业务代码改动**。
-- 复核包定稿后的**当前 HEAD**：`666f7d0cabef17464641786353fc2a4f8138e0a4`。
-  `manifest.json` 的 `head_commit` 用这个完整 hash，`primary_code_commit` 记业务代码主体提交
-  `4ef7c724d90bf2e0d9263a26368bde81fb628fae`。复核时用 `git log -3` 可同时看到两个提交。
+- **复核包文档提交序列**（均不含业务代码改动）：`666f7d0`（清单/补丁）→ `622cca6`（定稿）→
+  后续纯文档补录以 `git rev-parse HEAD` 取实际值。**不把易变的文档 HEAD 写成权威基线**：
+  `manifest.json` 只记录稳定的 `code_head` = `4ef7c724d90bf2e0d9263a26368bde81fb628fae`。
+  复核代码差异固定用 `git diff 957cf77..4ef7c72`。
 
 复核差异命令：
 
