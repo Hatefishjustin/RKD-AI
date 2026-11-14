@@ -95,6 +95,14 @@ class AIDevelopmentService:
                                                             adoption["option_revision_id"])
         if not option_revision or option_revision["validation"]["status"] != "passed":
             raise AIDevelopmentServiceError(422, "INVALID_ADOPTED_OPTION", "采用候选未通过硬检查")
+        # W1→W2 boundary: this legacy generator measures rect objects. A precise
+        # spatial candidate must NOT be run through it (bbox measurement would
+        # look valid but be wrong); it needs the precise W2 path.
+        if (option_revision.get("model") or {}).get("spatial"):
+            raise AIDevelopmentServiceError(
+                422, "SPATIAL_MODEL_REQUIRES_PRECISE_PATH",
+                "该采用候选是精确 spatial 模型，旧矩形深化/量价链会用包围盒算量；"
+                "已拒绝，需走 W2 精确同源成果路径")
         config = self._config()
         input_payload = {"option_revision_id": option_revision["option_revision_id"],
                          "model_input_hash": option_revision["model"]["generation"]["input_hash"],

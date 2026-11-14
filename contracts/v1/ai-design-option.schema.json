@@ -507,6 +507,14 @@
           "items": {
             "$ref": "#/$defs/fieldLedgerRow"
           }
+        },
+        "diff_baseline": {
+          "enum": [
+            "source_parent",
+            "none_root",
+            "unknown_missing_parent"
+          ],
+          "description": "Which revision the diff is computed against. A missing source parent MUST be unknown, never another branch."
         }
       }
     },

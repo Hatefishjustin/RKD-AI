@@ -481,7 +481,8 @@ def adapt_proposal(plan: dict, *, provenance: dict, site: dict, catalog: dict,
                    expected_unit: str = "mm",
                    lineage: dict | None = None,
                    design_origin: dict | None = None,
-                   parent_link_status: str | None = None) -> dict:
+                   parent_link_status: str | None = None,
+                   diff_baseline: str = "source_parent") -> dict:
     """Build ONE rkd-ai-design-option.v1 document from a Studio valid draft."""
     validate_source(plan, expected_unit=expected_unit, catalog=catalog)
     validation = exact_geometry_checks(plan, site)
@@ -592,6 +593,7 @@ def adapt_proposal(plan: dict, *, provenance: dict, site: dict, catalog: dict,
             "mapping_version": MAPPING_VERSION,
             "unit_conversion": "mm_to_m_div_1000",
             "geometry_mode": "polygon_exact_in_spatial_bbox_derived_in_legacy_objects",
+            "diff_baseline": diff_baseline,
             "object_id_map": id_map,
             "losses": [
                 {"item": "legacy objects[].shape", "loss": "bounding_box_only",
@@ -670,7 +672,10 @@ def adapt_proposal(plan: dict, *, provenance: dict, site: dict, catalog: dict,
         "spatial": spatial,
     }
     spatial["adaptation"]["field_ledger"] = _ledger(plan, spatial, model, artifact_id)
-    model["diff"] = diff_spatial(previous_spatial, spatial)
+    # A missing source parent has NO valid diff baseline: an unrelated branch
+    # must never be presented as "changes relative to the source parent".
+    model["diff"] = (diff_spatial(previous_spatial, spatial)
+                     if diff_baseline == "source_parent" else [])
 
     from .ai_design_geometry import structure_signature
     signature = structure_signature(model)

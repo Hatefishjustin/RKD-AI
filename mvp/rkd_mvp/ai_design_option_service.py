@@ -402,7 +402,11 @@ class AIDesignOptionService:
         declared_main = request.get("source_project_id")
         if declared_main is not None and str(declared_main) != project_id:
             fail(409, "PROJECT_MAPPING_MISMATCH", "请求里的主系统项目与 URL 项目不一致")
-        allow_orphan = bool(request.get("allow_orphan", allow_orphan))
+        raw_orphan = request.get("allow_orphan", allow_orphan)
+        if not isinstance(raw_orphan, bool):
+            fail(400, "INVALID_BOOLEAN",
+                 "allow_orphan 必须是布尔值；字符串 false 不会被当成 true")
+        allow_orphan = raw_orphan
 
         source = self._studio()
         project = source.project(studio_pid)
@@ -467,7 +471,8 @@ class AIDesignOptionService:
         svg_path = attempt_dir / f"layout-{option_revision_id}.svg"
 
         def prepare(revision_no: int, parent_revision_id: str | None,
-                    previous_spatial: dict | None, parent_link_status: str):
+                    previous_spatial: dict | None, parent_link_status: str,
+                    diff_baseline: str):
             try:
                 model = adapt_proposal(
                     plan, provenance=provenance, site=project["site"], catalog=catalog,
@@ -476,7 +481,8 @@ class AIDesignOptionService:
                     parent_revision_id=parent_revision_id,
                     previous_spatial=previous_spatial, expected_unit=expected_unit,
                     lineage=lineage, design_origin=design_origin,
-                    parent_link_status=parent_link_status)
+                    parent_link_status=parent_link_status,
+                    diff_baseline=diff_baseline)
             except StudioAdaptationError as error:
                 raise self._adapt_error(error) from error
             except Exception as error:  # noqa: BLE001 - never write half an adaptation
@@ -514,10 +520,13 @@ class AIDesignOptionService:
         parent_link_status = ("source_root" if not source_parent_uid
                               else "resolved" if state["parent_revision"]
                               else "source_parent_not_imported")
+        diff_baseline = ("none_root" if not source_parent_uid
+                         else "source_parent" if state["parent_revision"]
+                         else "unknown_missing_parent")
         model, svg = prepare(state["next_revision_no"],
                              (state["parent_revision"] or {}).get("option_revision_id"),
-                             state["parent_spatial"] or state["latest_spatial"],
-                             parent_link_status)
+                             state["parent_spatial"] if state["parent_revision"] else None,
+                             parent_link_status, diff_baseline)
 
         committed = False
         reuse_result: dict[str, Any] | None = None
@@ -551,10 +560,13 @@ class AIDesignOptionService:
                         parent_link_status2 = ("source_root" if not source_parent_uid
                                                else "resolved" if state2["parent_revision"]
                                                else "source_parent_not_imported")
+                        diff_baseline2 = ("none_root" if not source_parent_uid
+                                          else "source_parent" if state2["parent_revision"]
+                                          else "unknown_missing_parent")
                         model, svg = prepare(
                             revision_no2, parent2,
-                            state2["parent_spatial"] or state2["latest_spatial"],
-                            parent_link_status2)
+                            state2["parent_spatial"] if state2["parent_revision"] else None,
+                            parent_link_status2, diff_baseline2)
                         svg_path.write_bytes(svg)
                     spatial = model["spatial"]
                     context = {
@@ -567,6 +579,7 @@ class AIDesignOptionService:
                         "root_revision_uid": spatial["source"]["root_revision_uid"],
                         "lineage_chain": spatial["source"]["lineage_chain"],
                         "parent_link_status": spatial["source"]["parent_link_status"],
+                        "diff_baseline": spatial["adaptation"].get("diff_baseline"),
                         "design_origin": spatial["source"]["design_origin"],
                         "revision_no": model["revision_no"],
                         "parent_revision_id": model["parent_revision_id"],
@@ -730,6 +743,13 @@ class AIDesignOptionService:
             set_row = tx.set_row(current["set_id"])
             if not set_row or set_row["status"] != "succeeded":
                 raise AIDesignOptionServiceError(409, "OPTION_SET_UNAVAILABLE", "候选集不可修订")
+            # W1→W2 boundary: the legacy rect feedback/patch chain cannot edit a
+            # precise spatial model without silently degrading it to bboxes.
+            if (current.get("model") or {}).get("spatial"):
+                raise AIDesignOptionServiceError(
+                    422, "SPATIAL_MODEL_REQUIRES_PRECISE_PATH",
+                    "该候选来自精确 spatial 模型，旧的矩形反馈/补丁链不支持；"
+                    "请在 Studio 源稿上反馈后重新导入，或走 W2 精确路径")
             config = DesignOptionConfig.from_public(set_row["config"])
             brief = set_row["context"]["brief"]
             provider = self._provider(config)

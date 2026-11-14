@@ -97,9 +97,11 @@ def save(studio: Store, letter: str, plan: dict, *, uid: str,
     return studio.artifact_by_id(aid)
 
 
-def http(method: str, path: str, body: dict | None = None):
+def http(method: str, path: str, body: dict | None = None,
+         extra_headers: dict | None = None):
     payload = json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
     headers = {"X-Organization-Id": ORG, "Content-Type": "application/json"}
+    headers.update(extra_headers or {})
     if payload is not None:
         headers["Content-Length"] = str(len(payload))
     conn = HTTPConnection("127.0.0.1", PORT, timeout=30)
@@ -136,6 +138,8 @@ def revisions() -> list[dict]:
                     "source_parent_uid": src.get("parent_revision_uid"),
                     "root_uid": src.get("root_revision_uid"),
                     "parent_link_status": src.get("parent_link_status"),
+                    "diff_baseline": ((model.get("spatial") or {}).get("adaptation") or {}).get("diff_baseline"),
+                    "diff": model.get("diff"),
                     "design_origin": src.get("design_origin"),
                     "origin_kind": src.get("origin_kind")})
     c.close()
@@ -250,7 +254,8 @@ def main() -> int:
                    and r2["parent_revision_id"] == r1["option_revision_id"]
                    and r2["source_parent_uid"] == "uid-A-1"
                    and r2["root_uid"] == "uid-A-1"
-                   and r2["parent_link_status"] == "resolved"),
+                   and r2["parent_link_status"] == "resolved"
+                   and r2["diff_baseline"] == "source_parent"),
               {"v1": {"revision_no": r1["revision_no"], "main_id": r1["option_revision_id"]},
                "v2": {"revision_no": r2["revision_no"],
                       "parent": r2["parent_revision_id"],
@@ -309,7 +314,9 @@ def main() -> int:
         check("L05", "缺父且显式 allow_orphan：parent 为 null 且标记缺父，不伪造父关系",
               bool(code == 200 and orphan["parent_revision_id"] is None
                    and orphan["parent_link_status"] == "source_parent_not_imported"
-                   and orphan["root_uid"] == "uid-A-orphan-1"),
+                   and orphan["root_uid"] == "uid-A-orphan-1"
+                   and orphan["diff_baseline"] == "unknown_missing_parent"
+                   and orphan["diff"] == []),
               {"status": code, "revision_no": orphan["revision_no"],
                "parent": orphan["parent_revision_id"],
                "link": orphan["parent_link_status"], "root": orphan["root_uid"]})
@@ -501,6 +508,33 @@ def main() -> int:
                "shared_parent": g1["option_revision_id"],
                "rows_delta": len(rows) - before_rows,
                "svg_delta": svg_count() - before_svg})
+
+        # -------------------------- L14 strict boolean / L15-L16 legacy consumers
+        before = len(revisions())
+        code, resp = http("POST", f"{base}/import-studio",
+                          body(art_aprime, allow_orphan="false"))
+        check("L14", "allow_orphan 严格布尔：字符串 \"false\" 不被当成 true",
+              bool(code == 400 and resp.get("error_code") == "INVALID_BOOLEAN"
+                   and len(revisions()) == before),
+              {"status": code, "error_code": resp.get("error_code"),
+               "rows_delta": len(revisions()) - before})
+
+        code, dev = http("POST", f"/api/v1/projects/{PID}/ai/development-production",
+                         {"expected_version": 1},
+                         {"Idempotency-Key": "w1-lineage-dev-0001"})
+        check("L15", "旧矩形深化/量价消费者拒绝精确 spatial 模型（不据 bbox 算量）",
+              bool(code == 422
+                   and dev.get("error_code") == "SPATIAL_MODEL_REQUIRES_PRECISE_PATH"),
+              {"status": code, "error_code": dev.get("error_code")})
+
+        code, rev = http(
+            "POST", f"{base}/{head['option_id']}/revise",
+            {"expected_revision": head["revision_no"],
+             "feedback": "更开放", "locks": []})
+        check("L16", "旧 rect 反馈/补丁链拒绝精确 spatial 模型（不静默降级为 bbox）",
+              bool(code == 422
+                   and rev.get("error_code") == "SPATIAL_MODEL_REQUIRES_PRECISE_PATH"),
+              {"status": code, "error_code": rev.get("error_code")})
 
     finally:
         server.shutdown(); server.server_close(); thread.join(3)
