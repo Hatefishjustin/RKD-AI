@@ -1,0 +1,67 @@
+{
+  "text": "把 F3 旋转到 -30 度并让整体更有设计感",
+  "baseline_a": "art_a5ac50d4f0",
+  "baseline_uid": "revuid_3a4691176e",
+  "before_runs": 1,
+  "task_resolution": {
+    "kind": "revise",
+    "target_artifact_id": "art_a5ac50d4f0"
+  },
+  "last_run": {
+    "id": "run_6c61cd9b14",
+    "status": "succeeded",
+    "task_kind": "revise"
+  },
+  "new_revision": {
+    "id": "art_824d75bedf",
+    "revision": 2,
+    "parent_revision_uid": "revuid_3a4691176e"
+  },
+  "objective_rechecks": [
+    {
+      "kind": "measurable",
+      "rule_id": "STD-001",
+      "target": -30,
+      "target_objects": [
+        "F3"
+      ],
+      "state": "pass",
+      "user_confirmed": "not_applicable"
+    },
+    {
+      "kind": "aesthetic",
+      "rule_id": "USER-JUDGEMENT",
+      "target": null,
+      "target_objects": [
+        "F3"
+      ],
+      "state": "unknown",
+      "user_confirmed": "pending"
+    }
+  ],
+  "object_diff": [
+    "furniture:F3"
+  ],
+  "pending_rechecks": [
+    {
+      "kind": "aesthetic",
+      "reason": "unparsed_remainder_in_clause",
+      "residual": "更有设计感",
+      "state": "unknown",
+      "user_confirmed": "pending"
+    }
+  ],
+  "status_texts": [
+    "项目数据已从本地存储加载",
+    "最新留言已经执行过，没有新的待办任务；要续改请写下一条并重新选中旧方案。",
+    "留言已绑定你选中的旧方案；下一轮是续改（revise），加载该旧稿完整基线，不重新生成 A/B"
+  ],
+  "alert_count": 0,
+  "page_has_pending_note": true,
+  "page_pending_excerpt": "计算目标按目标对象集合与比较符复算（默认 all，部分达标不算解决），审美/未实现项写 unknown 并等用户确认。 未验证/待你确认：1 项（FBFB1-U0）——程序没有把它们算成通过。 流程跑完不等于方案通过，是否成立由你决定。 决定语义： 允许继续试验（不等于设计通过） 认可",
+  "taskbar": "上一轮：revise（流程走完，未验收） · 目标版本 revuid_3a4691176e · 本轮自动返工 1 次 本轮任务：conflict · 需新留言或闸口决定（feedback_already_consumed），不偷换旧基线 设计试验累计：第 2 轮 · 自动返工 1/2（不因新 run 归零，用尽后由你决定） 版本链（新→父）：Av1←无；Bv1←无；Av2←revuid_3a4691176e",
+  "mobile_scroll_width": 390,
+  "mobile_inner_width": 390,
+  "page_errors": [],
+  "passed": true
+}

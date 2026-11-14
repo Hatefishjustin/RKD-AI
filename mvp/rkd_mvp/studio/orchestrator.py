@@ -66,6 +66,19 @@ class ContradictoryFeedback(RuntimeError):
         super().__init__("；".join(c.get("detail", "") for c in conflicts))
 
 
+class UnresolvedRequirement(RuntimeError):
+    """A clause looked like a numeric target but was NEGATED (TEXT-01).
+
+    No "not equal" rule exists, so no executable objective is formed. Producing
+    a revision anyway could silently do the opposite of what the boss said;
+    stop with an explicit gate instead of accepting such a revision.
+    """
+
+    def __init__(self, items: list[dict]) -> None:
+        self.items = items
+        super().__init__("；".join(str(x.get("source_text") or "") for x in items))
+
+
 def _unwrap(value: Any) -> Any:
     if isinstance(value, dict) and len(value) == 1:
         key = next(iter(value))
@@ -455,6 +468,25 @@ class Studio:
                                           "run_id": run_id,
                                           "conflicts": exc.conflicts}])
                 self._gate(project_id, "矛盾要求：请明确以哪条为准", detail)
+            except UnresolvedRequirement as exc:
+                # TEXT-01: a negated, rule-shaped clause has no computable target.
+                status, error = "conflict", str(exc)
+                detail = ("这条留言里有一处否定要求，程序没有「不等于/不得改为」的可计算规则，"
+                          "因此没有生成与原句相反的目标，也没有交出修订稿：\n"
+                          + "\n".join(f"- {x.get('source_text') or ''}"
+                                      f"（{x.get('unparsed_reason')}，unknown + pending）"
+                                      for x in exc.items)
+                          + "\n请改写成明确的允许值，或明确说明要保留什么；"
+                            "原留言与旧版本都保留，等你的决定。")
+                st.add_message(project_id, "P", "gate", detail,
+                               evidence=[{"type": "unresolved_requirement",
+                                          "run_id": run_id,
+                                          "items": [{k: x.get(k) for k in
+                                                     ("objective_id", "source_text",
+                                                      "residual_text", "unparsed_reason",
+                                                      "object_ids", "user_confirmed")}
+                                                    for x in exc.items]}])
+                self._gate(project_id, "否定要求未形成可计算目标：请改写或明确允许值", detail)
             except IncompleteArtifact as exc:
                 status, error = "incomplete", str(exc)
                 detail = (f"本轮没有交出可用成果：{exc}。按老板的规矩不算通过，"
@@ -602,6 +634,13 @@ class Studio:
         conflicts = revision_task.text_conflicts(objectives)
         if conflicts:
             raise ContradictoryFeedback(conflicts)
+        # TEXT-01 conservative refusal: a clause that LOOKS like a numeric
+        # target but is negated must not produce a revision either. It is kept
+        # as an unknown/pending item with its original wording.
+        unresolved = [o for o in objectives
+                      if o.get("unparsed_reason") == "negated_requirement"]
+        if unresolved:
+            raise UnresolvedRequirement(unresolved)
         rev_hash = revision_mod.revision_input_hash(
             base, [], boss_feedback, base_aid, base_uid)
         task_id = st.create_task(pid, "D2", f"续改旧基线 {base_aid} v{base_rev}",

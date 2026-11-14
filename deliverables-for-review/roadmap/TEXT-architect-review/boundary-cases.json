@@ -1,0 +1,116 @@
+[
+  {
+    "text": "把 F1 和 F9 旋转到 -30 度",
+    "result": {
+      "clauses": [
+        "把 F1 和 F9 旋转到 -30 度"
+      ],
+      "message_named_objects": [
+        "F1"
+      ],
+      "measurable": [
+        {
+          "objective_id": "FB?1",
+          "kind": "measurable",
+          "rule_id": "STD-001",
+          "field": "rot",
+          "target": -30.0,
+          "unit": "degree",
+          "objects_scope": [],
+          "object_ids": [
+            "F1"
+          ],
+          "comparator": "exact",
+          "quantifier": "all",
+          "source": "text_heuristic",
+          "issue_id": null,
+          "feedback_id": null,
+          "parsed_from": "旋转到 -30 度",
+          "source_text": "把 F1 和 F9 旋转到 -30 度",
+          "object_source": "declared_ids",
+          "binding_status": "resolved",
+          "binding_match": "explicit_object_ids",
+          "computable": true
+        }
+      ],
+      "preserve": [],
+      "pending": []
+    }
+  },
+  {
+    "text": "把 F3 旋转到 -30 度并让整体更有设计感",
+    "result": {
+      "clauses": [
+        "把 F3 旋转到 -30 度并让整体更有设计感"
+      ],
+      "message_named_objects": [
+        "F3"
+      ],
+      "measurable": [
+        {
+          "objective_id": "FB?1",
+          "kind": "measurable",
+          "rule_id": "STD-001",
+          "field": "rot",
+          "target": -30.0,
+          "unit": "degree",
+          "objects_scope": [],
+          "object_ids": [
+            "F3"
+          ],
+          "comparator": "exact",
+          "quantifier": "all",
+          "source": "text_heuristic",
+          "issue_id": null,
+          "feedback_id": null,
+          "parsed_from": "旋转到 -30 度",
+          "source_text": "把 F3 旋转到 -30 度并让整体更有设计感",
+          "object_source": "declared_ids",
+          "binding_status": "resolved",
+          "binding_match": "explicit_object_ids",
+          "computable": true
+        }
+      ],
+      "preserve": [],
+      "pending": []
+    }
+  },
+  {
+    "text": "不要把 F3 旋转到 -30 度",
+    "result": {
+      "clauses": [
+        "不要把 F3 旋转到 -30 度"
+      ],
+      "message_named_objects": [
+        "F3"
+      ],
+      "measurable": [
+        {
+          "objective_id": "FB?1",
+          "kind": "measurable",
+          "rule_id": "STD-001",
+          "field": "rot",
+          "target": -30.0,
+          "unit": "degree",
+          "objects_scope": [],
+          "object_ids": [
+            "F3"
+          ],
+          "comparator": "exact",
+          "quantifier": "all",
+          "source": "text_heuristic",
+          "issue_id": null,
+          "feedback_id": null,
+          "parsed_from": "旋转到 -30 度",
+          "source_text": "不要把 F3 旋转到 -30 度",
+          "object_source": "declared_ids",
+          "binding_status": "resolved",
+          "binding_match": "explicit_object_ids",
+          "computable": true
+        }
+      ],
+      "preserve": [],
+      "pending": []
+    }
+  }
+]

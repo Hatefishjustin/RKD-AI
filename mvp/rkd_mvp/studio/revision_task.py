@@ -387,6 +387,40 @@ _COMPLEMENT_RE = re.compile(r"其他|其余|其它")
 _OBJ_TOKEN = re.compile(r"(?<![A-Za-z0-9])([A-Z]{1,3}\d{1,4})(?![A-Za-z0-9])")
 _FILLER_RE = re.compile(r"^(?:同时|并且|并|然后|还有|另外|再|顺便|以及|和|且|，|。|;|；|\s)+$")
 
+# TEXT-01 保守判定：否定、已解释片段、残余片段。
+# 已支持的比较表达与保留表达里也含「不/别」，先把它们整体剔除，再判否定；
+# 剩下的「不要/别/不得/不能…」作用于整个数值要求，程序没有 "不等于" 规则，
+# 因此整项写 unknown/pending，绝不生成与原句相反的可执行目标。
+_SUPPORTED_CMP_PHRASES = [
+    "不要超过", "不得超过", "不能超过", "不超过", "不大于", "不高于",
+    "不少于", "不小于", "不低于", "不要低于", "别超过", "别低于",
+    "至少", "最少", "起码", "以上", "下限", "最多", "以内", "上限",
+    "等于", "恰好", "正好", "就是", "精确到",
+    "≤", "＜", "<=", "<", "≥", "＞", ">=", ">", "=", "＝",
+]
+_KEEP_PHRASES = ["不要改", "不要动", "不要变", "别动", "别改",
+                 "保留", "不动", "保持", "原样", "不改", "维持"]
+_NON_NEGATION_RE = re.compile("|".join(
+    re.escape(x) for x in sorted(_SUPPORTED_CMP_PHRASES + _KEEP_PHRASES,
+                                 key=len, reverse=True)))
+_NEGATION_RE = re.compile(r"不要|别|不得|不能|不可|不许|勿|禁止|避免|莫|休")
+
+# 去掉这些结构性/主语词之后，子句里还有汉字就是「未被解释的诉求」。
+# 这是通用残余判定，不是针对某一种说法列同义词。
+_STRUCTURAL_WORDS = [
+    "主动线", "入口", "出口", "动线", "通道", "净宽", "面积", "色温",
+    "家具", "分区", "区域", "展台", "灯槽", "灯具", "射灯", "筒灯",
+    "整体", "全部", "所有", "同时", "并且", "以及", "这个", "这条",
+    "一下", "一下儿", "一点", "一些", "对象", "以及", "麻烦",
+    "把", "将", "被", "并", "且", "和", "与", "再", "又", "请", "帮",
+    "都", "各", "每", "均", "的", "了", "地", "得", "让", "使", "给",
+    "在", "上", "下", "里", "中", "到", "至", "为", "成", "做",
+    "度", "°", "mm", "MM", "K", "㎡", "平方米", "平米", "米",
+]
+_STRUCTURAL_RE = re.compile("|".join(
+    re.escape(x) for x in sorted(set(_STRUCTURAL_WORDS), key=len, reverse=True)))
+_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+
 
 def _comparator_from_clause(clause: str, rule_id: str) -> str:
     """Explicit wording wins; otherwise the rule's own default, never silence."""
@@ -405,13 +439,21 @@ def _clause_binding(clause: str, index: dict) -> dict:
     ids = [oid for oid in index
            if re.search(rf"(?<![A-Za-z0-9]){re.escape(oid)}(?![A-Za-z0-9])", clause)]
     names = []
+    name_hits: list[str] = []
     for oid, (_group, obj) in index.items():
         name = str(obj.get("name") or "").strip()
-        if len(name) >= 2 and name in clause and oid not in ids:
-            names.append(oid)
+        if len(name) >= 2 and name in clause:
+            name_hits.append(oid)
+            if oid not in ids:
+                names.append(oid)
     unknown = [t for t in _OBJ_TOKEN.findall(clause)
                if t not in index and t not in ids and t not in names]
-    return {"ids": ids, "names": names, "unknown_ids": unknown}
+    return {"ids": ids, "names": names, "unknown_ids": unknown,
+            "name_hits": sorted(set(name_hits)),
+            # "F1 和洽谈桌" when F1 itself is also called 洽谈桌: the name
+            # cannot be resolved to a distinct object set.
+            "ambiguous_names": len(set(name_hits)) > 1
+                               or bool(set(ids) & set(name_hits))}
 
 
 def _group_of_clause(clause: str) -> str | None:
@@ -446,14 +488,32 @@ def _measurable_binding(binding: dict, prev_objects: list[str],
         return list(caller_ids), {"binding_status": "resolved",
                                   "binding_match": "caller_object_ids"}
     ids = sorted(set(binding["ids"]) | set(binding["names"]))
+    missing = sorted(set(binding["unknown_ids"]))
+    if missing:
+        # A clause naming BOTH an existing and an absent object must keep ALL
+        # point-named references. Dropping the absent one and declaring the
+        # binding resolved is exactly the "partial parse as success" defect.
+        refs = sorted(set(ids) | set(missing))
+        return refs, {"binding_status": "unresolved",
+                      "binding_match": ("missing_object_references" if ids
+                                        else "object_id_not_found"),
+                      "all_object_references": refs,
+                      "missing_object_ids": missing,
+                      "verifiable": True}
+    if len(binding["names"]) > 1 or binding.get("ambiguous_names"):
+        # Two different names, or an id mixed with a name that also matches it:
+        # do not pick one silently.
+        candidates = sorted(set(binding.get("name_hits") or []) | set(ids))
+        return [], {"binding_status": "unresolved",
+                    "binding_match": "ambiguous_object_names",
+                    "all_object_references": candidates,
+                    "binding_candidates": candidates,
+                    "verifiable": False}
     if ids:
         return ids, {"binding_status": "resolved",
                      "binding_match": ("explicit_object_ids" if binding["ids"]
-                                       else "object_name_in_clause")}
-    if binding["unknown_ids"]:
-        # Named but absent: verified as missing (fail), never widened to the group.
-        return sorted(set(binding["unknown_ids"])), {
-            "binding_status": "unresolved", "binding_match": "object_id_not_found"}
+                                       else "object_name_in_clause"),
+                     "all_object_references": ids}
     if len(prev_objects) == 1:
         return list(prev_objects), {"binding_status": "resolved",
                                     "binding_match": "previous_clause_object"}
@@ -490,9 +550,58 @@ def _numeric_values(clause: str) -> list[str]:
     return _NUM_RE.findall(_OBJ_TOKEN.sub(" ", clause or ""))
 
 
+def _clause_is_negated(clause: str) -> bool:
+    """Is this clause a NEGATED requirement rather than a positive target?
+
+    Supported comparator / keep-as-is expressions are removed first, so
+    "不超过 2400mm" stays a max target while "不要把 F3 旋转到 -30 度" is
+    recognised as a negation we cannot turn into a positive target.
+    """
+    cleaned = _NON_NEGATION_RE.sub(" ", clause or "")
+    return bool(_NEGATION_RE.search(cleaned))
+
+
+def _explained_spans(clause: str, hits: list, index: dict) -> tuple[list[tuple[int, int]], list[str]]:
+    """Character spans that the deterministic rules actually EXPLAIN."""
+    spans: list[tuple[int, int]] = []
+    explained: list[str] = []
+    for _rid, found in hits:
+        for m in found:
+            spans.append(m.span())
+            explained.append(m.group(0))
+    for m in _OBJ_TOKEN.finditer(clause):
+        spans.append(m.span())
+    for _oid, (_group, obj) in index.items():
+        name = str(obj.get("name") or "").strip()
+        if len(name) >= 2:
+            for m in re.finditer(re.escape(name), clause):
+                spans.append(m.span())
+    for pattern in (_CMP_MAX, _CMP_MIN, _CMP_EXACT, _PRESERVE_RE):
+        for m in pattern.finditer(clause):
+            spans.append(m.span())
+    return spans, explained
+
+
+def _substantive_residual(clause: str, spans: list[tuple[int, int]]) -> str:
+    """Unexplained part of a clause after removing explained spans + grammar.
+
+    Any remaining Chinese text is an unparsed requirement: it is reported, not
+    silently absorbed by the numeric objective (no punctuation required).
+    """
+    chars = list(clause or "")
+    for start, end in spans:
+        for k in range(max(0, start), min(len(chars), end)):
+            chars[k] = " "
+    left = _STRUCTURAL_RE.sub(" ", "".join(chars))
+    left = "".join(ch if ("\u4e00" <= ch <= "\u9fff") or ch.isalnum() else " "
+                   for ch in left)
+    left = re.sub(r"\s+", " ", left).strip()
+    return left if _CJK_RE.search(left) else ""
+
+
 def _pending_object(rev, seq: int, clause: str, reason: str, feedback_id,
                     object_ids: list[str] | None = None,
-                    detail: str = "") -> dict:
+                    detail: str = "", residual_text: str = "") -> dict:
     aesthetic = bool(_AESTHETIC_RE.search(clause))
     return {
         "objective_id": f"FB{rev}-U{seq}",
@@ -503,6 +612,7 @@ def _pending_object(rev, seq: int, clause: str, reason: str, feedback_id,
         "objects_scope": [], "object_ids": list(object_ids or []),
         "source": "text_aesthetic" if aesthetic else "text_unparsed",
         "feedback_id": feedback_id, "source_text": clause,
+        "residual_text": residual_text or clause,
         "unparsed_reason": reason, "computable": False,
         "note": (detail or (
             "这条诉求没有可确定性解析的目标值/对象：写 unknown + pending，"
@@ -556,64 +666,99 @@ def parse_text_requirements(text: str, plan: dict | None = None, *,
                         "程序不替用户配对，也不只取第一个。请一条一句写清对象与目标值")))
         elif hits:
             consumed = True
-            ambiguous = [(rid, [m.group(1) for m in found])
-                         for rid, found in hits if len(found) > 1]
-            if len(hits) == 1 and len(values) > len(hits[0][1]):
-                # One target was read; the remaining numbers are NOT silently
-                # dropped — they are listed as unparsed for the user to restate.
-                matched_text = hits[0][1][0].group(0)
-                leftover = _numeric_values(clause.replace(matched_text, " ", 1))
-                if leftover:
-                    pending.append(_pending_object(
-                        prefix.rstrip("-"), len(pending), clause,
-                        "extra_values_not_parsed", feedback_id,
-                        detail=(f"这一句里除目标值外还有未解析的数值 {leftover}："
-                                "程序只按规则解析了可确定的那一项，其余不猜")))
-            if ambiguous:
+            spans, explained = _explained_spans(clause, hits, index)
+            if _clause_is_negated(clause):
+                # No "not equal" rule exists: a negated requirement must NEVER
+                # become an executable positive target with the opposite meaning.
                 pending.append(_pending_object(
                     prefix.rstrip("-"), len(pending), clause,
-                    "multiple_values_in_clause", feedback_id,
-                    object_ids=sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"])),
-                    detail=("同一句里出现多个同类数值（"
-                            + "；".join(f"{rid}:{vals}" for rid, vals in ambiguous)
-                            + "），程序不替用户挑第一个；请拆成一条一句，"
-                              "或明确每个对象的目标值")))
+                    "negated_requirement", feedback_id,
+                    object_ids=sorted(set(bindings[i]["ids"])
+                                      | set(bindings[i]["names"])
+                                      | set(bindings[i]["unknown_ids"])),
+                    detail=("这句是否定要求（例如「不要把…旋转到…」），程序没有"
+                            "「不等于/不得改为」这一可计算规则；整项写 unknown + pending，"
+                            "不会生成与原句相反的目标。请改成明确的允许值或否定约束说明")))
             else:
-                for rule_id, found in hits:
-                    m = found[0]
-                    field, unit, scope = _RULE_SCOPES[rule_id]
-                    try:
-                        target = float(m.group(1))
-                    except (TypeError, ValueError):
-                        continue
-                    target_ids, bind = _measurable_binding(
-                        bindings[i], prev_clause_objects, message_named, object_ids,
-                        scope, index)
-                    item = {
-                        "objective_id": f"{prefix}{len(measurable) + 1}",
-                        "kind": "measurable", "rule_id": rule_id,
-                        "field": field, "target": target, "unit": unit,
-                        "objects_scope": [] if target_ids else list(scope),
-                        "object_ids": target_ids,
-                        "comparator": _comparator_from_clause(clause, rule_id),
-                        "quantifier": "all",
-                        "source": source, "issue_id": issue_id,
-                        "feedback_id": feedback_id,
-                        "parsed_from": m.group(0)[:80], "source_text": clause,
-                        "object_source": ("declared_ids" if target_ids
-                                          else "group:" + ",".join(scope)),
-                        **bind,
-                    }
-                    missing = bind["binding_match"] == "object_id_not_found"
-                    # A named-but-absent object is rechecked (and reported as
-                    # missing); an ambiguous one is not verified at all.
-                    item["computable"] = bind["binding_status"] == "resolved" or missing
-                    if bind["binding_status"] != "resolved":
-                        item["note"] = ("点名的对象不在当前基线里，不能放宽成整类家具/分区；"
-                                        "按对象缺失处理（不算达标）" if missing else
-                                        "这句话没有把目标绑定到唯一对象，未验证；"
-                                        "等用户确认或补充对象，不默认扩大成整组")
-                    measurable.append(item)
+                ambiguous = [(rid, [m.group(1) for m in found])
+                             for rid, found in hits if len(found) > 1]
+                if len(hits) == 1 and len(values) > len(hits[0][1]):
+                    # One target was read; the remaining numbers are NOT silently
+                    # dropped — they are listed as unparsed for the user to restate.
+                    matched_text = hits[0][1][0].group(0)
+                    leftover = _numeric_values(clause.replace(matched_text, " ", 1))
+                    if leftover:
+                        pending.append(_pending_object(
+                            prefix.rstrip("-"), len(pending), clause,
+                            "extra_values_not_parsed", feedback_id,
+                            detail=(f"这一句里除目标值外还有未解析的数值 {leftover}："
+                                    "程序只按规则解析了可确定的那一项，其余不猜")))
+                if ambiguous:
+                    pending.append(_pending_object(
+                        prefix.rstrip("-"), len(pending), clause,
+                        "multiple_values_in_clause", feedback_id,
+                        object_ids=sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"])),
+                        detail=("同一句里出现多个同类数值（"
+                                + "；".join(f"{rid}:{vals}" for rid, vals in ambiguous)
+                                + "），程序不替用户挑第一个；请拆成一条一句，"
+                                  "或明确每个对象的目标值")))
+                else:
+                    for rule_id, found in hits:
+                        m = found[0]
+                        field, unit, scope = _RULE_SCOPES[rule_id]
+                        try:
+                            target = float(m.group(1))
+                        except (TypeError, ValueError):
+                            continue
+                        target_ids, bind = _measurable_binding(
+                            bindings[i], prev_clause_objects, message_named, object_ids,
+                            scope, index)
+                        refs = bind.get("all_object_references") or target_ids
+                        missing_refs = bind.get("missing_object_ids") or []
+                        item = {
+                            "objective_id": f"{prefix}{len(measurable) + 1}",
+                            "kind": "measurable", "rule_id": rule_id,
+                            "field": field, "target": target, "unit": unit,
+                            "objects_scope": [] if target_ids else list(scope),
+                            "object_ids": target_ids,
+                            "comparator": _comparator_from_clause(clause, rule_id),
+                            "quantifier": "all",
+                            "source": source, "issue_id": issue_id,
+                            "feedback_id": feedback_id,
+                            "parsed_from": m.group(0)[:80], "source_text": clause,
+                            "object_source": ("declared_ids" if target_ids
+                                              else "group:" + ",".join(scope)),
+                            "explained_text": explained,
+                            "all_object_references": refs,
+                            **bind,
+                        }
+                        # A named-but-absent object is rechecked (and reported as
+                        # missing); an ambiguous one is not verified at all.
+                        item["computable"] = bind.get(
+                            "verifiable", bind["binding_status"] == "resolved")
+                        if bind["binding_status"] != "resolved":
+                            if missing_refs:
+                                item["note"] = (
+                                    f"点名的对象 {missing_refs} 不在当前基线里；"
+                                    f"保留全部引用 {refs}，不丢弃缺失对象，也不放宽成整类；"
+                                    "按对象缺失处理（不算达标）")
+                            else:
+                                item["note"] = ("这句话没有把目标绑定到唯一对象，未验证；"
+                                                "等用户确认或补充对象，不默认扩大成整组")
+                        measurable.append(item)
+                    # Residual text inside the SAME clause is a separate demand.
+                    # Punctuation is not required for it to be visible.
+                    residual = _substantive_residual(clause, spans)
+                    if residual:
+                        pending.append(_pending_object(
+                            prefix.rstrip("-"), len(pending), clause,
+                            "unparsed_remainder_in_clause", feedback_id,
+                            object_ids=sorted(set(bindings[i]["ids"])
+                                              | set(bindings[i]["names"])),
+                            residual_text=residual,
+                            detail=(f"这句里除已解析的数值目标外还有未解释的诉求「{residual}」："
+                                    "保留原句并写 unknown + pending；程序不把它翻译成"
+                                    "可计算目标，也不把它算成已解决")))
         if _PRESERVE_RE.search(clause):
             consumed = True
             preserve.append(_preserve_object(
@@ -1021,6 +1166,9 @@ def recheck_objectives(objectives: list[dict], base: dict, candidate: dict, *,
             # be able to show WHICH sentence stayed unparsed (TEXT-01)
             "source_text": obj.get("source_text"),
             "unparsed_reason": obj.get("unparsed_reason"),
+            "residual_text": obj.get("residual_text"),
+            "all_object_references": obj.get("all_object_references"),
+            "missing_object_ids": obj.get("missing_object_ids"),
         }
         if obj.get("kind") in ("lock", "preserve"):
             item.update(_recheck_lock_objective(obj, base, candidate))

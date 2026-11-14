@@ -1,0 +1,376 @@
+{
+  "task_id": "W0 二次收口（W0-F01—F05）",
+  "schema_version": "rkd-w0b-checks.v1",
+  "executed_at": "2026-11-14T18:38:47+08:00",
+  "code_head": "db9121e0abecb6d5cbe3941ec73aab2fe578e6b1",
+  "environment": {
+    "python": "3.12.14",
+    "geometry_engine": "shapely-2.1.2",
+    "model_channel": "local-model-stub (explicitly labelled)",
+    "service": "studio HTTP 127.0.0.1:58893 (isolated DB)",
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "W0B-C00",
+      "name": "基座：一次真实 generate 产出 A/B 两份有效候选，按 run_id 读到同一快照",
+      "result": "observed_pass",
+      "evidence": {
+        "run_id": "run_7d685b3c92",
+        "run_status": "succeeded",
+        "run_valid_artifacts": [
+          "art_0b46950374",
+          "art_b85ffa8056",
+          "art_edd0c18d74"
+        ],
+        "stage_status": {
+          "flow_finished": true,
+          "valid_artifact_exists": true,
+          "waiting_user": true,
+          "design_approved_by_user": false,
+          "last_completed_run_id": "run_7d685b3c92",
+          "last_completed_run_status": "succeeded",
+          "last_completed_run_artifacts": 7,
+          "last_completed_run_valid_artifacts": 3,
+          "note": "流程跑完 / 成果有效 / 等待用户 / 设计认可分别表达；完成状态与其产物来自同一快照；设计认可只能由用户给出"
+        },
+        "snapshot": {
+          "taken_at": "2026-11-14T18:38:37+08:00",
+          "isolation": "single read transaction：messages/artifacts/reviews/gates/runs/feedback 同属一个快照",
+          "artifact_count": 7,
+          "run_count": 1,
+          "message_count": 14,
+          "feedback_revision": 0,
+          "latest_run_id": "run_7d685b3c92",
+          "token": "ba6c01872d2a775d",
+          "note": "客户端应据此识别同一代状态；判断某轮结果请按 run_id 读取"
+        }
+      }
+    },
+    {
+      "id": "W0B-F01-01",
+      "name": "连续两条同基线留言：显式合并为一轮续改，两条都被同一 run 消费",
+      "result": "observed_pass",
+      "evidence": {
+        "post_1": 201,
+        "post_2": 201,
+        "run": 202,
+        "task_kind": "revise",
+        "merged_feedback_ids": [
+          "fb_19b160ceeb",
+          "fb_f7ba9ea068"
+        ],
+        "consumed_by_run": {
+          "fb_19b160ceeb": "run_8fc423770a",
+          "fb_f7ba9ea068": "run_8fc423770a"
+        },
+        "run_id": "run_8fc423770a",
+        "new_revision_parent_uid": "revuid_bf610e6bff",
+        "merge_note_present": true
+      }
+    },
+    {
+      "id": "W0B-F01-02",
+      "name": "两条都已消费后再开轮：明确冲突，旧留言不复活、不偷换基线",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 409,
+        "conflict_code": "feedback_already_consumed",
+        "detail": "最新留言 fb_f7ba9ea068（v2）已由 run run_8fc423770a 消费；不得用新 run 重放同一任务"
+      }
+    },
+    {
+      "id": "W0B-F01-03",
+      "name": "已消费历史不再封死新生成：显式留言后按 generate 跑出新的 A/B",
+      "result": "observed_pass",
+      "evidence": {
+        "post_status": 201,
+        "task_hint": "generate",
+        "run_status": 202,
+        "task_kind": "generate",
+        "run": "succeeded",
+        "fresh_ab_count": 2,
+        "old_feedback_revived": false
+      }
+    },
+    {
+      "id": "W0B-F01-04",
+      "name": "跨候选两条待续改：拒绝自动合并，明确要求先决定（不丢下更早那条）",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 409,
+        "conflict_code": "multiple_pending_feedback",
+        "detail": "有多条待续改留言指向不同旧基线，不能自动合并，也不能丢下更早那条：fb_ca6c118651(v4→art_0b46950374)；fb_5f5366a4a3(v5→art_edd0c18d74)",
+        "both_listed": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "W0B-F01-05",
+      "name": "显式作废更早那条后：按剩下那条续改，正文与历史保留",
+      "result": "observed_pass",
+      "evidence": {
+        "withdraw_status": 200,
+        "withdraw": {
+          "applied": true,
+          "reason": "superseded",
+          "superseded_by": "boss_decision: 先处理 B 的动线，A 这条留到下一轮",
+          "text_preserved": "A 的东洽谈区尺度再调一下"
+        },
+        "run_status": 202,
+        "task_kind": "revise",
+        "target_artifact_id": "art_edd0c18d74",
+        "b2_id": "art_edd0c18d74",
+        "run_result": "incomplete"
+      }
+    },
+    {
+      "id": "W0B-F03-01",
+      "name": "保留的是非入口对象 ZA5：改了它 → 明确拒绝，不拿入口锁冒充",
+      "result": "observed_pass",
+      "evidence": {
+        "post": 201,
+        "run": 202,
+        "run_status": "incomplete",
+        "invalid_raw": 1,
+        "LOCK_PRESERVE_in_diagnostics": true,
+        "ZA5_in_diagnostics": true,
+        "valid_revision_in_this_run": []
+      }
+    },
+    {
+      "id": "W0B-F03-02",
+      "name": "找不到对象的保留要求：unknown + pending，并记下未绑定的原文",
+      "result": "observed_pass",
+      "evidence": {
+        "objective": {
+          "kind": "preserve",
+          "binding_status": "unresolved",
+          "object_ids": [],
+          "source_text": "保留西侧样品库不动"
+        },
+        "rechecked": "unknown",
+        "user_confirmed": "pending",
+        "resolved": null
+      }
+    },
+    {
+      "id": "W0B-F04-01",
+      "name": "锁 F1.x 只改 F1.rot：允许通过（字段锁不是整对象锁）",
+      "result": "observed_pass",
+      "evidence": {
+        "post": 201,
+        "run": 202,
+        "run_status": "succeeded",
+        "F1_rot_after": 30,
+        "F1_x_before": 8400,
+        "F1_x_after": 8400,
+        "lock_used": {
+          "object_id": "F1",
+          "fields": [
+            "x"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W0B-F04-02",
+      "name": "锁 F1.x 且真的改了 F1.x：拒绝，冲突给出被锁字段",
+      "result": "observed_pass",
+      "evidence": {
+        "post": 201,
+        "run": 202,
+        "run_status": "incomplete",
+        "LOCK_REVISION_in_diagnostics": true,
+        "valid_revision_in_this_run": []
+      }
+    },
+    {
+      "id": "W0B-F02-01",
+      "name": "两个目标对象只达标一个：拒绝，不把部分达标记成已解决",
+      "result": "observed_pass",
+      "evidence": {
+        "post": 201,
+        "run": 202,
+        "run_status": "incomplete",
+        "REV_OBJECTIVE_in_diagnostics": true,
+        "F2_in_diagnostics": true,
+        "valid_revision_in_this_run": []
+      }
+    },
+    {
+      "id": "W0B-F02-02",
+      "name": "比较符各按语义判定：min/max/exact 判定不同，且声明满足不等于实测达标",
+      "result": "observed_pass",
+      "evidence": {
+        "states": {
+          "MIN": "pass",
+          "EXACT_OK": "pass",
+          "EXACT_NO": "fail",
+          "MAX_OK": "pass",
+          "MAX_NO": "fail"
+        },
+        "comparators": {
+          "MIN": "min",
+          "EXACT_OK": "exact",
+          "EXACT_NO": "exact",
+          "MAX_OK": "max",
+          "MAX_NO": "max"
+        },
+        "measured_rot": 45,
+        "width_objective": {
+          "state": "fail",
+          "declared_width_mm": 2300,
+          "measured_clear_width_mm": 6000.0,
+          "declared_meets_target": true,
+          "measured_meets_target": false,
+          "coverage": "limited: declared width + keep-out/entrance geometry; 不覆盖门洞、家具遮挡与完整净宽合规"
+        }
+      }
+    },
+    {
+      "id": "W0B-F05-01",
+      "name": "运行中到达新留言：本轮按 run_id 判定为 superseded，产物不作为当前有效版本",
+      "result": "observed_pass",
+      "evidence": {
+        "run": 202,
+        "late_message": 201,
+        "barrier_reached": true,
+        "mid_run_status": "running",
+        "mid_valid_artifacts": 0,
+        "final_run_status": "superseded",
+        "cancel_requested": 1,
+        "valid_artifacts_of_run_after": 0,
+        "run_snapshot_artifact_count": 2,
+        "run_snapshot_artifacts": [
+          [
+            "plan-sketch",
+            "superseded",
+            null
+          ],
+          [
+            "spatial-plan",
+            "superseded",
+            "valid_candidate"
+          ]
+        ],
+        "stage_last_completed": "superseded"
+      }
+    },
+    {
+      "id": "W0B-F05-02",
+      "name": "完成状态与产物来自同一快照：完成轮的产物都在同一份状态里，且带快照令牌",
+      "result": "observed_pass",
+      "evidence": {
+        "last_completed_run": {
+          "id": "run_b33f858b2e",
+          "status": "superseded",
+          "task_kind": "revise",
+          "target_artifact_id": "art_0b46950374",
+          "target_revision_uid": "revuid_20d509e572",
+          "trial_key": "ningbo-xiecheng|candgroup_3bf7f07b97",
+          "auto_rework_total": 0,
+          "artifact_ids": [
+            "art_27c408c925",
+            "art_33999da416"
+          ],
+          "valid_artifact_ids": []
+        },
+        "reported_artifacts_subset": false,
+        "snapshot": {
+          "taken_at": "2026-11-14T18:38:45+08:00",
+          "isolation": "single read transaction：messages/artifacts/reviews/gates/runs/feedback 同属一个快照",
+          "artifact_count": 24,
+          "run_count": 11,
+          "message_count": 61,
+          "feedback_revision": 11,
+          "latest_run_id": "run_b33f858b2e",
+          "token": "ed6c1d42b936feca",
+          "note": "客户端应据此识别同一代状态；判断某轮结果请按 run_id 读取"
+        },
+        "stage_status": {
+          "flow_finished": true,
+          "valid_artifact_exists": true,
+          "waiting_user": true,
+          "design_approved_by_user": false,
+          "last_completed_run_id": "run_b33f858b2e",
+          "last_completed_run_status": "superseded",
+          "last_completed_run_artifacts": 2,
+          "last_completed_run_valid_artifacts": 0,
+          "note": "流程跑完 / 成果有效 / 等待用户 / 设计认可分别表达；完成状态与其产物来自同一快照；设计认可只能由用户给出"
+        }
+      }
+    },
+    {
+      "id": "W0B-F01-06",
+      "name": "自动返工按设计试验累计并落库：本轮用满 2 轮后记录累计值，不因新 run 归零",
+      "result": "observed_pass",
+      "evidence": {
+        "post_task_hint": "generate",
+        "run": 202,
+        "task_kind": "generate",
+        "run_status": "succeeded",
+        "auto_rework_total_in_run": 2,
+        "auto_rework_messages": [
+          "数字/契约校验判定这一稿不能用：白名单 patch 不合法：删除对象没有写理由。当前基准 v1 blocker 0 / major 0 / 面积差 0.0㎡。\n按公司规矩自动打回第 1 轮（本设计试验累计自动返工 1/2 轮；用尽后第 3 ",
+          "数字/契约校验判定这一稿不能用：白名单 patch 不合法：删除对象没有写理由。当前基准 v1 blocker 0 / major 0 / 面积差 0.0㎡。\n按公司规矩自动打回第 2 轮（本设计试验累计自动返工 2/2 轮；用尽后第 3 "
+        ],
+        "trial_key": "ningbo-xiecheng|candgroup_6381a41583",
+        "trial_progress": {
+          "trial_key": "ningbo-xiecheng|candgroup_6381a41583",
+          "rounds": 1,
+          "auto_rework_used": 2,
+          "max_auto_rework": 2,
+          "last_run_auto_rework_total": 2,
+          "note": "自动返工按设计试验累计，不因新 run 归零；用尽后下一轮由老板决定"
+        }
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 15,
+    "observed_fail": 0
+  },
+  "previous_packet_hashes": {
+    "deliverables-for-review/roadmap/W0-收口/after/arc-first-batch-regression-checks.json": "b15fbd1259352e7d7e7ccef959cc8f600652ddd4cf90edfcd502eee044998238",
+    "deliverables-for-review/roadmap/W0-收口/after/checks.json": "cb87518bb3bb0652f7a8412ee3863bdeb091a5e7043c61946f74f008cba7dfda",
+    "deliverables-for-review/roadmap/W0-收口/after/frontend-build.log": "1016f301bf007ca5fdf33a060196e464767820a4185d435882bfb020c3aa2a7a",
+    "deliverables-for-review/roadmap/W0-收口/after/full-unittest-final.log": "ed89c4a40c920de8bd447ab1b95757c65c924d14c02ef7e49a44e6ea622f46f8",
+    "deliverables-for-review/roadmap/W0-收口/after/full-unittest.log": "d01d9dc80f0d1d11a12743dd784986ff1944654eb211a1e5a35e5c03c237df62",
+    "deliverables-for-review/roadmap/W0-收口/after/q-checks.json": "84f62b2c3b5ceff29a759220ecc3c5acd3e7357446a1e5265eadf617b1832466",
+    "deliverables-for-review/roadmap/W0-收口/after/reproduction.json": "db53d4237fc40faadd8abdde514c4e53153bae72f132dbf942edf023e98bc7f6",
+    "deliverables-for-review/roadmap/W0-收口/after/studio-loop.log": "5f2803ff2e322bd579e45338ecb2bf0dfe2aeb04e0a91d557f854e7ae82385a2",
+    "deliverables-for-review/roadmap/W0-收口/before/reproduction.json": "a040b823f65c0ee0e5112d439e0d966f49a4cd464374d699671e7515e8495455",
+    "deliverables-for-review/roadmap/W0-收口/browser/browser-observations.json": "8a3b259cbc84932d11f58f269e6ed90e7d422412a3fed804bde338573a29dfdd",
+    "deliverables-for-review/roadmap/W0-收口/browser/browser-stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "deliverables-for-review/roadmap/W0-收口/browser/browser-stdout.log": "456526e5d7737c2c6e6a387cc9ba7177361eab5fcf854b9b42419391fac796ad",
+    "deliverables-for-review/roadmap/W0-收口/browser/verification.json": "4c8874f9295fb3354a46c081476b3f28a9b6f92a8423f358d91eecd79701121b",
+    "deliverables-for-review/roadmap/W0-收口/browser/w0-feedback-desktop.png": "d1c36d7f807dc2e1b97d6f9e41685915bfc185a1cdd5a96c835f6e2c6dc94545",
+    "deliverables-for-review/roadmap/W0-收口/browser/w0-mobile.png": "059bf7fb698c667b59a1ca2481984cf32887c268f46a33cee03c0d404747d13d",
+    "deliverables-for-review/roadmap/W0-收口/browser/w0-revision-desktop.png": "67849a5f87dbc24eeff98a15916dbc0fd49cb9dc71a0848cf8b6ffda0441376a",
+    "deliverables-for-review/roadmap/W0-收口/changes.patch": "90fb0de13590c5bbcbd39b0ef71997a3695c57fb33d8500b1549e7c8f4902a4c",
+    "deliverables-for-review/roadmap/W0-收口/checks.json": "5fd2d87121e4937c441343d874b42bddca81cde99f081c16a820989fafc5f67b",
+    "deliverables-for-review/roadmap/W0-收口/code-diff.md": "2d9d5a914ed327c28a7254270b0fbbe927032871953cd8a894a3831f51daf833",
+    "deliverables-for-review/roadmap/W0-收口/commit-reference.md": "aa21404514d56f9cafdb70dffa2f3fc2a1498192f9181a30f4b5f43f7a13e3f5",
+    "deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md": "9604d2a61441de99673453cec5ca30a0cc5c243587c160842a1e47fe4b9b83aa",
+    "deliverables-for-review/roadmap/W0-收口/manifest.json": "a51e31401ee1aaff8840b3039c47392942ff1933e4222fb73f4a6f99e9c6eb10",
+    "deliverables-for-review/roadmap/W0-收口/positive-negative-cases.md": "f78fc1bca2e5d6239abaea9986bb7a3875624da6551a465d2dc7fb9ac7662d71",
+    "deliverables-for-review/roadmap/W0-收口/review-packet.md": "51601cf715bbf71728de0c8818b1fa112ca24cb67e57e28ee4e829454743dc09"
+  },
+  "external_calls": 0,
+  "image_counts": {
+    "images_sent_external": 0,
+    "images_generated_external": 0
+  },
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "limitations": [
+    "本批是工程整改，没有新增设计成果；不构成设计或 AD01—AD08 结论",
+    "Q10 同源平面/渲染/数量一致性仍 not_run（W1/W2）",
+    "所有模型回答为明确标记的本地桩，不代表真实 AI 设计能力",
+    "自动返工目前只发生在 generate 运行内部的打回循环；revise 路径不自动重复。累计值已持久化到设计试验并在状态里显示，任何新 run 都不会让它变小"
+  ]
+}

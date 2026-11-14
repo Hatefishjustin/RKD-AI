@@ -1,0 +1,256 @@
+{
+  "task_id": "W0 文字反馈保守判定（TEXT-01 边界）",
+  "schema_version": "rkd-boundary-cases.v1",
+  "phase": "after",
+  "executed_at": "2026-11-14T18:32:36+08:00",
+  "git_head": "db9121e0abecb6d5cbe3941ec73aab2fe578e6b1",
+  "environment": {
+    "python": "3.12.14",
+    "model_calls": "none (pure functions)",
+    "fixture": "arc_first_batch_stub.valid_proposal('A')"
+  },
+  "cases": [
+    {
+      "case": "B01",
+      "finding": "否定要求被反转成正向可执行目标",
+      "observed": {
+        "measurable": [],
+        "pending_reason": [
+          "negated_requirement"
+        ],
+        "pending_state": [
+          [
+            "unknown",
+            "pending"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B02",
+      "finding": "「不超过/不低于」是支持的比较符，不能被当成否定拒绝；真否定仍要拒绝",
+      "observed": {
+        "max": {
+          "comparators": [
+            "max"
+          ],
+          "targets": [
+            2400.0
+          ],
+          "reasons": []
+        },
+        "min": {
+          "comparators": [
+            "min"
+          ],
+          "targets": [
+            4000.0
+          ],
+          "reasons": []
+        },
+        "negated": {
+          "comparators": [],
+          "targets": [],
+          "reasons": [
+            "negated_requirement"
+          ]
+        }
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B03",
+      "finding": "存在+缺失对象并列时只留存在对象并宣布绑定成功",
+      "observed": {
+        "object_ids": [
+          [
+            "F1",
+            "F9"
+          ]
+        ],
+        "all_refs": [
+          [
+            "F1",
+            "F9"
+          ]
+        ],
+        "binding": [
+          [
+            "unresolved",
+            "missing_object_references"
+          ]
+        ],
+        "missing": [
+          [
+            "F9"
+          ]
+        ],
+        "states": [
+          [
+            "fail",
+            [
+              "F9"
+            ]
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B04",
+      "finding": "仅缺失对象：按对象缺失阻断，不退化为整组",
+      "observed": {
+        "object_ids": [
+          [
+            "F9"
+          ]
+        ],
+        "binding": [
+          [
+            "unresolved",
+            "object_id_not_found"
+          ]
+        ],
+        "state": [
+          "fail"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B05",
+      "finding": "存在对象 + 歧义名称并列：不能声称绑定成功",
+      "observed": {
+        "object_ids": [
+          []
+        ],
+        "binding": [
+          [
+            "unresolved",
+            "ambiguous_object_names"
+          ]
+        ],
+        "computable": [
+          false
+        ],
+        "candidates": [
+          [
+            "F1",
+            "F2"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B06",
+      "finding": "无逗号复合句中，数值目标吞掉同子句剩余诉求",
+      "observed": {
+        "measurable": [
+          [
+            -30.0,
+            [
+              "F3"
+            ]
+          ]
+        ],
+        "pending_reason": [
+          "unparsed_remainder_in_clause"
+        ],
+        "residual": [
+          "更有设计感"
+        ],
+        "pending_states": [
+          [
+            "aesthetic",
+            "unknown",
+            "pending"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B07",
+      "finding": "残余检测必须通用（换一个非审美词也应留痕），不是「设计感」补丁",
+      "observed": {
+        "pending_reason": [
+          "unparsed_remainder_in_clause"
+        ],
+        "residual": [
+          "复核北侧收口"
+        ],
+        "kinds": [
+          "unparsed"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B08",
+      "finding": "有标点时审美仍 pending（回归护栏，不被新残余逻辑改坏）",
+      "observed": {
+        "kinds": [
+          "aesthetic",
+          "measurable"
+        ],
+        "measurable": [
+          [
+            -30.0,
+            [
+              "F3"
+            ]
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B09",
+      "finding": "保留表达（不动/保留）里的「不」不能被误判成否定",
+      "observed": {
+        "measurable": [
+          [
+            -30.0,
+            [
+              "F3"
+            ]
+          ]
+        ],
+        "preserve": [
+          [
+            "resolved",
+            [
+              "F1",
+              "F2"
+            ]
+          ]
+        ],
+        "pending_reason": []
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "B10",
+      "finding": "已解析片段 / 原句 / 残余片段都要留在证据里",
+      "observed": {
+        "explained_text": [
+          [
+            "旋转到 -30 度"
+          ]
+        ],
+        "source_text": [
+          "把 F3 旋转到 -30 度并让整体更有设计感"
+        ],
+        "residual": [
+          "更有设计感"
+        ]
+      },
+      "verdict": "fixed_signature"
+    }
+  ],
+  "summary": {
+    "fixed_signature": 10
+  }
+}
