@@ -4,7 +4,10 @@
 上游依据：`deliverables-for-review/roadmap/W0-final-architect/architect-review-and-W1.md`
 （W0 在**受限工程范围**放行、批准 W1、给出 W1 顺序与退出标准）；`docs/26` 第 3/4/6 节；
 W0 三份契约映射勘误 `deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md` §2。
-比较基线（base）：`cb84581`（W0 放行时的 HEAD）；本批提交号见 `commit-reference.md`。
+比较基线（base）：`cb84581`（W0 放行时的 HEAD）；
+本批业务实现提交：`46e9c1bbd0251f7bf8a5de062daff6147da9f88a`（`46e9c1b`，2026-11-14 20:11:32 +08:00）。
+**证据全部在提交前采集**，所以各 JSON 里的 `code_head` 是 `cb84581`；
+时间轴与提交对照见 `commit-reference.md`。
 复核命令：`git diff cb84581 -- mvp contracts web`（补丁在 `changes.patch`）。
 性质：**工程适配批**。不是设计完成，不是设计通过，**不自行宣布 W2 范围**，不改 AD01—AD08。
 

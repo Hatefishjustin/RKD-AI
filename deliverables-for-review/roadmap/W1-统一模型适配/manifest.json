@@ -10,7 +10,10 @@
     "rebuild_command": "git diff cb84581 -- mvp contracts web scripts",
     "patch_bytes": 145762,
     "migrations_added": 0,
-    "tables_added": 0
+    "tables_added": 0,
+    "batch_commit": "46e9c1bbd0251f7bf8a5de062daff6147da9f88a",
+    "batch_commit_at": "2026-11-14 20:11:32 +0800",
+    "evidence_head_note": "证据在提交前采集，故各 JSON 的 code_head=cb84581；本批代码见 batch_commit"
   },
   "model_versions": {
     "source_contract": "rkd-spatial-plan.v1 (Studio spatial-plan-draft.v1)",
@@ -87,6 +90,10 @@
       "bytes": 6371,
       "sha256": "ba359249899a3d507e1e6f3d3d935276ec4adaa72f63474089d81f68767048b7"
     },
+    "commit-reference.md": {
+      "bytes": 2763,
+      "sha256": "83b0f95ce2ca071bddef04403d337a243d8cb96850022a7309108d6676f07c4a"
+    },
     "contract-mapping.md": {
       "bytes": 9430,
       "sha256": "4f4b7973276efffda58c6db185452f882985666c8a498fb670794a86e2fea4c4"
@@ -124,8 +131,8 @@
       "sha256": "c928ec0753fed77d24a1195e846501e546947f28b410485d39f7cedd3369aa2e"
     },
     "review-packet.md": {
-      "bytes": 15194,
-      "sha256": "130c8e38bb9d46dfe76a575449ae7e6eceeed6829903e27dc805d810054e60aa"
+      "bytes": 15412,
+      "sha256": "7e2fe1a84a12a25e8cb2baac644bc6c5c722ea8f15e3ee303ae706726dcf31c4"
     },
     "runtime/focused-unittest.log": {
       "bytes": 103,
