@@ -5,6 +5,7 @@ from typing import Any
 
 from .engine import MVPApp
 from .ai_development_repository import SQLiteAIDevelopmentRepository
+from .ai_spatial_output_service import AISpatialOutputError, AISpatialOutputService
 from .ai_development_service import AIDevelopmentService, AIDevelopmentServiceError
 from .ai_design_option_repository import SQLiteAIDesignOptionRepository
 from .ai_design_option_service import AIDesignOptionService, AIDesignOptionServiceError
@@ -52,7 +53,8 @@ class ApiService:
                  ai_source_extraction_service: AISourceExtractionService | None = None,
                  ai_technical_delivery_service: AITechnicalDeliveryService | None = None,
                  runtime_root: str | Path | None = None,
-                 studio_source: Any | None = None) -> None:
+                 studio_source: Any | None = None,
+                 ai_spatial_output_service: AISpatialOutputService | None = None) -> None:
         self.app = app or MVPApp()
         self.file_service = file_service
         db_path = getattr(self.app.store, "db_path", None)
@@ -101,6 +103,11 @@ class ApiService:
         self.ai_development_service = ai_development_service or (
             AIDevelopmentService(SQLiteAIDevelopmentRepository(db_path),
                                  self.ai_design_option_service, root)
+            if db_path and self.ai_design_option_service and root else None
+        )
+        self.ai_spatial_output_service = ai_spatial_output_service or (
+            AISpatialOutputService(SQLiteAIDevelopmentRepository(db_path),
+                                   self.ai_design_option_service, root)
             if db_path and self.ai_design_option_service and root else None
         )
         self.ai_technical_delivery_service = ai_technical_delivery_service or (
@@ -407,6 +414,36 @@ class ApiService:
         try:
             return self._ai_options().cancel(organization_id, project_id, set_id)
         except AIDesignOptionServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def _ai_spatial(self) -> AISpatialOutputService:
+        if self.ai_spatial_output_service is None:
+            raise ApiError(501, "AI_SPATIAL_OUTPUTS_NOT_CONFIGURED",
+                           "W2 同源成果服务未配置")
+        return self.ai_spatial_output_service
+
+    def submit_ai_spatial_outputs(self, organization_id: str, project_id: str,
+                                  actor_id: str, request: dict[str, Any],
+                                  idempotency_key: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_spatial().submit(organization_id, project_id, actor_id,
+                                             request, idempotency_key)
+        except AISpatialOutputError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def get_ai_spatial_outputs(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        return self._ai_spatial().status(organization_id, project_id)
+
+    def get_ai_spatial_output_file(self, organization_id: str, project_id: str,
+                                   production_revision_id: str,
+                                   filename: str) -> tuple[dict[str, Any], bytes]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_spatial().file(organization_id, project_id,
+                                           production_revision_id, filename)
+        except AISpatialOutputError as error:
             raise ApiError(error.status, error.code, error.message) from error
 
     def get_ai_design_studio_sources(self, organization_id: str, project_id: str) -> dict[str, Any]:

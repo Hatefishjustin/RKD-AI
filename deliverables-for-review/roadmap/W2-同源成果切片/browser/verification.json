@@ -1,0 +1,99 @@
+{
+  "schema_version": "rkd-w2-browser-verification.v1",
+  "checked_at": "2026-11-14T14:31:41.351594+00:00",
+  "passed": true,
+  "node_returncode": 0,
+  "duration_seconds": 154.94,
+  "browser_observations": {
+    "revisionId": "ai-option-revision_bdc2283120d2",
+    "revision_options": [
+      "（选择带精确 spatial 的修订）",
+      "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-browser v1 · candidate"
+    ],
+    "panel_errors": [],
+    "panel_text_head": "同源成果（W2 切片） 精确模型 · 内部评审 平面、净量与成本都从同一个冻结的候选修订生成；几何依据是精确多边形，包围盒只用于兼容显示。效果图机位、材质与家具高度是渲染假设，不当实测事实。本页不产生正式报价、采购、发布或施工图。 模型修订 （选择带精确 spatial 的修订） studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-browser v1 · candidate 生成人眼效果图 生成同源成果 尚无同源成果；选择修订后生成。",
+    "job_status": "succeeded",
+    "job_phase": "completed",
+    "production_revision_id": "ai-production-revision_2d9f3a1fc54b",
+    "baseline": {
+      "design_origin": {
+        "declaration": "labelled_local_fixture",
+        "declared_by": "studio_artifact.diagnostics.source",
+        "kind": "fixture",
+        "run_refs": [
+          "run-w2-browser",
+          "group-w2-browser"
+        ]
+      },
+      "frozen_at": "2026-11-14T22:29:12+08:00",
+      "generator_version": "rkd-spatial-outputs.v1",
+      "geometry_authority": "spatial.zones[].polygon_mm",
+      "legacy_bbox_used_for_measurement": false,
+      "materials_version": "studio-material-unspecified/intent_only",
+      "model_hash": "227d97316dfcb07ac9b58a5f9674c757efa372cdc9563eccfefa6acffef3cad2",
+      "object_versions": [
+        "ZA1",
+        "ZA2",
+        "ZA3",
+        "ZA4",
+        "ZA5",
+        "ZA6"
+      ],
+      "option_id": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-browser",
+      "option_revision_id": "ai-option-revision_bdc2283120d2",
+      "parent_link_status": "source_root",
+      "project_id": "project_ningbo_xiecheng_2026",
+      "revision_no": 1,
+      "root_revision_uid": "uid-w2-browser",
+      "schema_version": "rkd-spatial-frozen-input.v1",
+      "source_artifact_id": "art_c15d4fcc58",
+      "source_parent_revision_uid": null,
+      "source_revision_uid": "uid-w2-browser",
+      "source_sha256": "219976f7464ffeece42fd4e622409b1a24a7327303877a5c3fabf7feb2db37e3",
+      "views_version": "derived_camera_assumption_v1"
+    },
+    "artifact_names": [
+      "cost.html",
+      "quantity.json",
+      "manifest.json",
+      "package.zip",
+      "plan.svg",
+      "quantity.csv"
+    ],
+    "plan_is_blob": true,
+    "render_is_blob": true,
+    "quantity_rows": 7,
+    "panel_has_missing": true,
+    "panel_has_unknown": true,
+    "panel_has_boundary": true,
+    "downloads": {
+      "plan.svg": {
+        "status": 200,
+        "bytes": 10022,
+        "sha256": "73e5d2cdd811818d8acba37b0fc9a9339e6ade9f32d4a066eb8574696188f275"
+      },
+      "render.png": {
+        "status": 200,
+        "bytes": 1033426,
+        "sha256": "2d868f35a27fbb8d749d1d11cc2a211279d8c9b5a69531db1f0c72d0fe966238"
+      },
+      "package.zip": {
+        "status": 200,
+        "bytes": 10249,
+        "sha256": "301547b95420d7a221ee5335a3e20635c869640ff8765e15af76ffe7e741468f"
+      }
+    },
+    "manifest_sha_match": true,
+    "artifact_sha_match": true,
+    "mobile_scroll_width": 390,
+    "page_errors": [],
+    "passed": true
+  },
+  "external_calls": 0,
+  "keys_used": false,
+  "boundaries": [
+    "隔离主工作台 + 隔离 Studio；日常库未写入",
+    "渲染为本机 Blender，不是外部图像通道",
+    "本页成果是内部评审，不是施工图/报价/发布"
+  ]
+}

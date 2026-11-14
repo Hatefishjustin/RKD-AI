@@ -292,6 +292,14 @@
             "null"
           ]
         },
+        "finish_material": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "description": "Optional W2 material decision for this zone (name/hex/known_status). Studio proposals carry no material spec."
+        },
         "source_refs": {
           "type": "array",
           "items": {

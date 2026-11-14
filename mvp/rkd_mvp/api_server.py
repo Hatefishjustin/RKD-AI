@@ -271,6 +271,24 @@ class ApiRoutes:
                 self.end_headers()
                 self.wfile.write(file_path.read_bytes())
                 return
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs/([^/]+)/files/([^/]+)", path)
+            if ai_match:
+                meta, data = self.service.get_ai_spatial_output_file(
+                    organization_id, ai_match.group(1), ai_match.group(2),
+                    ai_match.group(3))
+                self.send_response(200)
+                self.send_header("Content-Type", meta["content_type"])
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("X-Content-SHA256", meta["sha256"])
+                self.send_header("Content-Disposition",
+                                 f"inline; filename*=UTF-8''{quote(meta['filename'])}")
+                self.end_headers()
+                self.wfile.write(data)
+                return
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_spatial_outputs(
+                    organization_id, ai_match.group(1)))
             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-sources", path)
             if ai_match:
                 return self._json(200, self.service.get_ai_design_studio_sources(
@@ -502,6 +520,11 @@ class ApiRoutes:
                     organization_id, ai_match.group(1), actor_id,
                     {**self._body(), "option_id": ai_match.group(2)},
                 ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs", path)
+            if ai_match:
+                return self._json(202, self.service.submit_ai_spatial_outputs(
+                    organization_id, ai_match.group(1), actor_id, self._body(),
+                    self.headers.get("Idempotency-Key", "")))
             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/import-studio", path)
             if ai_match:
                 return self._json(200, self.service.import_ai_design_studio_proposal(

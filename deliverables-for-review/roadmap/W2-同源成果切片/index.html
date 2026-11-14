@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>W2 同源成果评审入口</title>
+<style>body{font:14px/1.7 system-ui,"Microsoft YaHei",sans-serif;margin:28px;color:#1f2937;background:#fbfaf7}
+h1{font-size:22px}h2{font-size:17px;margin-top:28px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+figure{margin:0;background:#fff;border:1px solid #dfe5ea;border-radius:6px;padding:10px}
+img{width:100%;height:auto;display:block}figcaption{font-size:12px;color:#475569;margin-top:6px}
+table{border-collapse:collapse;width:100%;margin:10px 0}th,td{border:1px solid #dfe5ea;padding:6px 8px;text-align:left;font-size:12px}
+th{background:#f1f5f9}.warn{background:#fff7ed;border-left:4px solid #c2410c;padding:10px 12px;font-size:12px}
+a{color:#1d4ed8}</style>
+<h1>W2 同源成果切片 · 评审入口</h1>
+<div class="warn">这是内部评审材料：概念平面不是施工图；效果图机位/材质/家具高度是渲染假设；
+金额没有价源，全部 unknown，不是报价。设计与阶段成果是否成立只能由用户判断。</div>
+<h2>两种布局（同一生成器）</h2>
+<table><thead><tr><th>布局</th><th>候选</th><th>模型哈希</th><th>精确净量</th><th>bbox 对照</th><th>渲染耗时</th></tr></thead>
+<tbody><tr><td>A</td><td>studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-A</td><td><code>8ef5fb44d7eb</code></td><td>233.03 ㎡</td><td>234.31 ㎡（+1.28）</td><td>46.02s</td></tr><tr><td>B</td><td>studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-B</td><td><code>ec04053bd220</code></td><td>229.08 ㎡</td><td>229.8 ㎡（+0.72）</td><td>43.64s</td></tr></tbody></table>
+<div class="grid">
+<figure><img src="outputs/layout-A/plan.svg" alt="布局A平面"><figcaption>布局 A · 平面（含尺寸/图例/面积表/机位）· <a href="outputs/layout-A/plan.svg">SVG</a> · <a href="outputs/layout-A/quantity.csv">数量 CSV</a> · <a href="outputs/layout-A/cost.html">成本缺项</a> · <a href="outputs/layout-A/package.zip">包</a></figcaption></figure>
+<figure><img src="outputs/layout-B/plan.svg" alt="布局B平面"><figcaption>布局 B · 平面 · <a href="outputs/layout-B/plan.svg">SVG</a> · <a href="outputs/layout-B/quantity.csv">数量 CSV</a> · <a href="outputs/layout-B/cost.html">成本缺项</a> · <a href="outputs/layout-B/package.zip">包</a></figcaption></figure>
+<figure><img src="outputs/layout-A/render.png" alt="布局A人眼效果图"><figcaption>布局 A · 人眼 1.5m / 24mm（推导机位，内部试验）</figcaption></figure>
+<figure><img src="outputs/layout-B/render.png" alt="布局B人眼效果图"><figcaption>布局 B · 人眼 1.5m / 24mm（推导机位，内部试验）</figcaption></figure>
+</div>
+<h2>缺少什么（如实）</h2>
+<ul><li>没有墙体构造、门窗、柱网、洁具、隔断构件；平面不画框线冒充。</li>
+<li>天花只有灯槽/灯具意向，没有吊顶构造与照度计算。</li>
+<li>材料只有意向/假设，没有产品选型与样板；效果图材质是统一假设。</li>
+<li>数量只覆盖功能区地坪净量（扣保留区）；隔断/天花/门窗/机电为 unknown。</li>
+<li>金额没有价源，成本页只有缺项；正式报价、采购、发布未触发。</li></ul>
+</html>
