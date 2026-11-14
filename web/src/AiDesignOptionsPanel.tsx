@@ -20,6 +20,14 @@ type Option = {
   source_kind: string;
   lifecycle_status: string;
 };
+type StudioSource = { artifact_id: string; sha256: string; option_id: string; revision: number; strategy_name: string; zone_count: number; revision_uid: string | null };
+type StudioSources = { studio_project_id: string | null; mapping: { source_project_id: string; mapping_note: string } | null; items: StudioSource[]; note?: string };
+type LedgerRow = { source_field: string; target_field: string; object_id: string; source_value: any; target_value: any; unit: string; status: string };
+type ImportRevision = { option_revision_id: string; option_id: string; revision_no: number; parent_revision_id: string | null; source: Record<string, any>; unsupported_items: { item: string; reason: string }[]; diff: { object_id: string; field: string }[]; artifacts: Artifact[] };
+type ImportItem = { set: { set_id: string; created_at: string; context: Record<string, any> }; revisions: ImportRevision[] };
+type StudioImports = { items: ImportItem[]; adoption: Adoption | null };
+type ImportDetail = { item: Record<string, any>; spatial: Record<string, any>; field_ledger: LedgerRow[]; unsupported_items: { item: string; reason: string }[] };
+
 type CandidateSet = { set_id: string; status: string; phase: string; error_code?: string | null; error_message?: string | null; attempt_count: number };
 type Adoption = { option_id: string; revision_no: number; expected_revision: number; status: string; production_task_status: string };
 type OptionStatus = {
@@ -61,6 +69,11 @@ export function AiDesignOptionsPanel({ projectId }: { projectId: string }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [studioSources, setStudioSources] = useState<StudioSources | null>(null);
+  const [studioImports, setStudioImports] = useState<StudioImports | null>(null);
+  const [selectedSource, setSelectedSource] = useState("");
+  const [importDetail, setImportDetail] = useState<ImportDetail | null>(null);
+  const [detailBusy, setDetailBusy] = useState(false);
 
   const artifactUrl = useCallback((artifactId: string) => `${base}/artifacts/${artifactId}/content`, [base]);
 
@@ -83,6 +96,13 @@ export function AiDesignOptionsPanel({ projectId }: { projectId: string }) {
       const ids = result.item?.options.flatMap((option) => option.artifacts.map((artifact) => artifact.artifact_id)) || [];
       const entries = await Promise.all(ids.map(async (id) => [id, await loadSvg(id)] as const));
       setSvgData(Object.fromEntries(entries));
+      const [sources, imports] = await Promise.all([
+        request<StudioSources>(`${base}/studio-sources`),
+        request<StudioImports>(`${base}/studio-imports`),
+      ]);
+      setStudioSources(sources);
+      setStudioImports(imports);
+      setSelectedSource((current) => current || sources.items[0]?.artifact_id || "");
       if (!quiet) setError("");
     } catch (e) {
       if (!quiet) setError((e as Error).message);
@@ -133,6 +153,34 @@ export function AiDesignOptionsPanel({ projectId }: { projectId: string }) {
       setMessage("已采用为当前草稿；同源量价/成果任务尚未接入，正式批准未发生。");
       await load(true);
     });
+  }
+
+  async function importStudio() {
+    if (!selectedSource) { setError("请先选择一份 Studio 有效提案"); return; }
+    if (!studioSources?.studio_project_id) { setError("当前项目没有显式 Studio 映射，不能按名称推断"); return; }
+    const picked = studioSources.items.find((item) => item.artifact_id === selectedSource);
+    await act(async () => {
+      const result = await request<{ reused: boolean; item: { option_revision_id: string; revision_no: number } | null; unsupported_items: { item: string }[] }>(
+        `${base}/import-studio`, "POST",
+        { studio_project_id: studioSources.studio_project_id,
+          studio_artifact_id: selectedSource,
+          expected_source_sha256: picked?.sha256,
+          source_project_id: projectId, expected_unit: "mm" },
+      );
+      setMessage(result.reused
+        ? "同一来源已导入过：未重复造版本。"
+        : `已导入为主系统候选 v${result.item?.revision_no ?? "?"}；源提案、精确多边形与 ${result.unsupported_items.length} 项缺项均保留。未改采用/生产/采购/发布。`);
+      await load(true);
+    });
+  }
+
+  async function openDetail(revisionId: string) {
+    setDetailBusy(true); setError("");
+    try {
+      setImportDetail(await request<ImportDetail>(`${base}/studio-imports/${revisionId}`));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally { setDetailBusy(false); }
   }
 
   async function cancel(setId: string) {
@@ -189,5 +237,45 @@ export function AiDesignOptionsPanel({ projectId }: { projectId: string }) {
         <div className="ai-option-actions"><button type="button" className="outline-action" disabled={busy} onClick={() => void revise(option)}>生成反馈修订</button><button type="button" className="dark-action" disabled={busy || option.validation.status !== "passed"} onClick={() => void adopt(option)}>采用为当前草稿</button></div>
       </article>)}
     </div> : <p className="files-empty">尚无候选图面；生成后会在这里并排显示不同空间组织。</p>}
+
+    <section className="studio-import-panel" aria-label="Studio 提案导入">
+      <header className="section-heading"><h4>Studio 有效提案 → 主系统版本化候选</h4><span className="design-status">W1 统一模型适配</span></header>
+      <p className="ai-boundary">通过正式适配入口导入，不手搬 JSON；精确 mm 多边形、稳定对象 ID、材料/天花/视图缺项与来源哈希一并保留。旧渲染器只显示派生包围盒，已在字段对账中标明。导入只产生候选，不改当前采用、量价、采购或发布。</p>
+      <div className="studio-import-toolbar">
+        <label>源提案
+          <select data-testid="studio-source-select" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
+            <option value="">（选择 Studio 有效候选）</option>
+            {(studioSources?.items || []).map((item) => <option key={item.artifact_id} value={item.artifact_id}>
+              {item.option_id} v{item.revision} · {item.strategy_name ?? "未命名"} · {item.zone_count} 分区 · {item.artifact_id}
+            </option>)}
+          </select>
+        </label>
+        <button type="button" className="dark-action" data-testid="studio-import-button" disabled={busy || !selectedSource} onClick={() => void importStudio()}>导入为主系统候选</button>
+        {studioSources && !studioSources.studio_project_id && <small>{studioSources.note}</small>}
+        {studioSources?.mapping && <small data-testid="studio-mapping">显式映射：{studioSources.studio_project_id} → {projectId}</small>}
+      </div>
+      <div className="studio-import-list" data-testid="studio-import-list">
+        <strong>已导入版本（{studioImports?.items.length ?? 0}）</strong>
+        {studioImports?.items.length ? <ul>{studioImports.items.map((entry) => entry.revisions.map((rev) =>
+          <li key={rev.option_revision_id} data-testid="studio-import-row">
+            <code>{rev.option_id}</code> v{rev.revision_no}
+            <span>源 {rev.source?.artifact_id} · sha {String(rev.source?.sha256 || "").slice(0, 12)}…</span>
+            <span>父版本 {rev.parent_revision_id ?? "无"}</span>
+            <span>缺项 {rev.unsupported_items.length} · 对象变化 {rev.diff.length}</span>
+            {rev.artifacts[0] && <a href={artifactUrl(rev.artifacts[0].artifact_id)} target="_blank" rel="noreferrer">查看目标模型图面</a>}
+            <button type="button" className="outline-action" disabled={detailBusy} onClick={() => void openDetail(rev.option_revision_id)}>字段对账</button>
+          </li>))}</ul> : <p className="files-empty">尚无导入；选择源提案后点击导入。</p>}
+      </div>
+      {importDetail && <div className="studio-import-detail" data-testid="studio-import-detail">
+        <strong>逐项字段对账（{importDetail.field_ledger.length} 项）</strong>
+        <div className="ledger-scroll"><table className="ledger-table"><thead><tr><th>源字段</th><th>目标字段</th><th>对象</th><th>单位</th><th>状态</th></tr></thead>
+          <tbody>{importDetail.field_ledger.map((row, index) => <tr key={index}>
+            <td>{row.source_field}</td><td>{row.target_field}</td><td>{row.object_id}</td><td>{row.unit}</td><td>{row.status}</td>
+          </tr>)}</tbody></table></div>
+        <strong>保留为 unknown / 不支持的项目</strong>
+        <ul>{importDetail.unsupported_items.map((item, index) => <li key={index}><b>{item.item}</b>：{item.reason}</li>)}</ul>
+        <p className="ai-boundary">几何模式：{importDetail.spatial?.adaptation?.geometry_mode}；单位：{importDetail.spatial?.unit} → m；视图条目 {importDetail.spatial?.views?.length ?? 0}（未建模，不生成假设机位）。</p>
+      </div>}
+    </section>
   </section>;
 }

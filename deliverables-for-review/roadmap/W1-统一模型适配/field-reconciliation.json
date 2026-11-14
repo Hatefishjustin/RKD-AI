@@ -1,0 +1,1359 @@
+{
+  "layouts": [
+    {
+      "layout": "A",
+      "rows": [
+        {
+          "object_id": "ZA1",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              0,
+              8600
+            ],
+            [
+              5400,
+              8600
+            ],
+            [
+              5400,
+              13500
+            ],
+            [
+              1600,
+              13500
+            ],
+            [
+              0,
+              11900
+            ]
+          ],
+          "target_value": [
+            [
+              0.0,
+              8600.0
+            ],
+            [
+              5400.0,
+              8600.0
+            ],
+            [
+              5400.0,
+              13500.0
+            ],
+            [
+              1600.0,
+              13500.0
+            ],
+            [
+              0.0,
+              11900.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": true
+        },
+        {
+          "object_id": "ZA1",
+          "field": "area_sqm",
+          "source_value": 25.18,
+          "target_value": 25.18,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZA1",
+          "field": "role",
+          "source_value": "arrival",
+          "target_value": "arrival",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZA2",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              9000,
+              6200
+            ],
+            [
+              16000,
+              6200
+            ],
+            [
+              16000,
+              11000
+            ],
+            [
+              9000,
+              11000
+            ]
+          ],
+          "target_value": [
+            [
+              9000.0,
+              6200.0
+            ],
+            [
+              16000.0,
+              6200.0
+            ],
+            [
+              16000.0,
+              11000.0
+            ],
+            [
+              9000.0,
+              11000.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZA2",
+          "field": "area_sqm",
+          "source_value": 33.6,
+          "target_value": 33.6,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZA2",
+          "field": "role",
+          "source_value": "island",
+          "target_value": "island",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZA3",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              5400,
+              13300
+            ],
+            [
+              21800,
+              13300
+            ],
+            [
+              21800,
+              17700
+            ],
+            [
+              5400,
+              17700
+            ]
+          ],
+          "target_value": [
+            [
+              5400.0,
+              13300.0
+            ],
+            [
+              21800.0,
+              13300.0
+            ],
+            [
+              21800.0,
+              17700.0
+            ],
+            [
+              5400.0,
+              17700.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZA3",
+          "field": "area_sqm",
+          "source_value": 72.16,
+          "target_value": 72.16,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZA3",
+          "field": "role",
+          "source_value": "gallery",
+          "target_value": "gallery",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZA4",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              5400,
+              1800
+            ],
+            [
+              20400,
+              1800
+            ],
+            [
+              20400,
+              5200
+            ],
+            [
+              5400,
+              5200
+            ]
+          ],
+          "target_value": [
+            [
+              5400.0,
+              1800.0
+            ],
+            [
+              20400.0,
+              1800.0
+            ],
+            [
+              20400.0,
+              5200.0
+            ],
+            [
+              5400.0,
+              5200.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZA4",
+          "field": "area_sqm",
+          "source_value": 51.0,
+          "target_value": 51.0,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZA4",
+          "field": "role",
+          "source_value": "scene",
+          "target_value": "scene",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZA5",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              19400,
+              7600
+            ],
+            [
+              26100,
+              7600
+            ],
+            [
+              26100,
+              13300
+            ],
+            [
+              19400,
+              13300
+            ]
+          ],
+          "target_value": [
+            [
+              19400.0,
+              7600.0
+            ],
+            [
+              26100.0,
+              7600.0
+            ],
+            [
+              26100.0,
+              13300.0
+            ],
+            [
+              19400.0,
+              13300.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZA5",
+          "field": "area_sqm",
+          "source_value": 38.19,
+          "target_value": 38.19,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZA5",
+          "field": "role",
+          "source_value": "meeting",
+          "target_value": "meeting",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZA6",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              2400,
+              1800
+            ],
+            [
+              5400,
+              1800
+            ],
+            [
+              5400,
+              6100
+            ],
+            [
+              2400,
+              6100
+            ]
+          ],
+          "target_value": [
+            [
+              2400.0,
+              1800.0
+            ],
+            [
+              5400.0,
+              1800.0
+            ],
+            [
+              5400.0,
+              6100.0
+            ],
+            [
+              2400.0,
+              6100.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZA6",
+          "field": "area_sqm",
+          "source_value": 12.9,
+          "target_value": 12.9,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZA6",
+          "field": "role",
+          "source_value": "service",
+          "target_value": "service",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "F1",
+          "field": "x_mm",
+          "source_value": 8400,
+          "target_value": 8400.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F1",
+          "field": "y_mm",
+          "source_value": 4050,
+          "target_value": 4050.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F1",
+          "field": "rot",
+          "source_value": 0,
+          "target_value": 0.0,
+          "unit": "degree",
+          "equal": true
+        },
+        {
+          "object_id": "F1",
+          "field": "catalog_id",
+          "source_value": "sofa-3p",
+          "target_value": "sofa-3p",
+          "unit": "id",
+          "equal": true
+        },
+        {
+          "object_id": "F2",
+          "field": "x_mm",
+          "source_value": 14400,
+          "target_value": 14400.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F2",
+          "field": "y_mm",
+          "source_value": 3300,
+          "target_value": 3300.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F2",
+          "field": "rot",
+          "source_value": 0,
+          "target_value": 0.0,
+          "unit": "degree",
+          "equal": true
+        },
+        {
+          "object_id": "F2",
+          "field": "catalog_id",
+          "source_value": "dining-table",
+          "target_value": "dining-table",
+          "unit": "id",
+          "equal": true
+        },
+        {
+          "object_id": "F3",
+          "field": "x_mm",
+          "source_value": 9500,
+          "target_value": 9500.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F3",
+          "field": "y_mm",
+          "source_value": 16350,
+          "target_value": 16350.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F3",
+          "field": "rot",
+          "source_value": -12,
+          "target_value": -12.0,
+          "unit": "degree",
+          "equal": true
+        },
+        {
+          "object_id": "F3",
+          "field": "catalog_id",
+          "source_value": "display-wing",
+          "target_value": "display-wing",
+          "unit": "id",
+          "equal": true
+        },
+        {
+          "object_id": "CA1",
+          "field": "width_mm",
+          "source_value": 2000,
+          "target_value": 2000,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "CA1",
+          "field": "path_mm",
+          "source_value": [
+            [
+              100,
+              11000
+            ],
+            [
+              8000,
+              11000
+            ],
+            [
+              17500,
+              11000
+            ],
+            [
+              17500,
+              6000
+            ],
+            [
+              8000,
+              5200
+            ]
+          ],
+          "target_value": [
+            [
+              100.0,
+              11000.0
+            ],
+            [
+              8000.0,
+              11000.0
+            ],
+            [
+              17500.0,
+              11000.0
+            ],
+            [
+              17500.0,
+              6000.0
+            ],
+            [
+              8000.0,
+              5200.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "boundary",
+          "field": "width_m",
+          "source_value": 26170,
+          "target_value": 26170.0,
+          "unit": "mm",
+          "equal": true
+        }
+      ],
+      "all_equal": true,
+      "non_rectangular_zones": [
+        "ZA1"
+      ],
+      "unsupported_items": [
+        {
+          "item": "材料规格/产品选型",
+          "reason": "Studio 提案只有目录引用，没有材料规格、样板或产品选型；写 unknown，不补默认值",
+          "source_field": "furniture[].catalog_id / (无材料字段)",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "相机与人眼视图",
+          "reason": "未建模机位、镜头、人眼高度与视向；保留为命名缺项，不生成假设机位",
+          "source_field": "(Studio 提案无 camera/view 字段)",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "照度/配光计算",
+          "reason": "色温与灯具点位已保留为意向；照度、配光、间距未计算，不编数值",
+          "source_field": "ceiling.fixtures[].kelvin",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "实测标高/层高",
+          "reason": "场地与展台高度是给定条件/造型参数，不是现场实测；不升级为实测事实",
+          "source_field": "site.ceiling_mm / platforms[].height_mm",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "门窗/柱网/构造",
+          "reason": "提案未建模门窗与柱网构造；主系统候选对象里不凭空补构件",
+          "source_field": "site.windows_* / (无 door/column 对象)",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "legacy rect 对象",
+          "reason": "旧渲染器只接受 rect，派生包围盒仅供显示；精确多边形在 spatial 中，不能据包围盒算量",
+          "source_field": "zones[].polygon / platforms[].polygon",
+          "status": "unsupported_unknown"
+        }
+      ],
+      "object_id_map": [
+        {
+          "group": "zones",
+          "source_object_id": "ZA1",
+          "target_object_id": "ZA1"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA2",
+          "target_object_id": "ZA2"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA3",
+          "target_object_id": "ZA3"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA4",
+          "target_object_id": "ZA4"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA5",
+          "target_object_id": "ZA5"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA6",
+          "target_object_id": "ZA6"
+        },
+        {
+          "group": "platforms",
+          "source_object_id": "P1",
+          "target_object_id": "P1"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F1",
+          "target_object_id": "F1"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F2",
+          "target_object_id": "F2"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F3",
+          "target_object_id": "F3"
+        },
+        {
+          "group": "circulation",
+          "source_object_id": "CA1",
+          "target_object_id": "CA1"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L1",
+          "target_object_id": "L1"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L2",
+          "target_object_id": "L2"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L3",
+          "target_object_id": "L3"
+        }
+      ],
+      "source": {
+        "artifact_id": "art_adf1c18438",
+        "candidate_group_id": "candgroup_w1_fixture",
+        "contract_version": "rkd-spatial-plan.v1",
+        "draft_identity": {
+          "author": "D2",
+          "contract_version": "rkd-spatial-plan.v1",
+          "option_id": "A",
+          "parent_revision": null,
+          "project_id": "ningbo-xiecheng",
+          "revision": 1
+        },
+        "main_project_id": "project_ningbo_xiecheng_2026",
+        "option_id": "A",
+        "origin_kind": "studio_import",
+        "parent_revision_uid": null,
+        "revision": 1,
+        "revision_uid": "revuid_w1_A_1_6",
+        "run_id": "run_w1_fixture",
+        "sha256": "219976f7464ffeece42fd4e622409b1a24a7327303877a5c3fabf7feb2db37e3",
+        "site_source": {
+          "ceiling_mm": 3000,
+          "entrance_mm": [
+            0,
+            10300,
+            1800
+          ],
+          "height_mm": 17920,
+          "source": "阶段1 底图（DXF 26169.58×17920.17 与 A3 尺寸链一致）",
+          "width_mm": 26170
+        },
+        "studio_project_id": "ningbo-xiecheng"
+      },
+      "field_ledger_rows": 45
+    },
+    {
+      "layout": "B",
+      "rows": [
+        {
+          "object_id": "ZB1",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              0,
+              8600
+            ],
+            [
+              4200,
+              8600
+            ],
+            [
+              4200,
+              13500
+            ],
+            [
+              1200,
+              13500
+            ],
+            [
+              0,
+              12300
+            ]
+          ],
+          "target_value": [
+            [
+              0.0,
+              8600.0
+            ],
+            [
+              4200.0,
+              8600.0
+            ],
+            [
+              4200.0,
+              13500.0
+            ],
+            [
+              1200.0,
+              13500.0
+            ],
+            [
+              0.0,
+              12300.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": true
+        },
+        {
+          "object_id": "ZB1",
+          "field": "area_sqm",
+          "source_value": 19.86,
+          "target_value": 19.86,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZB1",
+          "field": "role",
+          "source_value": "arrival",
+          "target_value": "arrival",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZB2",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              4200,
+              8500
+            ],
+            [
+              17500,
+              8500
+            ],
+            [
+              17500,
+              14000
+            ],
+            [
+              4200,
+              14000
+            ]
+          ],
+          "target_value": [
+            [
+              4200.0,
+              8500.0
+            ],
+            [
+              17500.0,
+              8500.0
+            ],
+            [
+              17500.0,
+              14000.0
+            ],
+            [
+              4200.0,
+              14000.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZB2",
+          "field": "area_sqm",
+          "source_value": 73.15,
+          "target_value": 73.15,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZB2",
+          "field": "role",
+          "source_value": "gallery",
+          "target_value": "gallery",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZB3",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              18300,
+              7800
+            ],
+            [
+              24000,
+              7800
+            ],
+            [
+              24000,
+              11500
+            ],
+            [
+              18300,
+              11500
+            ]
+          ],
+          "target_value": [
+            [
+              18300.0,
+              7800.0
+            ],
+            [
+              24000.0,
+              7800.0
+            ],
+            [
+              24000.0,
+              11500.0
+            ],
+            [
+              18300.0,
+              11500.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZB3",
+          "field": "area_sqm",
+          "source_value": 21.09,
+          "target_value": 21.09,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZB3",
+          "field": "role",
+          "source_value": "island",
+          "target_value": "island",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZB4",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              4200,
+              1800
+            ],
+            [
+              17500,
+              1800
+            ],
+            [
+              17500,
+              7600
+            ],
+            [
+              4200,
+              7600
+            ]
+          ],
+          "target_value": [
+            [
+              4200.0,
+              1800.0
+            ],
+            [
+              17500.0,
+              1800.0
+            ],
+            [
+              17500.0,
+              7600.0
+            ],
+            [
+              4200.0,
+              7600.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZB4",
+          "field": "area_sqm",
+          "source_value": 77.14,
+          "target_value": 77.14,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZB4",
+          "field": "role",
+          "source_value": "scene",
+          "target_value": "scene",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZB5",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              17500,
+              14200
+            ],
+            [
+              26100,
+              14200
+            ],
+            [
+              26100,
+              17700
+            ],
+            [
+              17500,
+              17700
+            ]
+          ],
+          "target_value": [
+            [
+              17500.0,
+              14200.0
+            ],
+            [
+              26100.0,
+              14200.0
+            ],
+            [
+              26100.0,
+              17700.0
+            ],
+            [
+              17500.0,
+              17700.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZB5",
+          "field": "area_sqm",
+          "source_value": 30.1,
+          "target_value": 30.1,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZB5",
+          "field": "role",
+          "source_value": "meeting",
+          "target_value": "meeting",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "ZB6",
+          "field": "polygon_mm",
+          "source_value": [
+            [
+              2400,
+              1800
+            ],
+            [
+              4200,
+              1800
+            ],
+            [
+              4200,
+              6100
+            ],
+            [
+              2400,
+              6100
+            ]
+          ],
+          "target_value": [
+            [
+              2400.0,
+              1800.0
+            ],
+            [
+              4200.0,
+              1800.0
+            ],
+            [
+              4200.0,
+              6100.0
+            ],
+            [
+              2400.0,
+              6100.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true,
+          "non_rectangular": false
+        },
+        {
+          "object_id": "ZB6",
+          "field": "area_sqm",
+          "source_value": 7.74,
+          "target_value": 7.74,
+          "unit": "m2",
+          "equal": true
+        },
+        {
+          "object_id": "ZB6",
+          "field": "role",
+          "source_value": "service",
+          "target_value": "service",
+          "unit": "enum",
+          "equal": true
+        },
+        {
+          "object_id": "F1",
+          "field": "x_mm",
+          "source_value": 8400,
+          "target_value": 8400.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F1",
+          "field": "y_mm",
+          "source_value": 4050,
+          "target_value": 4050.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F1",
+          "field": "rot",
+          "source_value": 0,
+          "target_value": 0.0,
+          "unit": "degree",
+          "equal": true
+        },
+        {
+          "object_id": "F1",
+          "field": "catalog_id",
+          "source_value": "sofa-3p",
+          "target_value": "sofa-3p",
+          "unit": "id",
+          "equal": true
+        },
+        {
+          "object_id": "F2",
+          "field": "x_mm",
+          "source_value": 14400,
+          "target_value": 14400.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F2",
+          "field": "y_mm",
+          "source_value": 3300,
+          "target_value": 3300.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F2",
+          "field": "rot",
+          "source_value": 0,
+          "target_value": 0.0,
+          "unit": "degree",
+          "equal": true
+        },
+        {
+          "object_id": "F2",
+          "field": "catalog_id",
+          "source_value": "dining-table",
+          "target_value": "dining-table",
+          "unit": "id",
+          "equal": true
+        },
+        {
+          "object_id": "F3",
+          "field": "x_mm",
+          "source_value": 9500,
+          "target_value": 9500.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F3",
+          "field": "y_mm",
+          "source_value": 16350,
+          "target_value": 16350.0,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "F3",
+          "field": "rot",
+          "source_value": -12,
+          "target_value": -12.0,
+          "unit": "degree",
+          "equal": true
+        },
+        {
+          "object_id": "F3",
+          "field": "catalog_id",
+          "source_value": "display-wing",
+          "target_value": "display-wing",
+          "unit": "id",
+          "equal": true
+        },
+        {
+          "object_id": "CB1",
+          "field": "width_mm",
+          "source_value": 2000,
+          "target_value": 2000,
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "CB1",
+          "field": "path_mm",
+          "source_value": [
+            [
+              100,
+              11000
+            ],
+            [
+              4200,
+              11000
+            ],
+            [
+              12000,
+              11000
+            ],
+            [
+              20000,
+              11000
+            ],
+            [
+              21000,
+              9500
+            ]
+          ],
+          "target_value": [
+            [
+              100.0,
+              11000.0
+            ],
+            [
+              4200.0,
+              11000.0
+            ],
+            [
+              12000.0,
+              11000.0
+            ],
+            [
+              20000.0,
+              11000.0
+            ],
+            [
+              21000.0,
+              9500.0
+            ]
+          ],
+          "unit": "mm",
+          "equal": true
+        },
+        {
+          "object_id": "boundary",
+          "field": "width_m",
+          "source_value": 26170,
+          "target_value": 26170.0,
+          "unit": "mm",
+          "equal": true
+        }
+      ],
+      "all_equal": true,
+      "non_rectangular_zones": [
+        "ZB1"
+      ],
+      "unsupported_items": [
+        {
+          "item": "材料规格/产品选型",
+          "reason": "Studio 提案只有目录引用，没有材料规格、样板或产品选型；写 unknown，不补默认值",
+          "source_field": "furniture[].catalog_id / (无材料字段)",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "相机与人眼视图",
+          "reason": "未建模机位、镜头、人眼高度与视向；保留为命名缺项，不生成假设机位",
+          "source_field": "(Studio 提案无 camera/view 字段)",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "照度/配光计算",
+          "reason": "色温与灯具点位已保留为意向；照度、配光、间距未计算，不编数值",
+          "source_field": "ceiling.fixtures[].kelvin",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "实测标高/层高",
+          "reason": "场地与展台高度是给定条件/造型参数，不是现场实测；不升级为实测事实",
+          "source_field": "site.ceiling_mm / platforms[].height_mm",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "门窗/柱网/构造",
+          "reason": "提案未建模门窗与柱网构造；主系统候选对象里不凭空补构件",
+          "source_field": "site.windows_* / (无 door/column 对象)",
+          "status": "unsupported_unknown"
+        },
+        {
+          "item": "legacy rect 对象",
+          "reason": "旧渲染器只接受 rect，派生包围盒仅供显示；精确多边形在 spatial 中，不能据包围盒算量",
+          "source_field": "zones[].polygon / platforms[].polygon",
+          "status": "unsupported_unknown"
+        }
+      ],
+      "object_id_map": [
+        {
+          "group": "zones",
+          "source_object_id": "ZB1",
+          "target_object_id": "ZB1"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZB2",
+          "target_object_id": "ZB2"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZB3",
+          "target_object_id": "ZB3"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZB4",
+          "target_object_id": "ZB4"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZB5",
+          "target_object_id": "ZB5"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZB6",
+          "target_object_id": "ZB6"
+        },
+        {
+          "group": "platforms",
+          "source_object_id": "P1",
+          "target_object_id": "P1"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F1",
+          "target_object_id": "F1"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F2",
+          "target_object_id": "F2"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F3",
+          "target_object_id": "F3"
+        },
+        {
+          "group": "circulation",
+          "source_object_id": "CB1",
+          "target_object_id": "CB1"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L1",
+          "target_object_id": "L1"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L2",
+          "target_object_id": "L2"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L3",
+          "target_object_id": "L3"
+        }
+      ],
+      "source": {
+        "artifact_id": "art_5224f12600",
+        "candidate_group_id": "candgroup_w1_fixture",
+        "contract_version": "rkd-spatial-plan.v1",
+        "draft_identity": {
+          "author": "D2",
+          "contract_version": "rkd-spatial-plan.v1",
+          "option_id": "B",
+          "parent_revision": null,
+          "project_id": "ningbo-xiecheng",
+          "revision": 1
+        },
+        "main_project_id": "project_ningbo_xiecheng_2026",
+        "option_id": "B",
+        "origin_kind": "studio_import",
+        "parent_revision_uid": null,
+        "revision": 1,
+        "revision_uid": "revuid_w1_B_1_6",
+        "run_id": "run_w1_fixture",
+        "sha256": "9974dbc988c50da9ea0d14a5deb3eb2dae61213d390a3885671b0b3fa411cf41",
+        "site_source": {
+          "ceiling_mm": 3000,
+          "entrance_mm": [
+            0,
+            10300,
+            1800
+          ],
+          "height_mm": 17920,
+          "source": "阶段1 底图（DXF 26169.58×17920.17 与 A3 尺寸链一致）",
+          "width_mm": 26170
+        },
+        "studio_project_id": "ningbo-xiecheng"
+      },
+      "field_ledger_rows": 45
+    }
+  ],
+  "note": "逐字段比较源提案与 spatial 投影的真实值，不是计数或哈希"
+}

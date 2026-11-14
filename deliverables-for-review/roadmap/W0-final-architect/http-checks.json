@@ -1,0 +1,170 @@
+{
+  "task_id": "W0 文字反馈保守判定（TEXT-01 边界 · 真实 HTTP）",
+  "schema_version": "rkd-conservative-http-checks.v1",
+  "executed_at": "2026-11-14T19:30:25+08:00",
+  "code_head": "cb8458133a5857d68de318dbf2aa4813e8529842",
+  "environment": {
+    "python": "3.12.14",
+    "model_channel": "local-model-stub (explicitly labelled)",
+    "service": "studio HTTP 127.0.0.1:8124 (isolated DB)",
+    "keys_used": false
+  },
+  "entry_note": "所有留言都用正常入口 POST /messages（只给 text 与选定基线），没有在验收脚本里注入 objectives 或 locks",
+  "checks": [
+    {
+      "id": "CONS-01",
+      "name": "否定要求：不生成相反目标，明确 conflict + unknown/pending",
+      "result": "observed_pass",
+      "evidence": {
+        "post": 201,
+        "run_status": "conflict",
+        "artifacts": 0,
+        "gate_has_negation": true,
+        "gate_has_original_text": true
+      }
+    },
+    {
+      "id": "CONS-02",
+      "name": "「不超过」仍是 max（不是否定）；「不低于」仍是 min",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "comparators": [
+          "max"
+        ]
+      }
+    },
+    {
+      "id": "CONS-03",
+      "name": "「不低于」仍是 min，否定守卫没有把支持比较符一并拒绝",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "comparators": [
+          "min"
+        ]
+      }
+    },
+    {
+      "id": "CONS-04",
+      "name": "「不要把净宽扩大到…」不变成 min 2400 的正向目标",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "conflict",
+        "artifacts": 0
+      }
+    },
+    {
+      "id": "CONS-05",
+      "name": "F1+F9 并列：保留全部引用、F9 按缺失判 fail、不宣布绑定成功",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "targets": [
+          [
+            "F1",
+            "F9"
+          ]
+        ],
+        "refs": [
+          [
+            "F1",
+            "F9"
+          ]
+        ],
+        "missing": [
+          "F9"
+        ],
+        "states": [
+          "fail"
+        ]
+      }
+    },
+    {
+      "id": "CONS-06",
+      "name": "仅缺失对象：仍按对象缺失阻断（旧行为保持）",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "targets": [
+          [
+            "F9"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "CONS-07",
+      "name": "无逗号复合句：数值 pass 之外，审美残余仍 unknown+pending",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "succeeded",
+        "states": [
+          [
+            "measurable",
+            "pass",
+            "not_applicable"
+          ],
+          [
+            "aesthetic",
+            "unknown",
+            "pending"
+          ]
+        ],
+        "residual": [
+          "更有设计感"
+        ],
+        "note_has_pending": true
+      }
+    },
+    {
+      "id": "CONS-08",
+      "name": "非审美残余「复核北侧收口」同样留痕，不是词表补丁",
+      "result": "observed_pass",
+      "evidence": {
+        "residual": [
+          "复核北侧收口"
+        ],
+        "kinds": [
+          "unparsed"
+        ]
+      }
+    },
+    {
+      "id": "CONS-09",
+      "name": "有标点时审美仍 pending，新残余逻辑没有把旧行为改坏",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "succeeded",
+        "pending": [
+          [
+            "unknown",
+            "pending"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "CONS-10",
+      "name": "「其他家具不动」仍是保留约束，没有被否定守卫误杀",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "succeeded",
+        "preserve": [
+          [
+            "pass",
+            "not_applicable"
+          ]
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 10,
+    "observed_fail": 0
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost"
+}

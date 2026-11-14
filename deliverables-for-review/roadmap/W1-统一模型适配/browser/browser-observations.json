@@ -1,0 +1,45 @@
+{
+  "artifactId": "art_ad46f5a825",
+  "mapping_text": "显式映射：ningbo-xiecheng → project_ningbo_xiecheng_2026",
+  "source_options": [
+    "（选择 Studio 有效候选）",
+    "A v1 · 环岛漫游 · 6 分区 · art_ad46f5a825"
+  ],
+  "imports_before": 0,
+  "imports_after": 1,
+  "imported_revision": {
+    "option_id": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:A",
+    "revision_no": 1,
+    "parent_revision_id": null,
+    "source_artifact_id": "art_ad46f5a825",
+    "unsupported_items": [
+      "材料规格/产品选型",
+      "相机与人眼视图",
+      "照度/配光计算",
+      "实测标高/层高",
+      "门窗/柱网/构造",
+      "legacy rect 对象"
+    ],
+    "artifact_count": 1
+  },
+  "target_model_in_api": true,
+  "target_model_spatial": {
+    "zones": 6,
+    "non_rectangular": [
+      "ZA1"
+    ],
+    "unit": "mm",
+    "origin_kind": "studio_import"
+  },
+  "svg_bytes": 5523,
+  "svg_has_polygon": true,
+  "svg_matches_stored_sha": true,
+  "design_item_after_import": null,
+  "adoption": null,
+  "ledger_rows": 45,
+  "unsupported_visible": true,
+  "geometry_mode_visible": true,
+  "mobile_scroll_width": 390,
+  "page_errors": [],
+  "passed": true
+}

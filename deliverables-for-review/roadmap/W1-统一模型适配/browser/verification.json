@@ -1,0 +1,66 @@
+{
+  "schema_version": "rkd-w1-browser-verification.v1",
+  "checked_at": "2026-11-14T11:58:44.514392+00:00",
+  "passed": true,
+  "node_returncode": 0,
+  "duration_seconds": 8.8,
+  "selected_source": {
+    "studio_project_id": "ningbo-xiecheng",
+    "artifact_id": "art_ad46f5a825",
+    "source_kind": "labelled_local_fixture_not_real_AI"
+  },
+  "entry_note": "页面正常入口：选择 Studio 有效提案 → 导入 → 查看目标模型图面与字段对账；未注入结构化目标",
+  "browser_observations": {
+    "artifactId": "art_ad46f5a825",
+    "mapping_text": "显式映射：ningbo-xiecheng → project_ningbo_xiecheng_2026",
+    "source_options": [
+      "（选择 Studio 有效候选）",
+      "A v1 · 环岛漫游 · 6 分区 · art_ad46f5a825"
+    ],
+    "imports_before": 0,
+    "imports_after": 1,
+    "imported_revision": {
+      "option_id": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:A",
+      "revision_no": 1,
+      "parent_revision_id": null,
+      "source_artifact_id": "art_ad46f5a825",
+      "unsupported_items": [
+        "材料规格/产品选型",
+        "相机与人眼视图",
+        "照度/配光计算",
+        "实测标高/层高",
+        "门窗/柱网/构造",
+        "legacy rect 对象"
+      ],
+      "artifact_count": 1
+    },
+    "target_model_in_api": true,
+    "target_model_spatial": {
+      "zones": 6,
+      "non_rectangular": [
+        "ZA1"
+      ],
+      "unit": "mm",
+      "origin_kind": "studio_import"
+    },
+    "svg_bytes": 5523,
+    "svg_has_polygon": true,
+    "svg_matches_stored_sha": true,
+    "design_item_after_import": null,
+    "adoption": null,
+    "ledger_rows": 45,
+    "unsupported_visible": true,
+    "geometry_mode_visible": true,
+    "mobile_scroll_width": 390,
+    "page_errors": [],
+    "passed": true
+  },
+  "external_calls": 0,
+  "keys_used": false,
+  "model_channel": "labelled local fixture (no real AI)",
+  "boundaries": [
+    "隔离主工作台 SQLite + 隔离 Studio 库；日常库未写入",
+    "导入只产生候选；未改采用/量价/采购/发布",
+    "本批仅证明工程适配，不证明设计质量或 AD 验收"
+  ]
+}

@@ -34,7 +34,8 @@
     "change_reason": {"type": "string", "minLength": 1, "maxLength": 500},
     "actor_id": {"type": "string", "minLength": 1},
     "created_at": {"type": "string", "minLength": 1},
-    "structure_signature": {"type": "object", "additionalProperties": true}
+    "structure_signature": {"type": "object", "additionalProperties": true},
+    "spatial": {"$ref": "#/$defs/spatialExtension"}
   },
   "$defs": {
     "decimal": {"type": "string", "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"},
@@ -138,6 +139,378 @@
       "type": "object", "additionalProperties": false,
       "required": ["conflict_id", "statement", "resolution", "source_refs"],
       "properties": {"conflict_id": {"type": "string"}, "statement": {"type": "string"}, "resolution": {"enum": ["pending", "human_required", "resolved"]}, "source_refs": {"$ref": "#/$defs/sourceIds"}}
+    },
+    "spatialExtension": {
+      "type": "object",
+      "description": "Optional W1 Studio-proposal projection inside the ONE authoritative candidate document. Exact mm polygons, materials/lighting/view intent, provenance and named unsupported items. Not a second model.",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "unit",
+        "origin",
+        "zones",
+        "circulation",
+        "platforms",
+        "furniture",
+        "ceiling",
+        "materials",
+        "views",
+        "unsupported_items",
+        "unknown_items",
+        "source",
+        "adaptation",
+        "area_table",
+        "open_questions"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "rkd-ai-design-option-spatial.v1"
+        },
+        "unit": {
+          "const": "mm"
+        },
+        "origin": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "zones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/spatialZone"
+          }
+        },
+        "circulation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "furniture": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ceiling": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "unsupported_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/unsupportedItem"
+          }
+        },
+        "unknown_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/studioSource"
+        },
+        "adaptation": {
+          "$ref": "#/$defs/adaptationNote"
+        },
+        "area_table": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "open_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "spatialZone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_id",
+        "name",
+        "role",
+        "polygon_mm",
+        "area_sqm",
+        "source_refs"
+      ],
+      "properties": {
+        "object_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "polygon_mm": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "area_sqm": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "unsupportedItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item",
+        "source_field",
+        "reason",
+        "status"
+      ],
+      "properties": {
+        "item": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_field": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "const": "unsupported_unknown"
+        }
+      }
+    },
+    "studioSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin_kind",
+        "studio_project_id",
+        "main_project_id",
+        "artifact_id",
+        "revision_uid",
+        "parent_revision_uid",
+        "sha256",
+        "contract_version",
+        "option_id",
+        "revision",
+        "candidate_group_id",
+        "run_id",
+        "draft_identity",
+        "site_source"
+      ],
+      "properties": {
+        "origin_kind": {
+          "const": "studio_import"
+        },
+        "studio_project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "main_project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision_uid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_revision_uid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contract_version": {
+          "const": "rkd-spatial-plan.v1"
+        },
+        "option_id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "candidate_group_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "run_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "draft_identity": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "site_source": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "adaptationNote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_version",
+        "mapping_version",
+        "unit_conversion",
+        "geometry_mode",
+        "object_id_map",
+        "losses",
+        "field_ledger"
+      ],
+      "properties": {
+        "adapter_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mapping_version": {
+          "const": "W0-erratum-2.3"
+        },
+        "unit_conversion": {
+          "const": "mm_to_m_div_1000"
+        },
+        "geometry_mode": {
+          "const": "polygon_exact_in_spatial_bbox_derived_in_legacy_objects"
+        },
+        "object_id_map": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/objectIdMap"
+          }
+        },
+        "losses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "field_ledger": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fieldLedgerRow"
+          }
+        }
+      }
+    },
+    "objectIdMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_object_id",
+        "target_object_id",
+        "group"
+      ],
+      "properties": {
+        "source_object_id": {
+          "type": "string"
+        },
+        "target_object_id": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string"
+        }
+      }
+    },
+    "fieldLedgerRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_field",
+        "target_field",
+        "object_id",
+        "source_value",
+        "target_value",
+        "unit",
+        "status"
+      ],
+      "properties": {
+        "source_field": {
+          "type": "string"
+        },
+        "target_field": {
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "source_value": {},
+        "target_value": {},
+        "unit": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "mapped",
+            "preserved",
+            "unknown",
+            "unsupported"
+          ]
+        }
+      }
     }
   }
 }

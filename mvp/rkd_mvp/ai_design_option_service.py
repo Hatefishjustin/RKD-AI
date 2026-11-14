@@ -48,7 +48,7 @@ class AIDesignOptionService:
     def __init__(self, repository: Any, brief_provider: Callable[[str, str], dict[str, Any] | None],
                  context_provider: Callable[[str, str], dict[str, Any]], runtime_root: str | Path,
                  *, config: DesignOptionConfig | None = None, provider: Any | None = None,
-                 start_workers: bool = True) -> None:
+                 start_workers: bool = True, studio_source: Any | None = None) -> None:
         self.repository = repository
         self.brief_provider = brief_provider
         self.context_provider = context_provider
@@ -56,6 +56,9 @@ class AIDesignOptionService:
         self.config = config or load_design_option_config()
         self.provider = provider or build_design_option_provider(self.config)
         self.start_workers = start_workers
+        # W1: explicit read boundary into Studio's own store. None -> lazy
+        # default bound to RKD_STUDIO_DB at first use (never the live project DB).
+        self.studio_source = studio_source
         self.schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(self.schema)
         self.validator = Draft202012Validator(self.schema)
@@ -310,6 +313,280 @@ class AIDesignOptionService:
             if revision:
                 revision["artifacts"] = tx.artifacts(option_revision_id)
             return revision
+
+    # ------------------------------------------------------------ W1 Studio import
+    def _studio(self) -> Any:
+        if self.studio_source is None:
+            from .ai_design_studio_adapter import StudioProposalSource
+            self.studio_source = StudioProposalSource()
+        return self.studio_source
+
+    @staticmethod
+    def _adapt_error(error: Exception) -> "AIDesignOptionServiceError":
+        code = getattr(error, "code", "ADAPTATION_FAILED")
+        message = getattr(error, "message", str(error))
+        return AIDesignOptionServiceError(422, code, message)
+
+    def studio_sources(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        """List Studio valid proposals that MAY be imported (read-only)."""
+        source = self._studio()
+        studio_pid = source.resolve(project_id)
+        if studio_pid is None:
+            return {"studio_project_id": None, "mapping": None, "items": [],
+                    "note": "主系统项目没有显式 Studio 映射；不按名称推断"}
+        project = source.project(studio_pid) or {}
+        return {"studio_project_id": studio_pid,
+                "mapping": {"source_project_id": project.get("source_project_id"),
+                            "mapping_note": project.get("mapping_note")},
+                "items": source.valid_proposals(studio_pid)}
+
+    def import_studio_proposal(self, organization_id: str, project_id: str, actor_id: str,
+                               request: dict[str, Any], *,
+                               on_before_commit: Any | None = None) -> dict[str, Any]:
+        """Adapt ONE Studio valid proposal into the main versioned candidate model.
+
+        Single write transaction: set + revision + artifact are committed together,
+        or nothing is written. Adoption / production / procurement / release are
+        NEVER touched by an import.
+        """
+        from .ai_design_studio_adapter import (
+            ADAPTER_VERSION, MAPPING_VERSION, StudioAdaptationError,
+            adapt_proposal, render_spatial_svg, sha256_hex,
+        )
+        from .studio.tools import CATALOG
+        if not isinstance(request, dict):
+            raise AIDesignOptionServiceError(400, "INVALID_IMPORT_REQUEST", "请求体不是对象")
+        studio_pid = str(request.get("studio_project_id") or "").strip()
+        artifact_id = str(request.get("studio_artifact_id") or "").strip()
+        if not studio_pid or not artifact_id:
+            raise AIDesignOptionServiceError(400, "INVALID_IMPORT_REQUEST",
+                                             "必须显式给出 studio_project_id 与 studio_artifact_id")
+        expected_unit = str(request.get("expected_unit") or "mm")
+        if expected_unit != "mm":
+            raise AIDesignOptionServiceError(
+                422, "UNIT_MISMATCH",
+                f"调用方声明单位为 {expected_unit}；Studio 契约是 mm，适配器不猜测换算")
+        declared_main = request.get("source_project_id")
+        if declared_main is not None and str(declared_main) != project_id:
+            raise AIDesignOptionServiceError(409, "PROJECT_MAPPING_MISMATCH",
+                                             "请求里的主系统项目与 URL 项目不一致")
+
+        source = self._studio()
+        project = source.project(studio_pid)
+        if not project:
+            raise AIDesignOptionServiceError(404, "STUDIO_PROJECT_NOT_FOUND",
+                                             "Studio 项目不存在")
+        if project.get("source_project_id") != project_id or source.resolve(project_id) != studio_pid:
+            raise AIDesignOptionServiceError(409, "PROJECT_MAPPING_MISMATCH",
+                                             "Studio→主系统项目映射不是显式一致的；拒绝跨项目导入")
+        artifact = source.artifact(artifact_id)
+        if not artifact:
+            raise AIDesignOptionServiceError(404, "STUDIO_ARTIFACT_NOT_FOUND",
+                                             "找不到该 Studio 产物")
+        if artifact.get("project_id") != studio_pid:
+            raise AIDesignOptionServiceError(409, "CROSS_PROJECT_ARTIFACT",
+                                             "产物属于另一个 Studio 项目")
+        if (artifact.get("kind") != "spatial-plan"
+                or artifact.get("contract_status") != "valid_candidate"
+                or artifact.get("status") in ("superseded", "invalid_raw")):
+            raise AIDesignOptionServiceError(422, "NOT_VALID_STUDIO_CANDIDATE",
+                                             "只允许导入 Studio 的有效 spatial-plan 候选，不导入原始/失效稿")
+        source_sha = str(artifact.get("sha256") or "")
+        expected_sha = request.get("expected_source_sha256")
+        if expected_sha is not None and str(expected_sha) != source_sha:
+            raise AIDesignOptionServiceError(409, "SOURCE_SHA_MISMATCH",
+                                             "源产物字节已变化，请重新确认后再导入")
+        plan = artifact.get("payload")
+        if not isinstance(plan, dict) or not plan.get("zones"):
+            raise AIDesignOptionServiceError(422, "EMPTY_STUDIO_PAYLOAD",
+                                             "源产物没有可用的完整平面数据")
+
+        source_key = _digest({"studio_project_id": studio_pid, "artifact_id": artifact_id,
+                              "sha256": source_sha, "adapter_version": ADAPTER_VERSION,
+                              "mapping_version": MAPPING_VERSION,
+                              "main_project_id": project_id,
+                              "organization_id": organization_id})
+        idempotency_key = "studio-import:" + source_key
+        provenance = {
+            "artifact_id": artifact_id, "sha256": source_sha,
+            "studio_project_id": studio_pid, "main_project_id": project_id,
+            "revision_uid": artifact.get("revision_uid"),
+            "parent_revision_uid": artifact.get("parent_revision_uid"),
+            "candidate_group_id": artifact.get("candidate_group_id"),
+            "run_id": artifact.get("run_id"),
+        }
+        option_id = f"studio:{project_id}:{studio_pid}:{plan.get('option_id')}"
+        catalog = {c["catalog_id"]: c for c in CATALOG}
+
+        # Idempotency + version chain, both inside a read transaction.
+        with self.repository.transaction(organization_id, project_id) as tx:
+            existing_set = tx.set_by_key(idempotency_key)
+            adoption_before = tx.adoption()
+            if existing_set:
+                revisions = tx.revisions_for_set(existing_set["set_id"])
+                head = revisions[0] if revisions else None
+                return {"reused": True, "item": head, "set": existing_set,
+                        "adoption_unchanged": True, "formal_approval": False,
+                        "note": "同一来源（artifact id + sha256 + 适配器版本）已导入过，未重复造版本"}
+            latest = tx.latest_revision(option_id)
+            previous_spatial = (latest or {}).get("model", {}).get("spatial")
+            revision_no = int(latest["revision_no"]) + 1 if latest else 1
+            parent_revision_id = latest["option_revision_id"] if latest else None
+
+        set_id = new_id("ai-option-set")
+        option_revision_id = new_id("ai-option-revision")
+        created_at = now_iso()
+        try:
+            model = adapt_proposal(
+                plan, provenance=provenance, site=project["site"], catalog=catalog,
+                actor_id=actor_id, created_at=created_at, set_id=set_id,
+                option_id=option_id, revision_no=revision_no,
+                parent_revision_id=parent_revision_id,
+                previous_spatial=previous_spatial, expected_unit=expected_unit)
+        except StudioAdaptationError as error:
+            raise self._adapt_error(error) from error
+        except Exception as error:  # noqa: BLE001 - never write half an adaptation
+            raise AIDesignOptionServiceError(422, "ADAPTATION_FAILED",
+                                             f"适配失败，未写入任何候选：{type(error).__name__}: {error}") from error
+
+        errors = sorted(self.validator.iter_errors(model), key=lambda e: list(e.path))
+        if errors:
+            first = errors[0]
+            raise AIDesignOptionServiceError(422, "ADAPTED_MODEL_INVALID",
+                                             "适配结果不符合主系统版本化契约："
+                                             + f"{list(first.path)} {first.message[:160]}")
+        # unknown must stay unknown (do not silently fill 0 / invent values)
+        if (model["cost"]["total_project_estimate"]["value"] is not None
+                or model["cost"]["budget"]["value"] is not None):
+            raise AIDesignOptionServiceError(422, "UNKNOWN_VALUE_FILLED",
+                                             "适配结果把 unknown 金额填成了数值")
+
+        svg = render_spatial_svg(model)
+        attempt_dir = (self.runtime_root / "projects" / "ai-design-options"
+                       / "studio-import" / set_id)
+        attempt_dir.mkdir(parents=True, exist_ok=False)
+        svg_path = attempt_dir / f"layout-{option_revision_id}.svg"
+        relative = svg_path.relative_to(self.runtime_root).as_posix()
+        spatial = model["spatial"]
+        context = {
+            "schema_version": "rkd-studio-import-context.v1",
+            "adapter_version": ADAPTER_VERSION,
+            "mapping_version": MAPPING_VERSION,
+            "source": provenance, "source_unit": "mm", "target_unit": "m",
+            "unit_conversion": "mm_to_m_div_1000",
+            "option_id": option_id, "revision_no": revision_no,
+            "parent_revision_id": parent_revision_id,
+            "field_ledger": spatial["adaptation"]["field_ledger"],
+            "object_id_map": spatial["adaptation"]["object_id_map"],
+            "unsupported_items": spatial["unsupported_items"],
+            "losses": spatial["adaptation"]["losses"],
+            "source_sha256": source_sha,
+            "geometry_mode": spatial["adaptation"]["geometry_mode"],
+            "source_contract": "rkd-spatial-plan.v1",
+            "target_contract": "rkd-ai-design-option.v1",
+        }
+        config = {"kind": "studio_proposal_adapter", "real_model": False,
+                  "configuration_errors": [], "adapter_version": ADAPTER_VERSION}
+        row = {
+            "option_revision_id": option_revision_id, "set_id": set_id,
+            "option_id": option_id, "revision_no": revision_no,
+            "parent_revision_id": parent_revision_id,
+            "strategy_id": model["strategy"]["strategy_id"],
+            "strategy": model["strategy"], "model": model,
+            "validation": model["validation"], "materials": model["materials"],
+            "cost": model["cost"], "feedback": model["feedback"],
+            "diff": model["diff"], "conflicts": model["conflicts"],
+            "structure_signature": model["structure_signature"],
+            "lifecycle_status": "candidate", "source_kind": model["source_kind"],
+            "change_reason": model["change_reason"], "actor_id": actor_id,
+            "created_at": created_at,
+        }
+        artifact_row = {
+            "artifact_id": new_id("ai-option-artifact"),
+            "option_revision_id": option_revision_id,
+            "artifact_kind": "layout_svg",
+            "filename": f"layout-{option_revision_id}.svg",
+            "content_type": "image/svg+xml", "relative_path": relative,
+            "sha256": hashlib.sha256(svg).hexdigest(), "size_bytes": len(svg),
+            "created_at": created_at,
+        }
+        try:
+            svg_path.write_bytes(svg)
+            with self.repository.transaction(organization_id, project_id, write=True) as tx:
+                tx.insert_set({
+                    "set_id": set_id, "brief_id": artifact_id, "input_hash": source_key,
+                    "status": "succeeded", "phase": "completed", "attempt_count": 1,
+                    "config": config, "context": context, "error_code": None,
+                    "error_message": None, "idempotency_key": idempotency_key,
+                    "actor_id": actor_id, "created_at": created_at,
+                    "updated_at": created_at,
+                })
+                tx.insert_revision(row)
+                tx.insert_artifact(artifact_row)
+                if on_before_commit is not None:
+                    on_before_commit()   # explicit rollback seam used by W1 tests
+            with self.repository.transaction(organization_id, project_id) as tx:
+                result_set = tx.set_row(set_id)
+                revision = tx.revision(option_revision_id)
+                if revision:
+                    revision["artifacts"] = tx.artifacts(option_revision_id)
+                adoption_after = tx.adoption()
+            return {
+                "reused": False, "item": revision, "set": result_set,
+                "source": provenance,
+                "field_ledger": context["field_ledger"],
+                "object_id_map": context["object_id_map"],
+                "unsupported_items": context["unsupported_items"],
+                "losses": context["losses"],
+                "adaptation": spatial["adaptation"],
+                "source_unit": "mm", "target_unit": "m",
+                "adoption_unchanged": _json(adoption_before) == _json(adoption_after),
+                "adoption": adoption_after,
+                "formal_approval": False, "production_sync": False,
+                "svg_sha256": artifact_row["sha256"],
+            }
+        except Exception:
+            shutil.rmtree(attempt_dir, ignore_errors=True)
+            raise
+
+    def list_studio_imports(self, organization_id: str, project_id: str,
+                            limit: int = 50) -> dict[str, Any]:
+        with self.repository.transaction(organization_id, project_id) as tx:
+            items = []
+            for s in tx.sets(limit=max(limit, 50)):
+                if not str(s.get("idempotency_key") or "").startswith("studio-import:"):
+                    continue
+                revisions = tx.revisions_for_set(s["set_id"])
+                rows = []
+                for r in revisions:
+                    spatial = (r.get("model") or {}).get("spatial") or {}
+                    rows.append({
+                        "option_revision_id": r["option_revision_id"],
+                        "option_id": r["option_id"], "revision_no": r["revision_no"],
+                        "parent_revision_id": r.get("parent_revision_id"),
+                        "source": spatial.get("source"),
+                        "unsupported_items": spatial.get("unsupported_items"),
+                        "diff": r.get("diff"),
+                        "artifacts": tx.artifacts(r["option_revision_id"]),
+                    })
+                items.append({"set": s, "context": s.get("context"), "revisions": rows})
+            return {"items": items, "adoption": tx.adoption()}
+
+    def studio_import_detail(self, organization_id: str, project_id: str,
+                             option_revision_id: str) -> dict[str, Any]:
+        with self.repository.transaction(organization_id, project_id) as tx:
+            revision = tx.revision(option_revision_id)
+            if not revision:
+                raise AIDesignOptionServiceError(404, "IMPORT_REVISION_NOT_FOUND",
+                                                 "找不到该导入修订")
+            spatial = (revision.get("model") or {}).get("spatial")
+            if not spatial:
+                raise AIDesignOptionServiceError(422, "NOT_A_STUDIO_IMPORT",
+                                                 "该修订不是 Studio 导入候选")
+            revision["artifacts"] = tx.artifacts(option_revision_id)
+            return {"item": revision, "spatial": spatial,
+                    "field_ledger": spatial["adaptation"]["field_ledger"],
+                    "unsupported_items": spatial["unsupported_items"]}
 
     def mark_production_status(self, organization_id: str, project_id: str,
                                expected_version: int, status: str) -> bool:

@@ -1,0 +1,203 @@
+{
+  "task_id": "W1 统一模型适配",
+  "schema_version": "rkd-review-packet.v1",
+  "built_at": "2026-11-14T20:10:57+08:00",
+  "code_baseline": {
+    "compare_base": "cb84581",
+    "compare_base_subject": "docs: W0 文字反馈保守判定复核包补提交号与时间轴",
+    "w0_release_review_head": "cb84581",
+    "head_when_evidence_taken": "cb8458133a5857d68de318dbf2aa4813e8529842",
+    "rebuild_command": "git diff cb84581 -- mvp contracts web scripts",
+    "patch_bytes": 145762,
+    "migrations_added": 0,
+    "tables_added": 0
+  },
+  "model_versions": {
+    "source_contract": "rkd-spatial-plan.v1 (Studio spatial-plan-draft.v1)",
+    "target_contract": "rkd-ai-design-option.v1",
+    "spatial_extension": "rkd-ai-design-option-spatial.v1",
+    "adapter_version": "rkd-studio-proposal-adapter.v1",
+    "mapping_version": "W0-erratum-2.3",
+    "geometry_rule_version": "rkd-studio-import-geometry.v1",
+    "unit_source": "mm",
+    "unit_target": "m",
+    "materials": "intent / unknown (no product spec invented)",
+    "views": "empty + named unsupported item (no camera invented)"
+  },
+  "timeline": [
+    {
+      "at": "2026-11-14T19:35",
+      "what": "读 W0-final-architect 放行文件、PROJECT_STATUS、docs/13、21、26 与 W0 三契约勘误"
+    },
+    {
+      "at": "2026-11-14T19:40",
+      "what": "PROJECT_STATUS 记录 W0 受限工程放行与 W1 批准范围"
+    },
+    {
+      "at": "2026-11-14T19:50",
+      "what": "契约可选 spatial 段 + 确定性适配器 + 精确多边形校验/SVG"
+    },
+    {
+      "at": "2026-11-14T19:55",
+      "what": "服务单事务导入、API 路由、页面导入与字段对账；前端 tsc/build EXIT=0"
+    },
+    {
+      "at": "2026-11-14T20:00:48+08:00",
+      "what": "真实 HTTP 22/22 observed_pass（含回滚/重启/幂等/负例）"
+    },
+    {
+      "at": "2026-11-14T19:58:44Z",
+      "what": "真实 Edge 浏览器 passed=true（页面导入 + 对账 + 多边形 SVG）"
+    },
+    {
+      "at": "2026-11-14T20:03",
+      "what": "受影响 5 模块 55 OK、全量 262 OK"
+    },
+    {
+      "at": "2026-11-14T20:05",
+      "what": "复核包编制完成（本清单时刻）"
+    }
+  ],
+  "packet_files": {
+    "browser/browser-observations.json": {
+      "bytes": 1200,
+      "sha256": "c6c85599201387b859744a28f8f93dcb54f098e08bd48eb4769e5d4da4918d8f"
+    },
+    "browser/verification.json": {
+      "bytes": 2208,
+      "sha256": "8d834444c39e5298fc39d739c770629d72cd4545b35d70ef62afcd0f97353a8a"
+    },
+    "browser/w1-import-desktop.png": {
+      "bytes": 236205,
+      "sha256": "67c4215904148d389499fba862c5fe4fac6b733e8a66ed96b6c2f5e84f52103b"
+    },
+    "browser/w1-import-mobile.png": {
+      "bytes": 186407,
+      "sha256": "c16281096ecb28d606b1964b8f0f692b3196e3a6b7e029757c7580757cf7968c"
+    },
+    "changes.patch": {
+      "bytes": 145762,
+      "sha256": "de498cc9e762f2f688abda15046fbdcf4228eea77d10dbecda9654263fbab5d7"
+    },
+    "checks.json": {
+      "bytes": 12667,
+      "sha256": "104d831c6a11e41e869d3c8de1a94529fc20e1ce32e45da4c763b2fd7c344d1d"
+    },
+    "code-diff.md": {
+      "bytes": 6371,
+      "sha256": "ba359249899a3d507e1e6f3d3d935276ec4adaa72f63474089d81f68767048b7"
+    },
+    "contract-mapping.md": {
+      "bytes": 9430,
+      "sha256": "4f4b7973276efffda58c6db185452f882985666c8a498fb670794a86e2fea4c4"
+    },
+    "field-reconciliation.json": {
+      "bytes": 33349,
+      "sha256": "29d23c36c1629af5fe6a1bc6ed4fbfb9f42d5d58e664596e68d697874a48e644"
+    },
+    "models/layout-A-v2.source.json": {
+      "bytes": 5748,
+      "sha256": "2b76ced97aa11c290c66bd4b0616f6acece309bf2602d2bd80e924a745a8f39f"
+    },
+    "models/layout-A-v2.target.json": {
+      "bytes": 57981,
+      "sha256": "bdecab5b5fe2904f0ebd55e4d3bccdc388a158a2bdfaef14ce4a3fd0fdd48f95"
+    },
+    "models/layout-A.source.json": {
+      "bytes": 5748,
+      "sha256": "01c58720ff278766e114eb8dc7ec55be5ce40051e659d0af03607118a98f978f"
+    },
+    "models/layout-A.target.json": {
+      "bytes": 56937,
+      "sha256": "2126743f4078df5f2a9c6842ae89994af90766d14a7d71975d846c00e4bf5590"
+    },
+    "models/layout-B.source.json": {
+      "bytes": 5731,
+      "sha256": "a13fd42244ad7878671e598ddf6973cbd9f4f62b47e7e0fe2a47c4e6414444cb"
+    },
+    "models/layout-B.target.json": {
+      "bytes": 56925,
+      "sha256": "5ce5968aeead0b491ae432f5db13ed143753d2f78780542b4afb94614a4665d2"
+    },
+    "positive-negative-cases.md": {
+      "bytes": 6527,
+      "sha256": "c928ec0753fed77d24a1195e846501e546947f28b410485d39f7cedd3369aa2e"
+    },
+    "review-packet.md": {
+      "bytes": 15194,
+      "sha256": "130c8e38bb9d46dfe76a575449ae7e6eceeed6829903e27dc805d810054e60aa"
+    },
+    "runtime/focused-unittest.log": {
+      "bytes": 103,
+      "sha256": "4676398bc1976857b407160ab2b48129fdf7f5312aae4c14e93a604eb73e9e23"
+    },
+    "runtime/frontend-build.log": {
+      "bytes": 895,
+      "sha256": "f3f5862bc096f917c25ff45faa2618f3c6ace45adad3dc4d5aadee372e41854f"
+    },
+    "runtime/frontend-tsc.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runtime/full-unittest.log": {
+      "bytes": 383,
+      "sha256": "0cfac3e3d5ba81d79137cf9f4d703f0b88b1aa43344fa392dae930fb4e1bda75"
+    }
+  },
+  "source_files": {
+    "contracts/v1/ai-design-option.schema.json": {
+      "bytes": 18634,
+      "sha256": "3d19b2df2f228795f52f7232a7fb6546547f7d6632e059cf90dfdc5168417a2b"
+    },
+    "contracts/v1/openapi.v1.json": {
+      "bytes": 149987,
+      "sha256": "856966fac76dcc1d9b7a47b470e46ec6b5227e3d78806febbfaade25a6259aed"
+    },
+    "mvp/rkd_mvp/ai_design_studio_adapter.py": {
+      "bytes": 42229,
+      "sha256": "d24053edfcabc096f81f893bd7eb4b434f90bda91ab36081df5361847f34d3fc"
+    },
+    "mvp/rkd_mvp/ai_design_option_service.py": {
+      "bytes": 45238,
+      "sha256": "93df4278c8c7b2e031919863119d179b11e8bfd7a18021218eb4c8e198392587"
+    },
+    "mvp/rkd_mvp/api_service.py": {
+      "bytes": 44361,
+      "sha256": "71ad724984c1137f05b165179a552af92d243ac78f7bb5208dad4309250b6c47"
+    },
+    "mvp/rkd_mvp/api_server.py": {
+      "bytes": 41160,
+      "sha256": "6b3ce95515d7c6dde100e5c202ee970299c3b7d64b08fd1cc79800ec29722224"
+    },
+    "web/src/AiDesignOptionsPanel.tsx": {
+      "bytes": 19146,
+      "sha256": "0fecc2f24269d65b04d601ebff5d195c91118654dc812f365ada202a927eb37a"
+    },
+    "web/src/styles.css": {
+      "bytes": 44976,
+      "sha256": "4d48cd9b6cdbd40deb232aba209d571b0812bfd9187be324f73324a817fb6dbf"
+    },
+    "scripts/verify_w1_unified_model.py": {
+      "bytes": 34714,
+      "sha256": "9743acc6c9e2caf8f8b0869fab7552bb97c14bac1ddd28dc05154c338ef834d2"
+    },
+    "scripts/verify_w1_browser.py": {
+      "bytes": 8688,
+      "sha256": "4a59648126495440837e718d774328b60c3ce483464eedd96d1bc0178ef0a48c"
+    },
+    "scripts/verify_w1_browser.cjs": {
+      "bytes": 7679,
+      "sha256": "f20d3909c51a8aee06c5cd0f62802f6ba2f5ec8e72ae504d1444e05b75c2f565"
+    }
+  },
+  "external_calls": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "keys_used": false,
+  "adjudication": {
+    "AD01-AD08": "未改判",
+    "design_stage": "未确认",
+    "w1_release": "未宣布，等架构师复核",
+    "w2_scope": "交回架构师后才明确"
+  }
+}

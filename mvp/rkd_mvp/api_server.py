@@ -271,6 +271,18 @@ class ApiRoutes:
                 self.end_headers()
                 self.wfile.write(file_path.read_bytes())
                 return
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-sources", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_design_studio_sources(
+                    organization_id, ai_match.group(1)))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-imports/([^/]+)", path)
+            if ai_match:
+                return self._json(200, self.service.get_ai_design_studio_import_detail(
+                    organization_id, ai_match.group(1), ai_match.group(2)))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-imports", path)
+            if ai_match:
+                return self._json(200, self.service.list_ai_design_studio_imports(
+                    organization_id, ai_match.group(1)))
             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options", path)
             if ai_match:
                 return self._json(200, self.service.get_ai_design_options(organization_id, ai_match.group(1)))
@@ -490,6 +502,10 @@ class ApiRoutes:
                     organization_id, ai_match.group(1), actor_id,
                     {**self._body(), "option_id": ai_match.group(2)},
                 ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/import-studio", path)
+            if ai_match:
+                return self._json(200, self.service.import_ai_design_studio_proposal(
+                    organization_id, ai_match.group(1), actor_id, self._body()))
             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options", path)
             if ai_match:
                 return self._json(202, self.service.submit_ai_design_options(

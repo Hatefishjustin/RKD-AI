@@ -51,7 +51,8 @@ class ApiService:
                  ai_development_service: AIDevelopmentService | None = None,
                  ai_source_extraction_service: AISourceExtractionService | None = None,
                  ai_technical_delivery_service: AITechnicalDeliveryService | None = None,
-                 runtime_root: str | Path | None = None) -> None:
+                 runtime_root: str | Path | None = None,
+                 studio_source: Any | None = None) -> None:
         self.app = app or MVPApp()
         self.file_service = file_service
         db_path = getattr(self.app.store, "db_path", None)
@@ -93,7 +94,8 @@ class ApiService:
         root = Path(runtime_root) if runtime_root else (Path(db_path).parent if db_path else None)
         self.ai_design_option_service = ai_design_option_service or (
             AIDesignOptionService(SQLiteAIDesignOptionRepository(db_path), ai_brief_provider,
-                                  ai_design_context_provider, root)
+                                  ai_design_context_provider, root,
+                                  studio_source=studio_source)
             if db_path and self.ai_requirement_service and root else None
         )
         self.ai_development_service = ai_development_service or (
@@ -404,6 +406,35 @@ class ApiService:
         self._require_project(organization_id, project_id)
         try:
             return self._ai_options().cancel(organization_id, project_id, set_id)
+        except AIDesignOptionServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def get_ai_design_studio_sources(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        return self._ai_options().studio_sources(organization_id, project_id)
+
+    def import_ai_design_studio_proposal(self, organization_id: str, project_id: str,
+                                         actor_id: str, request: dict[str, Any]) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_options().import_studio_proposal(
+                organization_id, project_id, actor_id, request)
+        except AIDesignOptionServiceError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+        except Exception as error:  # noqa: BLE001 - surface a failed import, never half a write
+            raise ApiError(500, "STUDIO_IMPORT_FAILED",
+                           f"导入事务失败已回滚：{type(error).__name__}: {error}") from error
+
+    def list_ai_design_studio_imports(self, organization_id: str, project_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        return self._ai_options().list_studio_imports(organization_id, project_id)
+
+    def get_ai_design_studio_import_detail(self, organization_id: str, project_id: str,
+                                           option_revision_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_options().studio_import_detail(
+                organization_id, project_id, option_revision_id)
         except AIDesignOptionServiceError as error:
             raise ApiError(error.status, error.code, error.message) from error
 

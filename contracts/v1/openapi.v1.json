@@ -1059,6 +1059,22 @@
       "get": {"tags": ["AI Design Options"], "summary": "Read candidate sets, compared options and current draft adoption", "operationId": "getAIDesignOptions", "responses": {"200": {"description": "Candidate status", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}},
       "post": {"tags": ["AI Design Options"], "summary": "Queue generation of at least two isolated computable design candidates", "operationId": "queueAIDesignOptions", "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"obstacles": {"type": "array", "items": {"type": "object"}}}}}}}, "responses": {"202": {"description": "Candidate set accepted", "content": {"application/json": {"schema": {"type": "object"}}}}, "409": {"description": "Brief missing or idempotency conflict"}, "404": {"$ref": "#/components/responses/NotFound"}}}
     },
+    "/v1/projects/{projectId}/ai/design-options/studio-sources": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}],
+      "get": {"tags": ["AI Design Options"], "summary": "List Studio valid proposals that may be imported (read-only, explicit project mapping)", "operationId": "listStudioSources", "responses": {"200": {"description": "Sources and mapping", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}}
+    },
+    "/v1/projects/{projectId}/ai/design-options/studio-imports": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}],
+      "get": {"tags": ["AI Design Options"], "summary": "List Studio-imported candidate versions with provenance and unsupported items", "operationId": "listStudioImports", "responses": {"200": {"description": "Import records", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}}
+    },
+    "/v1/projects/{projectId}/ai/design-options/studio-imports/{optionRevisionId}": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "optionRevisionId", "in": "path", "required": true, "schema": {"type": "string"}}],
+      "get": {"tags": ["AI Design Options"], "summary": "Read exact spatial projection and per-field reconciliation of one import", "operationId": "getStudioImportDetail", "responses": {"200": {"description": "Import detail", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}, "422": {"description": "Not a Studio import"}}}
+    },
+    "/v1/projects/{projectId}/ai/design-options/import-studio": {
+      "parameters": [{"$ref": "#/components/parameters/ProjectId"}],
+      "post": {"tags": ["AI Design Options"], "summary": "Adapt one Studio valid proposal into a versioned main-system candidate (no adoption/production side effects)", "operationId": "importStudioProposal", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["studio_project_id", "studio_artifact_id"], "properties": {"studio_project_id": {"type": "string"}, "studio_artifact_id": {"type": "string"}, "source_project_id": {"type": "string"}, "expected_source_sha256": {"type": "string"}, "expected_unit": {"type": "string", "enum": ["mm"]}}}}}}, "responses": {"200": {"description": "Imported or reused revision"}, "400": {"description": "Invalid request"}, "404": {"$ref": "#/components/responses/NotFound"}, "409": {"description": "Mapping or source hash mismatch"}, "422": {"description": "Source cannot be adapted faithfully"}, "500": {"description": "Import transaction rolled back"}}}
+    },
     "/v1/projects/{projectId}/ai/design-options/artifacts/{artifactId}/content": {
       "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string"}}],
       "get": {"tags": ["AI Design Options"], "summary": "Read one verified SVG candidate drawing", "operationId": "getAIDesignOptionArtifact", "responses": {"200": {"description": "SVG bytes", "content": {"image/svg+xml": {"schema": {"type": "string", "format": "binary"}}}}, "404": {"$ref": "#/components/responses/NotFound"}, "500": {"description": "Artifact missing or integrity mismatch"}}}

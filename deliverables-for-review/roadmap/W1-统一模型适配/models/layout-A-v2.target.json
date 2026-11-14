@@ -1,0 +1,2253 @@
+{
+  "actor_id": "local-user",
+  "boundary": {
+    "boundary_source": "manual_boundary_not_site_verified",
+    "entrance": {
+      "point": [
+        "0",
+        "10.3"
+      ],
+      "side": "left",
+      "width": "1.8"
+    },
+    "length": "17.92",
+    "obstacles": [
+      {
+        "kind": "obstacle",
+        "locked": true,
+        "material_id": null,
+        "name": "楼梯保留区",
+        "object_id": "keepout-楼梯保留区",
+        "parent_object_id": null,
+        "properties": {
+          "keepout": true,
+          "source": "structured_site_condition"
+        },
+        "shape": {
+          "length": "8",
+          "type": "rect",
+          "width": "2.4",
+          "x": "0",
+          "y": "0"
+        },
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      },
+      {
+        "kind": "obstacle",
+        "locked": true,
+        "material_id": null,
+        "name": "卫生间保留区",
+        "object_id": "keepout-卫生间保留区",
+        "parent_object_id": null,
+        "properties": {
+          "keepout": true,
+          "source": "structured_site_condition"
+        },
+        "shape": {
+          "length": "4.7",
+          "type": "rect",
+          "width": "4.17",
+          "x": "22",
+          "y": "2.6"
+        },
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      }
+    ],
+    "unit": "m",
+    "width": "26.17"
+  },
+  "change_reason": "从 Studio 有效提案 art_9ffbcf3b1c（sha256=3bda6ad04b7a…）经确定性适配器导入；未改采用指针/生产/采购/正式发布",
+  "circulation": {
+    "connections": [
+      [
+        "CA1:S1",
+        "CA1:S2"
+      ],
+      [
+        "CA1:S2",
+        "CA1:S3"
+      ],
+      [
+        "CA1:S3",
+        "CA1:S4"
+      ]
+    ],
+    "kind": "branch",
+    "min_width": "2",
+    "path_id": "CA1",
+    "segments": [
+      {
+        "segment_id": "CA1:S1",
+        "shape": {
+          "length": "2",
+          "type": "rect",
+          "width": "9.9",
+          "x": "-0.9",
+          "y": "10"
+        }
+      },
+      {
+        "segment_id": "CA1:S2",
+        "shape": {
+          "length": "2",
+          "type": "rect",
+          "width": "11.5",
+          "x": "7",
+          "y": "10"
+        }
+      },
+      {
+        "segment_id": "CA1:S3",
+        "shape": {
+          "length": "7",
+          "type": "rect",
+          "width": "2",
+          "x": "16.5",
+          "y": "5"
+        }
+      },
+      {
+        "segment_id": "CA1:S4",
+        "shape": {
+          "length": "2.8",
+          "type": "rect",
+          "width": "11.5",
+          "x": "7",
+          "y": "4.2"
+        }
+      }
+    ]
+  },
+  "conflicts": [],
+  "cost": {
+    "budget": {
+      "known_status": "unknown",
+      "source_refs": [],
+      "unit": "CNY",
+      "unknown_reason": "Studio 提案未给出预算数值",
+      "value": null
+    },
+    "currency": "CNY",
+    "formal_quote": false,
+    "known_items": [],
+    "total_project_estimate": {
+      "known_status": "unknown",
+      "source_refs": [],
+      "unit": "CNY",
+      "unknown_reason": "候选阶段不生成完整项目估价",
+      "value": null
+    },
+    "unknown_items": [
+      {
+        "known_status": "unknown",
+        "statement": "材料规格/产品选型",
+        "unit": "CNY",
+        "unknown_reason": "Studio 提案只有目录引用，没有材料规格、样板或产品选型；写 unknown，不补默认值",
+        "value": null
+      },
+      {
+        "known_status": "unknown",
+        "statement": "相机与人眼视图",
+        "unit": "CNY",
+        "unknown_reason": "未建模机位、镜头、人眼高度与视向；保留为命名缺项，不生成假设机位",
+        "value": null
+      },
+      {
+        "known_status": "unknown",
+        "statement": "照度/配光计算",
+        "unit": "CNY",
+        "unknown_reason": "色温与灯具点位已保留为意向；照度、配光、间距未计算，不编数值",
+        "value": null
+      },
+      {
+        "known_status": "unknown",
+        "statement": "实测标高/层高",
+        "unit": "CNY",
+        "unknown_reason": "场地与展台高度是给定条件/造型参数，不是现场实测；不升级为实测事实",
+        "value": null
+      },
+      {
+        "known_status": "unknown",
+        "statement": "门窗/柱网/构造",
+        "unit": "CNY",
+        "unknown_reason": "提案未建模门窗与柱网构造；主系统候选对象里不凭空补构件",
+        "value": null
+      },
+      {
+        "known_status": "unknown",
+        "statement": "legacy rect 对象",
+        "unit": "CNY",
+        "unknown_reason": "旧渲染器只接受 rect，派生包围盒仅供显示；精确多边形在 spatial 中，不能据包围盒算量",
+        "value": null
+      }
+    ]
+  },
+  "created_at": "2026-11-14T12:00:46.942447+00:00",
+  "diff": [
+    {
+      "after": [
+        [
+          0.0,
+          8600.0
+        ],
+        [
+          5400.0,
+          8600.0
+        ],
+        [
+          5400.0,
+          13500.0
+        ],
+        [
+          1800.0,
+          13500.0
+        ],
+        [
+          0.0,
+          11900.0
+        ]
+      ],
+      "before": [
+        [
+          0.0,
+          8600.0
+        ],
+        [
+          5400.0,
+          8600.0
+        ],
+        [
+          5400.0,
+          13500.0
+        ],
+        [
+          1600.0,
+          13500.0
+        ],
+        [
+          0.0,
+          11900.0
+        ]
+      ],
+      "field": "spatial.zones.polygon_mm",
+      "object_id": "ZA1",
+      "reason": "Studio 源提案对象变化（同一稳定对象 ID）"
+    },
+    {
+      "after": -30.0,
+      "before": -12.0,
+      "field": "spatial.furniture.rot",
+      "object_id": "F3",
+      "reason": "Studio 源提案对象变化（同一稳定对象 ID）"
+    }
+  ],
+  "feedback": {
+    "interpretation_method": "not_applicable",
+    "locks": [],
+    "parsed_intents": [],
+    "text": null
+  },
+  "generation": {
+    "adapter_version": "rkd-studio-proposal-adapter.v1",
+    "config_hash": "42fd299cd2954cec14e01abafbbac9f67b38d7cc135e71a194266a51f181d5d7",
+    "generated_at": "2026-11-14T12:00:46.942447+00:00",
+    "input_hash": "0ffb8a7fde162f7f999fd9a39aa5c93ce6335797fbe657f55f4e44d27e5754ac",
+    "interpretation_method": "deterministic_field_mapping_v1",
+    "model_id": null,
+    "prompt_version": "not_applicable",
+    "provider_kind": "studio_proposal_adapter",
+    "provider_name": "StudioProposalAdapter",
+    "real_model": false,
+    "schema_version": "rkd-ai-design-option.v1"
+  },
+  "lifecycle_status": "candidate",
+  "materials": [
+    {
+      "intent": "unknown",
+      "material_id": "studio-material-unspecified",
+      "name": "材料规格未指定（Studio 提案仅有意向）",
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ],
+      "status": "intent_only"
+    }
+  ],
+  "objects": [
+    {
+      "kind": "functional_zone",
+      "locked": false,
+      "material_id": null,
+      "name": "品牌序厅",
+      "object_id": "ZA1",
+      "parent_object_id": null,
+      "properties": {
+        "adaptation_loss": "legacy rect is the bounding box only; exact polygon is in spatial.zones",
+        "area_source": "studio_area_table_not_program_measured",
+        "exact_polygon_ref": "spatial.zones:ZA1",
+        "geometry_mode": "bbox_derived",
+        "source_unit": "mm",
+        "studio_role": "arrival"
+      },
+      "shape": {
+        "length": "4.9",
+        "type": "rect",
+        "width": "5.4",
+        "x": "0",
+        "y": "8.6"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "functional_zone",
+      "locked": false,
+      "material_id": null,
+      "name": "中央中岛",
+      "object_id": "ZA2",
+      "parent_object_id": null,
+      "properties": {
+        "adaptation_loss": "legacy rect is the bounding box only; exact polygon is in spatial.zones",
+        "area_source": "studio_area_table_not_program_measured",
+        "exact_polygon_ref": "spatial.zones:ZA2",
+        "geometry_mode": "bbox_derived",
+        "source_unit": "mm",
+        "studio_role": "island"
+      },
+      "shape": {
+        "length": "4.8",
+        "type": "rect",
+        "width": "7",
+        "x": "9",
+        "y": "6.2"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "functional_zone",
+      "locked": false,
+      "material_id": null,
+      "name": "北光廊",
+      "object_id": "ZA3",
+      "parent_object_id": null,
+      "properties": {
+        "adaptation_loss": "legacy rect is the bounding box only; exact polygon is in spatial.zones",
+        "area_source": "studio_area_table_not_program_measured",
+        "exact_polygon_ref": "spatial.zones:ZA3",
+        "geometry_mode": "bbox_derived",
+        "source_unit": "mm",
+        "studio_role": "gallery"
+      },
+      "shape": {
+        "length": "4.4",
+        "type": "rect",
+        "width": "16.4",
+        "x": "5.4",
+        "y": "13.3"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "functional_zone",
+      "locked": false,
+      "material_id": null,
+      "name": "南生活场景",
+      "object_id": "ZA4",
+      "parent_object_id": null,
+      "properties": {
+        "adaptation_loss": "legacy rect is the bounding box only; exact polygon is in spatial.zones",
+        "area_source": "studio_area_table_not_program_measured",
+        "exact_polygon_ref": "spatial.zones:ZA4",
+        "geometry_mode": "bbox_derived",
+        "source_unit": "mm",
+        "studio_role": "scene"
+      },
+      "shape": {
+        "length": "3.4",
+        "type": "rect",
+        "width": "15",
+        "x": "5.4",
+        "y": "1.8"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "functional_zone",
+      "locked": false,
+      "material_id": null,
+      "name": "东洽谈",
+      "object_id": "ZA5",
+      "parent_object_id": null,
+      "properties": {
+        "adaptation_loss": "legacy rect is the bounding box only; exact polygon is in spatial.zones",
+        "area_source": "studio_area_table_not_program_measured",
+        "exact_polygon_ref": "spatial.zones:ZA5",
+        "geometry_mode": "bbox_derived",
+        "source_unit": "mm",
+        "studio_role": "meeting"
+      },
+      "shape": {
+        "length": "5.7",
+        "type": "rect",
+        "width": "6.7",
+        "x": "19.4",
+        "y": "7.6"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "functional_zone",
+      "locked": false,
+      "material_id": null,
+      "name": "水吧服务",
+      "object_id": "ZA6",
+      "parent_object_id": null,
+      "properties": {
+        "adaptation_loss": "legacy rect is the bounding box only; exact polygon is in spatial.zones",
+        "area_source": "studio_area_table_not_program_measured",
+        "exact_polygon_ref": "spatial.zones:ZA6",
+        "geometry_mode": "bbox_derived",
+        "source_unit": "mm",
+        "studio_role": "service"
+      },
+      "shape": {
+        "length": "4.3",
+        "type": "rect",
+        "width": "3",
+        "x": "2.4",
+        "y": "1.8"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "display_object",
+      "locked": false,
+      "material_id": null,
+      "name": "中央圆角中岛",
+      "object_id": "P1",
+      "parent_object_id": null,
+      "properties": {
+        "corner_radius_mm": 1180,
+        "exact_polygon_ref": "spatial.platforms:P1",
+        "geometry_mode": "bbox_derived",
+        "height_mm": 720,
+        "studio_kind": "rounded"
+      },
+      "shape": {
+        "length": "4.8",
+        "type": "rect",
+        "width": "7",
+        "x": "9",
+        "y": "6.2"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "display_object",
+      "locked": false,
+      "material_id": null,
+      "name": "sofa-3p",
+      "object_id": "F1",
+      "parent_object_id": null,
+      "properties": {
+        "catalog_id": "sofa-3p",
+        "center_x_mm": 8400,
+        "center_y_mm": 4050,
+        "d_mm": 950.0,
+        "geometry_mode": "rotated_footprint_bbox",
+        "rot": 0,
+        "w_mm": 2400.0
+      },
+      "shape": {
+        "length": "0.95",
+        "type": "rect",
+        "width": "2.4",
+        "x": "7.2",
+        "y": "3.575"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "display_object",
+      "locked": false,
+      "material_id": null,
+      "name": "dining-table",
+      "object_id": "F2",
+      "parent_object_id": null,
+      "properties": {
+        "catalog_id": "dining-table",
+        "center_x_mm": 14400,
+        "center_y_mm": 3300,
+        "d_mm": 950.0,
+        "geometry_mode": "rotated_footprint_bbox",
+        "rot": 0,
+        "w_mm": 1900.0
+      },
+      "shape": {
+        "length": "0.95",
+        "type": "rect",
+        "width": "1.9",
+        "x": "13.45",
+        "y": "2.825"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    },
+    {
+      "kind": "display_object",
+      "locked": false,
+      "material_id": null,
+      "name": "display-wing",
+      "object_id": "F3",
+      "parent_object_id": null,
+      "properties": {
+        "catalog_id": "display-wing",
+        "center_x_mm": 9500,
+        "center_y_mm": 16350,
+        "d_mm": 2300.0,
+        "geometry_mode": "rotated_footprint_bbox",
+        "rot": -30,
+        "w_mm": 450.0
+      },
+      "shape": {
+        "length": "2.216858428704209",
+        "type": "rect",
+        "width": "1.5397114317029973",
+        "x": "8.7301442841485",
+        "y": "15.241570785647895"
+      },
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ]
+    }
+  ],
+  "option_id": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:A",
+  "parent_revision_id": "ai-option-revision_2146bc7cf3bb",
+  "relationships": [
+    {
+      "relation_id": "adj:ZA1:ZA3",
+      "source": "ZA1",
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ],
+      "statement": "精确多边形相邻（间距 ≤ 200mm）",
+      "target": "ZA3",
+      "type": "adjacent"
+    },
+    {
+      "relation_id": "adj:ZA3:ZA5",
+      "source": "ZA3",
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ],
+      "statement": "精确多边形相邻（间距 ≤ 200mm）",
+      "target": "ZA5",
+      "type": "adjacent"
+    },
+    {
+      "relation_id": "adj:ZA4:ZA6",
+      "source": "ZA4",
+      "source_refs": [
+        "art_9ffbcf3b1c"
+      ],
+      "statement": "精确多边形相邻（间距 ≤ 200mm）",
+      "target": "ZA6",
+      "type": "adjacent"
+    }
+  ],
+  "revision_no": 2,
+  "schema_version": "rkd-ai-design-option.v1",
+  "set_id": "ai-option-set_9185ef89b30e",
+  "source_kind": "human_edit",
+  "spatial": {
+    "adaptation": {
+      "adapter_version": "rkd-studio-proposal-adapter.v1",
+      "field_ledger": [
+        {
+          "object_id": "strategy",
+          "source_field": "strategy.name",
+          "source_value": "环岛漫游",
+          "status": "mapped",
+          "target_field": "strategy.statement",
+          "target_value": "环岛漫游：进门先被斜切品牌墙引到中央，再绕着中岛走一圈看完产品序列，最后在南侧坐下洽谈；东侧玻璃隔断放深度洽谈。",
+          "unit": "text"
+        },
+        {
+          "object_id": "strategy",
+          "source_field": "strategy.tradeoffs",
+          "source_value": [
+            "主展台居中，四周都能看",
+            "环游占掉较多通道面积"
+          ],
+          "status": "preserved",
+          "target_field": "strategy.tradeoffs",
+          "target_value": [
+            "主展台居中，四周都能看",
+            "环游占掉较多通道面积"
+          ],
+          "unit": "text"
+        },
+        {
+          "object_id": "ZA1",
+          "source_field": "zones[0].polygon",
+          "source_value": [
+            [
+              0,
+              8600
+            ],
+            [
+              5400,
+              8600
+            ],
+            [
+              5400,
+              13500
+            ],
+            [
+              1800,
+              13500
+            ],
+            [
+              0,
+              11900
+            ]
+          ],
+          "status": "preserved",
+          "target_field": "spatial.zones[0].polygon_mm",
+          "target_value": [
+            [
+              0.0,
+              8600.0
+            ],
+            [
+              5400.0,
+              8600.0
+            ],
+            [
+              5400.0,
+              13500.0
+            ],
+            [
+              1800.0,
+              13500.0
+            ],
+            [
+              0.0,
+              11900.0
+            ]
+          ],
+          "unit": "mm"
+        },
+        {
+          "object_id": "ZA1",
+          "source_field": "zones[0].area_sqm",
+          "source_value": 25.18,
+          "status": "preserved",
+          "target_field": "spatial.zones[0].area_sqm",
+          "target_value": 25.18,
+          "unit": "m2"
+        },
+        {
+          "object_id": "ZA1",
+          "source_field": "zones[0].polygon",
+          "source_value": [
+            [
+              0,
+              8600
+            ],
+            [
+              5400,
+              8600
+            ],
+            [
+              5400,
+              13500
+            ],
+            [
+              1800,
+              13500
+            ],
+            [
+              0,
+              11900
+            ]
+          ],
+          "status": "mapped",
+          "target_field": "objects[0].shape",
+          "target_value": {
+            "length": "4.9",
+            "type": "rect",
+            "width": "5.4",
+            "x": "0",
+            "y": "8.6"
+          },
+          "unit": "m"
+        },
+        {
+          "object_id": "ZA1",
+          "source_field": "zones[0].role",
+          "source_value": "arrival",
+          "status": "preserved",
+          "target_field": "spatial.zones[0].role",
+          "target_value": "arrival",
+          "unit": "enum"
+        },
+        {
+          "object_id": "ZA2",
+          "source_field": "zones[1].polygon",
+          "source_value": [
+            [
+              9000,
+              6200
+            ],
+            [
+              16000,
+              6200
+            ],
+            [
+              16000,
+              11000
+            ],
+            [
+              9000,
+              11000
+            ]
+          ],
+          "status": "preserved",
+          "target_field": "spatial.zones[1].polygon_mm",
+          "target_value": [
+            [
+              9000.0,
+              6200.0
+            ],
+            [
+              16000.0,
+              6200.0
+            ],
+            [
+              16000.0,
+              11000.0
+            ],
+            [
+              9000.0,
+              11000.0
+            ]
+          ],
+          "unit": "mm"
+        },
+        {
+          "object_id": "ZA2",
+          "source_field": "zones[1].area_sqm",
+          "source_value": 33.6,
+          "status": "preserved",
+          "target_field": "spatial.zones[1].area_sqm",
+          "target_value": 33.6,
+          "unit": "m2"
+        },
+        {
+          "object_id": "ZA2",
+          "source_field": "zones[1].polygon",
+          "source_value": [
+            [
+              9000,
+              6200
+            ],
+            [
+              16000,
+              6200
+            ],
+            [
+              16000,
+              11000
+            ],
+            [
+              9000,
+              11000
+            ]
+          ],
+          "status": "mapped",
+          "target_field": "objects[1].shape",
+          "target_value": {
+            "length": "4.8",
+            "type": "rect",
+            "width": "7",
+            "x": "9",
+            "y": "6.2"
+          },
+          "unit": "m"
+        },
+        {
+          "object_id": "ZA2",
+          "source_field": "zones[1].role",
+          "source_value": "island",
+          "status": "preserved",
+          "target_field": "spatial.zones[1].role",
+          "target_value": "island",
+          "unit": "enum"
+        },
+        {
+          "object_id": "ZA3",
+          "source_field": "zones[2].polygon",
+          "source_value": [
+            [
+              5400,
+              13300
+            ],
+            [
+              21800,
+              13300
+            ],
+            [
+              21800,
+              17700
+            ],
+            [
+              5400,
+              17700
+            ]
+          ],
+          "status": "preserved",
+          "target_field": "spatial.zones[2].polygon_mm",
+          "target_value": [
+            [
+              5400.0,
+              13300.0
+            ],
+            [
+              21800.0,
+              13300.0
+            ],
+            [
+              21800.0,
+              17700.0
+            ],
+            [
+              5400.0,
+              17700.0
+            ]
+          ],
+          "unit": "mm"
+        },
+        {
+          "object_id": "ZA3",
+          "source_field": "zones[2].area_sqm",
+          "source_value": 72.16,
+          "status": "preserved",
+          "target_field": "spatial.zones[2].area_sqm",
+          "target_value": 72.16,
+          "unit": "m2"
+        },
+        {
+          "object_id": "ZA3",
+          "source_field": "zones[2].polygon",
+          "source_value": [
+            [
+              5400,
+              13300
+            ],
+            [
+              21800,
+              13300
+            ],
+            [
+              21800,
+              17700
+            ],
+            [
+              5400,
+              17700
+            ]
+          ],
+          "status": "mapped",
+          "target_field": "objects[2].shape",
+          "target_value": {
+            "length": "4.4",
+            "type": "rect",
+            "width": "16.4",
+            "x": "5.4",
+            "y": "13.3"
+          },
+          "unit": "m"
+        },
+        {
+          "object_id": "ZA3",
+          "source_field": "zones[2].role",
+          "source_value": "gallery",
+          "status": "preserved",
+          "target_field": "spatial.zones[2].role",
+          "target_value": "gallery",
+          "unit": "enum"
+        },
+        {
+          "object_id": "ZA4",
+          "source_field": "zones[3].polygon",
+          "source_value": [
+            [
+              5400,
+              1800
+            ],
+            [
+              20400,
+              1800
+            ],
+            [
+              20400,
+              5200
+            ],
+            [
+              5400,
+              5200
+            ]
+          ],
+          "status": "preserved",
+          "target_field": "spatial.zones[3].polygon_mm",
+          "target_value": [
+            [
+              5400.0,
+              1800.0
+            ],
+            [
+              20400.0,
+              1800.0
+            ],
+            [
+              20400.0,
+              5200.0
+            ],
+            [
+              5400.0,
+              5200.0
+            ]
+          ],
+          "unit": "mm"
+        },
+        {
+          "object_id": "ZA4",
+          "source_field": "zones[3].area_sqm",
+          "source_value": 51.0,
+          "status": "preserved",
+          "target_field": "spatial.zones[3].area_sqm",
+          "target_value": 51.0,
+          "unit": "m2"
+        },
+        {
+          "object_id": "ZA4",
+          "source_field": "zones[3].polygon",
+          "source_value": [
+            [
+              5400,
+              1800
+            ],
+            [
+              20400,
+              1800
+            ],
+            [
+              20400,
+              5200
+            ],
+            [
+              5400,
+              5200
+            ]
+          ],
+          "status": "mapped",
+          "target_field": "objects[3].shape",
+          "target_value": {
+            "length": "3.4",
+            "type": "rect",
+            "width": "15",
+            "x": "5.4",
+            "y": "1.8"
+          },
+          "unit": "m"
+        },
+        {
+          "object_id": "ZA4",
+          "source_field": "zones[3].role",
+          "source_value": "scene",
+          "status": "preserved",
+          "target_field": "spatial.zones[3].role",
+          "target_value": "scene",
+          "unit": "enum"
+        },
+        {
+          "object_id": "ZA5",
+          "source_field": "zones[4].polygon",
+          "source_value": [
+            [
+              19400,
+              7600
+            ],
+            [
+              26100,
+              7600
+            ],
+            [
+              26100,
+              13300
+            ],
+            [
+              19400,
+              13300
+            ]
+          ],
+          "status": "preserved",
+          "target_field": "spatial.zones[4].polygon_mm",
+          "target_value": [
+            [
+              19400.0,
+              7600.0
+            ],
+            [
+              26100.0,
+              7600.0
+            ],
+            [
+              26100.0,
+              13300.0
+            ],
+            [
+              19400.0,
+              13300.0
+            ]
+          ],
+          "unit": "mm"
+        },
+        {
+          "object_id": "ZA5",
+          "source_field": "zones[4].area_sqm",
+          "source_value": 38.19,
+          "status": "preserved",
+          "target_field": "spatial.zones[4].area_sqm",
+          "target_value": 38.19,
+          "unit": "m2"
+        },
+        {
+          "object_id": "ZA5",
+          "source_field": "zones[4].polygon",
+          "source_value": [
+            [
+              19400,
+              7600
+            ],
+            [
+              26100,
+              7600
+            ],
+            [
+              26100,
+              13300
+            ],
+            [
+              19400,
+              13300
+            ]
+          ],
+          "status": "mapped",
+          "target_field": "objects[4].shape",
+          "target_value": {
+            "length": "5.7",
+            "type": "rect",
+            "width": "6.7",
+            "x": "19.4",
+            "y": "7.6"
+          },
+          "unit": "m"
+        },
+        {
+          "object_id": "ZA5",
+          "source_field": "zones[4].role",
+          "source_value": "meeting",
+          "status": "preserved",
+          "target_field": "spatial.zones[4].role",
+          "target_value": "meeting",
+          "unit": "enum"
+        },
+        {
+          "object_id": "ZA6",
+          "source_field": "zones[5].polygon",
+          "source_value": [
+            [
+              2400,
+              1800
+            ],
+            [
+              5400,
+              1800
+            ],
+            [
+              5400,
+              6100
+            ],
+            [
+              2400,
+              6100
+            ]
+          ],
+          "status": "preserved",
+          "target_field": "spatial.zones[5].polygon_mm",
+          "target_value": [
+            [
+              2400.0,
+              1800.0
+            ],
+            [
+              5400.0,
+              1800.0
+            ],
+            [
+              5400.0,
+              6100.0
+            ],
+            [
+              2400.0,
+              6100.0
+            ]
+          ],
+          "unit": "mm"
+        },
+        {
+          "object_id": "ZA6",
+          "source_field": "zones[5].area_sqm",
+          "source_value": 12.9,
+          "status": "preserved",
+          "target_field": "spatial.zones[5].area_sqm",
+          "target_value": 12.9,
+          "unit": "m2"
+        },
+        {
+          "object_id": "ZA6",
+          "source_field": "zones[5].polygon",
+          "source_value": [
+            [
+              2400,
+              1800
+            ],
+            [
+              5400,
+              1800
+            ],
+            [
+              5400,
+              6100
+            ],
+            [
+              2400,
+              6100
+            ]
+          ],
+          "status": "mapped",
+          "target_field": "objects[5].shape",
+          "target_value": {
+            "length": "4.3",
+            "type": "rect",
+            "width": "3",
+            "x": "2.4",
+            "y": "1.8"
+          },
+          "unit": "m"
+        },
+        {
+          "object_id": "ZA6",
+          "source_field": "zones[5].role",
+          "source_value": "service",
+          "status": "preserved",
+          "target_field": "spatial.zones[5].role",
+          "target_value": "service",
+          "unit": "enum"
+        },
+        {
+          "object_id": "CA1",
+          "source_field": "circulation[0].width_mm",
+          "source_value": 2000,
+          "status": "mapped",
+          "target_field": "circulation.min_width",
+          "target_value": "2",
+          "unit": "m"
+        },
+        {
+          "object_id": "CA1",
+          "source_field": "circulation[0].path",
+          "source_value": [
+            [
+              100,
+              11000
+            ],
+            [
+              8000,
+              11000
+            ],
+            [
+              17500,
+              11000
+            ],
+            [
+              17500,
+              6000
+            ],
+            [
+              8000,
+              5200
+            ]
+          ],
+          "status": "preserved",
+          "target_field": "spatial.circulation[0].path_mm",
+          "target_value": [
+            [
+              100.0,
+              11000.0
+            ],
+            [
+              8000.0,
+              11000.0
+            ],
+            [
+              17500.0,
+              11000.0
+            ],
+            [
+              17500.0,
+              6000.0
+            ],
+            [
+              8000.0,
+              5200.0
+            ]
+          ],
+          "unit": "mm"
+        },
+        {
+          "object_id": "F1",
+          "source_field": "furniture[0].{x,y,rot}",
+          "source_value": {
+            "rot": 0,
+            "x": 8400,
+            "y": 4050
+          },
+          "status": "preserved",
+          "target_field": "spatial.furniture[0]",
+          "target_value": {
+            "rot": 0.0,
+            "x_mm": 8400.0,
+            "y_mm": 4050.0
+          },
+          "unit": "mm/degree"
+        },
+        {
+          "object_id": "F1",
+          "source_field": "furniture[0].catalog_id",
+          "source_value": "sofa-3p",
+          "status": "preserved",
+          "target_field": "spatial.furniture[0].catalog_id",
+          "target_value": "sofa-3p",
+          "unit": "id"
+        },
+        {
+          "object_id": "F2",
+          "source_field": "furniture[1].{x,y,rot}",
+          "source_value": {
+            "rot": 0,
+            "x": 14400,
+            "y": 3300
+          },
+          "status": "preserved",
+          "target_field": "spatial.furniture[1]",
+          "target_value": {
+            "rot": 0.0,
+            "x_mm": 14400.0,
+            "y_mm": 3300.0
+          },
+          "unit": "mm/degree"
+        },
+        {
+          "object_id": "F2",
+          "source_field": "furniture[1].catalog_id",
+          "source_value": "dining-table",
+          "status": "preserved",
+          "target_field": "spatial.furniture[1].catalog_id",
+          "target_value": "dining-table",
+          "unit": "id"
+        },
+        {
+          "object_id": "F3",
+          "source_field": "furniture[2].{x,y,rot}",
+          "source_value": {
+            "rot": -30,
+            "x": 9500,
+            "y": 16350
+          },
+          "status": "preserved",
+          "target_field": "spatial.furniture[2]",
+          "target_value": {
+            "rot": -30.0,
+            "x_mm": 9500.0,
+            "y_mm": 16350.0
+          },
+          "unit": "mm/degree"
+        },
+        {
+          "object_id": "F3",
+          "source_field": "furniture[2].catalog_id",
+          "source_value": "display-wing",
+          "status": "preserved",
+          "target_field": "spatial.furniture[2].catalog_id",
+          "target_value": "display-wing",
+          "unit": "id"
+        },
+        {
+          "object_id": "L1",
+          "source_field": "ceiling.fixtures[0].kelvin",
+          "source_value": 2700,
+          "status": "preserved",
+          "target_field": "spatial.ceiling.fixtures[0].kelvin",
+          "target_value": 2700,
+          "unit": "K"
+        },
+        {
+          "object_id": "L1",
+          "source_field": "ceiling.fixtures[0]",
+          "source_value": {
+            "id": "L1",
+            "kelvin": 2700,
+            "type": "spot",
+            "x": 10250,
+            "y": 7700
+          },
+          "status": "unsupported",
+          "target_field": "(no main-system lighting object)",
+          "target_value": null,
+          "unit": "n/a"
+        },
+        {
+          "object_id": "L2",
+          "source_field": "ceiling.fixtures[1].kelvin",
+          "source_value": 3000,
+          "status": "preserved",
+          "target_field": "spatial.ceiling.fixtures[1].kelvin",
+          "target_value": 3000,
+          "unit": "K"
+        },
+        {
+          "object_id": "L2",
+          "source_field": "ceiling.fixtures[1]",
+          "source_value": {
+            "id": "L2",
+            "kelvin": 3000,
+            "type": "spot",
+            "x": 14750,
+            "y": 7700
+          },
+          "status": "unsupported",
+          "target_field": "(no main-system lighting object)",
+          "target_value": null,
+          "unit": "n/a"
+        },
+        {
+          "object_id": "L3",
+          "source_field": "ceiling.fixtures[2].kelvin",
+          "source_value": 3000,
+          "status": "preserved",
+          "target_field": "spatial.ceiling.fixtures[2].kelvin",
+          "target_value": 3000,
+          "unit": "K"
+        },
+        {
+          "object_id": "L3",
+          "source_field": "ceiling.fixtures[2]",
+          "source_value": {
+            "id": "L3",
+            "kelvin": 3000,
+            "type": "downlight",
+            "x": 13000,
+            "y": 14500
+          },
+          "status": "unsupported",
+          "target_field": "(no main-system lighting object)",
+          "target_value": null,
+          "unit": "n/a"
+        },
+        {
+          "object_id": "area_table",
+          "source_field": "area_table",
+          "source_value": [
+            {
+              "area_sqm": 25.18,
+              "name": "品牌序厅"
+            },
+            {
+              "area_sqm": 33.6,
+              "name": "中央中岛"
+            },
+            {
+              "area_sqm": 72.16,
+              "name": "北光廊"
+            },
+            {
+              "area_sqm": 51.0,
+              "name": "南生活场景"
+            },
+            {
+              "area_sqm": 38.19,
+              "name": "东洽谈"
+            },
+            {
+              "area_sqm": 12.9,
+              "name": "水吧服务"
+            },
+            {
+              "area_sqm": 197.137,
+              "name": "通道及其他/未分配"
+            }
+          ],
+          "status": "preserved",
+          "target_field": "spatial.area_table",
+          "target_value": [
+            {
+              "area_sqm": 25.18,
+              "name": "品牌序厅"
+            },
+            {
+              "area_sqm": 33.6,
+              "name": "中央中岛"
+            },
+            {
+              "area_sqm": 72.16,
+              "name": "北光廊"
+            },
+            {
+              "area_sqm": 51.0,
+              "name": "南生活场景"
+            },
+            {
+              "area_sqm": 38.19,
+              "name": "东洽谈"
+            },
+            {
+              "area_sqm": 12.9,
+              "name": "水吧服务"
+            },
+            {
+              "area_sqm": 197.137,
+              "name": "通道及其他/未分配"
+            }
+          ],
+          "unit": "m2"
+        },
+        {
+          "object_id": "unknowns",
+          "source_field": "open_questions",
+          "source_value": [
+            "协诚的产品清单缺失，展品只能做示意"
+          ],
+          "status": "preserved",
+          "target_field": "spatial.open_questions / cost.unknown_items",
+          "target_value": [
+            "协诚的产品清单缺失，展品只能做示意"
+          ],
+          "unit": "text"
+        },
+        {
+          "object_id": "source",
+          "source_field": "contract_version/identity",
+          "source_value": {
+            "author": "D2",
+            "contract_version": "rkd-spatial-plan.v1",
+            "option_id": "A",
+            "parent_revision": null,
+            "project_id": "ningbo-xiecheng",
+            "revision": 1
+          },
+          "status": "preserved",
+          "target_field": "spatial.source.draft_identity",
+          "target_value": {
+            "author": "D2",
+            "contract_version": "rkd-spatial-plan.v1",
+            "option_id": "A",
+            "parent_revision": null,
+            "project_id": "ningbo-xiecheng",
+            "revision": 1
+          },
+          "unit": "n/a"
+        },
+        {
+          "object_id": "source",
+          "source_field": "artifact.sha256",
+          "source_value": "3bda6ad04b7a18af72b2a7e286485f1cb40fdf3c14b5380b1fd9d4327eff4bea",
+          "status": "mapped",
+          "target_field": "generation.input_hash",
+          "target_value": "0ffb8a7fde162f7f999fd9a39aa5c93ce6335797fbe657f55f4e44d27e5754ac",
+          "unit": "sha256"
+        },
+        {
+          "object_id": "unknowns",
+          "source_field": "open_question",
+          "source_value": "协诚的产品清单缺失，展品只能做示意",
+          "status": "unknown",
+          "target_field": "cost.unknown_items",
+          "target_value": {
+            "known_status": "unknown",
+            "statement": "协诚的产品清单缺失，展品只能做示意"
+          },
+          "unit": "text"
+        }
+      ],
+      "geometry_mode": "polygon_exact_in_spatial_bbox_derived_in_legacy_objects",
+      "losses": [
+        {
+          "compensated_by": "spatial.zones[].polygon_mm",
+          "item": "legacy objects[].shape",
+          "loss": "bounding_box_only"
+        },
+        {
+          "compensated_by": "spatial.circulation[].path_mm",
+          "item": "circulation.segments[].shape",
+          "loss": "centerline_bbox_only"
+        },
+        {
+          "compensated_by": "spatial.unsupported_items + spatial.materials",
+          "item": "materials / views",
+          "loss": "not_modelled_in_studio"
+        }
+      ],
+      "mapping_version": "W0-erratum-2.3",
+      "object_id_map": [
+        {
+          "group": "zones",
+          "source_object_id": "ZA1",
+          "target_object_id": "ZA1"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA2",
+          "target_object_id": "ZA2"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA3",
+          "target_object_id": "ZA3"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA4",
+          "target_object_id": "ZA4"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA5",
+          "target_object_id": "ZA5"
+        },
+        {
+          "group": "zones",
+          "source_object_id": "ZA6",
+          "target_object_id": "ZA6"
+        },
+        {
+          "group": "platforms",
+          "source_object_id": "P1",
+          "target_object_id": "P1"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F1",
+          "target_object_id": "F1"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F2",
+          "target_object_id": "F2"
+        },
+        {
+          "group": "furniture",
+          "source_object_id": "F3",
+          "target_object_id": "F3"
+        },
+        {
+          "group": "circulation",
+          "source_object_id": "CA1",
+          "target_object_id": "CA1"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L1",
+          "target_object_id": "L1"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L2",
+          "target_object_id": "L2"
+        },
+        {
+          "group": "ceiling.fixtures",
+          "source_object_id": "L3",
+          "target_object_id": "L3"
+        }
+      ],
+      "unit_conversion": "mm_to_m_div_1000"
+    },
+    "area_table": [
+      {
+        "area_sqm": 25.18,
+        "name": "品牌序厅"
+      },
+      {
+        "area_sqm": 33.6,
+        "name": "中央中岛"
+      },
+      {
+        "area_sqm": 72.16,
+        "name": "北光廊"
+      },
+      {
+        "area_sqm": 51.0,
+        "name": "南生活场景"
+      },
+      {
+        "area_sqm": 38.19,
+        "name": "东洽谈"
+      },
+      {
+        "area_sqm": 12.9,
+        "name": "水吧服务"
+      },
+      {
+        "area_sqm": 197.137,
+        "name": "通道及其他/未分配"
+      }
+    ],
+    "ceiling": {
+      "coves": [
+        {
+          "band_mm": 200,
+          "id": "CV1",
+          "kelvin": 2700,
+          "polygon": [
+            [
+              8400,
+              5600
+            ],
+            [
+              16600,
+              5600
+            ],
+            [
+              16600,
+              11600
+            ],
+            [
+              8400,
+              11600
+            ]
+          ]
+        }
+      ],
+      "fixtures": [
+        {
+          "id": "L1",
+          "kelvin": 2700,
+          "type": "spot",
+          "x": 10250,
+          "y": 7700
+        },
+        {
+          "id": "L2",
+          "kelvin": 3000,
+          "type": "spot",
+          "x": 14750,
+          "y": 7700
+        },
+        {
+          "id": "L3",
+          "kelvin": 3000,
+          "type": "downlight",
+          "x": 13000,
+          "y": 14500
+        }
+      ],
+      "strategy": "环形灯槽洗台面，北光廊轨道射灯洗翼墙"
+    },
+    "circulation": [
+      {
+        "object_id": "CA1",
+        "path_mm": [
+          [
+            100.0,
+            11000.0
+          ],
+          [
+            8000.0,
+            11000.0
+          ],
+          [
+            17500.0,
+            11000.0
+          ],
+          [
+            17500.0,
+            6000.0
+          ],
+          [
+            8000.0,
+            5200.0
+          ]
+        ],
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ],
+        "width_mm": 2000
+      }
+    ],
+    "furniture": [
+      {
+        "catalog_id": "sofa-3p",
+        "d_mm": 950,
+        "object_id": "F1",
+        "rot": 0.0,
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ],
+        "w_mm": 2400,
+        "x_mm": 8400.0,
+        "y_mm": 4050.0
+      },
+      {
+        "catalog_id": "dining-table",
+        "d_mm": 950,
+        "object_id": "F2",
+        "rot": 0.0,
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ],
+        "w_mm": 1900,
+        "x_mm": 14400.0,
+        "y_mm": 3300.0
+      },
+      {
+        "catalog_id": "display-wing",
+        "d_mm": 2300,
+        "object_id": "F3",
+        "rot": -30.0,
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ],
+        "w_mm": 450,
+        "x_mm": 9500.0,
+        "y_mm": 16350.0
+      }
+    ],
+    "materials": [
+      {
+        "intent": "catalog_reference_only",
+        "known_status": "unknown",
+        "material_id": "catalog:dining-table",
+        "unknown_reason": "目录条目不含材料规格/产品选型/样板状态",
+        "value": null
+      },
+      {
+        "intent": "catalog_reference_only",
+        "known_status": "unknown",
+        "material_id": "catalog:display-wing",
+        "unknown_reason": "目录条目不含材料规格/产品选型/样板状态",
+        "value": null
+      },
+      {
+        "intent": "catalog_reference_only",
+        "known_status": "unknown",
+        "material_id": "catalog:sofa-3p",
+        "unknown_reason": "目录条目不含材料规格/产品选型/样板状态",
+        "value": null
+      }
+    ],
+    "open_questions": [
+      "协诚的产品清单缺失，展品只能做示意"
+    ],
+    "origin": {
+      "boundary_mm": [
+        26170,
+        17920
+      ],
+      "coordinate_system": "southwest_origin_x_east_y_north",
+      "note": "与 Studio 提案同一局部坐标系；原点西南，+X 东、+Y 北",
+      "source_contract": "rkd-spatial-plan.v1",
+      "unit": "mm"
+    },
+    "platforms": [
+      {
+        "corner_radius_mm": 1180,
+        "height_mm": 720,
+        "kind": "rounded",
+        "name": "中央圆角中岛",
+        "object_id": "P1",
+        "polygon_mm": [
+          [
+            9000.0,
+            6200.0
+          ],
+          [
+            16000.0,
+            6200.0
+          ],
+          [
+            16000.0,
+            11000.0
+          ],
+          [
+            9000.0,
+            11000.0
+          ]
+        ],
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      }
+    ],
+    "schema_version": "rkd-ai-design-option-spatial.v1",
+    "source": {
+      "artifact_id": "art_9ffbcf3b1c",
+      "candidate_group_id": "candgroup_w1_fixture",
+      "contract_version": "rkd-spatial-plan.v1",
+      "draft_identity": {
+        "author": "D2",
+        "contract_version": "rkd-spatial-plan.v1",
+        "option_id": "A",
+        "parent_revision": null,
+        "project_id": "ningbo-xiecheng",
+        "revision": 1
+      },
+      "main_project_id": "project_ningbo_xiecheng_2026",
+      "option_id": "A",
+      "origin_kind": "studio_import",
+      "parent_revision_uid": null,
+      "revision": 1,
+      "revision_uid": "revuid_w1_A_2_6",
+      "run_id": "run_w1_fixture",
+      "sha256": "3bda6ad04b7a18af72b2a7e286485f1cb40fdf3c14b5380b1fd9d4327eff4bea",
+      "site_source": {
+        "ceiling_mm": 3000,
+        "entrance_mm": [
+          0,
+          10300,
+          1800
+        ],
+        "height_mm": 17920,
+        "source": "阶段1 底图（DXF 26169.58×17920.17 与 A3 尺寸链一致）",
+        "width_mm": 26170
+      },
+      "studio_project_id": "ningbo-xiecheng"
+    },
+    "unit": "mm",
+    "unknown_items": [
+      {
+        "known_status": "unknown",
+        "statement": "协诚的产品清单缺失，展品只能做示意",
+        "unknown_reason": "源提案的开放问题，程序不补答案",
+        "value": null
+      }
+    ],
+    "unsupported_items": [
+      {
+        "item": "材料规格/产品选型",
+        "reason": "Studio 提案只有目录引用，没有材料规格、样板或产品选型；写 unknown，不补默认值",
+        "source_field": "furniture[].catalog_id / (无材料字段)",
+        "status": "unsupported_unknown"
+      },
+      {
+        "item": "相机与人眼视图",
+        "reason": "未建模机位、镜头、人眼高度与视向；保留为命名缺项，不生成假设机位",
+        "source_field": "(Studio 提案无 camera/view 字段)",
+        "status": "unsupported_unknown"
+      },
+      {
+        "item": "照度/配光计算",
+        "reason": "色温与灯具点位已保留为意向；照度、配光、间距未计算，不编数值",
+        "source_field": "ceiling.fixtures[].kelvin",
+        "status": "unsupported_unknown"
+      },
+      {
+        "item": "实测标高/层高",
+        "reason": "场地与展台高度是给定条件/造型参数，不是现场实测；不升级为实测事实",
+        "source_field": "site.ceiling_mm / platforms[].height_mm",
+        "status": "unsupported_unknown"
+      },
+      {
+        "item": "门窗/柱网/构造",
+        "reason": "提案未建模门窗与柱网构造；主系统候选对象里不凭空补构件",
+        "source_field": "site.windows_* / (无 door/column 对象)",
+        "status": "unsupported_unknown"
+      },
+      {
+        "item": "legacy rect 对象",
+        "reason": "旧渲染器只接受 rect，派生包围盒仅供显示；精确多边形在 spatial 中，不能据包围盒算量",
+        "source_field": "zones[].polygon / platforms[].polygon",
+        "status": "unsupported_unknown"
+      }
+    ],
+    "views": [],
+    "zones": [
+      {
+        "area_sqm": 25.18,
+        "name": "品牌序厅",
+        "object_id": "ZA1",
+        "polygon_mm": [
+          [
+            0.0,
+            8600.0
+          ],
+          [
+            5400.0,
+            8600.0
+          ],
+          [
+            5400.0,
+            13500.0
+          ],
+          [
+            1800.0,
+            13500.0
+          ],
+          [
+            0.0,
+            11900.0
+          ]
+        ],
+        "role": "arrival",
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      },
+      {
+        "area_sqm": 33.6,
+        "name": "中央中岛",
+        "object_id": "ZA2",
+        "polygon_mm": [
+          [
+            9000.0,
+            6200.0
+          ],
+          [
+            16000.0,
+            6200.0
+          ],
+          [
+            16000.0,
+            11000.0
+          ],
+          [
+            9000.0,
+            11000.0
+          ]
+        ],
+        "role": "island",
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      },
+      {
+        "area_sqm": 72.16,
+        "name": "北光廊",
+        "object_id": "ZA3",
+        "polygon_mm": [
+          [
+            5400.0,
+            13300.0
+          ],
+          [
+            21800.0,
+            13300.0
+          ],
+          [
+            21800.0,
+            17700.0
+          ],
+          [
+            5400.0,
+            17700.0
+          ]
+        ],
+        "role": "gallery",
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      },
+      {
+        "area_sqm": 51.0,
+        "name": "南生活场景",
+        "object_id": "ZA4",
+        "polygon_mm": [
+          [
+            5400.0,
+            1800.0
+          ],
+          [
+            20400.0,
+            1800.0
+          ],
+          [
+            20400.0,
+            5200.0
+          ],
+          [
+            5400.0,
+            5200.0
+          ]
+        ],
+        "role": "scene",
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      },
+      {
+        "area_sqm": 38.19,
+        "name": "东洽谈",
+        "object_id": "ZA5",
+        "polygon_mm": [
+          [
+            19400.0,
+            7600.0
+          ],
+          [
+            26100.0,
+            7600.0
+          ],
+          [
+            26100.0,
+            13300.0
+          ],
+          [
+            19400.0,
+            13300.0
+          ]
+        ],
+        "role": "meeting",
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      },
+      {
+        "area_sqm": 12.9,
+        "name": "水吧服务",
+        "object_id": "ZA6",
+        "polygon_mm": [
+          [
+            2400.0,
+            1800.0
+          ],
+          [
+            5400.0,
+            1800.0
+          ],
+          [
+            5400.0,
+            6100.0
+          ],
+          [
+            2400.0,
+            6100.0
+          ]
+        ],
+        "role": "service",
+        "source_refs": [
+          "art_9ffbcf3b1c"
+        ]
+      }
+    ]
+  },
+  "strategy": {
+    "source_refs": [
+      "art_9ffbcf3b1c"
+    ],
+    "statement": "环岛漫游：进门先被斜切品牌墙引到中央，再绕着中岛走一圈看完产品序列，最后在南侧坐下洽谈；东侧玻璃隔断放深度洽谈。",
+    "strategy_id": "studio-A-r1",
+    "tradeoffs": [
+      "主展台居中，四周都能看",
+      "环游占掉较多通道面积"
+    ]
+  },
+  "structure_signature": {
+    "entrance_side": "left",
+    "objects": [
+      {
+        "kind": "display_object",
+        "length": "0.95",
+        "material_id": null,
+        "object_id": "F1",
+        "width": "2.4",
+        "x": "7.2",
+        "y": "3.575"
+      },
+      {
+        "kind": "display_object",
+        "length": "0.95",
+        "material_id": null,
+        "object_id": "F2",
+        "width": "1.9",
+        "x": "13.45",
+        "y": "2.825"
+      },
+      {
+        "kind": "display_object",
+        "length": "2.216858428704209",
+        "material_id": null,
+        "object_id": "F3",
+        "width": "1.5397114317029973",
+        "x": "8.7301442841485",
+        "y": "15.241570785647895"
+      },
+      {
+        "kind": "display_object",
+        "length": "4.8",
+        "material_id": null,
+        "object_id": "P1",
+        "width": "7",
+        "x": "9",
+        "y": "6.2"
+      },
+      {
+        "kind": "functional_zone",
+        "length": "4.9",
+        "material_id": null,
+        "object_id": "ZA1",
+        "width": "5.4",
+        "x": "0",
+        "y": "8.6"
+      },
+      {
+        "kind": "functional_zone",
+        "length": "4.8",
+        "material_id": null,
+        "object_id": "ZA2",
+        "width": "7",
+        "x": "9",
+        "y": "6.2"
+      },
+      {
+        "kind": "functional_zone",
+        "length": "4.4",
+        "material_id": null,
+        "object_id": "ZA3",
+        "width": "16.4",
+        "x": "5.4",
+        "y": "13.3"
+      },
+      {
+        "kind": "functional_zone",
+        "length": "3.4",
+        "material_id": null,
+        "object_id": "ZA4",
+        "width": "15",
+        "x": "5.4",
+        "y": "1.8"
+      },
+      {
+        "kind": "functional_zone",
+        "length": "5.7",
+        "material_id": null,
+        "object_id": "ZA5",
+        "width": "6.7",
+        "x": "19.4",
+        "y": "7.6"
+      },
+      {
+        "kind": "functional_zone",
+        "length": "4.3",
+        "material_id": null,
+        "object_id": "ZA6",
+        "width": "3",
+        "x": "2.4",
+        "y": "1.8"
+      }
+    ],
+    "path_kind": "branch",
+    "relationships": [
+      "adjacent:ZA1->ZA3",
+      "adjacent:ZA3->ZA5",
+      "adjacent:ZA4->ZA6"
+    ],
+    "segment_count": 4,
+    "spatial_polygon_count": 6,
+    "spatial_polygon_signature": "2dc8a56a1d87a72b"
+  },
+  "validation": {
+    "hard_checks": [
+      {
+        "code": "STUDIO_POLYGON_VALID",
+        "message": "6 个分区多边形有效（含非矩形轮廓），按原坐标复核",
+        "status": "passed"
+      },
+      {
+        "code": "STUDIO_ZONE_WITHIN_BOUNDARY",
+        "message": "所有分区位于场地边界内",
+        "status": "passed"
+      },
+      {
+        "code": "STUDIO_ZONE_NON_OVERLAP",
+        "message": "精确多边形互不重叠",
+        "status": "passed"
+      },
+      {
+        "code": "STUDIO_ZONE_MIN_AREA",
+        "message": "分区面积均不小于 1㎡",
+        "status": "passed"
+      },
+      {
+        "code": "STUDIO_OBJECT_IDS_UNIQUE",
+        "message": "对象 ID 唯一且稳定",
+        "status": "passed"
+      },
+      {
+        "code": "STUDIO_CIRCULATION_WITHIN_BOUNDARY",
+        "message": "动线折线在边界内且声明净宽不低于 900mm（有限障碍口径，非门洞合规证明）",
+        "status": "passed"
+      },
+      {
+        "code": "STUDIO_FURNITURE_WITHIN_BOUNDARY",
+        "message": "家具定位点在边界内",
+        "status": "passed"
+      },
+      {
+        "code": "STUDIO_ENTRANCE_ON_BOUNDARY",
+        "message": "入口区段来自场地条件，落在西墙边界",
+        "status": "passed"
+      }
+    ],
+    "professional_checks": [
+      {
+        "code": "FIRE_EGRESS",
+        "message": "消防疏散未建模，不宣称合规",
+        "status": "unknown"
+      },
+      {
+        "code": "ACCESSIBILITY",
+        "message": "无障碍未建模，不宣称合规",
+        "status": "unknown"
+      },
+      {
+        "code": "MEASURED_SITE",
+        "message": "现场实测/门洞净宽未建模，不把示意当实测",
+        "status": "unknown"
+      }
+    ],
+    "publication_status": "not_approved",
+    "rule_version": "rkd-studio-import-geometry.v1",
+    "status": "passed"
+  }
+}

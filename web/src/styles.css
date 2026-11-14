@@ -421,3 +421,27 @@ h1 { margin-top: 10px; color: #1b2735; font-size: 32px; overflow-wrap: anywhere;
 .ai-source-delivery-panel code, .ai-source-delivery-panel li, .ai-source-delivery-panel td { overflow-wrap: anywhere; }
 @media (max-width: 980px) { .ai-development-grid, .ai-development-tables, .ai-source-delivery-panel .ai-development-tables { grid-template-columns: 1fr; } .ai-development-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .ai-development-settings { grid-template-columns: 1fr; } .ai-development-settings .dark-action { width: 100%; } }
+
+/* W1 Studio proposal import / field reconciliation */
+.studio-import-panel { margin-top: 22px; padding: 16px; border: 1px solid #dfe5ea; border-radius: 8px; background: #f9fbfc; }
+.studio-import-panel .section-heading { margin-bottom: 8px; }
+.studio-import-panel h4 { margin: 0; font-size: 14px; color: #263342; }
+.studio-import-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 12px 0; }
+.studio-import-toolbar label { display: grid; gap: 4px; font-size: 12px; color: #47566a; }
+.studio-import-toolbar select { min-width: 320px; max-width: 100%; padding: 7px 9px; border: 1px solid #cfd8e0; border-radius: 5px; background: #fff; font-size: 12px; }
+.studio-import-toolbar small { color: #7a6650; font-size: 11px; }
+.studio-import-list > strong, .studio-import-detail > strong { display: block; font-size: 12px; color: #263342; margin-bottom: 8px; }
+.studio-import-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.studio-import-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #e1e6eb; border-radius: 5px; background: #fff; font-size: 11px; color: #47566a; }
+.studio-import-list li code { color: #1f2937; font-size: 11px; }
+.studio-import-list li a { color: #1d4ed8; }
+.studio-import-detail { margin-top: 14px; padding-top: 12px; border-top: 1px solid #e1e6eb; }
+.ledger-scroll { max-height: 260px; overflow: auto; border: 1px solid #e1e6eb; border-radius: 5px; background: #fff; }
+.ledger-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.ledger-table th, .ledger-table td { padding: 5px 8px; border-bottom: 1px solid #edf1f4; text-align: left; color: #334155; }
+.ledger-table th { position: sticky; top: 0; background: #f1f5f9; color: #263342; }
+.studio-import-detail ul { margin: 6px 0 12px; padding-left: 18px; font-size: 11px; color: #47566a; line-height: 1.6; }
+@media (max-width: 700px) {
+  .studio-import-toolbar select { min-width: 0; width: 100%; }
+  .studio-import-list li { gap: 6px; }
+}

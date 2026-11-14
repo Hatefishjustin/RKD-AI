@@ -1,0 +1,2751 @@
+diff --git a/contracts/v1/ai-design-option.schema.json b/contracts/v1/ai-design-option.schema.json
+index 4bda24b..fafeb4b 100644
+--- a/contracts/v1/ai-design-option.schema.json
++++ b/contracts/v1/ai-design-option.schema.json
+@@ -34,7 +34,8 @@
+     "change_reason": {"type": "string", "minLength": 1, "maxLength": 500},
+     "actor_id": {"type": "string", "minLength": 1},
+     "created_at": {"type": "string", "minLength": 1},
+-    "structure_signature": {"type": "object", "additionalProperties": true}
++    "structure_signature": {"type": "object", "additionalProperties": true},
++    "spatial": {"$ref": "#/$defs/spatialExtension"}
+   },
+   "$defs": {
+     "decimal": {"type": "string", "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"},
+@@ -138,6 +139,378 @@
+       "type": "object", "additionalProperties": false,
+       "required": ["conflict_id", "statement", "resolution", "source_refs"],
+       "properties": {"conflict_id": {"type": "string"}, "statement": {"type": "string"}, "resolution": {"enum": ["pending", "human_required", "resolved"]}, "source_refs": {"$ref": "#/$defs/sourceIds"}}
++    },
++    "spatialExtension": {
++      "type": "object",
++      "description": "Optional W1 Studio-proposal projection inside the ONE authoritative candidate document. Exact mm polygons, materials/lighting/view intent, provenance and named unsupported items. Not a second model.",
++      "additionalProperties": false,
++      "required": [
++        "schema_version",
++        "unit",
++        "origin",
++        "zones",
++        "circulation",
++        "platforms",
++        "furniture",
++        "ceiling",
++        "materials",
++        "views",
++        "unsupported_items",
++        "unknown_items",
++        "source",
++        "adaptation",
++        "area_table",
++        "open_questions"
++      ],
++      "properties": {
++        "schema_version": {
++          "const": "rkd-ai-design-option-spatial.v1"
++        },
++        "unit": {
++          "const": "mm"
++        },
++        "origin": {
++          "type": "object",
++          "additionalProperties": true
++        },
++        "zones": {
++          "type": "array",
++          "items": {
++            "$ref": "#/$defs/spatialZone"
++          }
++        },
++        "circulation": {
++          "type": "array",
++          "items": {
++            "type": "object",
++            "additionalProperties": true
++          }
++        },
++        "platforms": {
++          "type": "array",
++          "items": {
++            "type": "object",
++            "additionalProperties": true
++          }
++        },
++        "furniture": {
++          "type": "array",
++          "items": {
++            "type": "object",
++            "additionalProperties": true
++          }
++        },
++        "ceiling": {
++          "type": "object",
++          "additionalProperties": true
++        },
++        "materials": {
++          "type": "array",
++          "items": {
++            "type": "object",
++            "additionalProperties": true
++          }
++        },
++        "views": {
++          "type": "array",
++          "items": {
++            "type": "object",
++            "additionalProperties": true
++          }
++        },
++        "unsupported_items": {
++          "type": "array",
++          "items": {
++            "$ref": "#/$defs/unsupportedItem"
++          }
++        },
++        "unknown_items": {
++          "type": "array",
++          "items": {
++            "type": "object",
++            "additionalProperties": true
++          }
++        },
++        "source": {
++          "$ref": "#/$defs/studioSource"
++        },
++        "adaptation": {
++          "$ref": "#/$defs/adaptationNote"
++        },
++        "area_table": {
++          "type": "array",
++          "items": {
++            "type": "object",
++            "additionalProperties": true
++          }
++        },
++        "open_questions": {
++          "type": "array",
++          "items": {
++            "type": "string"
++          }
++        }
++      }
++    },
++    "spatialZone": {
++      "type": "object",
++      "additionalProperties": false,
++      "required": [
++        "object_id",
++        "name",
++        "role",
++        "polygon_mm",
++        "area_sqm",
++        "source_refs"
++      ],
++      "properties": {
++        "object_id": {
++          "type": "string",
++          "minLength": 1
++        },
++        "name": {
++          "type": "string"
++        },
++        "role": {
++          "type": "string"
++        },
++        "polygon_mm": {
++          "type": "array",
++          "minItems": 3,
++          "items": {
++            "type": "array",
++            "minItems": 2,
++            "maxItems": 2,
++            "items": {
++              "type": "number"
++            }
++          }
++        },
++        "area_sqm": {
++          "type": [
++            "number",
++            "null"
++          ]
++        },
++        "source_refs": {
++          "type": "array",
++          "items": {
++            "type": "string"
++          }
++        }
++      }
++    },
++    "unsupportedItem": {
++      "type": "object",
++      "additionalProperties": false,
++      "required": [
++        "item",
++        "source_field",
++        "reason",
++        "status"
++      ],
++      "properties": {
++        "item": {
++          "type": "string",
++          "minLength": 1
++        },
++        "source_field": {
++          "type": "string"
++        },
++        "reason": {
++          "type": "string"
++        },
++        "status": {
++          "const": "unsupported_unknown"
++        }
++      }
++    },
++    "studioSource": {
++      "type": "object",
++      "additionalProperties": false,
++      "required": [
++        "origin_kind",
++        "studio_project_id",
++        "main_project_id",
++        "artifact_id",
++        "revision_uid",
++        "parent_revision_uid",
++        "sha256",
++        "contract_version",
++        "option_id",
++        "revision",
++        "candidate_group_id",
++        "run_id",
++        "draft_identity",
++        "site_source"
++      ],
++      "properties": {
++        "origin_kind": {
++          "const": "studio_import"
++        },
++        "studio_project_id": {
++          "type": "string",
++          "minLength": 1
++        },
++        "main_project_id": {
++          "type": "string",
++          "minLength": 1
++        },
++        "artifact_id": {
++          "type": "string",
++          "minLength": 1
++        },
++        "revision_uid": {
++          "type": [
++            "string",
++            "null"
++          ]
++        },
++        "parent_revision_uid": {
++          "type": [
++            "string",
++            "null"
++          ]
++        },
++        "sha256": {
++          "type": "string",
++          "minLength": 1
++        },
++        "contract_version": {
++          "const": "rkd-spatial-plan.v1"
++        },
++        "option_id": {
++          "type": "string"
++        },
++        "revision": {
++          "type": "integer",
++          "minimum": 1
++        },
++        "candidate_group_id": {
++          "type": [
++            "string",
++            "null"
++          ]
++        },
++        "run_id": {
++          "type": [
++            "string",
++            "null"
++          ]
++        },
++        "draft_identity": {
++          "type": "object",
++          "additionalProperties": true
++        },
++        "site_source": {
++          "type": "object",
++          "additionalProperties": true
++        }
++      }
++    },
++    "adaptationNote": {
++      "type": "object",
++      "additionalProperties": false,
++      "required": [
++        "adapter_version",
++        "mapping_version",
++        "unit_conversion",
++        "geometry_mode",
++        "object_id_map",
++        "losses",
++        "field_ledger"
++      ],
++      "properties": {
++        "adapter_version": {
++          "type": "string",
++          "minLength": 1
++        },
++        "mapping_version": {
++          "const": "W0-erratum-2.3"
++        },
++        "unit_conversion": {
++          "const": "mm_to_m_div_1000"
++        },
++        "geometry_mode": {
++          "const": "polygon_exact_in_spatial_bbox_derived_in_legacy_objects"
++        },
++        "object_id_map": {
++          "type": "array",
++          "items": {
++            "$ref": "#/$defs/objectIdMap"
++          }
++        },
++        "losses": {
++          "type": "array",
++          "items": {
++            "type": "object",
++            "additionalProperties": true
++          }
++        },
++        "field_ledger": {
++          "type": "array",
++          "items": {
++            "$ref": "#/$defs/fieldLedgerRow"
++          }
++        }
++      }
++    },
++    "objectIdMap": {
++      "type": "object",
++      "additionalProperties": false,
++      "required": [
++        "source_object_id",
++        "target_object_id",
++        "group"
++      ],
++      "properties": {
++        "source_object_id": {
++          "type": "string"
++        },
++        "target_object_id": {
++          "type": "string"
++        },
++        "group": {
++          "type": "string"
++        }
++      }
++    },
++    "fieldLedgerRow": {
++      "type": "object",
++      "additionalProperties": false,
++      "required": [
++        "source_field",
++        "target_field",
++        "object_id",
++        "source_value",
++        "target_value",
++        "unit",
++        "status"
++      ],
++      "properties": {
++        "source_field": {
++          "type": "string"
++        },
++        "target_field": {
++          "type": "string"
++        },
++        "object_id": {
++          "type": "string"
++        },
++        "source_value": {},
++        "target_value": {},
++        "unit": {
++          "type": "string"
++        },
++        "status": {
++          "enum": [
++            "mapped",
++            "preserved",
++            "unknown",
++            "unsupported"
++          ]
++        }
++      }
+     }
+   }
+ }
+diff --git a/contracts/v1/openapi.v1.json b/contracts/v1/openapi.v1.json
+index dc09019..105aff6 100644
+--- a/contracts/v1/openapi.v1.json
++++ b/contracts/v1/openapi.v1.json
+@@ -1059,6 +1059,22 @@
+       "get": {"tags": ["AI Design Options"], "summary": "Read candidate sets, compared options and current draft adoption", "operationId": "getAIDesignOptions", "responses": {"200": {"description": "Candidate status", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}},
+       "post": {"tags": ["AI Design Options"], "summary": "Queue generation of at least two isolated computable design candidates", "operationId": "queueAIDesignOptions", "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}, {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"obstacles": {"type": "array", "items": {"type": "object"}}}}}}}, "responses": {"202": {"description": "Candidate set accepted", "content": {"application/json": {"schema": {"type": "object"}}}}, "409": {"description": "Brief missing or idempotency conflict"}, "404": {"$ref": "#/components/responses/NotFound"}}}
+     },
++    "/v1/projects/{projectId}/ai/design-options/studio-sources": {
++      "parameters": [{"$ref": "#/components/parameters/ProjectId"}],
++      "get": {"tags": ["AI Design Options"], "summary": "List Studio valid proposals that may be imported (read-only, explicit project mapping)", "operationId": "listStudioSources", "responses": {"200": {"description": "Sources and mapping", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}}
++    },
++    "/v1/projects/{projectId}/ai/design-options/studio-imports": {
++      "parameters": [{"$ref": "#/components/parameters/ProjectId"}],
++      "get": {"tags": ["AI Design Options"], "summary": "List Studio-imported candidate versions with provenance and unsupported items", "operationId": "listStudioImports", "responses": {"200": {"description": "Import records", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}}}
++    },
++    "/v1/projects/{projectId}/ai/design-options/studio-imports/{optionRevisionId}": {
++      "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "optionRevisionId", "in": "path", "required": true, "schema": {"type": "string"}}],
++      "get": {"tags": ["AI Design Options"], "summary": "Read exact spatial projection and per-field reconciliation of one import", "operationId": "getStudioImportDetail", "responses": {"200": {"description": "Import detail", "content": {"application/json": {"schema": {"type": "object"}}}}, "404": {"$ref": "#/components/responses/NotFound"}, "422": {"description": "Not a Studio import"}}}
++    },
++    "/v1/projects/{projectId}/ai/design-options/import-studio": {
++      "parameters": [{"$ref": "#/components/parameters/ProjectId"}],
++      "post": {"tags": ["AI Design Options"], "summary": "Adapt one Studio valid proposal into a versioned main-system candidate (no adoption/production side effects)", "operationId": "importStudioProposal", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["studio_project_id", "studio_artifact_id"], "properties": {"studio_project_id": {"type": "string"}, "studio_artifact_id": {"type": "string"}, "source_project_id": {"type": "string"}, "expected_source_sha256": {"type": "string"}, "expected_unit": {"type": "string", "enum": ["mm"]}}}}}}, "responses": {"200": {"description": "Imported or reused revision"}, "400": {"description": "Invalid request"}, "404": {"$ref": "#/components/responses/NotFound"}, "409": {"description": "Mapping or source hash mismatch"}, "422": {"description": "Source cannot be adapted faithfully"}, "500": {"description": "Import transaction rolled back"}}}
++    },
+     "/v1/projects/{projectId}/ai/design-options/artifacts/{artifactId}/content": {
+       "parameters": [{"$ref": "#/components/parameters/ProjectId"}, {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string"}}],
+       "get": {"tags": ["AI Design Options"], "summary": "Read one verified SVG candidate drawing", "operationId": "getAIDesignOptionArtifact", "responses": {"200": {"description": "SVG bytes", "content": {"image/svg+xml": {"schema": {"type": "string", "format": "binary"}}}}, "404": {"$ref": "#/components/responses/NotFound"}, "500": {"description": "Artifact missing or integrity mismatch"}}}
+diff --git a/mvp/rkd_mvp/ai_design_option_service.py b/mvp/rkd_mvp/ai_design_option_service.py
+index b82719c..29ca69e 100644
+--- a/mvp/rkd_mvp/ai_design_option_service.py
++++ b/mvp/rkd_mvp/ai_design_option_service.py
+@@ -48,7 +48,7 @@ class AIDesignOptionService:
+     def __init__(self, repository: Any, brief_provider: Callable[[str, str], dict[str, Any] | None],
+                  context_provider: Callable[[str, str], dict[str, Any]], runtime_root: str | Path,
+                  *, config: DesignOptionConfig | None = None, provider: Any | None = None,
+-                 start_workers: bool = True) -> None:
++                 start_workers: bool = True, studio_source: Any | None = None) -> None:
+         self.repository = repository
+         self.brief_provider = brief_provider
+         self.context_provider = context_provider
+@@ -56,6 +56,9 @@ class AIDesignOptionService:
+         self.config = config or load_design_option_config()
+         self.provider = provider or build_design_option_provider(self.config)
+         self.start_workers = start_workers
++        # W1: explicit read boundary into Studio's own store. None -> lazy
++        # default bound to RKD_STUDIO_DB at first use (never the live project DB).
++        self.studio_source = studio_source
+         self.schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+         Draft202012Validator.check_schema(self.schema)
+         self.validator = Draft202012Validator(self.schema)
+@@ -311,6 +314,280 @@ class AIDesignOptionService:
+                 revision["artifacts"] = tx.artifacts(option_revision_id)
+             return revision
+ 
++    # ------------------------------------------------------------ W1 Studio import
++    def _studio(self) -> Any:
++        if self.studio_source is None:
++            from .ai_design_studio_adapter import StudioProposalSource
++            self.studio_source = StudioProposalSource()
++        return self.studio_source
++
++    @staticmethod
++    def _adapt_error(error: Exception) -> "AIDesignOptionServiceError":
++        code = getattr(error, "code", "ADAPTATION_FAILED")
++        message = getattr(error, "message", str(error))
++        return AIDesignOptionServiceError(422, code, message)
++
++    def studio_sources(self, organization_id: str, project_id: str) -> dict[str, Any]:
++        """List Studio valid proposals that MAY be imported (read-only)."""
++        source = self._studio()
++        studio_pid = source.resolve(project_id)
++        if studio_pid is None:
++            return {"studio_project_id": None, "mapping": None, "items": [],
++                    "note": "主系统项目没有显式 Studio 映射；不按名称推断"}
++        project = source.project(studio_pid) or {}
++        return {"studio_project_id": studio_pid,
++                "mapping": {"source_project_id": project.get("source_project_id"),
++                            "mapping_note": project.get("mapping_note")},
++                "items": source.valid_proposals(studio_pid)}
++
++    def import_studio_proposal(self, organization_id: str, project_id: str, actor_id: str,
++                               request: dict[str, Any], *,
++                               on_before_commit: Any | None = None) -> dict[str, Any]:
++        """Adapt ONE Studio valid proposal into the main versioned candidate model.
++
++        Single write transaction: set + revision + artifact are committed together,
++        or nothing is written. Adoption / production / procurement / release are
++        NEVER touched by an import.
++        """
++        from .ai_design_studio_adapter import (
++            ADAPTER_VERSION, MAPPING_VERSION, StudioAdaptationError,
++            adapt_proposal, render_spatial_svg, sha256_hex,
++        )
++        from .studio.tools import CATALOG
++        if not isinstance(request, dict):
++            raise AIDesignOptionServiceError(400, "INVALID_IMPORT_REQUEST", "请求体不是对象")
++        studio_pid = str(request.get("studio_project_id") or "").strip()
++        artifact_id = str(request.get("studio_artifact_id") or "").strip()
++        if not studio_pid or not artifact_id:
++            raise AIDesignOptionServiceError(400, "INVALID_IMPORT_REQUEST",
++                                             "必须显式给出 studio_project_id 与 studio_artifact_id")
++        expected_unit = str(request.get("expected_unit") or "mm")
++        if expected_unit != "mm":
++            raise AIDesignOptionServiceError(
++                422, "UNIT_MISMATCH",
++                f"调用方声明单位为 {expected_unit}；Studio 契约是 mm，适配器不猜测换算")
++        declared_main = request.get("source_project_id")
++        if declared_main is not None and str(declared_main) != project_id:
++            raise AIDesignOptionServiceError(409, "PROJECT_MAPPING_MISMATCH",
++                                             "请求里的主系统项目与 URL 项目不一致")
++
++        source = self._studio()
++        project = source.project(studio_pid)
++        if not project:
++            raise AIDesignOptionServiceError(404, "STUDIO_PROJECT_NOT_FOUND",
++                                             "Studio 项目不存在")
++        if project.get("source_project_id") != project_id or source.resolve(project_id) != studio_pid:
++            raise AIDesignOptionServiceError(409, "PROJECT_MAPPING_MISMATCH",
++                                             "Studio→主系统项目映射不是显式一致的；拒绝跨项目导入")
++        artifact = source.artifact(artifact_id)
++        if not artifact:
++            raise AIDesignOptionServiceError(404, "STUDIO_ARTIFACT_NOT_FOUND",
++                                             "找不到该 Studio 产物")
++        if artifact.get("project_id") != studio_pid:
++            raise AIDesignOptionServiceError(409, "CROSS_PROJECT_ARTIFACT",
++                                             "产物属于另一个 Studio 项目")
++        if (artifact.get("kind") != "spatial-plan"
++                or artifact.get("contract_status") != "valid_candidate"
++                or artifact.get("status") in ("superseded", "invalid_raw")):
++            raise AIDesignOptionServiceError(422, "NOT_VALID_STUDIO_CANDIDATE",
++                                             "只允许导入 Studio 的有效 spatial-plan 候选，不导入原始/失效稿")
++        source_sha = str(artifact.get("sha256") or "")
++        expected_sha = request.get("expected_source_sha256")
++        if expected_sha is not None and str(expected_sha) != source_sha:
++            raise AIDesignOptionServiceError(409, "SOURCE_SHA_MISMATCH",
++                                             "源产物字节已变化，请重新确认后再导入")
++        plan = artifact.get("payload")
++        if not isinstance(plan, dict) or not plan.get("zones"):
++            raise AIDesignOptionServiceError(422, "EMPTY_STUDIO_PAYLOAD",
++                                             "源产物没有可用的完整平面数据")
++
++        source_key = _digest({"studio_project_id": studio_pid, "artifact_id": artifact_id,
++                              "sha256": source_sha, "adapter_version": ADAPTER_VERSION,
++                              "mapping_version": MAPPING_VERSION,
++                              "main_project_id": project_id,
++                              "organization_id": organization_id})
++        idempotency_key = "studio-import:" + source_key
++        provenance = {
++            "artifact_id": artifact_id, "sha256": source_sha,
++            "studio_project_id": studio_pid, "main_project_id": project_id,
++            "revision_uid": artifact.get("revision_uid"),
++            "parent_revision_uid": artifact.get("parent_revision_uid"),
++            "candidate_group_id": artifact.get("candidate_group_id"),
++            "run_id": artifact.get("run_id"),
++        }
++        option_id = f"studio:{project_id}:{studio_pid}:{plan.get('option_id')}"
++        catalog = {c["catalog_id"]: c for c in CATALOG}
++
++        # Idempotency + version chain, both inside a read transaction.
++        with self.repository.transaction(organization_id, project_id) as tx:
++            existing_set = tx.set_by_key(idempotency_key)
++            adoption_before = tx.adoption()
++            if existing_set:
++                revisions = tx.revisions_for_set(existing_set["set_id"])
++                head = revisions[0] if revisions else None
++                return {"reused": True, "item": head, "set": existing_set,
++                        "adoption_unchanged": True, "formal_approval": False,
++                        "note": "同一来源（artifact id + sha256 + 适配器版本）已导入过，未重复造版本"}
++            latest = tx.latest_revision(option_id)
++            previous_spatial = (latest or {}).get("model", {}).get("spatial")
++            revision_no = int(latest["revision_no"]) + 1 if latest else 1
++            parent_revision_id = latest["option_revision_id"] if latest else None
++
++        set_id = new_id("ai-option-set")
++        option_revision_id = new_id("ai-option-revision")
++        created_at = now_iso()
++        try:
++            model = adapt_proposal(
++                plan, provenance=provenance, site=project["site"], catalog=catalog,
++                actor_id=actor_id, created_at=created_at, set_id=set_id,
++                option_id=option_id, revision_no=revision_no,
++                parent_revision_id=parent_revision_id,
++                previous_spatial=previous_spatial, expected_unit=expected_unit)
++        except StudioAdaptationError as error:
++            raise self._adapt_error(error) from error
++        except Exception as error:  # noqa: BLE001 - never write half an adaptation
++            raise AIDesignOptionServiceError(422, "ADAPTATION_FAILED",
++                                             f"适配失败，未写入任何候选：{type(error).__name__}: {error}") from error
++
++        errors = sorted(self.validator.iter_errors(model), key=lambda e: list(e.path))
++        if errors:
++            first = errors[0]
++            raise AIDesignOptionServiceError(422, "ADAPTED_MODEL_INVALID",
++                                             "适配结果不符合主系统版本化契约："
++                                             + f"{list(first.path)} {first.message[:160]}")
++        # unknown must stay unknown (do not silently fill 0 / invent values)
++        if (model["cost"]["total_project_estimate"]["value"] is not None
++                or model["cost"]["budget"]["value"] is not None):
++            raise AIDesignOptionServiceError(422, "UNKNOWN_VALUE_FILLED",
++                                             "适配结果把 unknown 金额填成了数值")
++
++        svg = render_spatial_svg(model)
++        attempt_dir = (self.runtime_root / "projects" / "ai-design-options"
++                       / "studio-import" / set_id)
++        attempt_dir.mkdir(parents=True, exist_ok=False)
++        svg_path = attempt_dir / f"layout-{option_revision_id}.svg"
++        relative = svg_path.relative_to(self.runtime_root).as_posix()
++        spatial = model["spatial"]
++        context = {
++            "schema_version": "rkd-studio-import-context.v1",
++            "adapter_version": ADAPTER_VERSION,
++            "mapping_version": MAPPING_VERSION,
++            "source": provenance, "source_unit": "mm", "target_unit": "m",
++            "unit_conversion": "mm_to_m_div_1000",
++            "option_id": option_id, "revision_no": revision_no,
++            "parent_revision_id": parent_revision_id,
++            "field_ledger": spatial["adaptation"]["field_ledger"],
++            "object_id_map": spatial["adaptation"]["object_id_map"],
++            "unsupported_items": spatial["unsupported_items"],
++            "losses": spatial["adaptation"]["losses"],
++            "source_sha256": source_sha,
++            "geometry_mode": spatial["adaptation"]["geometry_mode"],
++            "source_contract": "rkd-spatial-plan.v1",
++            "target_contract": "rkd-ai-design-option.v1",
++        }
++        config = {"kind": "studio_proposal_adapter", "real_model": False,
++                  "configuration_errors": [], "adapter_version": ADAPTER_VERSION}
++        row = {
++            "option_revision_id": option_revision_id, "set_id": set_id,
++            "option_id": option_id, "revision_no": revision_no,
++            "parent_revision_id": parent_revision_id,
++            "strategy_id": model["strategy"]["strategy_id"],
++            "strategy": model["strategy"], "model": model,
++            "validation": model["validation"], "materials": model["materials"],
++            "cost": model["cost"], "feedback": model["feedback"],
++            "diff": model["diff"], "conflicts": model["conflicts"],
++            "structure_signature": model["structure_signature"],
++            "lifecycle_status": "candidate", "source_kind": model["source_kind"],
++            "change_reason": model["change_reason"], "actor_id": actor_id,
++            "created_at": created_at,
++        }
++        artifact_row = {
++            "artifact_id": new_id("ai-option-artifact"),
++            "option_revision_id": option_revision_id,
++            "artifact_kind": "layout_svg",
++            "filename": f"layout-{option_revision_id}.svg",
++            "content_type": "image/svg+xml", "relative_path": relative,
++            "sha256": hashlib.sha256(svg).hexdigest(), "size_bytes": len(svg),
++            "created_at": created_at,
++        }
++        try:
++            svg_path.write_bytes(svg)
++            with self.repository.transaction(organization_id, project_id, write=True) as tx:
++                tx.insert_set({
++                    "set_id": set_id, "brief_id": artifact_id, "input_hash": source_key,
++                    "status": "succeeded", "phase": "completed", "attempt_count": 1,
++                    "config": config, "context": context, "error_code": None,
++                    "error_message": None, "idempotency_key": idempotency_key,
++                    "actor_id": actor_id, "created_at": created_at,
++                    "updated_at": created_at,
++                })
++                tx.insert_revision(row)
++                tx.insert_artifact(artifact_row)
++                if on_before_commit is not None:
++                    on_before_commit()   # explicit rollback seam used by W1 tests
++            with self.repository.transaction(organization_id, project_id) as tx:
++                result_set = tx.set_row(set_id)
++                revision = tx.revision(option_revision_id)
++                if revision:
++                    revision["artifacts"] = tx.artifacts(option_revision_id)
++                adoption_after = tx.adoption()
++            return {
++                "reused": False, "item": revision, "set": result_set,
++                "source": provenance,
++                "field_ledger": context["field_ledger"],
++                "object_id_map": context["object_id_map"],
++                "unsupported_items": context["unsupported_items"],
++                "losses": context["losses"],
++                "adaptation": spatial["adaptation"],
++                "source_unit": "mm", "target_unit": "m",
++                "adoption_unchanged": _json(adoption_before) == _json(adoption_after),
++                "adoption": adoption_after,
++                "formal_approval": False, "production_sync": False,
++                "svg_sha256": artifact_row["sha256"],
++            }
++        except Exception:
++            shutil.rmtree(attempt_dir, ignore_errors=True)
++            raise
++
++    def list_studio_imports(self, organization_id: str, project_id: str,
++                            limit: int = 50) -> dict[str, Any]:
++        with self.repository.transaction(organization_id, project_id) as tx:
++            items = []
++            for s in tx.sets(limit=max(limit, 50)):
++                if not str(s.get("idempotency_key") or "").startswith("studio-import:"):
++                    continue
++                revisions = tx.revisions_for_set(s["set_id"])
++                rows = []
++                for r in revisions:
++                    spatial = (r.get("model") or {}).get("spatial") or {}
++                    rows.append({
++                        "option_revision_id": r["option_revision_id"],
++                        "option_id": r["option_id"], "revision_no": r["revision_no"],
++                        "parent_revision_id": r.get("parent_revision_id"),
++                        "source": spatial.get("source"),
++                        "unsupported_items": spatial.get("unsupported_items"),
++                        "diff": r.get("diff"),
++                        "artifacts": tx.artifacts(r["option_revision_id"]),
++                    })
++                items.append({"set": s, "context": s.get("context"), "revisions": rows})
++            return {"items": items, "adoption": tx.adoption()}
++
++    def studio_import_detail(self, organization_id: str, project_id: str,
++                             option_revision_id: str) -> dict[str, Any]:
++        with self.repository.transaction(organization_id, project_id) as tx:
++            revision = tx.revision(option_revision_id)
++            if not revision:
++                raise AIDesignOptionServiceError(404, "IMPORT_REVISION_NOT_FOUND",
++                                                 "找不到该导入修订")
++            spatial = (revision.get("model") or {}).get("spatial")
++            if not spatial:
++                raise AIDesignOptionServiceError(422, "NOT_A_STUDIO_IMPORT",
++                                                 "该修订不是 Studio 导入候选")
++            revision["artifacts"] = tx.artifacts(option_revision_id)
++            return {"item": revision, "spatial": spatial,
++                    "field_ledger": spatial["adaptation"]["field_ledger"],
++                    "unsupported_items": spatial["unsupported_items"]}
++
+     def mark_production_status(self, organization_id: str, project_id: str,
+                                expected_version: int, status: str) -> bool:
+         with self.repository.transaction(organization_id, project_id, write=True) as tx:
+diff --git a/mvp/rkd_mvp/ai_design_studio_adapter.py b/mvp/rkd_mvp/ai_design_studio_adapter.py
+new file mode 100644
+index 0000000..471a219
+--- /dev/null
++++ b/mvp/rkd_mvp/ai_design_studio_adapter.py
+@@ -0,0 +1,812 @@
++"""W1: Studio valid proposal -> main-system versioned AI design candidate.
++
++ONE authoritative model: the produced document is still
++``rkd-ai-design-option.v1``.  The optional ``spatial`` section is a faithful,
++unit-explicit projection of the Studio ``spatial-plan-draft.v1`` document
++(exact mm polygons, ceiling/lighting intent, object ids, provenance, named
++unsupported items).  The legacy rect ``objects[]`` remain for old renderers but
++are ALWAYS labelled ``geometry_mode=bbox_derived`` and never claimed to be the
++exact geometry; precise checks run on the polygons with shapely.
++
++No external calls, no model inference, no unit guessing, no invented facts.
++``unknown`` stays unknown (never 0).  This module only builds a candidate;
++the service decides when/where it is committed.
++"""
++from __future__ import annotations
++
++import copy
++import hashlib
++import json
++import math
++from decimal import Decimal
++from html import escape
++from itertools import combinations
++from typing import Any
++
++from shapely.geometry import LineString, Polygon, box
++
++ADAPTER_VERSION = "rkd-studio-proposal-adapter.v1"
++SPATIAL_VERSION = "rkd-ai-design-option-spatial.v1"
++MAPPING_VERSION = "W0-erratum-2.3"
++DRAFT_VERSION = "rkd-spatial-plan.v1"
++OPTION_SCHEMA_VERSION = "rkd-ai-design-option.v1"
++GEOMETRY_RULE_VERSION = "rkd-studio-import-geometry.v1"
++MM_PER_M = Decimal("1000")
++
++
++class StudioAdaptationError(Exception):
++    """Deterministic rejection BEFORE anything is written."""
++
++    def __init__(self, code: str, message: str, *, stage: str = "adaptation") -> None:
++        self.code, self.message, self.stage = code, message, stage
++        super().__init__(f"{code}: {message}")
++
++
++def _json_bytes(value: Any) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True,
++                      separators=(",", ":")).encode("utf-8")
++
++
++def sha256_hex(value: Any) -> str:
++    return hashlib.sha256(_json_bytes(value)).hexdigest()
++
++
++def _dec(value: Any, *, mm: bool = False) -> str:
++    """Exact decimal string; mm values are converted to m by /1000."""
++    d = Decimal(str(value))
++    if mm:
++        d = d / MM_PER_M
++    text = format(d, "f")
++    if "." in text:
++        text = text.rstrip("0").rstrip(".")
++    return text or "0"
++
++
++def _bbox(polygon: list) -> tuple[float, float, float, float]:
++    xs = [float(p[0]) for p in polygon]
++    ys = [float(p[1]) for p in polygon]
++    return min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
++
++
++def _is_number(value: Any) -> bool:
++    return isinstance(value, (int, float)) and not isinstance(value, bool)
++
++
++# ------------------------------------------------------------------ validation
++def validate_source(plan: dict, *, expected_unit: str = "mm",
++                    catalog: dict | None = None) -> None:
++    """Reject anything the adapter cannot express faithfully.
++
++    Raises StudioAdaptationError; never silently approximates or drops.
++    """
++    if not isinstance(plan, dict):
++        raise StudioAdaptationError("NOT_A_PLAN", "源提案不是 JSON 对象")
++    if plan.get("contract_version") != DRAFT_VERSION:
++        raise StudioAdaptationError("CONTRACT_VERSION_MISMATCH",
++                                    "源不是 spatial-plan-draft.v1（身份字段必须由程序装配）",
++                                    stage="source")
++    for key in ("project_id", "option_id", "revision", "strategy", "zones",
++                "circulation", "furniture", "area_table"):
++        if key not in plan:
++            raise StudioAdaptationError("MISSING_SOURCE_FIELD",
++                                        f"源提案缺少 {key}", stage="source")
++    declared = plan.get("source_unit") or plan.get("unit")
++    if declared is not None and str(declared) != "mm":
++        raise StudioAdaptationError("UNIT_MISMATCH",
++                                    f"源提案声明单位为 {declared}；适配器只接受 mm，不猜测换算",
++                                    stage="unit")
++    if str(expected_unit) != "mm":
++        raise StudioAdaptationError("UNIT_MISMATCH",
++                                    f"调用方声明单位为 {expected_unit}；与源契约 mm 不一致",
++                                    stage="unit")
++
++    ids: list[str] = []
++    for group in ("zones", "furniture", "circulation", "platforms"):
++        for item in plan.get(group) or []:
++            if not isinstance(item, dict) or not str(item.get("id") or "").strip():
++                raise StudioAdaptationError("MISSING_OBJECT_REFERENCE",
++                                            f"{group} 中有对象缺少稳定 id", stage="objects")
++            ids.append(str(item["id"]))
++    if len(ids) != len(set(ids)):
++        raise StudioAdaptationError("DUPLICATE_OBJECT_ID",
++                                    "源提案对象 ID 不唯一，无法稳定映射", stage="objects")
++
++    known_catalog = set((catalog or {}).keys())
++    for f in plan.get("furniture") or []:
++        cid = str(f.get("catalog_id") or "")
++        if known_catalog and cid not in known_catalog:
++            raise StudioAdaptationError("UNKNOWN_CATALOG_REF",
++                                        f"家具 {f.get('id')} 引用了目录里不存在的 {cid}",
++                                        stage="objects")
++        for key in ("x", "y", "rot"):
++            if not _is_number(f.get(key)):
++                raise StudioAdaptationError("MISSING_OBJECT_REFERENCE",
++                                            f"家具 {f.get('id')} 的 {key} 缺失或非数值",
++                                            stage="objects")
++    for z in plan.get("zones") or []:
++        polygon = z.get("polygon")
++        if not isinstance(polygon, list) or len(polygon) < 3:
++            raise StudioAdaptationError("UNSUPPORTED_GEOMETRY",
++                                        f"分区 {z.get('id')} 的多边形点数不足 3，不能静默矩形化",
++                                        stage="geometry")
++        for point in polygon:
++            if (not isinstance(point, (list, tuple)) or len(point) != 2
++                    or not all(_is_number(v) for v in point)):
++                raise StudioAdaptationError("UNSUPPORTED_GEOMETRY",
++                                            f"分区 {z.get('id')} 的点不是二维数值坐标",
++                                            stage="geometry")
++    for c in plan.get("circulation") or []:
++        path = c.get("path")
++        if not isinstance(path, list) or len(path) < 2:
++            raise StudioAdaptationError("UNSUPPORTED_GEOMETRY",
++                                        f"动线 {c.get('id')} 的折线少于两个点",
++                                        stage="geometry")
++        if not _is_number(c.get("width_mm")):
++            raise StudioAdaptationError("MISSING_OBJECT_REFERENCE",
++                                        f"动线 {c.get('id')} 缺少 width_mm",
++                                        stage="objects")
++    if len(plan.get("zones") or []) < 3:
++        raise StudioAdaptationError("UNSUPPORTED_GEOMETRY",
++                                    "源提案的功能分区少于 3 个", stage="geometry")
++
++
++def exact_geometry_checks(plan: dict, site: dict) -> dict:
++    """Hard checks on the EXACT mm polygons, not on bounding boxes."""
++    width = float(site["width_mm"])
++    height = float(site["height_mm"])
++    boundary = box(0, 0, width, height)
++    checks: list[dict] = []
++
++    def add(code: str, ok: bool, message: str) -> None:
++        checks.append({"code": code, "status": "passed" if ok else "failed",
++                       "message": message})
++
++    polygons: list[tuple[str, Polygon]] = []
++    ok_polygons = True
++    for z in plan["zones"]:
++        poly = Polygon([(float(p[0]), float(p[1])) for p in z["polygon"]])
++        if not poly.is_valid or poly.area <= 0:
++            ok_polygons = False
++            add("STUDIO_POLYGON_INVALID", False, f"{z['id']} 多边形自交或面积为零")
++        else:
++            polygons.append((str(z["id"]), poly))
++    if ok_polygons:
++        add("STUDIO_POLYGON_VALID", True,
++            f"{len(polygons)} 个分区多边形有效（含非矩形轮廓），按原坐标复核")
++
++    inside = all(poly.within(boundary) or boundary.covers(poly) for _oid, poly in polygons)
++    add("STUDIO_ZONE_WITHIN_BOUNDARY", inside,
++        "所有分区位于场地边界内" if inside else "有分区越出场地边界")
++
++    overlaps = [(a, b, a_poly.intersection(b_poly).area)
++                for (a, a_poly), (b, b_poly) in combinations(polygons, 2)
++                if a_poly.intersects(b_poly) and a_poly.intersection(b_poly).area > 1.0]
++    add("STUDIO_ZONE_NON_OVERLAP", not overlaps,
++        "精确多边形互不重叠" if not overlaps
++        else "精确多边形重叠：" + "、".join(f"{a}/{b}" for a, b, _ in overlaps))
++
++    small = [oid for oid, poly in polygons if poly.area / 1e6 < 1.0]
++    add("STUDIO_ZONE_MIN_AREA", not small,
++        "分区面积均不小于 1㎡" if not small else "过小分区：" + "、".join(small))
++
++    all_ids = [str(x["id"]) for g in ("zones", "furniture", "circulation", "platforms")
++               for x in (plan.get(g) or [])]
++    add("STUDIO_OBJECT_IDS_UNIQUE", len(all_ids) == len(set(all_ids)),
++        "对象 ID 唯一且稳定")
++
++    path_ok = True
++    for c in plan["circulation"]:
++        line = LineString([(float(p[0]), float(p[1])) for p in c["path"]])
++        if not boundary.covers(line):
++            path_ok = False
++        if float(c["width_mm"]) < 900:
++            path_ok = False
++    add("STUDIO_CIRCULATION_WITHIN_BOUNDARY", path_ok,
++        "动线折线在边界内且声明净宽不低于 900mm（有限障碍口径，非门洞合规证明）")
++
++    furn_ok = True
++    for f in plan["furniture"]:
++        if not (0 <= float(f["x"]) <= width and 0 <= float(f["y"]) <= height):
++            furn_ok = False
++    add("STUDIO_FURNITURE_WITHIN_BOUNDARY", furn_ok, "家具定位点在边界内")
++
++    ent = site.get("entrance")
++    entrance_ok = (isinstance(ent, (list, tuple)) and len(ent) == 3
++                   and 0 <= float(ent[1]) <= height
++                   and float(ent[1]) + float(ent[2]) <= height)
++    add("STUDIO_ENTRANCE_ON_BOUNDARY", bool(entrance_ok), "入口区段来自场地条件，落在西墙边界")
++
++    professional = [
++        {"code": "FIRE_EGRESS", "status": "unknown", "message": "消防疏散未建模，不宣称合规"},
++        {"code": "ACCESSIBILITY", "status": "unknown", "message": "无障碍未建模，不宣称合规"},
++        {"code": "MEASURED_SITE", "status": "unknown", "message": "现场实测/门洞净宽未建模，不把示意当实测"},
++    ]
++    failed = [c for c in checks if c["status"] == "failed"]
++    if failed:
++        raise StudioAdaptationError("GEOMETRY_CHECK_FAILED",
++                                    "；".join(c["message"] for c in failed[:3]),
++                                    stage="geometry")
++    return {
++        "rule_version": GEOMETRY_RULE_VERSION,
++        "status": "passed",
++        "hard_checks": checks,
++        "professional_checks": professional,
++        "publication_status": "not_approved",
++    }
++
++
++# ------------------------------------------------------------------- adaptation
++def _legacy_objects(plan: dict, artifact_id: str, catalog: dict) -> tuple[list[dict], list[dict]]:
++    objects: list[dict] = []
++    id_map: list[dict] = []
++    for z in plan["zones"]:
++        x, y, w, h = _bbox(z["polygon"])
++        objects.append({
++            "object_id": str(z["id"]), "kind": "functional_zone", "name": str(z["name"]),
++            "shape": {"type": "rect", "x": _dec(x, mm=True), "y": _dec(y, mm=True),
++                      "width": _dec(w, mm=True), "length": _dec(h, mm=True)},
++            "material_id": None, "parent_object_id": None,
++            "source_refs": [artifact_id], "locked": False,
++            "properties": {
++                "geometry_mode": "bbox_derived",
++                "exact_polygon_ref": f"spatial.zones:{z['id']}",
++                "adaptation_loss": "legacy rect is the bounding box only; exact polygon is in spatial.zones",
++                "studio_role": z.get("role"),
++                "area_source": "studio_area_table_not_program_measured",
++                "source_unit": "mm",
++            },
++        })
++        id_map.append({"source_object_id": str(z["id"]),
++                       "target_object_id": str(z["id"]), "group": "zones"})
++    for p in plan.get("platforms") or []:
++        poly = p.get("polygon") or []
++        if len(poly) >= 3:
++            x, y, w, h = _bbox(poly)
++        else:
++            x, y, w, h = 0, 0, 0, 0
++        objects.append({
++            "object_id": str(p["id"]), "kind": "display_object", "name": str(p.get("name") or p["id"]),
++            "shape": {"type": "rect", "x": _dec(x, mm=True), "y": _dec(y, mm=True),
++                      "width": _dec(w, mm=True), "length": _dec(h, mm=True)},
++            "material_id": None, "parent_object_id": None,
++            "source_refs": [artifact_id], "locked": False,
++            "properties": {"geometry_mode": "bbox_derived",
++                           "exact_polygon_ref": f"spatial.platforms:{p['id']}",
++                           "studio_kind": p.get("kind"),
++                           "corner_radius_mm": p.get("corner_radius_mm"),
++                           "height_mm": p.get("height_mm")},
++        })
++        id_map.append({"source_object_id": str(p["id"]),
++                       "target_object_id": str(p["id"]), "group": "platforms"})
++    for f in plan["furniture"]:
++        item = catalog.get(str(f["catalog_id"]), {})
++        w, d = float(item.get("w_mm") or 0), float(item.get("d_mm") or 0)
++        rot = float(f["rot"])
++        # rotated footprint, expressed as an axis-aligned bounding box
++        rad = math.radians(rot)
++        bw = abs(w * math.cos(rad)) + abs(d * math.sin(rad))
++        bh = abs(w * math.sin(rad)) + abs(d * math.cos(rad))
++        objects.append({
++            "object_id": str(f["id"]), "kind": "display_object", "name": str(f["catalog_id"]),
++            "shape": {"type": "rect", "x": _dec(float(f["x"]) - bw / 2, mm=True),
++                      "y": _dec(float(f["y"]) - bh / 2, mm=True),
++                      "width": _dec(bw, mm=True), "length": _dec(bh, mm=True)},
++            "material_id": None, "parent_object_id": None,
++            "source_refs": [artifact_id], "locked": False,
++            "properties": {"geometry_mode": "rotated_footprint_bbox",
++                           "catalog_id": str(f["catalog_id"]),
++                           "center_x_mm": f["x"], "center_y_mm": f["y"], "rot": f["rot"],
++                           "w_mm": w, "d_mm": d},
++        })
++        id_map.append({"source_object_id": str(f["id"]),
++                       "target_object_id": str(f["id"]), "group": "furniture"})
++    return objects, id_map
++
++
++def _obstacles(site: dict, artifact_id: str) -> list[dict]:
++    out = []
++    for name, rect in (("楼梯保留区", site.get("stair")), ("卫生间保留区", site.get("bath"))):
++        if not isinstance(rect, (list, tuple)) or len(rect) != 4:
++            continue
++        x0, y0, x1, y1 = [float(v) for v in rect]
++        out.append({
++            "object_id": f"keepout-{name}", "kind": "obstacle", "name": name,
++            "shape": {"type": "rect", "x": _dec(x0, mm=True), "y": _dec(y0, mm=True),
++                      "width": _dec(x1 - x0, mm=True), "length": _dec(y1 - y0, mm=True)},
++            "material_id": None, "parent_object_id": None,
++            "source_refs": [artifact_id], "locked": True,
++            "properties": {"keepout": True, "source": "structured_site_condition"},
++        })
++    return out
++
++
++def _circulation(plan: dict, artifact_id: str) -> tuple[dict, list[dict]]:
++    circ = plan["circulation"][0]
++    path = [[float(p[0]), float(p[1])] for p in circ["path"]]
++    width = float(circ["width_mm"])
++    segments = []
++    for i in range(len(path) - 1):
++        x0, y0 = path[i]
++        x1, y1 = path[i + 1]
++        seg = LineString([(x0, y0), (x1, y1)])
++        bounds = seg.bounds
++        pad = width / 2
++        segments.append({
++            "segment_id": f"{circ['id']}:S{i + 1}",
++            "shape": {"type": "rect", "x": _dec(bounds[0] - pad, mm=True),
++                      "y": _dec(bounds[1] - pad, mm=True),
++                      "width": _dec(bounds[2] - bounds[0] + 2 * pad, mm=True),
++                      "length": _dec(bounds[3] - bounds[1] + 2 * pad, mm=True)},
++        })
++    connections = [[segments[i]["segment_id"], segments[i + 1]["segment_id"]]
++                   for i in range(len(segments) - 1)]
++    main = {"path_id": str(circ["id"]), "kind": "branch",
++            "min_width": _dec(width, mm=True), "segments": segments,
++            "connections": connections}
++    exact = [{"object_id": str(c["id"]), "width_mm": c["width_mm"],
++              "path_mm": [[float(p[0]), float(p[1])] for p in c["path"]],
++              "source_refs": [artifact_id]} for c in plan["circulation"]]
++    return main, exact
++
++
++def _relationships(plan: dict, artifact_id: str) -> list[dict]:
++    zones = [(str(z["id"]), Polygon([(float(p[0]), float(p[1])) for p in z["polygon"]]))
++             for z in plan["zones"]]
++    out = []
++    for (a, pa), (b, pb) in combinations(zones, 2):
++        try:
++            if pa.distance(pb) <= 200:
++                out.append({"relation_id": f"adj:{a}:{b}", "type": "adjacent",
++                            "source": a, "target": b,
++                            "statement": "精确多边形相邻（间距 ≤ 200mm）",
++                            "source_refs": [artifact_id]})
++        except Exception:
++            continue
++    return out[:20]
++
++
++def _unsupported(plan: dict) -> list[dict]:
++    items = [
++        {"item": "材料规格/产品选型", "source_field": "furniture[].catalog_id / (无材料字段)",
++         "reason": "Studio 提案只有目录引用，没有材料规格、样板或产品选型；写 unknown，不补默认值",
++         "status": "unsupported_unknown"},
++        {"item": "相机与人眼视图", "source_field": "(Studio 提案无 camera/view 字段)",
++         "reason": "未建模机位、镜头、人眼高度与视向；保留为命名缺项，不生成假设机位",
++         "status": "unsupported_unknown"},
++        {"item": "照度/配光计算", "source_field": "ceiling.fixtures[].kelvin",
++         "reason": "色温与灯具点位已保留为意向；照度、配光、间距未计算，不编数值",
++         "status": "unsupported_unknown"},
++        {"item": "实测标高/层高", "source_field": "site.ceiling_mm / platforms[].height_mm",
++         "reason": "场地与展台高度是给定条件/造型参数，不是现场实测；不升级为实测事实",
++         "status": "unsupported_unknown"},
++        {"item": "门窗/柱网/构造", "source_field": "site.windows_* / (无 door/column 对象)",
++         "reason": "提案未建模门窗与柱网构造；主系统候选对象里不凭空补构件",
++         "status": "unsupported_unknown"},
++        {"item": "legacy rect 对象", "source_field": "zones[].polygon / platforms[].polygon",
++         "reason": "旧渲染器只接受 rect，派生包围盒仅供显示；精确多边形在 spatial 中，不能据包围盒算量",
++         "status": "unsupported_unknown"},
++    ]
++    if not (plan.get("ceiling") or {}).get("fixtures"):
++        items.append({"item": "天花灯具点位", "source_field": "ceiling.fixtures",
++                      "reason": "源提案未给出灯具点位，保持 unknown",
++                      "status": "unsupported_unknown"})
++    return items
++
++
++def _ledger(plan: dict, spatial: dict, model: dict, artifact_id: str) -> list[dict]:
++    rows: list[dict] = []
++
++    def row(src: str, dst: str, oid: str, sv: Any, tv: Any,
++            unit: str, status: str) -> None:
++        rows.append({"source_field": src, "target_field": dst, "object_id": oid,
++                     "source_value": sv, "target_value": tv,
++                     "unit": unit, "status": status})
++
++    row("strategy.name", "strategy.statement", "strategy",
++        plan["strategy"]["name"], model["strategy"]["statement"], "text", "mapped")
++    row("strategy.tradeoffs", "strategy.tradeoffs", "strategy",
++        plan["strategy"]["tradeoffs"], model["strategy"]["tradeoffs"], "text", "preserved")
++    for i, z in enumerate(plan["zones"]):
++        row(f"zones[{i}].polygon", f"spatial.zones[{i}].polygon_mm", str(z["id"]),
++            z["polygon"], spatial["zones"][i]["polygon_mm"], "mm", "preserved")
++        row(f"zones[{i}].area_sqm", f"spatial.zones[{i}].area_sqm", str(z["id"]),
++            z.get("area_sqm"), spatial["zones"][i]["area_sqm"], "m2", "preserved")
++        row(f"zones[{i}].polygon", f"objects[{i}].shape", str(z["id"]),
++            z["polygon"], model["objects"][i]["shape"], "m", "mapped")
++        row(f"zones[{i}].role", f"spatial.zones[{i}].role", str(z["id"]),
++            z.get("role"), spatial["zones"][i]["role"], "enum", "preserved")
++    for i, c in enumerate(plan["circulation"]):
++        row(f"circulation[{i}].width_mm", "circulation.min_width", str(c["id"]),
++            c["width_mm"], model["circulation"]["min_width"], "m", "mapped")
++        row(f"circulation[{i}].path", f"spatial.circulation[{i}].path_mm", str(c["id"]),
++            c["path"], spatial["circulation"][i]["path_mm"], "mm", "preserved")
++    for i, f in enumerate(plan["furniture"]):
++        row(f"furniture[{i}].{{x,y,rot}}", f"spatial.furniture[{i}]", str(f["id"]),
++            {k: f[k] for k in ("x", "y", "rot")},
++            {k: spatial["furniture"][i][k] for k in ("x_mm", "y_mm", "rot")},
++            "mm/degree", "preserved")
++        row(f"furniture[{i}].catalog_id", f"spatial.furniture[{i}].catalog_id", str(f["id"]),
++            f["catalog_id"], spatial["furniture"][i]["catalog_id"], "id", "preserved")
++    for i, fx in enumerate((plan.get("ceiling") or {}).get("fixtures") or []):
++        row(f"ceiling.fixtures[{i}].kelvin", f"spatial.ceiling.fixtures[{i}].kelvin",
++            str(fx.get("id")), fx.get("kelvin"), fx.get("kelvin"), "K", "preserved")
++        row(f"ceiling.fixtures[{i}]", "(no main-system lighting object)",
++            str(fx.get("id")), fx, None, "n/a", "unsupported")
++    row("area_table", "spatial.area_table", "area_table",
++        plan["area_table"], spatial["area_table"], "m2", "preserved")
++    row("open_questions", "spatial.open_questions / cost.unknown_items", "unknowns",
++        plan.get("open_questions") or [], spatial["open_questions"], "text", "preserved")
++    row("contract_version/identity", "spatial.source.draft_identity", "source",
++        {k: plan.get(k) for k in ("contract_version", "project_id", "option_id",
++                                  "revision", "parent_revision", "author")},
++        spatial["source"]["draft_identity"], "n/a", "preserved")
++    row("artifact.sha256", "generation.input_hash", "source",
++        spatial["source"]["sha256"], model["generation"]["input_hash"], "sha256", "mapped")
++    for q in (plan.get("open_questions") or []):
++        row("open_question", "cost.unknown_items", "unknowns",
++            q, {"statement": q, "known_status": "unknown"}, "text", "unknown")
++    return rows
++
++
++def diff_spatial(previous: dict | None, current: dict) -> list[dict]:
++    """Object-level field diffs between two spatial projections (same object id)."""
++    if not previous:
++        return []
++    out: list[dict] = []
++
++    def collect(spatial: dict, group: str, fields: tuple[str, ...]) -> dict:
++        return {str(item["object_id"]): {f: item.get(f) for f in fields}
++                for item in spatial.get(group, [])}
++
++    specs = (("zones", ("polygon_mm", "area_sqm", "role", "name")),
++             ("furniture", ("x_mm", "y_mm", "rot", "catalog_id")),
++             ("circulation", ("width_mm", "path_mm")),
++             ("platforms", ("polygon_mm", "height_mm", "corner_radius_mm")))
++    for group, fields in specs:
++        before, after = collect(previous, group, fields), collect(current, group, fields)
++        for oid in sorted(set(before) | set(after)):
++            for field in fields:
++                b, a = before.get(oid, {}).get(field), after.get(oid, {}).get(field)
++                if b != a:
++                    out.append({"object_id": oid, "field": f"spatial.{group}.{field}",
++                                "before": b, "after": a,
++                                "reason": "Studio 源提案对象变化（同一稳定对象 ID）"})
++    return out
++
++
++def adapt_proposal(plan: dict, *, provenance: dict, site: dict, catalog: dict,
++                   actor_id: str, created_at: str, set_id: str, option_id: str,
++                   revision_no: int, parent_revision_id: str | None,
++                   previous_spatial: dict | None = None,
++                   expected_unit: str = "mm") -> dict:
++    """Build ONE rkd-ai-design-option.v1 document from a Studio valid draft."""
++    validate_source(plan, expected_unit=expected_unit, catalog=catalog)
++    validation = exact_geometry_checks(plan, site)
++    artifact_id = str(provenance["artifact_id"])
++    source_sha = str(provenance["sha256"])
++
++    objects, zone_id_map = _legacy_objects(plan, artifact_id, catalog)
++    main_circulation, exact_circulation = _circulation(plan, artifact_id)
++    obstacles = _obstacles(site, artifact_id)
++
++    id_map = list(zone_id_map)
++    for c in plan["circulation"]:
++        id_map.append({"source_object_id": str(c["id"]),
++                       "target_object_id": str(c["id"]), "group": "circulation"})
++    for fx in (plan.get("ceiling") or {}).get("fixtures") or []:
++        id_map.append({"source_object_id": str(fx.get("id")),
++                       "target_object_id": str(fx.get("id")), "group": "ceiling.fixtures"})
++
++    spatial_zones = [{
++        "object_id": str(z["id"]), "name": str(z["name"]), "role": str(z.get("role") or ""),
++        "polygon_mm": [[float(p[0]), float(p[1])] for p in z["polygon"]],
++        "area_sqm": z.get("area_sqm"), "source_refs": [artifact_id],
++    } for z in plan["zones"]]
++    spatial_furniture = [{
++        "object_id": str(f["id"]), "catalog_id": str(f["catalog_id"]),
++        "x_mm": float(f["x"]), "y_mm": float(f["y"]), "rot": float(f["rot"]),
++        "w_mm": catalog.get(str(f["catalog_id"]), {}).get("w_mm"),
++        "d_mm": catalog.get(str(f["catalog_id"]), {}).get("d_mm"),
++        "source_refs": [artifact_id],
++    } for f in plan["furniture"]]
++    spatial_platforms = [{
++        "object_id": str(p["id"]), "name": str(p.get("name") or p["id"]),
++        "kind": p.get("kind"), "polygon_mm": [[float(q[0]), float(q[1])]
++                                             for q in (p.get("polygon") or [])],
++        "corner_radius_mm": p.get("corner_radius_mm"), "height_mm": p.get("height_mm"),
++        "source_refs": [artifact_id],
++    } for p in (plan.get("platforms") or [])]
++    ceiling = copy.deepcopy(plan.get("ceiling") or {})
++    spatial_materials = [{
++        "material_id": f"catalog:{cid}", "intent": "catalog_reference_only",
++        "known_status": "unknown", "value": None,
++        "unknown_reason": "目录条目不含材料规格/产品选型/样板状态",
++    } for cid in sorted({str(f["catalog_id"]) for f in plan["furniture"]})]
++    unknown_items = [{"statement": str(q), "value": None, "known_status": "unknown",
++                      "unknown_reason": "源提案的开放问题，程序不补答案"}
++                     for q in (plan.get("open_questions") or [])]
++
++    unsupported = _unsupported(plan)
++    ent = site.get("entrance") or [0, 0, 0]
++    boundary = {
++        "width": _dec(site["width_mm"], mm=True),
++        "length": _dec(site["height_mm"], mm=True),
++        "unit": "m",
++        "boundary_source": "manual_boundary_not_site_verified",
++        "entrance": {"side": "left", "point": [_dec(ent[0], mm=True), _dec(ent[1], mm=True)],
++                     "width": _dec(ent[2], mm=True)},
++        "obstacles": obstacles,
++    }
++    strategy = {
++        "strategy_id": f"studio-{plan.get('option_id')}-r{plan.get('revision')}",
++        "statement": f"{plan['strategy']['name']}：{plan['strategy']['narrative'][:180]}",
++        "tradeoffs": list(plan["strategy"].get("tradeoffs") or []),
++        "source_refs": [artifact_id],
++    }
++    spatial = {
++        "schema_version": SPATIAL_VERSION,
++        "unit": "mm",
++        "origin": {"coordinate_system": "southwest_origin_x_east_y_north",
++                   "source_contract": DRAFT_VERSION,
++                   "unit": "mm", "boundary_mm": [site["width_mm"], site["height_mm"]],
++                   "note": "与 Studio 提案同一局部坐标系；原点西南，+X 东、+Y 北"},
++        "zones": spatial_zones, "circulation": exact_circulation,
++        "platforms": spatial_platforms, "furniture": spatial_furniture,
++        "ceiling": ceiling, "materials": spatial_materials,
++        "views": [], "unsupported_items": unsupported, "unknown_items": unknown_items,
++        "source": {
++            "origin_kind": "studio_import",
++            "studio_project_id": str(provenance["studio_project_id"]),
++            "main_project_id": str(provenance["main_project_id"]),
++            "artifact_id": artifact_id,
++            "revision_uid": provenance.get("revision_uid"),
++            "parent_revision_uid": provenance.get("parent_revision_uid"),
++            "sha256": source_sha,
++            "contract_version": DRAFT_VERSION,
++            "option_id": str(plan.get("option_id")),
++            "revision": int(plan.get("revision") or 1),
++            "candidate_group_id": provenance.get("candidate_group_id"),
++            "run_id": provenance.get("run_id"),
++            "draft_identity": {k: plan.get(k) for k in
++                               ("contract_version", "project_id", "option_id", "revision",
++                                "parent_revision", "author")},
++            "site_source": {"source": site.get("source"), "width_mm": site["width_mm"],
++                            "height_mm": site["height_mm"], "ceiling_mm": site.get("ceiling_mm"),
++                            "entrance_mm": list(ent)},
++        },
++        "adaptation": {
++            "adapter_version": ADAPTER_VERSION,
++            "mapping_version": MAPPING_VERSION,
++            "unit_conversion": "mm_to_m_div_1000",
++            "geometry_mode": "polygon_exact_in_spatial_bbox_derived_in_legacy_objects",
++            "object_id_map": id_map,
++            "losses": [
++                {"item": "legacy objects[].shape", "loss": "bounding_box_only",
++                 "compensated_by": "spatial.zones[].polygon_mm"},
++                {"item": "circulation.segments[].shape", "loss": "centerline_bbox_only",
++                 "compensated_by": "spatial.circulation[].path_mm"},
++                {"item": "materials / views", "loss": "not_modelled_in_studio",
++                 "compensated_by": "spatial.unsupported_items + spatial.materials"},
++            ],
++            "field_ledger": [],
++        },
++        "area_table": [{"name": str(a.get("name")), "area_sqm": a.get("area_sqm")}
++                       for a in plan["area_table"]],
++        "open_questions": [str(q) for q in (plan.get("open_questions") or [])],
++    }
++
++    model: dict[str, Any] = {
++        "schema_version": OPTION_SCHEMA_VERSION,
++        "set_id": set_id,
++        "option_id": option_id,
++        "revision_no": int(revision_no),
++        "parent_revision_id": parent_revision_id,
++        "strategy": strategy,
++        "boundary": boundary,
++        "objects": objects,
++        "relationships": _relationships(plan, artifact_id),
++        "circulation": main_circulation,
++        "materials": [{
++            "material_id": "studio-material-unspecified",
++            "name": "材料规格未指定（Studio 提案仅有意向）",
++            "intent": "unknown", "status": "intent_only", "source_refs": [artifact_id],
++        }],
++        "cost": {
++            "currency": "CNY",
++            "budget": {"value": None, "unit": "CNY", "known_status": "unknown",
++                       "unknown_reason": "Studio 提案未给出预算数值", "source_refs": []},
++            "known_items": [],
++            "unknown_items": [{"statement": u["item"], "unit": "CNY",
++                               "known_status": "unknown", "value": None,
++                               "unknown_reason": u["reason"]} for u in unsupported],
++            "total_project_estimate": {"value": None, "unit": "CNY",
++                                       "known_status": "unknown",
++                                       "unknown_reason": "候选阶段不生成完整项目估价",
++                                       "source_refs": []},
++            "formal_quote": False,
++        },
++        "validation": validation,
++        "lifecycle_status": "candidate",
++        # coarse legacy enum kept deliberately (no DB migration / no third model);
++        # exact provenance lives in spatial.source.origin_kind="studio_import"
++        "source_kind": "human_edit",
++        "generation": {
++            "provider_kind": "studio_proposal_adapter",
++            "provider_name": "StudioProposalAdapter",
++            "model_id": None, "real_model": False,
++            "adapter_version": ADAPTER_VERSION,
++            "prompt_version": "not_applicable",
++            "schema_version": OPTION_SCHEMA_VERSION,
++            "config_hash": sha256_hex({"adapter_version": ADAPTER_VERSION,
++                                       "mapping_version": MAPPING_VERSION,
++                                       "option_schema": OPTION_SCHEMA_VERSION}),
++            "input_hash": sha256_hex({"artifact_id": artifact_id, "sha256": source_sha,
++                                      "plan": plan}),
++            "generated_at": created_at,
++            "interpretation_method": "deterministic_field_mapping_v1",
++        },
++        "feedback": {"text": None, "parsed_intents": [], "locks": [],
++                     "interpretation_method": "not_applicable"},
++        "diff": [],
++        "conflicts": [],
++        "change_reason": (f"从 Studio 有效提案 {artifact_id}（sha256={source_sha[:12]}…）"
++                          "经确定性适配器导入；未改采用指针/生产/采购/正式发布"),
++        "actor_id": actor_id,
++        "created_at": created_at,
++        "structure_signature": {},
++        "spatial": spatial,
++    }
++    spatial["adaptation"]["field_ledger"] = _ledger(plan, spatial, model, artifact_id)
++    model["diff"] = diff_spatial(previous_spatial, spatial)
++
++    from .ai_design_geometry import structure_signature
++    signature = structure_signature(model)
++    signature["spatial_polygon_count"] = len(spatial_zones)
++    signature["spatial_polygon_signature"] = sha256_hex(
++        [z["polygon_mm"] for z in spatial_zones])[:16]
++    model["structure_signature"] = signature
++    return model
++
++
++# ------------------------------------------------------------------------ SVG
++def render_spatial_svg(model: dict) -> bytes:
++    """Plan drawn from the EXACT mm polygons (not from the derived bboxes)."""
++    spatial = model["spatial"]
++    width = float(spatial["origin"]["boundary_mm"][0])
++    height = float(spatial["origin"]["boundary_mm"][1])
++    scale = 900.0 / max(width, height)
++    pad_x, pad_y = 70.0, 70.0
++    W = width * scale + 2 * pad_x + 240
++    H = height * scale + 2 * pad_y + 130
++
++    def X(x: float) -> float:
++        return pad_x + x * scale
++
++    def Y(y: float) -> float:
++        return H - pad_y - y * scale
++
++    def pts(polygon: list) -> str:
++        return " ".join(f"{X(float(p[0])):.2f},{Y(float(p[1])):.2f}" for p in polygon)
++
++    palette = ["#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#e0e7ff", "#ccfbf1",
++               "#fee2e2", "#ede9fe"]
++    parts = [
++        f'<svg xmlns="http://www.w3.org/2000/svg" width="{W:.0f}" height="{H:.0f}" '
++        f'viewBox="0 0 {W:.0f} {H:.0f}">',
++        '<rect width="100%" height="100%" fill="#fbfaf7"/>',
++        f'<rect x="{pad_x}" y="{Y(height):.2f}" width="{width*scale:.2f}" '
++        f'height="{height*scale:.2f}" fill="#ffffff" stroke="#1f2937" stroke-width="3"/>',
++    ]
++    # exact zone polygons
++    for i, z in enumerate(spatial["zones"]):
++        poly = z["polygon_mm"]
++        fill = palette[i % len(palette)]
++        parts.append(f'<polygon points="{pts(poly)}" fill="{fill}" fill-opacity="0.75" '
++                     f'stroke="#334155" stroke-width="1.6"/>')
++        cx = sum(float(p[0]) for p in poly) / len(poly)
++        cy = sum(float(p[1]) for p in poly) / len(poly)
++        parts.append(f'<text x="{X(cx):.1f}" y="{Y(cy):.1f}" text-anchor="middle" '
++                     f'font-size="13" font-family="sans-serif" fill="#111827">'
++                     f'{escape(z["name"])}</text>')
++        parts.append(f'<text x="{X(cx):.1f}" y="{Y(cy)+16:.1f}" text-anchor="middle" '
++                     f'font-size="10" font-family="sans-serif" fill="#475569">'
++                     f'{escape(z["object_id"])} · {z["area_sqm"]}㎡</text>')
++    # circulation exact polylines
++    for c in spatial["circulation"]:
++        path = c["path_mm"]
++        parts.append('<polyline points="' + pts(path) + '" fill="none" stroke="#dc2626" '
++                     'stroke-width="3" stroke-dasharray="9 5" opacity="0.85"/>')
++        parts.append(f'<text x="{X(float(path[0][0]))+6:.1f}" y="{Y(float(path[0][1]))-8:.1f}" '
++                     f'font-size="11" fill="#b91c1c" font-family="sans-serif">'
++                     f'{escape(c["object_id"])} · {c["width_mm"]}mm</text>')
++    # platforms
++    for p in spatial["platforms"]:
++        if len(p["polygon_mm"]) >= 3:
++            parts.append(f'<polygon points="{pts(p["polygon_mm"])}" fill="#f8fafc" '
++                         f'stroke="#b45309" stroke-width="2" stroke-dasharray="4 3"/>')
++    # furniture footprints (catalog size, rotation as a labelled marker)
++    for f in spatial["furniture"]:
++        w, d = float(f.get("w_mm") or 600), float(f.get("d_mm") or 600)
++        x, y = float(f["x_mm"]), float(f["y_mm"])
++        parts.append(f'<rect x="{X(x-w/2):.1f}" y="{Y(y+d/2):.1f}" '
++                     f'width="{w*scale:.1f}" height="{d*scale:.1f}" fill="#94a3b8" '
++                     f'fill-opacity="0.65" stroke="#334155" stroke-width="1"/>')
++        parts.append(f'<text x="{X(x):.1f}" y="{Y(y):.1f}" text-anchor="middle" '
++                     f'font-size="10" font-family="sans-serif" fill="#0f172a">'
++                     f'{escape(f["object_id"])}</text>')
++    # ceiling fixtures as intent markers
++    for fx in (spatial["ceiling"].get("fixtures") or []):
++        x, y = float(fx.get("x") or 0), float(fx.get("y") or 0)
++        parts.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="4" fill="#f59e0b"/>')
++    # keep-outs from the main boundary
++    for o in model["boundary"]["obstacles"]:
++        s = o["shape"]
++        parts.append(f'<rect x="{X(float(s["x"])*1000):.1f}" '
++                     f'y="{Y((float(s["y"])+float(s["length"]))*1000):.1f}" '
++                     f'width="{float(s["width"])*1000*scale:.1f}" '
++                     f'height="{float(s["length"])*1000*scale:.1f}" fill="#e2e8f0" '
++                     f'stroke="#64748b" stroke-width="1.5" stroke-dasharray="5 3"/>')
++    # title / legend
++    sy = 30
++    parts.append(f'<text x="{pad_x}" y="{sy}" font-size="17" font-family="sans-serif" '
++                 f'fill="#111827">{escape(model["strategy"]["statement"][:52])}</text>')
++    parts.append(f'<text x="{pad_x}" y="{sy+20}" font-size="11" font-family="sans-serif" '
++                 f'fill="#475569">源 {escape(spatial["source"]["artifact_id"])} · '
++                 f'主系统候选 {escape(model["option_id"])} v{model["revision_no"]} · '
++                 f'精确多边形（mm，未经矩形化）</text>')
++    lx = width * scale + pad_x + 25
++    ly = Y(height) + 20
++    parts.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="12" font-weight="bold" '
++                 f'font-family="sans-serif">适配缺项（保留为 unknown）</text>')
++    for i, u in enumerate(spatial["unsupported_items"][:8]):
++        parts.append(f'<text x="{lx:.1f}" y="{ly + 22 + i*18:.1f}" font-size="10" '
++                     f'font-family="sans-serif" fill="#475569">· {escape(u["item"][:22])}</text>')
++    parts.append(f'<text x="{lx:.1f}" y="{ly + 22 + 8*18:.1f}" font-size="10" '
++                 f'font-family="sans-serif" fill="#991b1b">候选 ≠ 采用 / 施工图 / 报价</text>')
++    parts.append('</svg>')
++    return "".join(parts).encode("utf-8")
++
++
++# --------------------------------------------------- explicit Studio read boundary
++class StudioProposalSource:
++    """The ONLY W1 read boundary into Studio's own store.
++
++    The main system never reads Studio tables directly: it goes through this
++    adapter-facing wrapper (``get_project`` / ``artifact_by_id`` / ``artifacts``),
++    and every project mapping is checked explicitly before use.
++    """
++
++    def __init__(self, store: Any | None = None) -> None:
++        if store is None:
++            from .studio.store import Store
++            store = Store()
++        self.store = store
++
++    def project(self, studio_project_id: str) -> dict | None:
++        return self.store.get_project(studio_project_id)
++
++    def resolve(self, main_project_id: str) -> str | None:
++        return self.store.resolve_project_id(main_project_id)
++
++    def artifact(self, artifact_id: str) -> dict | None:
++        return self.store.artifact_by_id(artifact_id)
++
++    def valid_proposals(self, studio_project_id: str) -> list[dict]:
++        out = []
++        for a in self.store.artifacts(studio_project_id):
++            if (a.get("kind") == "spatial-plan"
++                    and a.get("contract_status") == "valid_candidate"
++                    and a.get("status") not in ("superseded", "invalid_raw")):
++                payload = a.get("payload") or {}
++                out.append({
++                    "artifact_id": a["id"], "sha256": a.get("sha256"),
++                    "revision_uid": a.get("revision_uid"),
++                    "parent_revision_uid": a.get("parent_revision_uid"),
++                    "option_id": a.get("option_id"), "revision": a.get("revision"),
++                    "run_id": a.get("run_id"),
++                    "candidate_group_id": a.get("candidate_group_id"),
++                    "created_at": a.get("created_at"),
++                    "strategy_name": (payload.get("strategy") or {}).get("name"),
++                    "zone_count": len(payload.get("zones") or []),
++                })
++        return out
+diff --git a/mvp/rkd_mvp/api_server.py b/mvp/rkd_mvp/api_server.py
+index 7bc82ce..17a0f20 100644
+--- a/mvp/rkd_mvp/api_server.py
++++ b/mvp/rkd_mvp/api_server.py
+@@ -271,6 +271,18 @@ class ApiRoutes:
+                 self.end_headers()
+                 self.wfile.write(file_path.read_bytes())
+                 return
++            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-sources", path)
++            if ai_match:
++                return self._json(200, self.service.get_ai_design_studio_sources(
++                    organization_id, ai_match.group(1)))
++            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-imports/([^/]+)", path)
++            if ai_match:
++                return self._json(200, self.service.get_ai_design_studio_import_detail(
++                    organization_id, ai_match.group(1), ai_match.group(2)))
++            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-imports", path)
++            if ai_match:
++                return self._json(200, self.service.list_ai_design_studio_imports(
++                    organization_id, ai_match.group(1)))
+             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options", path)
+             if ai_match:
+                 return self._json(200, self.service.get_ai_design_options(organization_id, ai_match.group(1)))
+@@ -490,6 +502,10 @@ class ApiRoutes:
+                     organization_id, ai_match.group(1), actor_id,
+                     {**self._body(), "option_id": ai_match.group(2)},
+                 ))
++            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/import-studio", path)
++            if ai_match:
++                return self._json(200, self.service.import_ai_design_studio_proposal(
++                    organization_id, ai_match.group(1), actor_id, self._body()))
+             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options", path)
+             if ai_match:
+                 return self._json(202, self.service.submit_ai_design_options(
+diff --git a/mvp/rkd_mvp/api_service.py b/mvp/rkd_mvp/api_service.py
+index b7180b0..5696f0a 100644
+--- a/mvp/rkd_mvp/api_service.py
++++ b/mvp/rkd_mvp/api_service.py
+@@ -51,7 +51,8 @@ class ApiService:
+                  ai_development_service: AIDevelopmentService | None = None,
+                  ai_source_extraction_service: AISourceExtractionService | None = None,
+                  ai_technical_delivery_service: AITechnicalDeliveryService | None = None,
+-                 runtime_root: str | Path | None = None) -> None:
++                 runtime_root: str | Path | None = None,
++                 studio_source: Any | None = None) -> None:
+         self.app = app or MVPApp()
+         self.file_service = file_service
+         db_path = getattr(self.app.store, "db_path", None)
+@@ -93,7 +94,8 @@ class ApiService:
+         root = Path(runtime_root) if runtime_root else (Path(db_path).parent if db_path else None)
+         self.ai_design_option_service = ai_design_option_service or (
+             AIDesignOptionService(SQLiteAIDesignOptionRepository(db_path), ai_brief_provider,
+-                                  ai_design_context_provider, root)
++                                  ai_design_context_provider, root,
++                                  studio_source=studio_source)
+             if db_path and self.ai_requirement_service and root else None
+         )
+         self.ai_development_service = ai_development_service or (
+@@ -407,6 +409,35 @@ class ApiService:
+         except AIDesignOptionServiceError as error:
+             raise ApiError(error.status, error.code, error.message) from error
+ 
++    def get_ai_design_studio_sources(self, organization_id: str, project_id: str) -> dict[str, Any]:
++        self._require_project(organization_id, project_id)
++        return self._ai_options().studio_sources(organization_id, project_id)
++
++    def import_ai_design_studio_proposal(self, organization_id: str, project_id: str,
++                                         actor_id: str, request: dict[str, Any]) -> dict[str, Any]:
++        self._require_project(organization_id, project_id)
++        try:
++            return self._ai_options().import_studio_proposal(
++                organization_id, project_id, actor_id, request)
++        except AIDesignOptionServiceError as error:
++            raise ApiError(error.status, error.code, error.message) from error
++        except Exception as error:  # noqa: BLE001 - surface a failed import, never half a write
++            raise ApiError(500, "STUDIO_IMPORT_FAILED",
++                           f"导入事务失败已回滚：{type(error).__name__}: {error}") from error
++
++    def list_ai_design_studio_imports(self, organization_id: str, project_id: str) -> dict[str, Any]:
++        self._require_project(organization_id, project_id)
++        return self._ai_options().list_studio_imports(organization_id, project_id)
++
++    def get_ai_design_studio_import_detail(self, organization_id: str, project_id: str,
++                                           option_revision_id: str) -> dict[str, Any]:
++        self._require_project(organization_id, project_id)
++        try:
++            return self._ai_options().studio_import_detail(
++                organization_id, project_id, option_revision_id)
++        except AIDesignOptionServiceError as error:
++            raise ApiError(error.status, error.code, error.message) from error
++
+     def get_ai_design_option_artifact(self, organization_id: str, project_id: str,
+                                       artifact_id: str) -> tuple[dict[str, Any], Path]:
+         self._require_project(organization_id, project_id)
+diff --git a/scripts/verify_w1_browser.cjs b/scripts/verify_w1_browser.cjs
+new file mode 100644
+index 0000000..b81586a
+--- /dev/null
++++ b/scripts/verify_w1_browser.cjs
+@@ -0,0 +1,139 @@
++/* W1 真实浏览器验收：从页面触发一次 Studio 提案导入并查看目标模型。
++   0 外部调用、0 密钥、0 费用。由 verify_w1_browser.py 驱动。 */
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { chromium } = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
++
++const url = process.env.RKD_QA_URL;
++const evidence = process.env.RKD_QA_EVIDENCE_DIR;
++const projectId = process.env.RKD_QA_PROJECT_ID;
++const artifactId = process.env.RKD_QA_STUDIO_ARTIFACT_ID;
++assert(url && evidence && projectId && artifactId, 'isolated W1 browser config required');
++
++const api = `${url}/api/v1/projects/${projectId}/ai/design-options`;
++
++(async () => {
++  const browser = await chromium.launch({ channel: 'msedge', headless: true });
++  const page = await browser.newPage({ viewport: { width: 1500, height: 1050 } });
++  const errors = [];
++  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
++  page.on('console', m => {
++    if (m.type() !== 'error') return;
++    const t = m.text();
++    if (/Failed to load resource.*404|status of 404/.test(t)) return;
++    errors.push('console: ' + t);
++  });
++  page.on('dialog', async d => { await d.accept('W1 导入'); });
++  const obs = { artifactId };
++  try {
++    await page.goto(url, { waitUntil: 'domcontentloaded' });
++    await page.locator('.project-item').first().waitFor({ timeout: 25000 });
++    await page.locator('.project-item').first().click();
++    await page.locator('.view-tabs button').filter({ hasText: '需求草稿' }).click();
++    await page.locator('.design-modes button').filter({ hasText: 'AI 候选' }).click();
++    await page.locator('[data-testid="studio-source-select"]').waitFor({ timeout: 20000 });
++
++    const mapping = (await page.locator('[data-testid="studio-mapping"]').innerText()).replace(/\s+/g, ' ');
++    obs.mapping_text = mapping;
++    assert(/project_ningbo_xiecheng_2026/.test(mapping), 'page does not show the explicit Studio→main mapping');
++
++    const options = await page.locator('[data-testid="studio-source-select"] option').allTextContents();
++    obs.source_options = options;
++    assert(options.some(o => o.includes(artifactId)), 'Studio valid proposal is not listed');
++
++    const before = await (await page.request.get(`${api}/studio-imports`)).json();
++    obs.imports_before = before.items.length;
++    assert.equal(before.items.length, 0, 'isolated project already has imports');
++
++    await page.locator('[data-testid="studio-source-select"]').selectOption(artifactId);
++    await page.locator('[data-testid="studio-import-button"]').click();
++    await page.locator('[data-testid="studio-import-row"]').first().waitFor({ timeout: 25000 });
++
++    const imported = await (await page.request.get(`${api}/studio-imports`)).json();
++    obs.imports_after = imported.items.length;
++    const row = imported.items[0].revisions[0];
++    obs.imported_revision = {
++      option_id: row.option_id, revision_no: row.revision_no,
++      parent_revision_id: row.parent_revision_id,
++      source_artifact_id: row.source.artifact_id,
++      unsupported_items: row.unsupported_items.map(u => u.item),
++      artifact_count: row.artifacts.length,
++    };
++    assert.equal(imported.items.length, 1);
++    assert.equal(row.source.artifact_id, artifactId);
++    assert.equal(row.revision_no, 1);
++    assert.equal(row.parent_revision_id, null);
++    assert(row.artifacts.length >= 1, 'no target model artifact');
++
++    // API / page / storage version agreement
++    const status = await (await page.request.get(api)).json();
++    const inGrid = (status.item?.options || []).find(o => o.option_revision_id === row.option_revision_id);
++    obs.target_model_in_api = Boolean(inGrid);
++    obs.target_model_spatial = inGrid?.model?.spatial ? {
++      zones: inGrid.model.spatial.zones.length,
++      non_rectangular: inGrid.model.spatial.zones.filter(z => z.polygon_mm.length > 4).map(z => z.object_id),
++      unit: inGrid.model.spatial.unit,
++      origin_kind: inGrid.model.spatial.source.origin_kind,
++    } : null;
++    assert(inGrid, 'imported candidate is not visible via the normal candidate API');
++    assert(obs.target_model_spatial.zones >= 3 && obs.target_model_spatial.non_rectangular.length >= 1,
++      'exact non-rectangular geometry missing from target model');
++    assert.equal(obs.target_model_spatial.unit, 'mm');
++    assert.equal(obs.target_model_spatial.origin_kind, 'studio_import');
++
++    // SVG bytes from the page link are real and polygon-based
++    const svgResp = await page.request.get(`${api}/artifacts/${row.artifacts[0].artifact_id}/content`);
++    const svg = await svgResp.text();
++    obs.svg_bytes = Buffer.byteLength(svg);
++    obs.svg_has_polygon = svg.includes('<polygon');
++    assert.equal(svgResp.status(), 200);
++    assert(svg.includes('<polygon'), 'target drawing is not polygon-based');
++    obs.svg_matches_stored_sha = require('node:crypto').createHash('sha256').update(svg).digest('hex') === row.artifacts[0].sha256;
++
++    // adoption / production / procurement / release untouched
++    const adoption = await (await page.request.get(`${url}/api/v1/projects/${projectId}/design`)).json();
++    obs.design_item_after_import = adoption.item ?? null;
++    obs.adoption = status.adoption;
++    assert.equal(status.adoption, null, 'import changed the adoption pointer');
++
++    // field reconciliation from the page
++    await page.locator('[data-testid="studio-import-row"] button').filter({ hasText: '字段对账' }).first().click();
++    await page.locator('[data-testid="studio-import-detail"] .ledger-table').waitFor({ timeout: 20000 });
++    const ledgerRows = await page.locator('[data-testid="studio-import-detail"] .ledger-table tbody tr').count();
++    const detailText = (await page.locator('[data-testid="studio-import-detail"]').innerText()).replace(/\s+/g, ' ');
++    obs.ledger_rows = ledgerRows;
++    obs.unsupported_visible = /相机与人眼视图/.test(detailText) && /材料规格/.test(detailText);
++    obs.geometry_mode_visible = /polygon_exact_in_spatial_bbox_derived_in_legacy_objects/.test(detailText);
++    assert(ledgerRows > 20, 'field ledger is not visible on the page');
++    assert(obs.unsupported_visible, 'named unsupported items are not visible');
++    assert(obs.geometry_mode_visible, 'geometry mode / bounding-box loss not visible');
++
++    await page.screenshot({ path: path.join(evidence, 'w1-import-desktop.png'), fullPage: true });
++
++    // 390px
++    await page.setViewportSize({ width: 390, height: 844 });
++    await page.waitForTimeout(700);
++    obs.mobile_scroll_width = await page.evaluate(() => document.documentElement.scrollWidth);
++    assert(obs.mobile_scroll_width <= 390, `mobile overflow: ${obs.mobile_scroll_width}`);
++    await page.screenshot({ path: path.join(evidence, 'w1-import-mobile.png'), fullPage: true });
++
++    obs.page_errors = errors;
++    assert.equal(errors.length, 0, 'browser JS errors: ' + errors.join(' | '));
++    obs.passed = true;
++    fs.writeFileSync(path.join(evidence, 'browser-observations.json'), JSON.stringify(obs, null, 2));
++    console.log(JSON.stringify({ passed: true, revision: obs.imported_revision,
++      ledger_rows: ledgerRows, svg_bytes: obs.svg_bytes }, null, 2));
++    await browser.close();
++    process.exit(0);
++  } catch (e) {
++    obs.passed = false;
++    obs.failure = String((e && e.message) || e);
++    obs.page_errors = errors;
++    fs.writeFileSync(path.join(evidence, 'browser-observations.json'), JSON.stringify(obs, null, 2));
++    console.error(String((e && e.stack) || e));
++    await browser.close();
++    process.exit(1);
++  }
++})();
+diff --git a/scripts/verify_w1_browser.py b/scripts/verify_w1_browser.py
+new file mode 100644
+index 0000000..5530973
+--- /dev/null
++++ b/scripts/verify_w1_browser.py
+@@ -0,0 +1,180 @@
++"""W1 真实浏览器验收：从页面触发一次 Studio 提案导入并查看目标模型。
++
++隔离主工作台 + 隔离 Studio 库 + 明确标记的本地夹具；0 外部调用、0 密钥、0 费用。
++用法：python scripts/verify_w1_browser.py --out <dir> --runtime <dir>
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import socket
++import subprocess
++import sys
++import threading
++import time
++from datetime import datetime, timezone
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++
++
++def _arg(flag: str, default: Path) -> Path:
++    for i, a in enumerate(sys.argv):
++        if a == flag and i + 1 < len(sys.argv):
++            return Path(sys.argv[i + 1]).resolve()
++        if a.startswith(flag + "="):
++            return Path(a.split("=", 1)[1]).resolve()
++    return default
++
++
++EVIDENCE = _arg("--out", ROOT / "var/evidence/roadmap/W1-统一模型适配/after/browser")
++RUNTIME = _arg("--runtime", ROOT / "var/evidence/roadmap/W1-统一模型适配/browser-runtime")
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME.mkdir(parents=True, exist_ok=True)
++MAIN_DB = RUNTIME / "app.sqlite3"
++STUDIO_DB = RUNTIME / "studio.db"
++for f in (MAIN_DB, STUDIO_DB):
++    if f.exists():
++        f.unlink()
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from arc_first_batch_stub import SITE, valid_proposal  # noqa: E402
++from rkd_mvp.ai_design_option_provider import (  # noqa: E402
++    DesignOptionConfig, build_design_option_provider)
++from rkd_mvp.ai_design_option_repository import SQLiteAIDesignOptionRepository  # noqa: E402
++from rkd_mvp.ai_design_option_service import AIDesignOptionService  # noqa: E402
++from rkd_mvp.ai_design_studio_adapter import StudioProposalSource  # noqa: E402
++from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider  # noqa: E402
++from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository  # noqa: E402
++from rkd_mvp.ai_requirement_service import AIRequirementService  # noqa: E402
++from rkd_mvp.api_server import create_server  # noqa: E402
++from rkd_mvp.api_service import ApiService  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.identity import LocalIdentityProvider  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from rkd_mvp.studio import orchestrator, validation  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++
++FIXTURE_ROOT = ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09"
++
++
++def _free_port() -> int:
++    s = socket.socket()
++    s.bind(("127.0.0.1", 0))
++    p = s.getsockname()[1]
++    s.close()
++    return p
++
++
++def main() -> int:
++    started = time.monotonic()
++    studio = Store(STUDIO_DB)
++    orchestrator.Studio(studio).seed_from_fixtures()
++    source = StudioProposalSource(studio)
++    rep = validation.validate_proposal(
++        valid_proposal("A"), project={"id": "ningbo-xiecheng", "site": SITE},
++        option_id="A", revision=1, parent_revision=None)
++    assert rep["ok"], rep["repair_feedback"][:300]
++    art_id = studio.save_artifact(
++        "ningbo-xiecheng", "spatial-plan", rep["plan"], "D2", option_id="A",
++        revision=1, status="valid_candidate", contract_status="valid_candidate",
++        revision_uid="revuid_w1_browser", run_id="run_w1_browser",
++        candidate_group_id="candgroup_w1_browser",
++        input_hash_value="browser_fixture_hash", check_report_id="check_w1_browser",
++        diagnostics={"source": "labelled_local_fixture_not_real_AI"})
++
++    main_store = SQLiteStore(MAIN_DB)
++    files = FileService(MAIN_DB, RUNTIME)
++    requirements = RequirementService(MAIN_DB)
++    brief_config = AIProviderConfig(
++        kind="synthetic", name="本地合成测试通道（非真实 AI）", model_id=None,
++        base_url=None, api_key_present=False, adapter_version="rkd-model-provider.v1",
++        prompt_version="requirement-understanding.zh-CN.v1",
++        schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++        max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++        real_model=False, configuration_errors=[])
++    option_config = DesignOptionConfig(
++        kind="synthetic", name="本地合成设计通道（非真实 AI）",
++        adapter_version="rkd-design-option-provider.v1",
++        prompt_version="design-option-strategy.zh-CN.v1",
++        schema_version="rkd-ai-design-option.v1", max_candidates=2,
++        real_model=False, configuration_errors=[])
++    requirement_ai = AIRequirementService(
++        SQLiteAIRequirementRepository(MAIN_DB), requirements, config=brief_config,
++        provider_factory=lambda config: build_provider(config))
++    options_ai = AIDesignOptionService(
++        SQLiteAIDesignOptionRepository(MAIN_DB),
++        lambda org, project: requirement_ai.status(org, project)["item"],
++        lambda org, project: {"width": "12", "length": "8",
++                              "boundary_source": "test_parameters_not_site_verified",
++                              "obstacles": []},
++        RUNTIME, config=option_config,
++        provider=build_design_option_provider(option_config),
++        studio_source=source)
++    service = ApiService(MVPApp(main_store), files, requirement_service=requirements,
++                         ai_requirement_service=requirement_ai,
++                         ai_design_option_service=options_ai, runtime_root=RUNTIME,
++                         studio_source=source)
++    files.seed_ningbo(service, FIXTURE_ROOT)
++
++    port = _free_port()
++    server = create_server(service, LocalIdentityProvider(), port=port,
++                           static_dir=ROOT / "web" / "dist")
++    thread = threading.Thread(target=server.serve_forever, name="w1-browser", daemon=True)
++    thread.start()
++    env = {k: v for k, v in os.environ.items()
++           if k not in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
++                        "ALL_PROXY", "all_proxy")}
++    env.update({
++        "RKD_QA_URL": f"http://127.0.0.1:{port}",
++        "RKD_QA_EVIDENCE_DIR": str(EVIDENCE),
++        "RKD_QA_PROJECT_ID": NINGBO_PROJECT_ID,
++        "RKD_QA_STUDIO_ARTIFACT_ID": art_id,
++    })
++    node = shutil.which("node")
++    if not node:
++        raise RuntimeError("node not found")
++    try:
++        proc = subprocess.run([node, str(ROOT / "scripts" / "verify_w1_browser.cjs")],
++                              cwd=str(ROOT), env=env, capture_output=True, text=True,
++                              errors="replace", timeout=420)
++        (EVIDENCE / "browser-stdout.log").write_text(proc.stdout or "", encoding="utf-8")
++        (EVIDENCE / "browser-stderr.log").write_text(proc.stderr or "", encoding="utf-8")
++        obs_path = EVIDENCE / "browser-observations.json"
++        obs = json.loads(obs_path.read_text(encoding="utf-8")) if obs_path.exists() else {}
++        result = {
++            "schema_version": "rkd-w1-browser-verification.v1",
++            "checked_at": datetime.now(timezone.utc).isoformat(),
++            "passed": bool(proc.returncode == 0 and obs.get("passed")),
++            "node_returncode": proc.returncode,
++            "duration_seconds": round(time.monotonic() - started, 2),
++            "selected_source": {"studio_project_id": "ningbo-xiecheng",
++                                "artifact_id": art_id,
++                                "source_kind": "labelled_local_fixture_not_real_AI"},
++            "entry_note": "页面正常入口：选择 Studio 有效提案 → 导入 → 查看目标模型图面与字段对账；未注入结构化目标",
++            "browser_observations": obs,
++            "external_calls": 0, "keys_used": False,
++            "model_channel": "labelled local fixture (no real AI)",
++            "boundaries": ["隔离主工作台 SQLite + 隔离 Studio 库；日常库未写入",
++                           "导入只产生候选；未改采用/量价/采购/发布",
++                           "本批仅证明工程适配，不证明设计质量或 AD 验收"],
++        }
++        (EVIDENCE / "verification.json").write_text(
++            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
++        print(json.dumps({"passed": result["passed"],
++                          "node_returncode": proc.returncode}, ensure_ascii=False))
++        if not result["passed"]:
++            print((proc.stderr or proc.stdout or "")[-3000:], flush=True)
++        return 0 if result["passed"] else 1
++    finally:
++        server.shutdown(); server.server_close(); thread.join(3)
++        main_store.close()
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify_w1_unified_model.py b/scripts/verify_w1_unified_model.py
+new file mode 100644
+index 0000000..c915f60
+--- /dev/null
++++ b/scripts/verify_w1_unified_model.py
+@@ -0,0 +1,620 @@
++"""W1 统一模型适配：真实 HTTP / 隔离库 / 两种布局 / 正负例 / 回滚 / 重启。
++
++用法：
++  python scripts/verify_w1_unified_model.py --out <dir> --runtime <dir>
++
++0 外部模型调用、0 外发、0 密钥。所有源提案都是明确标记的本地夹具
++（arc_first_batch_stub.valid_proposal），通过真实 Studio 库的有效候选产物进入
++正式适配器，不手搬 JSON、不在验收里补结构化目标冒充 AI 设计。
++"""
++from __future__ import annotations
++
++import copy
++import hashlib
++import json
++import os
++import shutil
++import sys
++import threading
++from datetime import datetime, timezone
++from http.client import HTTPConnection
++from pathlib import Path
++from urllib.parse import quote
++
++ROOT = Path(__file__).resolve().parents[1]
++
++
++def _arg(flag: str, default: Path) -> Path:
++    for i, a in enumerate(sys.argv):
++        if a == flag and i + 1 < len(sys.argv):
++            return Path(sys.argv[i + 1]).resolve()
++        if a.startswith(flag + "="):
++            return Path(a.split("=", 1)[1]).resolve()
++    return default
++
++
++EVIDENCE = _arg("--out", ROOT / "var/evidence/roadmap/W1-统一模型适配/after")
++RUNTIME = _arg("--runtime", ROOT / "var/evidence/roadmap/W1-统一模型适配/runtime")
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME.mkdir(parents=True, exist_ok=True)
++MAIN_DB = RUNTIME / "app.sqlite3"
++STUDIO_DB = RUNTIME / "studio.db"
++for f in (MAIN_DB, STUDIO_DB):
++    if f.exists():
++        f.unlink()
++shutil.rmtree(RUNTIME / "projects" / "ai-design-options" / "studio-import",
++              ignore_errors=True)
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from arc_first_batch_stub import SITE, valid_proposal  # noqa: E402
++from rkd_mvp.ai_design_option_provider import (  # noqa: E402
++    DesignOptionConfig, build_design_option_provider)
++from rkd_mvp.ai_design_option_repository import SQLiteAIDesignOptionRepository  # noqa: E402
++from rkd_mvp.ai_design_option_service import AIDesignOptionService  # noqa: E402
++from rkd_mvp.ai_design_studio_adapter import StudioProposalSource  # noqa: E402
++from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider  # noqa: E402
++from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository  # noqa: E402
++from rkd_mvp.ai_requirement_service import AIRequirementService  # noqa: E402
++from rkd_mvp.api_server import create_server  # noqa: E402
++from rkd_mvp.api_service import ApiService  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from rkd_mvp.studio import orchestrator as studio_orchestrator, validation  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++from rkd_mvp.studio.tools import CATALOG  # noqa: E402
++
++FIXTURE_ROOT = ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09"
++ORG = "org-local"
++PID = NINGBO_PROJECT_ID
++STUDIO_PID = "ningbo-xiecheng"
++OTHER_PID = "project_w1_other"
++CHECKS: list[dict] = []
++MODELS: dict[str, dict] = {}
++
++
++def check(cid: str, name: str, ok: bool, evidence: dict) -> None:
++    CHECKS.append({"id": cid, "name": name,
++                   "result": "observed_pass" if ok else "observed_fail",
++                   "evidence": evidence})
++    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++
++
++def brief_config() -> AIProviderConfig:
++    return AIProviderConfig(
++        kind="synthetic", name="本地合成测试通道（非真实 AI）", model_id=None,
++        base_url=None, api_key_present=False, adapter_version="rkd-model-provider.v1",
++        prompt_version="requirement-understanding.zh-CN.v1",
++        schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++        max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++        real_model=False, configuration_errors=[])
++
++
++def option_config() -> DesignOptionConfig:
++    return DesignOptionConfig(
++        kind="synthetic", name="本地合成设计通道（非真实 AI）",
++        adapter_version="rkd-design-option-provider.v1",
++        prompt_version="design-option-strategy.zh-CN.v1",
++        schema_version="rkd-ai-design-option.v1", max_candidates=2,
++        real_model=False, configuration_errors=[])
++
++
++def make_plan(letter: str, mutate=None) -> dict:
++    raw = valid_proposal(letter)
++    if mutate:
++        mutate(raw)
++    rep = validation.validate_proposal(
++        raw, project={"id": STUDIO_PID, "site": SITE},
++        option_id=letter, revision=1, parent_revision=None)
++    assert rep["ok"], rep["repair_feedback"][:400]
++    return rep["plan"]
++
++
++def mutated_plan(plan: dict, mutate) -> dict:
++    """Negative-case source: mutate an already-validated draft in place.
++
++    Studio's own validator would reject these BEFORE they become artifacts; for
++    adapter negative tests we deliberately inject a corrupt/expanded source
++    document into the isolated Studio store. This is a labelled test fixture.
++    """
++    out = copy.deepcopy(plan)
++    mutate(out)
++    return out
++
++
++def save_valid(studio: Store, letter: str, plan: dict, *, revision: int = 1) -> dict:
++    aid = studio.save_artifact(
++        STUDIO_PID, "spatial-plan", plan, "D2", option_id=letter, revision=revision,
++        parent_revision=None, status="valid_candidate", run_id="run_w1_fixture",
++        candidate_group_id="candgroup_w1_fixture",
++        revision_uid=f"revuid_w1_{letter}_{revision}_{len(plan['zones'])}",
++        parent_revision_uid=None,
++        input_hash_value=hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest(),
++        check_report_id="check_w1_fixture", contract_status="valid_candidate",
++        diagnostics={"source": "labelled_local_fixture_not_real_AI"})
++    return studio.artifact_by_id(aid)
++
++
++def http(method: str, path: str, body: dict | None = None):
++    payload = json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
++    headers = {"X-Organization-Id": ORG, "Content-Type": "application/json"}
++    if payload is not None:
++        headers["Content-Length"] = str(len(payload))
++    conn = HTTPConnection("127.0.0.1", PORT, timeout=20)
++    conn.request(method, path, payload, headers)
++    response = conn.getresponse()
++    raw = response.read()
++    conn.close()
++    try:
++        data = json.loads(raw.decode("utf-8"))
++    except Exception:
++        data = {"_raw": raw[:200].decode("utf-8", "replace")}
++    return response.status, data, raw
++
++
++def import_body(artifact: dict, **extra) -> dict:
++    return {"studio_project_id": STUDIO_PID,
++            "studio_artifact_id": artifact["id"],
++            "expected_source_sha256": artifact["sha256"],
++            "source_project_id": PID,
++            "expected_unit": "mm", **extra}
++
++
++def count_rows() -> dict:
++    import sqlite3
++    c = sqlite3.connect(MAIN_DB)
++    out = {t: c.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
++           for t in ("ai_design_option_sets", "ai_design_option_revisions",
++                     "ai_design_option_artifacts", "ai_design_option_adoptions")}
++    c.close()
++    return out
++
++
++def svg_files() -> list[str]:
++    d = RUNTIME_PARENT / "projects" / "ai-design-options" / "studio-import"
++    return sorted(str(p.relative_to(RUNTIME_PARENT)) for p in d.rglob("*.svg")) if d.exists() else []
++
++
++def field_reconciliation(letter: str, source_plan: dict, target_model: dict) -> dict:
++    spatial = target_model["spatial"]
++    rows = []
++    for i, z in enumerate(source_plan["zones"]):
++        t = spatial["zones"][i]
++        rows.append({"object_id": z["id"], "field": "polygon_mm",
++                     "source_value": z["polygon"], "target_value": t["polygon_mm"],
++                     "unit": "mm", "equal": z["polygon"] == t["polygon_mm"],
++                     "non_rectangular": len(z["polygon"]) > 4})
++        rows.append({"object_id": z["id"], "field": "area_sqm",
++                     "source_value": z["area_sqm"], "target_value": t["area_sqm"],
++                     "unit": "m2", "equal": z["area_sqm"] == t["area_sqm"]})
++        rows.append({"object_id": z["id"], "field": "role",
++                     "source_value": z["role"], "target_value": t["role"],
++                     "unit": "enum", "equal": z["role"] == t["role"]})
++    for i, f in enumerate(source_plan["furniture"]):
++        t = spatial["furniture"][i]
++        for sf, tf, unit in (("x", "x_mm", "mm"), ("y", "y_mm", "mm"),
++                             ("rot", "rot", "degree"), ("catalog_id", "catalog_id", "id")):
++            rows.append({"object_id": f["id"], "field": tf,
++                         "source_value": f[sf], "target_value": t[tf], "unit": unit,
++                         "equal": f[sf] == t[tf]})
++    circ_s, circ_t = source_plan["circulation"][0], spatial["circulation"][0]
++    rows.append({"object_id": circ_s["id"], "field": "width_mm",
++                 "source_value": circ_s["width_mm"], "target_value": circ_t["width_mm"],
++                 "unit": "mm", "equal": circ_s["width_mm"] == circ_t["width_mm"]})
++    rows.append({"object_id": circ_s["id"], "field": "path_mm",
++                 "source_value": circ_s["path"], "target_value": circ_t["path_mm"],
++                 "unit": "mm", "equal": circ_s["path"] == circ_t["path_mm"]})
++    rows.append({"object_id": "boundary", "field": "width_m",
++                 "source_value": SITE["width_mm"],
++                 "target_value": float(target_model["boundary"]["width"]) * 1000,
++                 "unit": "mm", "equal": abs(float(target_model["boundary"]["width"]) * 1000
++                                            - SITE["width_mm"]) < 1e-6})
++    return {"layout": letter, "rows": rows,
++            "all_equal": all(r["equal"] for r in rows),
++            "non_rectangular_zones": [z["id"] for z in source_plan["zones"]
++                                      if len(z["polygon"]) > 4],
++            "unsupported_items": spatial["unsupported_items"],
++            "object_id_map": spatial["adaptation"]["object_id_map"],
++            "source": spatial["source"],
++            "field_ledger_rows": len(spatial["adaptation"]["field_ledger"])}
++
++
++def main() -> int:
++    global PORT, RUNTIME_PARENT
++    # ---- isolated stores -------------------------------------------------
++    studio = Store(STUDIO_DB)
++    studio_orchestrator.Studio(studio).seed_from_fixtures()
++    source = StudioProposalSource(studio)
++    plan_a = make_plan("A")
++    plan_b = make_plan("B")
++    art_a = save_valid(studio, "A", plan_a)
++    art_b = save_valid(studio, "B", plan_b)
++
++    main_store = SQLiteStore(MAIN_DB)
++    files = FileService(MAIN_DB, RUNTIME)
++    requirements = RequirementService(MAIN_DB)
++    requirement_ai = AIRequirementService(
++        SQLiteAIRequirementRepository(MAIN_DB), requirements,
++        config=brief_config(), provider_factory=lambda config: build_provider(config))
++    options_ai = AIDesignOptionService(
++        SQLiteAIDesignOptionRepository(MAIN_DB),
++        lambda org, project: requirement_ai.status(org, project)["item"],
++        lambda org, project: {"width": "12", "length": "8",
++                              "boundary_source": "test_parameters_not_site_verified",
++                              "obstacles": []},
++        RUNTIME, config=option_config(),
++        provider=build_design_option_provider(option_config()),
++        studio_source=source)
++    RUNTIME_PARENT = RUNTIME
++    service = ApiService(MVPApp(main_store), files, requirement_service=requirements,
++                         ai_requirement_service=requirement_ai,
++                         ai_design_option_service=options_ai, runtime_root=RUNTIME,
++                         studio_source=source)
++    files.seed_ningbo(service, FIXTURE_ROOT)
++    service.create_project(ORG, "W1 隔离第二项目（用于跨项目负例）", OTHER_PID)
++    # second Studio project mapped to a DIFFERENT main project
++    studio.ensure_project("studio-other", "W1 另一 Studio 项目", SITE, {},
++                          source_project_id=OTHER_PID,
++                          mapping_note="显式映射到另一个主系统项目，用于跨项目拒绝负例")
++    art_other = studio.save_artifact(
++        "studio-other", "spatial-plan", plan_a, "D2", option_id="A", revision=1,
++        status="valid_candidate", contract_status="valid_candidate",
++        revision_uid="revuid_w1_other")
++
++    server = create_server(service, port=0, static_dir=ROOT / "web" / "dist")
++    PORT = server.server_port
++    thread = threading.Thread(target=server.serve_forever, daemon=True)
++    thread.start()
++    try:
++        base = f"/api/v1/projects/{PID}/ai/design-options"
++        rows_before = count_rows()
++
++        # ------------------------------------------------------ W1-01 sources
++        code, sources, _ = http("GET", f"{base}/studio-sources")
++        check("W1-01", "Studio 可导入来源列表与显式项目映射（只读）",
++              bool(code == 200 and sources["studio_project_id"] == STUDIO_PID
++                   and sources["mapping"]["source_project_id"] == PID
++                   and len(sources["items"]) >= 2),
++              {"status": code, "studio_project_id": sources.get("studio_project_id"),
++               "mapping": sources.get("mapping"),
++               "items": sources.get("items")})
++
++        # ------------------------------------------------------ W1-02 import A
++        code, imp_a, _ = http("POST", f"{base}/import-studio", import_body(art_a))
++        rev_a = imp_a.get("item") or {}
++        model_a = rev_a.get("model") or {}
++        check("W1-02", "布局 A（含非矩形分区）经同一适配器进入主系统版本化候选",
++              bool(code == 200 and imp_a.get("reused") is False
++                   and rev_a.get("revision_no") == 1
++                   and rev_a.get("parent_revision_id") is None
++                   and len(model_a.get("spatial", {}).get("zones", [])) == 6
++                   and any(len(z["polygon_mm"]) > 4
++                           for z in model_a.get("spatial", {}).get("zones", []))
++                   and imp_a.get("adoption_unchanged") is True
++                   and imp_a.get("formal_approval") is False
++                   and imp_a.get("production_sync") is False),
++              {"status": code, "revision_no": rev_a.get("revision_no"),
++               "option_id": rev_a.get("option_id"),
++               "parent_revision_id": rev_a.get("parent_revision_id"),
++               "zones": len(model_a.get("spatial", {}).get("zones", [])),
++               "ledger_rows": len(imp_a.get("field_ledger") or []),
++               "unsupported": [u["item"] for u in imp_a.get("unsupported_items") or []],
++               "adoption_unchanged": imp_a.get("adoption_unchanged"),
++               "svg_sha256": imp_a.get("svg_sha256")})
++
++        # --------------------------------------------------- W1-03 API/bytes
++        code, state, _ = http("GET", base)
++        opts = (state.get("item") or {}).get("options") or []
++        target = next((o for o in opts if o.get("option_revision_id")
++                       == rev_a.get("option_revision_id")), None)
++        svg_bytes = b""
++        if target and target.get("artifacts"):
++            aid = target["artifacts"][0]["artifact_id"]
++            sc, _meta, svg_bytes = http(
++                "GET", f"{base}/artifacts/{quote(aid)}/content")
++        check("W1-03", "API 状态、存储版本与图面字节一致；候选未污染采用/生产/采购/发布",
++              bool(code == 200 and target is not None
++                   and target["model"]["spatial"]["source"]["artifact_id"] == art_a["id"]
++                   and svg_bytes.startswith(b"<svg")
++                   and hashlib.sha256(svg_bytes).hexdigest() == imp_a.get("svg_sha256")
++                   and state.get("adoption") is None
++                   and count_rows()["ai_design_option_adoptions"] == 0),
++              {"status": code, "option_in_state": bool(target),
++               "svg_bytes": len(svg_bytes),
++               "svg_sha_matches": hashlib.sha256(svg_bytes).hexdigest() == imp_a.get("svg_sha256"),
++               "adoption": state.get("adoption"), "rows": count_rows()})
++
++        # ------------------------------------------------------ W1-04 import B
++        code, imp_b, _ = http("POST", f"{base}/import-studio", import_body(art_b))
++        rev_b = imp_b.get("item") or {}
++        model_b = rev_b.get("model") or {}
++        sig_a = model_a.get("structure_signature")
++        sig_b = model_b.get("structure_signature")
++        check("W1-04", "布局 B 走同一适配器；两种实质不同布局与精确多边形都可对账",
++              bool(code == 200 and imp_b.get("reused") is False
++                   and rev_b.get("option_id") != rev_a.get("option_id")
++                   and sig_a != sig_b
++                   and model_b["spatial"]["zones"][0]["polygon_mm"]
++                   != model_a["spatial"]["zones"][0]["polygon_mm"]),
++              {"status": code, "option_a": rev_a.get("option_id"),
++               "option_b": rev_b.get("option_id"),
++               "signature_different": sig_a != sig_b,
++               "arrival_polygon_a": model_a["spatial"]["zones"][0]["polygon_mm"],
++               "arrival_polygon_b": model_b["spatial"]["zones"][0]["polygon_mm"]})
++
++        # ------------------------------------------------------ W1-05 idempotency
++        before = count_rows()
++        code, again, _ = http("POST", f"{base}/import-studio", import_body(art_a))
++        after = count_rows()
++        check("W1-05", "同一来源重复导入不重复造版本（幂等）",
++              bool(code == 200 and again.get("reused") is True
++                   and before == after),
++              {"status": code, "reused": again.get("reused"),
++               "rows_before": before, "rows_after": after})
++
++        # ------------------------------------------- W1-06 source-changed version
++        plan_a2 = make_plan("A", lambda p: (
++            p["zones"][0].update(polygon=[[0, 8600], [5400, 8600], [5400, 13500],
++                                         [1800, 13500], [0, 11900]]),
++            p["furniture"][2].update(rot=-30)))
++        art_a2 = save_valid(studio, "A", plan_a2, revision=2)
++        code, imp_a2, _ = http("POST", f"{base}/import-studio", import_body(art_a2))
++        rev_a2 = imp_a2.get("item") or {}
++        diffs = rev_a2.get("diff") or []
++        code_detail, detail, _ = http(
++            "GET", f"{base}/studio-imports/{rev_a.get('option_revision_id')}")
++        check("W1-06", "来源改变形成新版本；父版本指向旧版；同一对象后续修改可追踪，旧字节保留",
++              bool(code == 200 and rev_a2.get("revision_no") == 2
++                   and rev_a2.get("parent_revision_id") == rev_a.get("option_revision_id")
++                   and any(d["object_id"] == "ZA1" and "polygon" in d["field"] for d in diffs)
++                   and any(d["object_id"] == "F3" and "rot" in d["field"] for d in diffs)
++                   and code_detail == 200 and detail.get("item") is not None),
++              {"status": code, "revision_no": rev_a2.get("revision_no"),
++               "parent_revision_id": rev_a2.get("parent_revision_id"),
++               "same_object_diffs": [d["field"] for d in diffs],
++               "old_revision_still_readable": code_detail == 200,
++               "old_source_artifact_id": detail.get("spatial", {}).get("source", {}).get("artifact_id")})
++
++        # ------------------------------------------------------------ negatives
++        neg_cases = []
++        before = count_rows()
++        code, neg, _ = http("POST", f"{base}/import-studio",
++                            import_body(art_a, expected_unit="m"))
++        neg_cases.append(("W1-07", "单位错配（expected_unit=m）被拒绝，不猜测换算",
++                          code == 422 and neg.get("error_code") == "UNIT_MISMATCH",
++                          {"status": code, "error_code": neg.get("error_code")}))
++
++        bad_catalog = mutated_plan(plan_a, lambda p: p["furniture"][0].update(catalog_id="ghost-item"))
++        art_catalog = save_valid(studio, "A", bad_catalog, revision=3)
++        code, neg, _ = http("POST", f"{base}/import-studio", import_body(art_catalog))
++        neg_cases.append(("W1-08", "缺失对象引用（目录不存在）被拒绝，不静默丢弃",
++                          code == 422 and neg.get("error_code") == "UNKNOWN_CATALOG_REF",
++                          {"status": code, "error_code": neg.get("error_code")}))
++
++        bad_geom = mutated_plan(plan_a, lambda p: p["zones"][0].update(polygon=[[0, 0], [100, 100]]))
++        art_geom = save_valid(studio, "A", bad_geom, revision=4)
++        code, neg, _ = http("POST", f"{base}/import-studio", import_body(art_geom))
++        neg_cases.append(("W1-09", "无法表达的几何（两点伪多边形）被拒绝，不静默矩形化",
++                          code == 422 and neg.get("error_code") == "UNSUPPORTED_GEOMETRY",
++                          {"status": code, "error_code": neg.get("error_code")}))
++
++        no_ceiling = mutated_plan(plan_a, lambda p: p["ceiling"].update(fixtures=[]))
++        art_nolight = save_valid(studio, "A", no_ceiling, revision=5)
++        code, neg, _ = http("POST", f"{base}/import-studio", import_body(art_nolight))
++        unsupported_names = [u["item"] for u in (neg.get("unsupported_items") or [])]
++        neg_cases.append(("W1-10", "无法表达的材料/灯具保持命名缺项，不静默丢失",
++                          code == 200 and "天花灯具点位" in unsupported_names
++                          and "材料规格/产品选型" in unsupported_names,
++                          {"status": code, "unsupported": unsupported_names}))
++
++        code, neg, _ = http("POST", f"{base}/import-studio",
++                            {**import_body(art_a), "source_project_id": OTHER_PID})
++        neg_cases.append(("W1-11a", "错误项目映射（请求与 URL 不一致）被拒绝",
++                          code == 409 and neg.get("error_code") == "PROJECT_MAPPING_MISMATCH",
++                          {"status": code, "error_code": neg.get("error_code")}))
++
++        code, neg, _ = http("POST", f"{base}/import-studio",
++                            {"studio_project_id": "studio-other",
++                             "studio_artifact_id": art_other,
++                             "expected_unit": "mm"})
++        neg_cases.append(("W1-11b", "跨项目 Studio 产物不能导入当前主系统项目",
++                          code == 409 and neg.get("error_code") == "PROJECT_MAPPING_MISMATCH",
++                          {"status": code, "error_code": neg.get("error_code")}))
++
++        code, neg, _ = http("POST", f"{base}/import-studio",
++                            import_body(art_a, expected_source_sha256="0" * 64))
++        neg_cases.append(("W1-11c", "来源字节已变的 expected sha 校验拒绝导入",
++                          code == 409 and neg.get("error_code") == "SOURCE_SHA_MISMATCH",
++                          {"status": code, "error_code": neg.get("error_code")}))
++
++        invalid_aid = studio.save_artifact(
++            STUDIO_PID, "spatial-plan-raw", {"raw_text": "bad"}, "D2",
++            status="invalid_raw", contract_status="invalid_raw")
++        code, neg, _ = http("POST", f"{base}/import-studio",
++                            {"studio_project_id": STUDIO_PID,
++                             "studio_artifact_id": invalid_aid})
++        neg_cases.append(("W1-11d", "非有效候选（invalid_raw）不能导入",
++                          code == 422 and neg.get("error_code") == "NOT_VALID_STUDIO_CANDIDATE",
++                          {"status": code, "error_code": neg.get("error_code")}))
++        for cid, name, ok, ev in neg_cases:
++            check(cid, name, ok, ev)
++        # W1-10 is a positive import (named unsupported), so allow its rows
++        extra_writes = count_rows()["ai_design_option_revisions"] - \
++            before["ai_design_option_revisions"]
++        check("W1-12", "所有失败负例不产生半写入（仅 W1-10 的正例允许新增 1 个版本）",
++              extra_writes == 1,
++              {"rows_before": before, "rows_after": count_rows(),
++               "new_revisions_from_negatives": extra_writes})
++
++        # ---------------------------------------------- W1-13 stale adoption
++        code, neg, _ = http(
++            "POST", f"{base}/{quote(rev_a2.get('option_id') or '', safe='')}/adopt",
++            {"expected_revision": 1, "expected_version": 0})
++        check("W1-13", "旧版本并发采用被 CAS 拒绝；采用指针未被导入或旧采用改写",
++              bool(code == 409 and neg.get("error_code") == "STALE_OPTION_REVISION"
++                   and count_rows()["ai_design_option_adoptions"] == 0),
++              {"status": code, "error_code": neg.get("error_code"),
++               "adoption_rows": count_rows()["ai_design_option_adoptions"]})
++
++        # ------------------------------------------- W1-14 mid-way rollback
++        before = count_rows()
++        files_before = svg_files()
++        art_rollback = save_valid(studio, "A", mutated_plan(
++            plan_a, lambda p: p["furniture"][0].update(x=8600)), revision=9)
++        raised = None
++        try:
++            options_ai.import_studio_proposal(
++                ORG, PID, "tester", import_body(art_rollback),
++                on_before_commit=lambda: (_ for _ in ()).throw(
++                    RuntimeError("W1 injected failure after SVG write, before commit")))
++        except Exception as error:  # noqa: BLE001
++            raised = f"{type(error).__name__}: {error}"
++        after = count_rows()
++        files_after = svg_files()
++        check("W1-14", "适配中途失败：set/revision/artifact 全回滚，SVG 文件清理，采用指针不变",
++              bool(raised and before == after and files_before == files_after),
++              {"raised": raised, "rows_before": before, "rows_after": after,
++               "svg_files_before": len(files_before), "svg_files_after": len(files_after),
++               "adoption_rows": after["ai_design_option_adoptions"]})
++
++        # ---------------------------------------------- W1-15 restart persistence
++        import sqlite3
++        code, imports_before, _ = http("GET", f"{base}/studio-imports")
++        ids_before = sorted(r["option_revision_id"] for e in imports_before["items"]
++                            for r in e["revisions"])
++        main_store2 = SQLiteStore(MAIN_DB)
++        options_ai2 = AIDesignOptionService(
++            SQLiteAIDesignOptionRepository(MAIN_DB),
++            lambda org, project: requirement_ai.status(org, project)["item"],
++            lambda org, project: {"width": "12", "length": "8",
++                                  "boundary_source": "test_parameters_not_site_verified",
++                                  "obstacles": []},
++            RUNTIME, config=option_config(),
++            provider=build_design_option_provider(option_config()),
++            studio_source=StudioProposalSource(Store(STUDIO_DB)))
++        restarted = options_ai2.list_studio_imports(ORG, PID)
++        ids_after = sorted(r["option_revision_id"] for e in restarted["items"]
++                           for r in e["revisions"])
++        check("W1-15", "重启后（新仓储连接 + 新 Studio 连接）导入版本、来源、字节与采用状态保持",
++              bool(code == 200 and ids_before and ids_before == ids_after
++                   and restarted.get("adoption") is None),
++              {"status": code, "import_count": len(ids_before),
++               "ids_equal": ids_before == ids_after,
++               "adoption": restarted.get("adoption")})
++        main_store2.close()
++
++        # ------------------------------------------- W1-16 field reconciliation
++        recon_a = field_reconciliation("A", plan_a, model_a)
++        recon_b = field_reconciliation("B", plan_b, model_b)
++        (EVIDENCE / "field-reconciliation.json").write_text(
++            json.dumps({"layouts": [recon_a, recon_b],
++                        "note": "逐字段比较源提案与 spatial 投影的真实值，不是计数或哈希"},
++                       ensure_ascii=False, indent=2), encoding="utf-8")
++        check("W1-16", "两种布局逐字段对账：坐标/单位/对象 ID/来源/父版本/材料与视图缺项都相等或显式标注",
++              bool(recon_a["all_equal"] and recon_b["all_equal"]
++                   and recon_a["non_rectangular_zones"] and recon_b["non_rectangular_zones"]
++                   and recon_a["field_ledger_rows"] > 20
++                   and recon_b["field_ledger_rows"] > 20),
++              {"A": {"rows": len(recon_a["rows"]), "all_equal": recon_a["all_equal"],
++                     "non_rect": recon_a["non_rectangular_zones"],
++                     "ledger": recon_a["field_ledger_rows"]},
++               "B": {"rows": len(recon_b["rows"]), "all_equal": recon_b["all_equal"],
++                     "non_rect": recon_b["non_rectangular_zones"],
++                     "ledger": recon_b["field_ledger_rows"]}})
++
++        # save source/target model samples (explicitly labelled fixtures)
++        models_dir = EVIDENCE / "models"
++        models_dir.mkdir(parents=True, exist_ok=True)
++        for name, obj in (("layout-A.source.json", plan_a),
++                          ("layout-A.target.json", model_a),
++                          ("layout-B.source.json", plan_b),
++                          ("layout-B.target.json", model_b),
++                          ("layout-A-v2.source.json", plan_a2),
++                          ("layout-A-v2.target.json", rev_a2.get("model") or {})):
++            (models_dir / name).write_text(
++                json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
++        check("W1-17", "保存两份源提案/目标模型样本与修订版样本，标明是本地夹具非真实 AI",
++              all((models_dir / n).exists() for n in
++                  ("layout-A.source.json", "layout-A.target.json",
++                   "layout-B.source.json", "layout-B.target.json")),
++              {"files": sorted(p.name for p in models_dir.iterdir()),
++               "source_kind": "labelled_local_fixture_not_real_AI"})
++
++        # ---------------------------------------------- W1-18 isolation by project
++        code, other_imports, _ = http(
++            "GET", f"/api/v1/projects/{OTHER_PID}/ai/design-options/studio-imports")
++        check("W1-18", "跨项目隔离：另一主系统项目看不到当前项目的导入版本",
++              bool(code == 200 and not other_imports.get("items")),
++              {"status": code, "other_project_import_count":
++               len(other_imports.get("items") or [])})
++
++        # ------------------------------------ W1-19 old-format compatibility
++        brief_item = service.submit_ai_requirement(
++            ORG, PID, "tester", {"natural_language": "开放交流，入口左侧"},
++            "w1-old-brief-0001")["item"]
++        requirement_ai.wait_for_job(ORG, PID, brief_item["job_id"])
++        old_set = service.submit_ai_design_options(
++            ORG, PID, "tester", {}, "w1-old-options-0001")["item"]
++        options_ai.wait_for_set(ORG, PID, old_set["set_id"])
++        legacy = service.get_ai_design_options(ORG, PID)
++        old_options = [o for o in ((legacy.get("item") or {}).get("options") or [])
++                       if o.get("source_kind") == "synthetic_design_adapter"]
++        svg_old = b""
++        if old_options and old_options[0].get("artifacts"):
++            sc, _m, svg_old = http(
++                "GET", f"{base}/artifacts/{quote(old_options[0]['artifacts'][0]['artifact_id'])}/content")
++        imports_still = http("GET", f"{base}/studio-imports")[1]
++        check("W1-19", "旧合成候选格式与历史下载仍可用；导入版本不被旧集合覆盖或丢失",
++              bool(old_options and svg_old.startswith(b"<svg")
++                   and len(imports_still.get("items") or []) >= 1
++                   and count_rows()["ai_design_option_adoptions"] == 0),
++              {"legacy_candidates": len(old_options), "legacy_svg_bytes": len(svg_old),
++               "studio_import_sets_after": len(imports_still.get("items") or []),
++               "adoption_rows": count_rows()["ai_design_option_adoptions"]})
++
++    finally:
++        server.shutdown()
++        server.server_close()
++        thread.join(3)
++        main_store.close()
++
++    failed = sum(1 for c in CHECKS if c["result"] != "observed_pass")
++    out = {
++        "task_id": "W1 统一模型适配（Studio 有效提案 → 主系统版本化候选）",
++        "schema_version": "rkd-w1-unified-model-checks.v1",
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "code_head": __import__("subprocess").run(
++            ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
++            capture_output=True, text=True).stdout.strip(),
++        "environment": {
++            "python": sys.version.split()[0],
++            "isolated_main_db": str(MAIN_DB),
++            "isolated_studio_db": str(STUDIO_DB),
++            "model_channel": "labelled local fixtures only (no real AI, no external calls)",
++            "keys_used": False,
++        },
++        "checks": CHECKS,
++        "totals": {"observed_pass": len(CHECKS) - failed, "observed_fail": failed},
++        "external_calls": 0,
++        "tokens": 0,
++        "cost_amount_or_null": None,
++        "cost_status": "no_external_calls_zero_cost",
++        "limitations": [
++            "源提案是明确标记的本地测试夹具，不是系统模型自动生成的设计，不计入 AD01—AD08",
++            "W1 是工程适配批，没有新增客户级平面、人眼效果图、量价或 PDF",
++            "Q10 同源成果仍 not_run（W2）",
++            "正式采用/生产/采购/发布未被导入或采用测试改写",
++        ],
++    }
++    (EVIDENCE / "checks.json").write_text(
++        json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"passed": len(CHECKS) - failed, "failed": failed,
++                      "out": str(EVIDENCE / "checks.json")}, ensure_ascii=False))
++    return 0 if failed == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/web/src/AiDesignOptionsPanel.tsx b/web/src/AiDesignOptionsPanel.tsx
+index 4d7b24e..ca1fbb9 100644
+--- a/web/src/AiDesignOptionsPanel.tsx
++++ b/web/src/AiDesignOptionsPanel.tsx
+@@ -20,6 +20,14 @@ type Option = {
+   source_kind: string;
+   lifecycle_status: string;
+ };
++type StudioSource = { artifact_id: string; sha256: string; option_id: string; revision: number; strategy_name: string; zone_count: number; revision_uid: string | null };
++type StudioSources = { studio_project_id: string | null; mapping: { source_project_id: string; mapping_note: string } | null; items: StudioSource[]; note?: string };
++type LedgerRow = { source_field: string; target_field: string; object_id: string; source_value: any; target_value: any; unit: string; status: string };
++type ImportRevision = { option_revision_id: string; option_id: string; revision_no: number; parent_revision_id: string | null; source: Record<string, any>; unsupported_items: { item: string; reason: string }[]; diff: { object_id: string; field: string }[]; artifacts: Artifact[] };
++type ImportItem = { set: { set_id: string; created_at: string; context: Record<string, any> }; revisions: ImportRevision[] };
++type StudioImports = { items: ImportItem[]; adoption: Adoption | null };
++type ImportDetail = { item: Record<string, any>; spatial: Record<string, any>; field_ledger: LedgerRow[]; unsupported_items: { item: string; reason: string }[] };
++
+ type CandidateSet = { set_id: string; status: string; phase: string; error_code?: string | null; error_message?: string | null; attempt_count: number };
+ type Adoption = { option_id: string; revision_no: number; expected_revision: number; status: string; production_task_status: string };
+ type OptionStatus = {
+@@ -61,6 +69,11 @@ export function AiDesignOptionsPanel({ projectId }: { projectId: string }) {
+   const [message, setMessage] = useState("");
+   const [error, setError] = useState("");
+   const [busy, setBusy] = useState(false);
++  const [studioSources, setStudioSources] = useState<StudioSources | null>(null);
++  const [studioImports, setStudioImports] = useState<StudioImports | null>(null);
++  const [selectedSource, setSelectedSource] = useState("");
++  const [importDetail, setImportDetail] = useState<ImportDetail | null>(null);
++  const [detailBusy, setDetailBusy] = useState(false);
+ 
+   const artifactUrl = useCallback((artifactId: string) => `${base}/artifacts/${artifactId}/content`, [base]);
+ 
+@@ -83,6 +96,13 @@ export function AiDesignOptionsPanel({ projectId }: { projectId: string }) {
+       const ids = result.item?.options.flatMap((option) => option.artifacts.map((artifact) => artifact.artifact_id)) || [];
+       const entries = await Promise.all(ids.map(async (id) => [id, await loadSvg(id)] as const));
+       setSvgData(Object.fromEntries(entries));
++      const [sources, imports] = await Promise.all([
++        request<StudioSources>(`${base}/studio-sources`),
++        request<StudioImports>(`${base}/studio-imports`),
++      ]);
++      setStudioSources(sources);
++      setStudioImports(imports);
++      setSelectedSource((current) => current || sources.items[0]?.artifact_id || "");
+       if (!quiet) setError("");
+     } catch (e) {
+       if (!quiet) setError((e as Error).message);
+@@ -135,6 +155,34 @@ export function AiDesignOptionsPanel({ projectId }: { projectId: string }) {
+     });
+   }
+ 
++  async function importStudio() {
++    if (!selectedSource) { setError("请先选择一份 Studio 有效提案"); return; }
++    if (!studioSources?.studio_project_id) { setError("当前项目没有显式 Studio 映射，不能按名称推断"); return; }
++    const picked = studioSources.items.find((item) => item.artifact_id === selectedSource);
++    await act(async () => {
++      const result = await request<{ reused: boolean; item: { option_revision_id: string; revision_no: number } | null; unsupported_items: { item: string }[] }>(
++        `${base}/import-studio`, "POST",
++        { studio_project_id: studioSources.studio_project_id,
++          studio_artifact_id: selectedSource,
++          expected_source_sha256: picked?.sha256,
++          source_project_id: projectId, expected_unit: "mm" },
++      );
++      setMessage(result.reused
++        ? "同一来源已导入过：未重复造版本。"
++        : `已导入为主系统候选 v${result.item?.revision_no ?? "?"}；源提案、精确多边形与 ${result.unsupported_items.length} 项缺项均保留。未改采用/生产/采购/发布。`);
++      await load(true);
++    });
++  }
++
++  async function openDetail(revisionId: string) {
++    setDetailBusy(true); setError("");
++    try {
++      setImportDetail(await request<ImportDetail>(`${base}/studio-imports/${revisionId}`));
++    } catch (e) {
++      setError((e as Error).message);
++    } finally { setDetailBusy(false); }
++  }
++
+   async function cancel(setId: string) {
+     await act(async () => {
+       await request(`${base}/sets/${setId}/cancel`, "POST", {});
+@@ -189,5 +237,45 @@ export function AiDesignOptionsPanel({ projectId }: { projectId: string }) {
+         <div className="ai-option-actions"><button type="button" className="outline-action" disabled={busy} onClick={() => void revise(option)}>生成反馈修订</button><button type="button" className="dark-action" disabled={busy || option.validation.status !== "passed"} onClick={() => void adopt(option)}>采用为当前草稿</button></div>
+       </article>)}
+     </div> : <p className="files-empty">尚无候选图面；生成后会在这里并排显示不同空间组织。</p>}
++
++    <section className="studio-import-panel" aria-label="Studio 提案导入">
++      <header className="section-heading"><h4>Studio 有效提案 → 主系统版本化候选</h4><span className="design-status">W1 统一模型适配</span></header>
++      <p className="ai-boundary">通过正式适配入口导入，不手搬 JSON；精确 mm 多边形、稳定对象 ID、材料/天花/视图缺项与来源哈希一并保留。旧渲染器只显示派生包围盒，已在字段对账中标明。导入只产生候选，不改当前采用、量价、采购或发布。</p>
++      <div className="studio-import-toolbar">
++        <label>源提案
++          <select data-testid="studio-source-select" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
++            <option value="">（选择 Studio 有效候选）</option>
++            {(studioSources?.items || []).map((item) => <option key={item.artifact_id} value={item.artifact_id}>
++              {item.option_id} v{item.revision} · {item.strategy_name ?? "未命名"} · {item.zone_count} 分区 · {item.artifact_id}
++            </option>)}
++          </select>
++        </label>
++        <button type="button" className="dark-action" data-testid="studio-import-button" disabled={busy || !selectedSource} onClick={() => void importStudio()}>导入为主系统候选</button>
++        {studioSources && !studioSources.studio_project_id && <small>{studioSources.note}</small>}
++        {studioSources?.mapping && <small data-testid="studio-mapping">显式映射：{studioSources.studio_project_id} → {projectId}</small>}
++      </div>
++      <div className="studio-import-list" data-testid="studio-import-list">
++        <strong>已导入版本（{studioImports?.items.length ?? 0}）</strong>
++        {studioImports?.items.length ? <ul>{studioImports.items.map((entry) => entry.revisions.map((rev) =>
++          <li key={rev.option_revision_id} data-testid="studio-import-row">
++            <code>{rev.option_id}</code> v{rev.revision_no}
++            <span>源 {rev.source?.artifact_id} · sha {String(rev.source?.sha256 || "").slice(0, 12)}…</span>
++            <span>父版本 {rev.parent_revision_id ?? "无"}</span>
++            <span>缺项 {rev.unsupported_items.length} · 对象变化 {rev.diff.length}</span>
++            {rev.artifacts[0] && <a href={artifactUrl(rev.artifacts[0].artifact_id)} target="_blank" rel="noreferrer">查看目标模型图面</a>}
++            <button type="button" className="outline-action" disabled={detailBusy} onClick={() => void openDetail(rev.option_revision_id)}>字段对账</button>
++          </li>))}</ul> : <p className="files-empty">尚无导入；选择源提案后点击导入。</p>}
++      </div>
++      {importDetail && <div className="studio-import-detail" data-testid="studio-import-detail">
++        <strong>逐项字段对账（{importDetail.field_ledger.length} 项）</strong>
++        <div className="ledger-scroll"><table className="ledger-table"><thead><tr><th>源字段</th><th>目标字段</th><th>对象</th><th>单位</th><th>状态</th></tr></thead>
++          <tbody>{importDetail.field_ledger.map((row, index) => <tr key={index}>
++            <td>{row.source_field}</td><td>{row.target_field}</td><td>{row.object_id}</td><td>{row.unit}</td><td>{row.status}</td>
++          </tr>)}</tbody></table></div>
++        <strong>保留为 unknown / 不支持的项目</strong>
++        <ul>{importDetail.unsupported_items.map((item, index) => <li key={index}><b>{item.item}</b>：{item.reason}</li>)}</ul>
++        <p className="ai-boundary">几何模式：{importDetail.spatial?.adaptation?.geometry_mode}；单位：{importDetail.spatial?.unit} → m；视图条目 {importDetail.spatial?.views?.length ?? 0}（未建模，不生成假设机位）。</p>
++      </div>}
++    </section>
+   </section>;
+ }
+diff --git a/web/src/styles.css b/web/src/styles.css
+index 53595fe..ba9ccb4 100644
+--- a/web/src/styles.css
++++ b/web/src/styles.css
+@@ -421,3 +421,27 @@ h1 { margin-top: 10px; color: #1b2735; font-size: 32px; overflow-wrap: anywhere;
+ .ai-source-delivery-panel code, .ai-source-delivery-panel li, .ai-source-delivery-panel td { overflow-wrap: anywhere; }
+ @media (max-width: 980px) { .ai-development-grid, .ai-development-tables, .ai-source-delivery-panel .ai-development-tables { grid-template-columns: 1fr; } .ai-development-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+ @media (max-width: 560px) { .ai-development-settings { grid-template-columns: 1fr; } .ai-development-settings .dark-action { width: 100%; } }
++
++/* W1 Studio proposal import / field reconciliation */
++.studio-import-panel { margin-top: 22px; padding: 16px; border: 1px solid #dfe5ea; border-radius: 8px; background: #f9fbfc; }
++.studio-import-panel .section-heading { margin-bottom: 8px; }
++.studio-import-panel h4 { margin: 0; font-size: 14px; color: #263342; }
++.studio-import-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 12px 0; }
++.studio-import-toolbar label { display: grid; gap: 4px; font-size: 12px; color: #47566a; }
++.studio-import-toolbar select { min-width: 320px; max-width: 100%; padding: 7px 9px; border: 1px solid #cfd8e0; border-radius: 5px; background: #fff; font-size: 12px; }
++.studio-import-toolbar small { color: #7a6650; font-size: 11px; }
++.studio-import-list > strong, .studio-import-detail > strong { display: block; font-size: 12px; color: #263342; margin-bottom: 8px; }
++.studio-import-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
++.studio-import-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #e1e6eb; border-radius: 5px; background: #fff; font-size: 11px; color: #47566a; }
++.studio-import-list li code { color: #1f2937; font-size: 11px; }
++.studio-import-list li a { color: #1d4ed8; }
++.studio-import-detail { margin-top: 14px; padding-top: 12px; border-top: 1px solid #e1e6eb; }
++.ledger-scroll { max-height: 260px; overflow: auto; border: 1px solid #e1e6eb; border-radius: 5px; background: #fff; }
++.ledger-table { width: 100%; border-collapse: collapse; font-size: 11px; }
++.ledger-table th, .ledger-table td { padding: 5px 8px; border-bottom: 1px solid #edf1f4; text-align: left; color: #334155; }
++.ledger-table th { position: sticky; top: 0; background: #f1f5f9; color: #263342; }
++.studio-import-detail ul { margin: 6px 0 12px; padding-left: 18px; font-size: 11px; color: #47566a; line-height: 1.6; }
++@media (max-width: 700px) {
++  .studio-import-toolbar select { min-width: 0; width: 100%; }
++  .studio-import-list li { gap: 6px; }
++}
