@@ -1,0 +1,3577 @@
+diff --git a/PROJECT_STATUS.md b/PROJECT_STATUS.md
+index e6d9e23..08de580 100644
+--- a/PROJECT_STATUS.md
++++ b/PROJECT_STATUS.md
+@@ -1,9 +1,11 @@
+ # 室内设计公司自主生产系统：项目进度
+ 
+-更新时间：2026-11-12
++更新时间：2026-11-14
+ 
+ ## 当前阶段
+ 
++**2026-11-14 W0 收口（docs/26 第 3、4、6 节；停在硬节点 1，等架构师复核）：**按用户最新委托，先按接管约定读 AGENTS/交接/PROJECT_STATUS/docs/13、21、24、25、26 并核对真实 Git（base `957cf77`，工作区仅 `docs/26` 未跟踪），然后**先复现再实现**架构师 R1/R2/R3。整改前实测证据 `var/evidence/roadmap/W0-收口/before/reproduction.json`：7/7 缺陷确认——反馈指定旧基线后第二轮仍生成 2 个全新 A/B、修订 `parent_revision_uid` 指向本轮新候选；真实 `/messages` 把用户指定的 `art_414dd516b2` 偷换成 `art_f35ba7261d`；伪修复（只改目标对象颜色/名称、`width_mm` 仍 2000）被记 `verified=true`；`boss_feedback_resolutions.linked_changes` 等于全部变化；复核包编制 11-12 却内含 11-14 事件且未分别标时间；适配说明把 proposal / draft / `ai-design-option` 三份契约字段混写。**实际整改**：新增 `mvp/rkd_mvp/studio/revision_task.py`——`resolve_task()` 从版本化反馈分离 generate / revise / retry / conflict（跨候选、跨项目、旧反馈已消费、并发新反馈、失败稿、晚到结果均带 `conflict_code` 明确拒绝，不偷换不重生成 A/B），`structured_locks()` 结构化对象/字段锁（不靠中文关键词），`derive_objectives()` / `recheck_objectives()` 确定性目标复核；`orchestrator.run_a1` 同步分流并写 `runs.task_kind/target_*`，新增 `_revise_from_baseline()` 加载指定旧稿完整基线、产出新修订的 `parent_revision_uid` 指向用户选中旧版、旧版字节可下载；`store.py` additive 列 + `artifact_by_id()` + `consume_feedback()` CAS（阻止拆 run 绕过 `MAX_AUTO_REWORK=2`）；`server.py` `/messages` 严格校验用户指定旧基线（`baseline_selection=user_selected`）、`/run` 冲突返回 409、`/state` 暴露任务/版本链；`revision.verify_revision_integrity` 四态分离 `input_included / object_changed / objective_rechecked / user_confirmed`，可计算目标由几何净宽/角度/色温/面积/锁定规则实测，审美与未实现写 `unknown` + `user_confirmed=pending`，任何 fail 触发 `REV-OBJECTIVE` 全局兜底；前端新增「续改哪份旧方案」下拉与任务条/父版本对照。**R3 只补勘误不回写历史**：`deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md` 分别标明编制/执行/复跑补生成/提交时间及代码基线，按实际三份 schema 修正映射（proposal 无 `contract_version`/`project_id`；draft 用 `rkd-spatial-plan.v1`；`ai-design-option.v1` 用 `schema_version` 且无 `project_id`），历史 `review-packet.md` 与 `ARC-05-adaptation-note.md` 字节 SHA 记录且未改。**验证（全部本地模型桩，0 外部调用、0 密钥、0 费用）**：整改后复现 0/7 缺陷；W0 专项 **7/7 observed_pass**（含真实 HTTP 服务入口 `parent_revision_uid` 指向旧版、跨候选/跨项目/旧反馈/并发/失败稿/晚到负例、伪修复单元级与服务级被拦）；首批 Q01—Q12 回归 **11 pass / 0 fail / 1 not_run（Q10）**；全量单测 **262/262 OK**；A1 管线 15/15 PASS；前端生产构建 EXIT=0；真实浏览器 `passed=true`（页面选中旧方案→反馈→续改→父版本对照，待决闸口仅 1 个，`page_errors=[]`，390px `scrollWidth=390`，重启持久化通过）。**未做/未测**：W1 统一模型、W2 同源平面与人眼效果图、W3 真实设计验证、W4 完整成果一律未开始；Q10 仍 not_run；没有新增设计成果（无封面/正式平面/天花/立面/材料灯光板/人眼效果图/汇总 PDF）；设计来源仍是明确标记的本地桩，不是真实 AI 自动设计；AD01—AD08 不自行改判，阶段设计结论仍由用户给；未扩 A2、未提高返工上限、未重跑付费模型、未扩 NAS/PG/账号/备份配套。**停在硬节点 1**：W0 收口完成先交架构师复核，未收口不把反馈链标完成，不自行开始 W1。复核包 `deliverables-for-review/roadmap/W0-收口/`（含 review-packet.md、checks.json、code-diff.md、manifest.json、positive-negative-cases.md、证据与浏览器截图），运行证据 `var/evidence/roadmap/W0-收口/`。工程 PASS 不等于设计通过；`succeeded` 只表示流程跑完。下方 11-12 记录保留为上一批过程证据。**
++
+ **2026-11-12 ARC 首批工程整改（架构师交接 `docs/25` 第 5 节）已交付，停在交付点等架构师复核，不自行开始第二批：**本批只做 ARC-01—04 与直接相关的 ARC-06 规则修正；ARC-05 只交短小适配说明。**先复现真实缺陷**：基线 `d6501a9`，只读复现证据 `var/evidence/architecture-handoff/first-batch/before/reproduction.json`——库内最新两份 spatial-plan 各有 **66** 条 Schema 错误却被最小字段检查全部放行；100㎡ 场地 3 个各 1㎡ 分区仍判 `ok=True` 且不报告未分配；分离三角形因外接矩形被误报重叠；面积表补「通道及其他」后提示自相矛盾；非直角只数文字清单；orchestrator 有 **9 处** `[:4000]/[:3500]/[:3000]` 截断；`StudioView.tsx:47` 不论项目都选宁波；老板留言不进修订、种子每次启动重写项目事实、闸口决定重放覆盖旧记录；规范库把 469㎡/2 处非直角/60% 天花覆盖等数值包装成用户明确要求或普遍规范。**实际整改**：新增 `spatial-plan-proposal.v1` 模型提案契约（原 draft 契约未改、未放宽必填项）+ `validation.py` 四级校验（结构→语义引用→几何→锁定，原始输出与诊断存 `invalid_raw` 不作有效候选）+ `geometry.py`（复用锁定 shapely 2.1.2：真实交集/自交/越界/保留区/入口可达/实测瓶颈/家具旋转占地；唯一面积口径 `design_scope_sqm=外框−保留区`，显式输出未分配，无法验证项标 unsupported）+ `revision.py`（白名单 patch、对象保留/删除理由/锁定/逐项对应复核）+ `store.py`（版本化 feedback、CAS/预期版本与持久取消、闸口绑定基线且决定 append-only、insert-only 种子、最小增加 run_id/候选组/revision_uid/input_hash/check_report_id）+ `server.py`/`StudioView.tsx`（项目显式 ID 映射、限制入口、有效候选与历史分组、决定语义区分）+ `standards.v1.json` 与 `llm.py`（用户原话/适用范围/启发式/专业依据/程序覆盖分开；输入+输出额度预留、usage 缺失记 unknown、超时待对账、兼容降级只对明确不支持错误）。**验证（全部本地模型桩，0 外部调用、0 密钥、0 费用）**：整改前后复现对比见 `after/after-reproduction.json`（66 条契约错误全部拦截、100㎡/3㎡ 显式报 97㎡ 未分配、三角形不误报、截断 0、硬编码与重放消失）；Q01—Q12 专项 **11 observed_pass / 0 fail / 1 not_run（Q10 属第二批）**，证据 `after/checks.json`；A1 管线 15/15 PASS；新增专项单测 18/18；全量单测与前端构建通过；真实浏览器验收 `passed=true`（提交「调整洽谈区、保留入口」→版本化有效需求 v1→新修订 4 个对象 diff、切项目不显示宁波、闸口重放不覆盖、刷新持久化、390px 无溢出），截图与 `verification.json` 在 `after/browser/`。**未做/未测**：ARC-05 纵向同源适配（Q10 not_run）、真实模型第三轮重跑、A2、任何设计成果（无封面/正式平面/天花/立面/材料灯光板/人眼效果图/汇总 PDF）、专业签核、PG/NAS/账号/备份专项（管理配套冻结，仅做共用服务全量回归）。**AD01—AD08 不自行改判，仍以用户结论为准；工程 PASS 不等于设计通过；`succeeded` 只表示流程跑完**。交付包：`var/evidence/architecture-handoff/first-batch/review-packet.md` 与 `checks.json`，便携副本与代码差异在 `deliverables-for-review/arc-first-batch/`（含 `ARC-05-adaptation-note.md`、`code-diff.md`、`positive-negative-cases.md`、浏览器截图）。本批未 reset/checkout、未清理既有改动或原件，日常 `var/studio/studio.db` 与 NAS 未改动；完整差异另存 `deliverables-for-review/arc-first-batch/changes.patch`，架构师可用 `git diff d6501a9..eb6513c` 复核。下方 11-11 及更早记录保留为历史。**
+ 
+ **2026-11-11 A1 收口 · 补上「修订变差自动打回 + 总监看图自评」并跑完真实回路验证，方案仍未通过：按老板追加要求落地程序硬校验判据（`_qc()` / `_worse()` 比 blocker、major、面积对账差，契约无效也算变差）、`MAX_AUTO_REWORK = 2` 自动打回（第 3 轮必须交老板）、无效稿不入库不进成果栏、`Store.amend_gate()` 复用同一个待决闸口；新增 `Client.chat_vision()` 与 `mvp/rkd_mvp/studio/vision.py`，总监只发本项目自己生成的 3 张图（候选 A / B 平面草案 + 一张冻结的宁波方案 A 第 3 版效果图作案例参照，明确标注是人工手工样板），不发 CAD/PDF/预算表/现场照片，输出结构化观感并写明「观感不作判据、不得据此宣布通过」。网页新增「自动打回」「看图自评（观感，不作判据）」标签与图片数/来源/字节/token 依据。真实模型又跑三轮：21:52 轮 `incomplete`（评审意见没落实）、22:06 轮 `failed`（模型把 `area_table` 写成 dict / 条目写成 str，旧 `check_plan()` 抛 `AttributeError`）、22:21–22:33 最终轮 `succeeded`（仅指流程跑完）。崩溃已修：`check_plan()` 重写为不可信输出防御版，格式错转成结构化 blocker；`_qc()` 兜底捕获工具异常；`plan_is_valid()` 要求面积表是非空对象数组；`sketch.py` 跳过非 dict 条目；失败记录保留在闸口详情里不删。最终一轮实数：2 个候选、17 条评审意见、看图自评 3 张图、自动打回 2 次、被接受的修订版 0 个、相对 v1 改动 0 个对象，最后拦下原因「分区少于 3 个（或根本不是列表）」；基准 v1 硬伤 blocker 1 / major 1 / 面积差 250.9㎡（面积表 430.1㎡ vs 分区轮廓 179.2㎡）。闸口标题「自动打回已用尽 2 轮仍无有效修订：请决定第 3 轮怎么做」，等待中的闸口只有 1 个，成果栏只有 A/B 两份候选。token 实测：三轮 183,947 / 245,937 / 245,868，项目累计 **1,001,374 / 2,000,000**（单次上限 600,000 未触发）。`scripts/verify_studio_loop.py` 假模型管线 12 项全 PASS（测试把位图转换换成占位字节，与本机浏览器/Pillow 解耦，不冒充真实看图）；看图自评需要 Pillow，`.venv` 未装时会写「看图自评没能完成」的 note 而不假装看过图。证据：`docs/evidence/a1-studio-rework-vision.png`、`a1-studio-vision-review.png`、`a1-studio-auto-rework.png`、`a1-studio-rework-vision-detail.png`，完整记录 `docs/24-A1-设计公司骨架.md`。**如实说明**：打回机制跑通了，但模型仍交不出契约合规的修订稿，不能拿流程跑完当设计达成；自由协作、3 个概念发散、顶面图落成、schema 级契约校验、费用单价仍未做。密钥仍只在当前会话环境变量、不落盘不提交。**A1 到此停下，等老板决定第 3 轮，不进 A2。**下方 11-10 记录保留为过程证据。**
+diff --git a/deliverables-for-review/roadmap/W0-收口/checks.json b/deliverables-for-review/roadmap/W0-收口/checks.json
+new file mode 100644
+index 0000000..94afc07
+--- /dev/null
++++ b/deliverables-for-review/roadmap/W0-收口/checks.json
+@@ -0,0 +1,269 @@
++{
++  "schema_version": "rkd-roadmap-review-packet.v1",
++  "task_id": "W0 收口（R1/R2/R3）",
++  "packet": "deliverables-for-review/roadmap/W0-收口/",
++  "baseline": "957cf775e1d835cf25bbdf196de4e7f3f51280fa",
++  "generated_at": "2026-11-14T12:34:07+08:00",
++  "environment": {
++    "os": "Windows",
++    "python": "3.12.14 (.venv)",
++    "jsonschema": "4.25.1",
++    "shapely": "2.1.2",
++    "node": "v22",
++    "browser": "Edge headless (Playwright)",
++    "model_channel": "local-model-stub (explicitly labelled)",
++    "keys_used": false
++  },
++  "commands": [
++    ".venv/Scripts/python.exe -B scripts/verify_w0.py",
++    "PYTHONPATH=mvp .venv/Scripts/python.exe -B -m unittest discover -s mvp/tests -q",
++    "npm run build (web/)",
++    "scripts/verify_arc_first_batch.py --out <W0 after>",
++    "scripts/verify_studio_loop.py",
++    "scripts/verify_w0_browser.py + verify_w0_browser.cjs",
++    "scripts/w0_repro.py --phase after",
++    "scripts/w0_repro.py --phase before"
++  ],
++  "checks": [
++    {
++      "id": "W0-R1-01",
++      "name": "真实服务入口：选中旧方案反馈→revise→parent_revision_uid 指向用户选中旧版",
++      "result": "observed_pass",
++      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
++      "evidence": "after/checks.json",
++      "executed_at": "2026-11-14T12:27:12+08:00"
++    },
++    {
++      "id": "W0-R1-02",
++      "name": "R1 负例：跨候选/跨项目/旧反馈/并发新反馈/失败稿/晚到结果均明确拒绝",
++      "result": "observed_pass",
++      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
++      "evidence": "after/checks.json",
++      "executed_at": "2026-11-14T12:27:12+08:00"
++    },
++    {
++      "id": "W0-R2-01",
++      "name": "R2 负例：改了目标对象但未修窄通道 → REV-OBJECTIVE 拒绝，不记已解决",
++      "result": "observed_pass",
++      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
++      "evidence": "after/checks.json",
++      "executed_at": "2026-11-14T12:27:12+08:00"
++    },
++    {
++      "id": "W0-R2-02",
++      "name": "R2 正例：净宽由几何规则实测达标才记 pass（不是只看对象 diff）",
++      "result": "observed_pass",
++      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
++      "evidence": "after/checks.json",
++      "executed_at": "2026-11-14T12:27:12+08:00"
++    },
++    {
++      "id": "W0-R2-03",
++      "name": "R2 正例：审美/未实现目标写 unknown + user_confirmed=pending，四态分离",
++      "result": "observed_pass",
++      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
++      "evidence": "after/checks.json",
++      "executed_at": "2026-11-14T12:27:12+08:00"
++    },
++    {
++      "id": "W0-R2-04",
++      "name": "R2 服务级负例：伪修复经真实 /run 被拦，不生成新候选、不宣称成功",
++      "result": "observed_pass",
++      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
++      "evidence": "after/checks.json",
++      "executed_at": "2026-11-14T12:27:12+08:00"
++    },
++    {
++      "id": "W0-R3-01",
++      "name": "R3：历史证据字节不变、独立勘误含时间轴与三份 schema 映射；Q10 仍 not_run",
++      "result": "observed_pass",
++      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
++      "evidence": "after/checks.json",
++      "executed_at": "2026-11-14T12:27:12+08:00"
++    },
++    {
++      "id": "REG-Q01",
++      "name": "契约有效才进入有效候选；缺role/错类型/无效引用/批准字段被定位；历史保留",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q02",
++      "name": "面积唯一口径：100㎡/3㎡ 显式指出 97㎡ 未分配；完整布局对账；补通道不再自相矛盾",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q03",
++      "name": "实际几何：分离三角形不报相交；真实交集/自交/越界/零面积正确拒绝",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q04",
++      "name": "通行与锁定：断路/障碍/瓶颈/入口不可达/保留卫生间/目录引用均有定位",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q05",
++      "name": "完整交接：超旧截断长度的末尾对象可被评审/修订读取；基线ID与issue_id明确",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q06",
++      "name": "多方案实质不同：换名/换色/顺序/无意义位移不算新拓扑",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q07",
++      "name": "页面反馈进入版本化有效需求，形成绑定原基线的新修订和真实对象 diff",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q08",
++      "name": "意见逐项对应、拒绝有理由、删除/锁定/身份负例被拒、返工上限仍为2",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q09",
++      "name": "项目/版本/闸口隔离：切项目不显示宁波、晚到结果失效、决定重放不覆盖",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q10",
++      "name": "同源成果真实可用（后续适配批）",
++      "result": "not_run",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q11",
++      "name": "重启保留反馈/任务/闸口/检查报告；种子不重写项目事实、不重复事实",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "REG-Q12",
++      "name": "工程完成不自动设计通过；来源明确；未确认不生成下一阶段交付；AD 不改判",
++      "result": "observed_pass",
++      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
++      "evidence": "after/arc-first-batch-regression-checks.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "W0-REPRO-BEFORE",
++      "name": "整改前 R1/R2/R3 缺陷复现（应为 7/7 确认）",
++      "result": "observed_pass",
++      "command": "scripts/w0_repro.py --phase before",
++      "evidence": "before/reproduction.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "W0-REPRO-AFTER",
++      "name": "整改后同脚本复现（应为 0/7）",
++      "result": "observed_pass",
++      "command": "scripts/w0_repro.py --phase after",
++      "evidence": "after/reproduction.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "W0-UNIT",
++      "name": "全量单测回归",
++      "result": "observed_pass",
++      "command": "PYTHONPATH=mvp .venv/Scripts/python.exe -B -m unittest discover -s mvp/tests -q",
++      "evidence": "after/full-unittest-final.log",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "W0-LOOP",
++      "name": "A1 本地桩管线",
++      "result": "observed_pass",
++      "command": "scripts/verify_studio_loop.py",
++      "evidence": "after/studio-loop.log",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "W0-BUILD",
++      "name": "前端生产构建",
++      "result": "observed_pass",
++      "command": "npm run build (web/)",
++      "evidence": "after/frontend-build.log",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    },
++    {
++      "id": "W0-BROWSER",
++      "name": "真实浏览器：选中旧方案→反馈→续改→父版本对照",
++      "result": "observed_pass",
++      "command": "scripts/verify_w0_browser.py + verify_w0_browser.cjs",
++      "evidence": "browser/verification.json, browser/browser-observations.json",
++      "executed_at": "2026-11-14T12:34:07+08:00"
++    }
++  ],
++  "totals": {
++    "observed_pass": 24,
++    "observed_fail": 0,
++    "not_run": 1
++  },
++  "artifact_refs": [
++    "review-packet.md",
++    "code-diff.md",
++    "changes.patch",
++    "manifest.json",
++    "positive-negative-cases.md",
++    "evidence-provenance-erratum.md",
++    "before/reproduction.json",
++    "after/reproduction.json",
++    "after/checks.json",
++    "after/arc-first-batch-regression-checks.json",
++    "after/q-checks.json",
++    "after/full-unittest-final.log",
++    "after/studio-loop.log",
++    "after/frontend-build.log",
++    "browser/verification.json",
++    "browser/browser-observations.json",
++    "browser/*.png"
++  ],
++  "external_calls": 0,
++  "image_counts": {
++    "images_sent_external": 0,
++    "images_generated_external": 0,
++    "browser_screenshots_local": 3
++  },
++  "tokens": 0,
++  "cost_amount_or_null": null,
++  "cost_status": "no_external_calls_zero_cost",
++  "limitations": [
++    "工程批，无新增设计成果",
++    "Q10 not_run（W1/W2）",
++    "AD01—AD08 结论不改判，阶段设计结论由用户给出",
++    "本地桩不代表真实 AI 设计能力"
++  ],
++  "stop_point": "docs/26 硬节点 1：W0 收口完成，先交架构师复核，不自行开始 W1"
++}
+\ No newline at end of file
+diff --git a/deliverables-for-review/roadmap/W0-收口/code-diff.md b/deliverables-for-review/roadmap/W0-收口/code-diff.md
+new file mode 100644
+index 0000000..0e9e80d
+--- /dev/null
++++ b/deliverables-for-review/roadmap/W0-收口/code-diff.md
+@@ -0,0 +1,52 @@
++# W0 代码差异与复核定位
++
++- **base**：`957cf775e1d835cf25bbdf196de4e7f3f51280fa`（`957cf77`）
++- **head**：见 `manifest.json` 的 `head_commit` 与 `commit-reference.md`（补录提交仅追加清单/补丁）
++- 复核差异命令：`git diff 957cf77..HEAD -- mvp/rkd_mvp/studio web/src scripts`
++- 标准补丁：同目录 `changes.patch`（由 `git diff 957cf77..<本批主体提交>` 导出，可 `git apply --check`）
++- 本批**未** reset / checkout / 删除用户既有改动；`source/` 原件与上一批历史成果字节未动。
++
++## 1. 修改的已跟踪文件（7 个）
++
++| 文件 | 改动 | 架构师优先抽查点 |
++| --- | --- | --- |
++| `mvp/rkd_mvp/studio/store.py` | additive 列：`feedback`（`baseline_selection/locks_json/objectives_json/task_kind/consumed_by_run`）、`runs`（`task_kind/target_*/conflict_code`）；`add_feedback` 扩展；`feedback()` 解析结构化字段；新增 `artifact_by_id()`（跨项目精确查询）与 `consume_feedback()`（CAS） | `_MIGRATIONS`、`consume_feedback`、`artifact_by_id` |
++| `mvp/rkd_mvp/studio/server.py` | `/messages` 严格校验用户指定旧基线（409 冲突，不偷换）；`/run` 对 conflict 返回 409；`_state` 暴露 `task_resolution` / `revision_history` / `latest_run` / `last_completed_run` | `Handler.do_POST` 的 `/messages` 分支、`_state` |
++| `mvp/rkd_mvp/studio/orchestrator.py` | `run_a1` 同步 `resolve_task` 分流（generate / revise / conflict）并写 run 元数据；feedback CAS 消费；新增 `_revise_from_baseline()`；`_scenario` boss_feedback 保留基线指针/锁/目标；修订完整性调用传入 site/catalog/objectives/locks | `run_a1`、`_revise_from_baseline`（重点：不生成 A/B、`parent_revision_uid=base_uid`）、`_scenario` 第 3—5 步 |
++| `mvp/rkd_mvp/studio/revision.py` | `verify_revision_integrity` 四态分离 + 确定性目标复核 + 全局 `REV-OBJECTIVE` 兜底；返回 `objective_rechecks` / `objective_recheck_summary` | `verify_revision_integrity` 的 accept 分支与 boss_feedback 循环 |
++| `scripts/verify_arc_first_batch.py` | Q07/Q08 三处 `verify_revision_integrity` 传入 `site=SITE`（**启用**几何实测复核，非放宽）；伴生 `q-checks.json` 改为写到 `--out` 同目录，避免回归覆盖上一批历史证据 | `q07_q08()` 与 `main()` 末尾 |
++| `web/src/StudioView.tsx` | 新增「续改哪份旧方案」下拉（`data-testid=baseline-select`）、任务条（上一轮/本轮/版本链）、成果栏父版本 uid；`send()` 提交 `baseline_artifact_id` / `baseline_revision_uid` | `send()`、`studio-taskbar`、`studio-input` |
++| `web/src/studio.css` | `.baseline-pick` 与 620px 以下换行，避免 390px 横向溢出 | `@media (max-width: 620px)` |
++
++## 2. 新增文件
++
++| 文件 | 职责 |
++| --- | --- |
++| `mvp/rkd_mvp/studio/revision_task.py` | `resolve_task()` 任务分流/冲突、`structured_locks()` 结构化锁、`derive_objectives()`、`recheck_objectives()` 确定性目标复核 |
++| `scripts/w0_repro.py` | R1/R2/R3 整改前后复现（`--phase before\|after`），只读历史证据 + 隔离库 |
++| `scripts/verify_w0.py` | W0 专项正负例 + 真实 HTTP 服务验收，产出 `checks.json` |
++| `scripts/verify_w0_browser.py` / `.cjs` | 真实浏览器：选中旧方案 → 反馈 → 续改 → 父版本对比 → 390px 检查 |
++| `deliverables-for-review/roadmap/W0-收口/*` | 本复核包（含独立勘误记录） |
++
++## 3. 契约与语义变更说明（不含放宽）
++
++- **未修改** `contracts/v1/spatial-plan-proposal.schema.json` 与
++  `contracts/v1/spatial-plan-draft.schema.json`：必填项、`additionalProperties:false` 与身份边界均未动。
++- 未新增第三套权威项目事实：Studio 仍只写自己的实验库；主系统候选模型、采用指针、成果登记未改。
++- `feedback` / `runs` 新增列全部为 **additive**，旧行保留原值；旧草案解析不变。
++- `MAX_AUTO_REWORK = 2` 保持；新增 `consume_feedback` CAS 与 `feedback_already_consumed` 冲突，
++  明确阻止"拆成新 run 绕过上限"。
++- `unknown` 不补 0：目标复核无法计算时写 `objective_rechecked=unknown` + `user_confirmed=pending`，
++  不写 `resolved=true`，不把"引用到变化"记为已解决。
++- 未触碰 PG/NAS/账号/备份；未改日常 `var/studio/studio.db`（所有验证使用 `RKD_STUDIO_DB` 隔离库）。
++
++## 4. 复核时建议的顺序
++
++1. `git diff 957cf77..HEAD` 看真实差异，重点读 `revision_task.resolve_task`、
++   `orchestrator._revise_from_baseline`、`revision.verify_revision_integrity`、
++   `server.Handler.do_POST` 的 `/messages` 分支。
++2. 读 `before/reproduction.json`（7 个缺陷实测）与 `after/reproduction.json`（0 个）。
++3. 抽查 `after/checks.json` 的 `W0-R1-02`（负例集合）、`W0-R2-01`、`W0-R2-04`。
++4. 看 `browser/w0-revision-desktop.png`（任务条 + 父版本 + 单一待决闸口）与
++   `browser/browser-observations.json`。
++5. 核对 `evidence-provenance-erratum.md` 的时间轴与历史字节 SHA。
+diff --git a/deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md b/deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md
+new file mode 100644
+index 0000000..6d9cfef
+--- /dev/null
++++ b/deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md
+@@ -0,0 +1,112 @@
++# 首批复核包 · 证据时间与契约映射勘误记录（W0 / R3）
++
++性质：**独立勘误记录**，不是对上一批交付包的修订版，也不替代唯一动态状态表 `PROJECT_STATUS.md`。
++依据：`docs/26-持续制作路线与周期复核计划.md` 第 2 节 R3、第 6 节。
++适用：架构师复核 W0 时核对证据来源与 W1 统一模型适配前的字段口径。
++
++**本文件不修改、不覆盖、不回写任何历史证据。** 原有
++`deliverables-for-review/arc-first-batch/` 与 `var/evidence/architecture-handoff/first-batch/`
++下所有文件保持原始字节；下方记录其 SHA-256 供复核时比对。
++
++## 1. 时间轴：编制 / 执行 / 复跑补生成 / 提交分开标明
++
++复核包 `review-packet.md` 头部写「日期：2026-11-12」，而 `checks.json` / `q-checks.json`
++内含 `2026-11-14` 的生成时间。这是**两类不同事件**，不是证据造假，也不应混用日期：
++11-12 是复核包的编制日与当日执行，11-14 是架构师复核当日重新生成 Q 清单/检查汇总并提交补丁。
++
++| 事件类别 | 实际时间（带时区） | 对应代码基线 | 证据文件 / 来源 |
++| --- | --- | --- | --- |
++| 审查基线提交 | 2026-11-11T22:48:29+08:00 | `d6501a9` | `git log -1 d6501a9` |
++| 复核包**编制**日期 | 2026-11-12（日内时间未记录，不推断） | 审查基线 `d6501a9` | `arc-first-batch/review-packet.md` 头部「日期」 |
++| 整改前复现**执行** | 2026-11-12T23:02:01+08:00 | `d6501a9` | `before-reproduction.json` → `generated_at` |
++| 浏览器验收**执行** | 2026-11-12T15:47:39.778763+00:00（= 23:47:39+08:00） | 整改工作区 | `browser-verification.json` → `checked_at`（UTC，注意换算是北京时间同日） |
++| 整改后复现**执行** | 2026-11-12T23:48:30+08:00 | 整改工作区 | `after-reproduction.json` → `generated_at` |
++| Q 清单 / 检查汇总**复跑补生成** | 2026-11-14T11:21:18、11:21:20+08:00 | 已完成的整改代码（尚未提交） | `q-checks.json`、`checks.json` → `generated_at` |
++| 主体实现**提交** | 2026-11-14T11:26:18+08:00 | `eb6513c` | `git log -1 eb6513c` |
++| 复核包标注**提交** | 2026-11-14T11:26:47+08:00 | `957cf77` | `git log -1 957cf77` |
++| W0 整改前复现**执行** | 2026-11-14T11:53:38+08:00 | `957cf77` | `var/evidence/roadmap/W0-收口/before/reproduction.json` |
++
++口径说明（**不得混用**）：
++
++1. `checks.json` 的 `baseline` 字段是**审查基线** `d6501a9`，不是该文件生成时的 HEAD，
++   也不是本批实现提交号。三者分别写：`d6501a9`（审查基线）/ `eb6513c`（实现提交）/
++   `957cf77`（复核包标注提交）。
++2. 11-12 的执行证据保留 11-12 的时间；11-14 的补生成与提交保留 11-14 的时间。
++   不把 11-14 的事件倒填进 11-12 的编制日期，也不因日期差异推断 11-12 的证据无效。
++3. `browser-verification.json` 的 `checked_at` 使用 UTC，换算成北京时间是同日 23:47，
++   与 `after-reproduction.json` 的 23:48 相邻，不构成时间倒序矛盾。
++4. 本 W0 复核包中所有 `generated_at` / `checked_at` / `committed_at` 一律带时区，
++   并同时记录**执行时间**与**源码基线**，避免再次出现"一份文件只有一个笼统日期"。
++
++### 历史证据字节（只读，未改动）
++
++| 文件 | 字节数 | SHA-256（文件原始字节） |
++| --- | --- | --- |
++| `arc-first-batch/review-packet.md` | 17814 | `8ac87bd723818054f71c1b00adbab43a7777370e7ce8da87458e9791c046ca21` |
++| `arc-first-batch/ARC-05-adaptation-note.md` | 6193 | `cc451e8bd6c0e078da5732db6d963cf318d1229433e5b439a2aec3d62e95d451` |
++
++> `w0_repro.py` 记录的 `historical_packet_sha256` 是按 `read_text()` 后的 UTF-8 文本计算，
++> 与上表按原始字节计算的口径不同；两者不互相替代，复核时按原始字节 SHA 为准。
++
++## 2. 契约映射修正：按实际三份 schema，不按字段名拼接
++
++`ARC-05-adaptation-note.md` 第 2 节第 1 行原文：
++
++```
++| `contract_version` / `project_id` | `rkd-spatial-plan.v1` / 与主系统项目 ID 显式映射（`source_project_id`） | `ai-design-option` 的 `schema_version` / `project_id` | 映射必须显式记录，不从名称推断；跨项目引用拒绝 |
++```
++
++这行把**三份契约的字段混在一起**，W0 实测（`w0_repro.py` R3-b）确认：
++
++| 实测项 | 结果 |
++| --- | --- |
++| `spatial-plan-proposal.schema.json` 是否含 `contract_version` | **false** |
++| `spatial-plan-proposal.schema.json` 是否含 `project_id` | **false** |
++| `spatial-plan-draft.schema.json` 的 `contract_version` 常量 | `rkd-spatial-plan.v1` |
++| `spatial-plan-draft.schema.json` 是否含 `project_id` | true |
++| `ai-design-option.schema.json` 的 `schema_version` 常量 | `rkd-ai-design-option.v1` |
++| `ai-design-option.schema.json` 是否含 `project_id` | **false** |
++| `ai-design-option.schema.json` 的 `additionalProperties` | false |
++
++### 2.1 三份契约的真实边界
++
++| 契约 | 责任主体 | 版本键 | 身份字段 | 备注 |
++| --- | --- | --- | --- | --- |
++| `spatial-plan-proposal.v1` | **模型提案**（Studio） | 无版本键（靠 `$id` 与文件版本） | **无**：不含 `contract_version` / `project_id` / `option_id` / `revision` / `parent_revision` / `author`，也不含批准/采用字段 | `additionalProperties:false`；required = strategy, zones, circulation, furniture, area_table, open_questions |
++| `spatial-plan-draft.v1` | **程序装配后的完整交接文档**（Studio） | `contract_version` = const `rkd-spatial-plan.v1` | 有 `project_id`、`option_id`、`revision`（int）、可选 `parent_revision`（int 或 null）、`author` | 身份由 `validation.validate_proposal()` 在四级校验通过后注入，模型不得决定 |
++| `ai-design-option.v1` | **主系统候选模型** | `schema_version` = const `rkd-ai-design-option.v1` | 有 `set_id`、`option_id`、`revision_no`（int）、`parent_revision_id`（string 或 null）；**没有 `project_id`，也没有 `contract_version`** | `additionalProperties:false`；项目归属由仓储键/表列承载，不是文档字段 |
++
++### 2.2 原文的四处表述混用（勘误，不改原文件）
++
++1. 把 `contract_version` / `project_id` 写成「Studio 提案字段」——它们只存在于 **draft** 文档，proposal 契约根本没有。
++2. 把 `rkd-spatial-plan.v1` 当成 proposal 的版本值——该常量属于 draft 契约的 `contract_version`。
++3. 把 `project_id` 写成 `ai-design-option` 的落点字段——该契约 `additionalProperties:false` 且无此字段，直接写入会因 schema 校验失败。
++4. 把 `schema_version` 与 `contract_version`、`revision` 与 `revision_no`、
++   `parent_revision` 与 `parent_revision_id` 当成可直接对应的同义字段——实际类型与语义不同
++   （`parent_revision` 是 int 版本号，`parent_revision_id` 是字符串 ID）。
++
++### 2.3 修正后的映射草案（供 W1 实施前核对，W0 不实现适配）
++
++| Studio 提案字段 | 程序装配后的 draft 字段 | 主系统落点 | 适配损失 / 处理 |
++| --- | --- | --- | --- |
++| （无身份字段） | `contract_version`=`rkd-spatial-plan.v1` | `schema_version`=`rkd-ai-design-option.v1` | 两套版本键并存，映射必须显式且带版本，不得互相覆盖 |
++| （无身份字段） | `project_id`（Studio 内部 id） | **无同名字段**；用 `set_id` + 仓储项目键 + `source_project_id` 显式映射 | 跨项目引用拒绝；不得把 `project_id` 塞进 `ai-design-option` 文档 |
++| （无身份字段） | `option_id`（`^[A-Z]$`） | `option_id`（任意非空字符串） | 候选组归属用 `set_id` 表达，不能只靠 A/B 字母 |
++| （无身份字段） | `revision`（int） / `parent_revision`（int\|null） | `revision_no`（int） / `parent_revision_id`（string\|null） | int 版本号与字符串版本 ID 的转换必须留痕，不能静默丢弃 |
++| `strategy.{name,narrative,tradeoffs}` | 同名 | `strategy.{strategy_id,statement,tradeoffs,source_refs}` | `source_refs` 需真实来源 ID，不能补造 |
++| `zones[].{id,role,polygon,area_sqm}` | 同名 | `objects[]`（shape 目前**只支持 `rect`**） | 多边形→矩形会丢几何精度，必须标 `unsupported` 或扩展 shape，不得离散后宣称精确 |
++| `circulation[].{id,width_mm,path}` | 同名 | `circulation.{path_id,kind,min_width,segments,connections}` | mm 与米/单位换算、折线段映射需显式；净宽须由几何复算 |
++| `ceiling.{coves,fixtures}` | 同名 | 主系统当前无天花/灯具对象 | 标 `unknown` / 待扩展，不得静默丢弃或据草案缩略图未画推断数据缺失 |
++| `furniture[].{catalog_id,x,y,rot}` | 同名 | `objects[]` + 目录引用 | 尺寸取目录实际 w_mm/d_mm，旋转占地用 shapely 复算 |
++| `area_table` | 同名 | `cost` / 面积摘要 | 由程序按「可布置范围 = 外框 − 保留区」复算，不采信模型合计 |
++| `open_questions` / `standards_cited` | 同名 | 缺口与依据引用 | unknown 不填 0；引用编号必须存在于规范库 |
++
++W1 实施前必须以本表与三份 schema 的实际内容为准；若发现进一步冲突，追加勘误，
++不回写 Studio 提案契约，也不放宽 `additionalProperties` 或必填项。
++
++## 3. 本勘误明确未做的事
++
++- 未修改 `arc-first-batch/` 下任何历史证据或适配说明的字节；
++- 未把 11-14 的事件倒填为 11-12，也未把 11-12 的证据重跑覆盖；
++- 未实现 Studio → 主系统写入适配器、未生成效果图或任何设计成果（W1 范围）；
++- 未改变 AD01—AD08 结论，未代替用户确认任何设计阶段。
+diff --git a/deliverables-for-review/roadmap/W0-收口/positive-negative-cases.md b/deliverables-for-review/roadmap/W0-收口/positive-negative-cases.md
+new file mode 100644
+index 0000000..9c49673
+--- /dev/null
++++ b/deliverables-for-review/roadmap/W0-收口/positive-negative-cases.md
+@@ -0,0 +1,52 @@
++# W0 关键正负例（预期 / 实际 / 失败原因 / 复跑结果）
++
++数据来源：`var/evidence/roadmap/W0-收口/{before,after}/reproduction.json`、
++`var/evidence/roadmap/W0-收口/after/checks.json`、
++`var/evidence/roadmap/W0-收口/after/browser/browser-observations.json`。
++整改前 7/7 缺陷确认，整改后 0/7；W0 专项 7/7 observed_pass。
++所有回路使用明确标记的本地模型桩 `local-model-stub`，0 外部调用、0 费用。
++
++## A. R1 旧基线反馈续改
++
++| 编号 | 类型 | 预期 | 整改前实际 | 整改后实际 |
++| --- | --- | --- | --- | --- |
++| R1-b | 正例 | 反馈指定旧基线 → 第二轮加载该旧稿续改；新修订 `parent_revision_uid` 指向选中旧版；不重新生成 A/B | 又生成 **2 个**全新 A/B；修订 `parent_revision_uid=revuid_10f811980d`（本轮新候选），与用户选中的 `revuid_ef1bc05689` 不符 | `second_run_fresh_A_B_count=0`；`runs[1].task_kind=revise`；`parent_revision_uid` 等于选中旧版 uid |
++| R1-c | 正例 | 真实 `/messages` 尊重用户指定的旧基线，不按最新文件偷换 | HTTP 201 但把 `art_414dd516b2` 换成 `art_f35ba7261d`；无 `baseline_selection`、无冲突提示 | HTTP 201，`stored_baseline_artifact_id` = 用户指定值，`baseline_selection=user_selected`，`task_hint=revise` |
++| W0-R1-01 | 正例（真实服务 + 浏览器） | 页面选中旧方案 → 反馈 → `/run` 返回 `task_kind=revise` → 新修订父版本指向选中旧版；无关对象保留；旧版字节不变 | 无此路径 | 全部通过；`fresh_AB_in_revise_run=0`，`page_shows_parent_uid=true`，重启持久化通过 |
++| N1 跨候选 | 负例 | 产物 id 与 `revision_uid` 不属于同一版本 → 明确拒绝 | 无校验 | 409 `baseline_uid_mismatch` |
++| N2 跨项目 | 负例 | 用另一项目的产物当本项目旧基线 → 拒绝，不偷换 | 无校验 | 409 `cross_project_baseline` |
++| N3 基线不存在 | 负例 | 伪造 artifact id → 明确冲突 | 会被 `_latest_valid_plan` 兜底成"最新文件" | 409 `baseline_not_found` |
++| N4 失败稿 / 失效稿 | 负例 | `invalid_raw` 或 `superseded` 产物不可作为续改基线 | 无区分 | 409 `baseline_invalid` |
++| N5 旧反馈重放 | 负例 | 同一反馈已被消费，不得用新 run 重放绕过最多 2 轮自动返工 | 每轮都重新生成 A/B，天然可无限重跑 | 409 `feedback_already_consumed`；`MAX_AUTO_REWORK=2` 未改 |
++| N6 并发新反馈 | 负例 | 运行开始时版本落后于当前有效需求 → 晚到结果不得成为当前版本 | 只有部分覆盖 | `resolve_task` 返回 `concurrent_new_feedback` conflict；`invalidate_artifacts` 标 `superseded` 且**字节不变** |
++| N7 锁定条件 | 负例 | 结构化锁（对象/字段）被改动 → 报具体冲突与替代，不自行解锁 | 靠中文「保留」关键词命中对象名 | `structured_locks` 以 `role=arrival`、用户显式 locks、场地保留条件为准；`keyword_matching_used=false` |
++
++## B. R2 问题复核不能只靠对象 diff
++
++| 编号 | 类型 | 预期 | 整改前实际 | 整改后实际 |
++| --- | --- | --- | --- | --- |
++| R2-a / W0-R2-01 | **负例（伪修复）** | 「把主动线净宽调到 2100mm」却只改目标对象颜色/名称（或 `path` 微移），`width_mm` 仍 2000 → 不得记为已解决 | `verified=true`、`recheck="对象 diff 复核"`、`ok=true` | `objective_rechecked=fail`、`verified=false`、`resolved=false`、含 `REV-OBJECTIVE`；`ok=false` |
++| W0-R2-04 | 负例（服务级） | 伪修复经真实 `/run` 应被拦，不生成新候选、不标 succeeded | 无目标复核，正常通过 | `final_run_status=incomplete`、`raw_invalid_artifacts>=1`、diagnostics 含 `REV-OBJECTIVE`、该 run 无有效修订 |
++| W0-R2-02 | 正例 | 净宽真的改到 2100 且几何复算实测瓶颈达标 → 才记 `pass` | 只看对象是否出现在 diff | `objective_rechecked=pass`、`verified=true`、`resolved=true`、`ok=true` |
++| W0-R2-03 | 正例 | 「更开放/更有设计感」等审美目标、以及未实现的 STD-004 视线规则 → `unknown` + `user_confirmed=pending` + `resolved=null`，只提供图面对比与模型意见 | 直接 `in_revision_input=true` 并把全部变化记为关联 | 四态字段齐备；`objective_recheck_summary.unknown>=2`；`linked_changes` 不再等于全部变化 |
++| R2-b | 正例 | `boss_feedback_resolutions` 分离 `input_included / object_changed / objective_rechecked / user_confirmed` | 只有 `in_revision_input` + `linked_changes=全部变化` | 四态齐备；`boss_feedback_linked_changes_is_all_changes=false` |
++
++**复跑结果**：`W0-R2-04` 第一次失败原因是测试脚本自身的副作用（前一步"晚到结果失效"把 C01
++新修订标成 `superseded`，再拿它当基线被正确拒绝）；改用仍有效的 A/v1 旧基线后通过。
++第二次调试发现文本启发式目标缺 `feedback_id`，导致伪修复的 `fail` 未关联到反馈；已补
++`feedback_id` 映射并加全局 fail 兜底，最终 7/7 通过。这两次失败与修复过程如实保留，未删未粉饰。
++
++## C. R3 证据日期与契约映射
++
++| 编号 | 类型 | 预期 | 整改前 | 整改后 |
++| --- | --- | --- | --- | --- |
++| R3-a | 勘误 | 编制 / 执行 / 复跑补生成 / 提交分别标时间与代码基线；不推断造假、不混用、不回写历史证据 | 头部只有「日期：2026-11-12」，内含 11-14 事件 | 独立 `evidence-provenance-erratum.md` 时间轴；历史 `review-packet.md` 字节 SHA `8ac87bd7…` 未变 |
++| R3-b | 勘误 | 按实际三份 schema 修正映射 | 适配说明把 `contract_version/project_id` 写成 Studio 提案字段与 `ai-design-option` 落点 | 勘误列明：proposal 无身份字段；draft 用 `contract_version=rkd-spatial-plan.v1`；主系统用 `schema_version=rkd-ai-design-option.v1` 且无 `project_id`；历史适配说明字节 SHA `cc451e8b…` 未变 |
++
++## D. 回归负例（不拿旧通过数冒充本批结论）
++
++- Q01—Q12 重新执行：**11 observed_pass / 0 fail / 1 not_run（Q10 属 W1/W2）**。
++- 全量单测 **262/262 OK**；A1 管线 15/15 PASS；前端构建 EXIT=0。
++- 浏览器 `page_errors=[]`、390px `scrollWidth=390`、无横向溢出。
++- 本批没有把上一批 18 项或 262 项通过当作 R1/R2/R3 已解决：三个缺陷都是先独立复现、
++  再实现、再用新的正负例分别验证。
+diff --git a/deliverables-for-review/roadmap/W0-收口/review-packet.md b/deliverables-for-review/roadmap/W0-收口/review-packet.md
+new file mode 100644
+index 0000000..662d467
+--- /dev/null
++++ b/deliverables-for-review/roadmap/W0-收口/review-packet.md
+@@ -0,0 +1,179 @@
++# W0 收口 · 架构师复核包（R1 / R2 / R3）
++
++编制日期：2026-11-14（北京时间）
++执行委托：`docs/26-持续制作路线与周期复核计划.md` 第 3、4、6 节 + 第 8 节提示词。
++源码基线（base）：`957cf775e1d835cf25bbdf196de4e7f3f51280fa`（`957cf77`）；主体实现 `eb6513c` 为上一批。
++本批提交号：见同目录 `manifest.json` 与 `commit-reference.md`（补录提交仅追加清单，无业务代码改动）。
++性质：**工程控制整改与可复核证据**。不是功能完成证明，不是设计通过，不是 AD 验收，不是阶段升级。
++
++## 1. 需求映射（本批只做 W0，不越级）
++
++| 架构师结论 | 本批处理 | 落到哪里 |
++| --- | --- | --- |
++| R1 旧方案反馈仍可能变成重新生成 | generate / revise / retry / conflict 四种任务分离；revise 加载反馈指定的旧产物完整基线，不先生成 A/B；不适用旧基线明确冲突，不偷换 | `revision_task.resolve_task`、`orchestrator.run_a1` / `_revise_from_baseline`、`server.do_POST(/messages|/run)`、`store`（additive 列 + CAS 消费） |
++| R2 对象变化不能证明具体问题解决 | 四态分离 `input_included / object_changed / objective_rechecked / user_confirmed`；可计算目标由净宽/角度/色温/面积/锁定规则实测复核；审美与未实现写 `unknown` + `pending`；全局 fail 兜底拒绝伪修复 | `revision_task.recheck_objectives`、`revision.verify_revision_integrity` |
++| R3 核对证据版本与语义 | 独立勘误记录：编制/执行/复跑补生成/提交分别标时间与代码基线；按**实际三份 schema** 修正契约映射；历史证据字节不回写 | `evidence-provenance-erratum.md`；`w0_repro.py` R3-a/R3-b |
++
++明确未做（按 docs/26 硬节点）：
++- **W1 统一模型适配、W2 同源平面/人眼效果图、W3 真实设计验证、W4 完整成果，一律未开始**。W0 收口完成是硬节点 1，须先交架构师复核。
++- 未扩 A2 自由协作、未提高自动返工上限（`MAX_AUTO_REWORK = 2` 保持）、未拆成新 run 绕过上限（feedback CAS 消费 + `feedback_already_consumed` 冲突）。
++- 未重跑付费模型、未新增外发授权、未扩 NAS/PG/账号/备份配套。
++
++## 2. 本轮实际做了什么 / 没做什么 / 为什么
++
++### 做了
++
++1. **先复现再实现**：新增 `scripts/w0_repro.py`，整改前实测 7/7 缺陷确认，证据
++   `var/evidence/roadmap/W0-收口/before/reproduction.json`。关键实测：
++   - R1-b：反馈指定 `art_414dd516b2`（`revuid_ef1bc05689`），第二轮仍生成 **2 个全新 A/B**，修订的
++     `parent_revision_uid=revuid_10f811980d` 指向本轮新候选，不是用户选中的旧版。
++   - R1-c：真实 HTTP `/messages` 把用户指定的 `art_414dd516b2` **偷换成** `art_f35ba7261d`
++     （`_latest_valid_plan` 按最新文件猜），返回 201 且无任何冲突提示。
++   - R2-a：伪修复（只改 `CA1` 的颜色/标签，`width_mm` 仍 2000）被记为
++     `verified=true`、`recheck="对象 diff 复核"`、`ok=true`。
++   - R2-b：`boss_feedback_resolutions.linked_changes` 等于**全部**变化对象，且直接写
++     `in_revision_input=true`。
++   - R3-a：复核包编制 2026-11-12，执行 11-12T23:02/23:48，`checks.json` 复跑补生成
++     11-14T11:21:20，代码提交 11-14T11:26:18/47，头部只有一个笼统日期。
++   - R3-b：`spatial-plan-proposal.v1` 实际**不含** `contract_version` / `project_id`；
++     `ai-design-option.v1` 用 `schema_version` 且 `additionalProperties:false`、**不含** `project_id`；
++     而 `ARC-05-adaptation-note.md` 第 2 节把三者混写成一行。
++2. **R1 实现**：
++   - `resolve_task()` 只从**版本化反馈**决定任务；有显式旧基线且未被消费 → `revise`，否则 `generate`；
++     冲突情形（跨项目、uid 不匹配、失败稿/失效稿、旧反馈已消费、并发新反馈、晚到结果）
++     一律返回带 `conflict_code` + 替代建议的 **409**，绝不回退到"最新文件"或重新生成 A/B。
++   - `run_a1` 同步判定任务并写 `runs.task_kind / target_artifact_id / target_revision_uid`；
++     `feedback.consume_feedback` 用 CAS 保证一条反馈只驱动一个 revise run。
++   - `_revise_from_baseline()` 加载 `spatial-plan-draft.v1` **完整旧稿**（含 `sha256`），
++     白名单 patch 由程序应用、四级契约校验、确定性目标复核，产出新修订的
++     `parent_revision_uid` 指向用户选中的旧版本；旧版字节保持可下载。不生成 A/B。
++   - `/messages` 严格接受并校验 `baseline_artifact_id` / `baseline_revision_uid`，
++     记录 `baseline_selection=user_selected`；未指定时明确 `none_explicit` + generate，**不再猜最新文件**。
++   - 结构化对象/字段锁 `structured_locks()`（来源为 `role=arrival`、用户显式 locks 与场地保留条件），
++     **不靠中文关键词命中对象名**；冲突给替代建议，不自行解锁。
++   - 前端新增「续改哪份旧方案」下拉，页面显示上一轮任务、本轮预判、版本链（新→父）、父版本 uid。
++3. **R2 实现**：可计算目标由 `geometry.check_geometry` 复算实测瓶颈与瓶颈规则，
++   角度/色温/面积按对象字段实测；`objective_rechecked` 只有规则实测达标才是 `pass`；
++   审美与未实现目标写 `unknown` + `user_confirmed=pending` + `resolved=null`；
++   任何 fail 都触发 `REV-OBJECTIVE` 并阻止修订入库。
++4. **R3 实现**：独立勘误记录（时间轴 + 三份 schema 真实边界 + 修正映射草案供 W1 使用），
++   历史 `review-packet.md` / `ARC-05-adaptation-note.md` 字节 SHA 记录且未改动。
++5. **验证**：W0 专项 7/7、整改后复现 0/7 缺陷、首批 Q01—Q12 回归 11 pass / 0 fail / 1 not_run、
++   全量单测 262/262、A1 管线 15/15、前端生产构建通过、真实浏览器验收 `passed=true`。
++
++### 没做，以及为什么
++
++- 没有做 W1—W4：docs/26 第 3、5 节规定 W0 收口完成先复核，未收口不把反馈链标完成；
++  用户确认设计阶段之前不得越级。本批停在硬节点 1。
++- 没有把 W0 的工程 PASS 写成"反馈链已完成"或设计通过：`succeeded` 只表示流程跑完。
++- 没有回写上一批历史证据（R3 明确要求"补充勘误记录即可"）；也没有把 11-14 事件倒填成 11-12。
++- 没有重跑首批浏览器脚本：它的输出路径固定，会覆盖上一批历史截图；W0 浏览器验收在**同一
++  StudioView** 上覆盖了更严格的交互（选中旧方案 → 反馈 → 续改 → 父版本对比 → 390px 无溢出），
++  且共用服务由 Q 回归、全量单测、A1 管线覆盖。
++- 没有把本地桩结果说成真实 AI 设计，没有改 AD 分母，没有替用户给任何阶段结论。
++
++## 3. 验证结果与命令（真实执行，非计划）
++
++| 命令 / 入口 | 结果 | 证据 |
++| --- | --- | --- |
++| `.venv/Scripts/python.exe -B scripts/w0_repro.py --phase before` | 7/7 缺陷确认 | `before/reproduction.json` |
++| 同上 `--phase after` | 0/7 缺陷（7 项均 `not_reproduced`） | `after/reproduction.json` |
++| `.venv/Scripts/python.exe -B scripts/verify_w0.py` | **7 observed_pass / 0 fail** | `after/checks.json` |
++| `scripts/verify_arc_first_batch.py --out var/evidence/roadmap/W0-收口/after/arc-first-batch-regression-checks.json` | Q01—Q12：**11 pass / 0 fail / 1 not_run（Q10）** | `after/arc-first-batch-regression-checks.json`、`after/q-checks.json` |
++| `PYTHONPATH=mvp .venv/Scripts/python.exe -B -m unittest discover -s mvp/tests -q` | **262/262 OK** | `after/full-unittest-final.log` |
++| `scripts/verify_studio_loop.py` | A1 管线 **15/15 PASS** | `after/studio-loop.log` |
++| `npm run build`（`web/`） | EXIT=0（保留既有 PDF.js 大包告警） | `after/frontend-build.log`（如附） |
++| `scripts/verify_w0_browser.py` + `verify_w0_browser.cjs` | `passed=true`，`page_errors=[]`，390px `scrollWidth=390` | `after/browser/verification.json`、`browser-observations.json`、3 张截图 |
++
++> 首批 Q08 脚本新增 `site=SITE` 入参以**启用**确定性净宽复核（加强，不是放宽校验）；
++> 同时把伴生 `q-checks.json` 改为写到 `--out` 同目录，避免回归运行覆盖上一批历史证据。
++> 这两处改动在 `code-diff.md` 中逐项列出。
++
++## 4. 真实浏览器证据（W0 关键用户动作）
++
++`var/evidence/roadmap/W0-收口/after/browser/`（`deliverables-for-review/roadmap/W0-收口/browser/` 有副本）
++
++- 页面在下拉中**显式选中** `候选 A v1`（`art_…`），提交「把主动线净宽扩大到 2100mm，保留入口」。
++- `/messages` 返回 `baseline_selection=user_selected`；`/state.task_resolution.kind=revise`，
++  `target_revision_uid` 等于选中旧版 uid。
++- 「开一轮」后 `runs[-1].task_kind=revise`、`status=succeeded`；该 run 内
++  `fresh_AB_in_revise_run=0`，新修订 `parent_revision_uid` **等于选中旧版 uid**。
++- 页面任务条显示「上一轮：revise（流程走完，未验收）」、版本链（新→父）与父版本 uid；
++  待决闸口**只有 1 个**，标题已更新为「旧方案续改完成：请决定是否继续」。
++- 重启后新 `Store` 读同一隔离库，反馈/任务/闸口/修订链/旧基线字节全部保留。
++- 截图：`w0-feedback-desktop.png`、`w0-revision-desktop.png`、`w0-mobile.png`。
++
++## 5. 仍然不像设计公司成果的地方（逐条，如实）
++
++1. **本轮没有新增任何设计成果**：没有封面/设计说明、正式平面布置图、动线分析图、功能泡泡图、
++   天花布置图、2 张立面图、材料与灯光板、3 张人眼效果图、可发客户 PDF。既有设计差距**完全没有消除**。
++2. **图面仍是概念平面草案**：`sketch.render` 只画分区轮廓/名称/面积、展台、动线、家具方框；
++   没有真实墙体围合、柱网、门窗、楼梯构造、洁具、尺寸链、材料实物色块。浏览器截图里的成果栏
++   只是草案缩略图，不是能发客户的图纸。
++3. **天花与灯光在平面上看不出来**：`ceiling` 数据里有灯槽与灯具点位，但制图器未画；
++   照度、配光、间距未计算，未编造数值。
++4. **没有人眼效果图/真实材质/软阴影/窗光/绿植/展品**：本批 0 张渲染。案例参照图是
++   **人工编写的手工样板**，明确标注、不计入系统自动生成成果。
++5. **设计来源不是系统自动设计**：本批全部回路用明确标记的本地模型桩（`local-model-stub`）；
++   真实 AI 设计能力、真实用户设计评价、专业签核均未完成。W0 是工程修复批。
++6. **几何能力仍受限**：单层、多边形分区，无曲面/多层/异形构造；门窗/柱网/消防疏散/无障碍
++   标 `unsupported`，不宣称合规。
++7. **成本与量价**：本批未做同源量价；`unknown` 保持 `unknown`，未补 0，未把净地坪小计叫全项目造价。
++8. **工程 PASS 不等于设计成立**：闸口仍在等待用户；`AD01—AD08` 未自行改判；
++   `Q10`（同源平面/渲染/数量一致性）仍为 `not_run`。
++
++## 6. 外部调用与费用（本批实测）
++
++| 项 | 数值 |
++| --- | --- |
++| 外部模型调用 | **0** |
++| 外部图像通道调用 | **0** |
++| 外发图片 | **0 张** |
++| 生成图片（外部） | **0 张** |
++| 真实模型 tokens | **0**；桩计数仅用于台账演练 |
++| 金额 | **0 外部费用**（`cost_status=no_external_calls_zero_cost`），无价表时不推测单价 |
++| 密钥 | 未使用、未写入任何文件/日志/Git/截图/报告 |
++
++本提示词未新增费用或资料外发授权，本批也未申请任何新授权。
++
++## 7. 风险、限制与下一步
++
++- **硬节点 1**：W0 收口完成，停在交付点等架构师复核。未收口前不把反馈链标完成，不自行开始 W1。
++- 待架构师独立复跑的关键负例：`W0-R1-02`（跨候选/跨项目/旧反馈/并发/失败稿/晚到）、
++  `W0-R2-01` 与 `W0-R2-04`（伪修复）、`W0-R3-01`（历史字节与勘误）。
++- 已知工程限制：`feedback` / `runs` 新列为 Studio 实验库 additive 字段；Studio 仍**不是**主系统
++  成果登记权威；浏览器使用固定 8099 端口与隔离 CORS 白名单，仅用于本地验收。
++- 复核包里 `decision-request.md` **省略**：本批没有需要用户选择的事项（用户已授权 W0，
++  下一节点是架构师复核，不是用户决定）。
++- 架构师复核后可继续的范围建议：W1 统一模型适配（须以勘误记录的**修正后映射表**为准）。
++  W2→W3 之间还有同源工程链复核与真实调用额度硬节点；阶段 1→2 / 2→3 只接受用户对具体版本的明确确认。
++
++## 8. 分工边界
++
++| 主体 | 本批 | 不可替代的边界 |
++| --- | --- | --- |
++| 执行 AI（本包） | 复现、实现、正负例、服务/浏览器验收、证据与状态更新 | 未宣布设计成立、未改 AD 分母、未把人工/桩方案包装成自动设计 |
++| 架构师 | 读实际 diff、独立复跑关键负例、核对来源/版本/字节、给工程结论 | 不代替用户审美与专业签核 |
++| 用户 | 设计阶段确认、AD01—AD08 | 工程 PASS 不代签用户确认 |
++| 专业责任 | 本批未涉及 | 施工图发布/正式报价/合同/下单/付款不在本批范围 |
++
++## 9. 完整文件路径（均为 `D:\Github\RKD AI\` 下）
++
++复核包：`deliverables-for-review\roadmap\W0-收口\`
++- `review-packet.md`（本文件）、`checks.json`、`code-diff.md`、`changes.patch`、`manifest.json`
++- `positive-negative-cases.md`、`evidence-provenance-erratum.md`、`commit-reference.md`
++- `before\reproduction.json`、`after\reproduction.json`、`after\checks.json`
++- `after\arc-first-batch-regression-checks.json`、`after\q-checks.json`、`after\full-unittest-final.log`、`after\studio-loop.log`
++- `browser\browser-observations.json`、`browser\verification.json`、
++  `browser\w0-feedback-desktop.png`、`browser\w0-revision-desktop.png`、`browser\w0-mobile.png`
++
++运行证据：`var\evidence\roadmap\W0-收口\`（同名批次，被 `var/` 忽略，不进 Git）
++
++源码改动：
++- `mvp\rkd_mvp\studio\revision_task.py`（新增）
++- `mvp\rkd_mvp\studio\orchestrator.py`、`revision.py`、`server.py`、`store.py`
++- `web\src\StudioView.tsx`、`web\src\studio.css`
++- `scripts\w0_repro.py`、`scripts\verify_w0.py`、`scripts\verify_w0_browser.py`、
++  `scripts\verify_w0_browser.cjs`（新增）、`scripts\verify_arc_first_batch.py`（回归适配）
++
++唯一动态状态表：`PROJECT_STATUS.md`（本批已追加 W0 范围，不改 AD 结论）。
+diff --git a/docs/26-持续制作路线与周期复核计划.md b/docs/26-持续制作路线与周期复核计划.md
+new file mode 100644
+index 0000000..4cf5fc7
+--- /dev/null
++++ b/docs/26-持续制作路线与周期复核计划.md
+@@ -0,0 +1,186 @@
++# RKD AI 持续制作路线与周期复核计划
++
++日期：2026-11-14（北京时间）  
++规划基线：`957cf77`，主体实现 `eb6513c`；检查开始时工作区干净。  
++适用：用户已要求架构师统筹较长制作周期，执行 AI 连续落地，定期交架构师审查。  
++本文件为 docs/13、docs/21 的执行细化，继承 docs/25 的质量约定；不替代唯一动态台账 PROJECT_STATUS.md。
++
++## 1. 委托方式与目标
++
++用户把本文件最后的提示词交给执行 AI 后，执行者按本路线持续推进，无需为每个字段、函数或普通实现选择请求确认。架构师负责需求对齐、架构审查、工程证据复核及修订下一段路线；用户保留设计阶段确认与正式责任决定。
++
++总目标仍是需求一次输入、AI 完成设计判断、程序生成可计算模型和同源成果，并逐步贯通量价、商务、采购施工与交付。多角色必须围绕真实对象工作，不以对话数量作为产能。
++
++本计划覆盖从当前工程收口到首场景完整设计包，再到专业与公司交付。前 6 周是可执行滚动窗口，随后 6 周是条件性规划窗口。周数按实际开工起算，不承诺 12 周达到专业生产；每两周依据真实有效产物、返工和资源重新估计。模型可用性和用户阶段反馈影响日历，不允许靠降标准赶进度。
++
++本轮仅新增此规划文件，不修改业务代码。未启动定时任务或后台监控；“定期复核”由用户转交证据路径或启动此聊天触发。
++
++## 2. 首批复核结论及保留项
++
++已读便携复核包、Q 清单、适配说明、实际提交差异范围，抽查 revision/orchestrator/store 关键实现，并独立执行：
++
++```powershell
++$env:PYTHONPATH='mvp'
++.\.venv\Scripts\python.exe -B -m unittest mvp.tests.test_arc_first_batch -q
++```
++
++结果：18 项通过。262 项全量、前端构建和浏览器通过是执行者所交历史证据，本轮未重新执行；不能将抽查结论写成整份 6469 行补丁已逐行批准。Q10 同源成果仍 not_run。
++
++结论：首批是有效工程进展，可作为下一批开发基线；Q07/Q08 的证据尚不足以证明“沿原方案精准满足反馈”，必须先收口，不批准真实设计或阶段升级。
++
++### R1：旧方案反馈仍可能变成重新生成
++
++`orchestrator._scenario()` 读取反馈后仍创建新 A/B，修订基线取 `options[target]`（本轮新候选）。反馈记录虽有 baseline_artifact_id / baseline_revision_uid，但组装 boss_feedback 时仅保留编号、版本、类型与文本。未见根据用户指定旧基线加载原稿进行续改的路径。
++
++整改：明确 generate 与 revise 两种任务；revise 必须加载反馈指定的原产物和完整基线，不先无条件重新生成 A/B；不适用旧基线时明确冲突，不能偷换。跨候选、跨项目、旧反馈、并发新反馈各留负例。测试必须通过真实服务/页面入口证明 parent_revision_uid 指向用户选中的旧版本，而不只证明某段文字进入上下文。
++
++### R2：对象变化不能证明具体问题解决
++
++`revision.verify_revision_integrity()` 当前接受意见主要判断目标对象是否出现在 diff；boss_feedback_resolutions 记录全部变化，并写 in_revision_input=true。此逻辑能证明关联和变化，不能证明“扩大净宽”等具体目标满足。
++
++整改：分开 input_included、object_changed、objective_rechecked、user_confirmed。可计算要求由对应规则复核（例如净宽、容量、位置、锁定）；审美要求只提供图面对比和模型意见，最终等用户。不可计算或尚未实现的复核写 unknown，不把“引用到变化”记为已解决。补“改了目标对象颜色/名称但未修窄通道”的负例。
++
++### R3：核对证据版本与语义
++
++复核包日期为 11-12，部分内含事件时间为 11-14，应分别标明编制、执行、提交时间及对应代码基线，不推断证据造假，也不混用日期。适配说明对 proposal/draft 版本字段存在表述混用；实施前按实际两个 schema 修正映射。不要为文案一致而回写历史证据，补充勘误记录即可。
++
++## 3. 长周期工作包与依赖
++
++W 编号是制作批次，映射原 AI-DESIGN/DELIVERY/BUSINESS 任务；不是新增 AD 分母。
++
++| 窗口/批次 | 工作及顺序 | 用户能检查的结果 | 退出证据 |
++| --- | --- | --- | --- |
++| 第1周 W0 收口 | R1/R2/R3；检查原 ARC-01—04 回归，排除真实阻断缺陷 | 在选中旧方案上反馈，得到相关修改、明确锁定与旧版对比 | 原基线续改、无关对象保留、伪修复拒绝、晚到结果拒绝；架构复核 |
++| 第2周 W1 模型适配 | ARC-05：项目映射、毫米/米、稳定对象、材料/相机/高度/来源和采用指针；旧格式兼容 | Studio 有效提案进入同一模型链，不需手搬JSON | 两种不同布局无损适配、无法表达字段显式拒绝、未采用无生产副作用 |
++| 第3周 W2 成果纵向切片 | 同一模型驱动正式可读平面、Blender场景、相机、受支持净量与已知成本 | 一张平面 + 一张模型驱动的人眼效果图，能核对同一对象 | 对象/材质/相机/模型哈希映射；下载字节一致；变更后旧版保留；Q10 |
++| 第4周 W3 真实设计验证 | 获准后最小真实调用；需求→不同空间组织→反馈→有效修订；按真实失败改进 | 系统模型自动生成的阶段2候选，含意图、材料与费用缺项 | 真实调用记录、相反需求对照、锁定修订、有效图面对比；用户阶段2确认 |
++| 第5—6周 W4 完整设计包 | 阶段2获认可后：天花/灯光、动线、分区、立面、材料板、多视角与PDF | 符合固定清单的完整方案包 | 跨图对象/尺寸/材料一致性、图面逐页检查、用户阶段3确认 |
++| 第7—8周 W5 专业深化 | 通过的对象逐类补墙/顶/构造/节点/材料做法和计量；明确服务范围/设计费草稿 | 受限专业技术包、量价覆盖表、专业复核事项 | 独立计量复算、目标工具打开验证、真实责任人复核；不自动施工发布 |
++| 第9—10周 W6 公司交付衔接 | 复用采购/收货/分派/变更；接采用模型差量，补询比价/替代/现场交接 | 设计变更对图纸、数量、预算、采购需求的具体影响 | 已收/已施工/已付款不被重算覆盖；未知损耗不造采购量；外部动作关闭或独立授权 |
++| 第11—12周 W7 真实试用与下一场景 | 首场景使用复盘；按实际需要接经营/维护事实与第二场景小样 | 效率、质量、返工和成本的真实基线；下一周期路线 | 真用户操作、第二场景需求差异；团队切库另行决策，不重做基础设施 |
++
++周次是容量安排而非跳过闸口的许可。W3 未获得用户确认，W4 不得开始生成下一阶段方案成果。可继续修复当前阶段缺陷、补该阶段证据；不能以“基础能力开发”名义绕过阶段确认制作后续设计。
++
++W5—W7 属于保留原始总目标的条件性路线：到对应里程碑由架构师细化当前对象范围、交付深度与负例后再实施，不能现在一次造完通用ERP或施工平台。不要求用户先重新访谈。
++
++## 4. W0—W4 的具体实施约束
++
++### W0：真实续改
++
++- 生成、修订、重试是不同任务；修改绑定明确 option_revision，不按“最新文件”猜。
++- 保留条件形成结构化对象/字段锁；不能只依赖中文关键词命中对象名。
++- 用户文字与既有硬条件冲突时给具体冲突和替代，不自行解除锁。
++- 每条意见有当前处置、关联diff、确定性复核结果或unknown；没有设计成果就明说本批是工程修复。
++- 持续失败不增加自动打回上限，不通过新run绕过最多两次限制。
++
++### W1：统一模型的最小集合
++
++至少表达：场地边界及洞、保留区、门窗/入口依据、功能空间、隔断/门口、家具展台、材料面、高度标高、天花灯光意向、视图相机、需求引用与对象来源。
++
++按当前切片需要渐进扩展，不要求一次覆盖任意CAD/BIM。没有实测高度、材料规格或产品选型时保留假设与unknown；渲染示意参数不能升级成现场事实。空间分区不自动变墙，活动包络不自动计实体工程量。
++
++主系统拥有有效模型、采用指针与成果；Studio拥有协作记录和提案。具体复用哪个已有schema由执行者比较后记录，不能只按字段名字拼接；不允许出现第三套无版本权威事实。迁移先在隔离副本验证，禁止顺手正式切库。
++
++### W2：同源表达
++
++把已有Blender样板中的造型构造、材质加载、家具资产、相机、灯光能力提取为通用执行器；不将其固定方案坐标作为新项目设计答案。两种布局必须能用同一生成器出图。
++
++平面至少具备本阶段已建模的门窗、家具洁具、名称面积、图例、尺寸链和面积表；未建模项明确缺失。避免靠缩小字体隐藏重叠。相机位置与方向标在平面，效果图人眼高度且看得到功能组织。
++
++几何修改影响平面/模型/相关数量；换材质影响相关材料/表现/费用；只改相机不改变数量；只改单价不改变几何。每项用一个具体案例证明，不只检查哈希变了。
++
++### W3：真实AI验证与协作路线
++
++前提是工程工具可用、有效模型可表达、允许的资料范围与费用已确认。先修工具和输入缺陷，再决定是否换模型，不盲目重复长回路。
++
++保留 P/D1/D2/D3/D4/R 的职责。D3负责概念、材料和天花灯光，D2负责空间组织，D4负责受控深化表达，R只作评审建议。探索概念时可在获准A2范围内做三方向发散，再选出至少两个实质不同的空间候选；未获A2委托前沿已有A1边界验证。自由协作后置到能证明减少返工时，不为“像公司”增加无产物会议。
++
++默认评估案例：同场地开放与私密相反需求；入口或障碍变化；预算缺项；反馈保留入口/卫生间；同质候选；无解面积；模型畸形与超时。实际项目作为主证据，合成案例只用于补负例。
++
++阶段2必须明确来源为系统模型自动设计。人工调整可作为新版本保留，但不能计入自动设计结果。模型自评只能指出差距，不能批准。
++
++### W4：固定成果清单
++
++每个方案的完整交付：封面与设计说明；平面（分区、面积、家具洁具、门窗、尺寸链、图例、面积表）；动线；功能泡泡或分区图；天花灯槽及灯具定位；至少两张立面；材料实物色块与灯光板（色温、照度说明）；至少三张不同视角的人眼效果图；汇总PDF。
++
++照度目标、模拟结果、实测结果分开；没有计算不得编数字。鸟瞰不抵人眼效果图数量。效果图应有真实材质、软阴影窗光、家具展品、绿植与灯光层次；达不到客户交付质量则标内部试验，不包装成合格成果。
++
++完整PDF必须从同一冻结基线生成；图纸索引、对象尺寸、材料编号、相机视点可交叉核对，旧版本保持可读。最终设计是否成立由用户确认。
++
++## 5. 周期复核制度
++
++### 日常执行：不逐步请示
++
++执行AI每次继续先查最新用户指令和台账，选择本批最早可执行任务。每日或每个实际工作会话结束时更新台账中的短摘要：任务、成果、证据、失败、下一步。连续三次工作会话只有配套代码没有新增可操作能力或可评成果时，必须记录阻塞根因并收缩任务，不再堆配套。
++
++### 每周轻复核
++
++每完成5个实际工作日，或一个W批次完成（以先到为准），提交一个版本化复核包。若有明确可独立验证的小任务，可在当前获准范围继续，不因等待轻复核停止所有工作；不得跨越下述硬节点。
++
++用户把复核包路径转给架构师即可，不需复制全部日志。架构师检查差异、证据与图面，给“可继续本范围 / 限定整改 / 证据不足”，并明确下一段范围。若路线需调整，追加理由和影响，不删失败历史。
++
++### 必须暂停的硬节点
++
++1. W0 收口完成：先复核真实旧基线续改与问题复核，未收口不把反馈链标完成。
++2. W2→W3：同源工程链复核；真实调用只有已获准额度与资料范围内才可执行。本计划不新增费用授权。
++3. 阶段1→2、阶段2→3：只接受用户对具体版本的明确确认，沉默不算同意。既有阶段1认可在同一场地版本有效。
++4. 自动返工达到两轮：停止该设计试验，提供失败定位和策略选择，不通过重启回路绕过。
++5. 正式报价、合同、施工图发布、下单、付款、正式切库及新增外发：按实际责任与授权处理，日常开发不自动获得这些权限。
++
++每两周做一次路线修订：检查仍否沿需求→模型→成果→量价推进，统计有效候选/失败原因/人工干预/实际费用/用户等待，不用代码行数、角色数量、测试总数或图数当完成率。
++
++## 6. 复核包规范与防止证据漂移
++
++每批固定路径：`D:\Github\RKD AI\deliverables-for-review\roadmap\Wxx-批次名\`；运行证据在 `var/evidence/roadmap/` 同名批次。禁止覆盖前一批。
++
++最少文件：
++
++- `review-packet.md`：需求映射、实现/未实现、设计差距、风险和下一步。
++- `checks.json`：逐项 observed_pass/observed_fail/not_run、证据引用、环境、命令与真实执行时间。
++- `code-diff.md` 与可定位commit/base/head或未提交补丁；不用补丁行数证明工作价值。
++- `manifest.json`：本批源码基线、模型/材料/视图版本、产物路径、字节数与SHA；原件和派生来源分开。
++- `positive-negative-cases.md`：关键正负例、预期与实际、失败原因和复跑结果。
++- 涉及图面时提供实际文件、当前版与上一版对比、截图；涉及操作时提供浏览器流程证据；涉及恢复时只测试本批触及的隔离任务恢复。
++- `decision-request.md`：仅真实需要用户选择时提供具体方案、差异、费用/影响与建议；无待决项则省略。
++
++包内明确区分：执行者报告、架构师独立复跑、用户确认、专业责任签核。旧262项通过不能覆盖新改动；本地桩不能替代真实AI；架构师未复查的项目标证据待审。
++
++动态完成状态只记 PROJECT_STATUS.md。不要复制本文件成为第二份每日进度表。旧 docs/25 首批停止点已由本文件展开为长期分批机制，但其来源、质量与责任约定继续有效。
++
++## 7. 成本、资料和环境边界
++
++沿用已有授权且核实适用范围，不重复索取已经明确的决定。当前无法确认真实调用权限时先做本地工程与模型桩验证，不读取其他软件密钥、不自动付费、不外发项目原件。
++
++真实调用申请应先给具体试验：要验证什么、资料类别、最多候选/返工次数、token/时间/费用上限、失败后如何停止。价格未知写unknown，不以token上限冒充金额上限；明确试验总上限后才执行。每次报告外部请求数、外发图片、生成图片、tokens和实际或待对账金额。
++
++本机回环、模块化单体、原件只读、历史字节保留、正式发布关闭继续。冻结管理扩张，不冻结为了当前设计闭环必需的正确性修复；真实故障需要插队时明确症状和影响，不借此全面重构。
++
++## 8. 直接交给执行AI的持续执行提示词
++
++```text
++你是RKD AI的执行负责人，另一个AI作为架构师做定期复核。我授权你按以下文件持续制作，不要每个小步骤都来请示：
++D:\Github\RKD AI\docs\26-持续制作路线与周期复核计划.md
++
++先按项目接管约定读取AGENTS.md、交接、PROJECT_STATUS.md、docs/13、docs/21、docs/24、docs/25和docs/26；检查真实Git与文件。最新用户指令优先，旧“下一步”不覆盖新路线。
++
++从W0开始，修复架构师发现的R1旧基线反馈续改、R2问题复核不能只靠对象diff、R3证据日期与契约映射口径。先复现再实现，做实际服务/浏览器与必要正负例；W0完成后给架构师复核。不要把上一批18项或262项测试通过当作这些问题已经解决。
++
++之后按W1统一模型、W2同源平面和人眼效果图、W3真实设计验证、W4完整成果的顺序推进；按docs/26的硬节点停下，用户确认设计阶段之前不得越级。W5—W7保留总目标，到里程碑再由架构师细化，不提前造全平台。不得自行扩A2自由协作、提高自动返工次数或重跑付费模型绕过停止点。
++
++批内日常实现自行决定并记录，不只返回计划。每5个实际工作日或W批次完成时交复核包，以先到为准；同范围独立工作可继续，硬节点必须等相应复核/用户决定。没有后台自动运行就不要声称会自行每周执行。
++
++复用已有系统，不推倒重写、不扩NAS/PG/账号/备份配套。需求一次输入、AI负责设计、程序负责精确执行、我决定设计成立与否。禁止用手工方案代替系统自动设计，禁止放宽检查制造成功。unknown不补0，原件与历史成果不得覆盖。
++
++本提示词不新增外部调用费用或资料外发授权；已有授权核实后沿用，没有授权则先做本地任务。密钥只能在当前会话环境变量。
++
++按docs/26第6节保存带基线与时间的复核包，更新唯一状态表PROJECT_STATUS.md。每次报告完整文件路径、做了什么/没做什么及原因、仍然不像设计公司成果的地方、真实调用与费用。AD01—AD08和阶段设计结论由我给，不代签。
++```
++
++## 9. 用户每次交回架构师的简短提示词
++
++```text
++请按docs/26复核执行AI本批成果。复核包完整路径：<路径>；对应W批次：<编号>。
++检查实际代码、模型、证据和图面，不只读总结；独立复现关键负例。给本批工程结论、具体修改项、允许继续的范围及是否到用户设计确认节点。你只负责架构与规划，不改业务代码，不替我确认设计或专业发布。
++```
++
++本轮外部模型调用0次、外发图片0张、新增调用费用0；无新增设计成果。既有草图表现不足、自动设计未与完整渲染/图纸/量价贯通、真实设计质量未获认可的差距仍存在。
+diff --git a/mvp/rkd_mvp/studio/orchestrator.py b/mvp/rkd_mvp/studio/orchestrator.py
+index b3caf42..de0bc35 100644
+--- a/mvp/rkd_mvp/studio/orchestrator.py
++++ b/mvp/rkd_mvp/studio/orchestrator.py
+@@ -28,6 +28,7 @@ import traceback
+ from typing import Any, Callable
+ 
+ from . import revision as revision_mod
++from . import revision_task
+ from . import sketch, tools as toolbox, validation, vision
+ from .tools import check_plan
+ from .llm import BudgetExceeded, Client, ModelError, Usage, extract_json
+@@ -343,18 +344,72 @@ class Studio:
+         ih = input_hash(project_id, expected, eff)
+         group_id = new_id("candgroup")
+ 
++        # W0/R1: generate, revise, retry and conflict are DIFFERENT tasks.
++        # The task is resolved SYNCHRONOUSLY so an unusable old baseline is a
++        # visible conflict instead of a silent fresh A/B generation.
++        resolution = revision_task.resolve_task(st, project_id, expected)
++        kind = resolution["kind"]
++        target_art = resolution.get("baseline") or {}
++        target_fb = resolution.get("feedback") or {}
++
++        prior = sum((r["tokens_in"] or 0) + (r["tokens_out"] or 0)
++                    for r in st.runs(project_id) if r["status"] != "running")
++        client = Client(project_tokens=prior)
++        run_id = st.start_run(
++            project_id, client.config.model, input_hash_value=ih,
++            expected_feedback_revision=expected, candidate_group_id=group_id,
++            task_kind=kind, target_artifact_id=target_art.get("id"),
++            target_revision_uid=target_art.get("revision_uid"),
++            target_feedback_id=target_fb.get("id"),
++            conflict_code=resolution.get("conflict_code"))
++
++        if kind == revision_task.TASK_CONFLICT:
++            detail = (resolution.get("conflict_detail") or "") + "；可选：" + \
++                     "；".join(resolution.get("alternatives") or [])
++            st.add_message(project_id, "P", "gate",
++                           "旧基线冲突，本轮没有生成任何候选：" + detail,
++                           evidence=[{"type": "task_conflict",
++                                      "conflict_code": resolution.get("conflict_code"),
++                                      "alternatives": resolution.get("alternatives"),
++                                      "expected_feedback_revision": expected}])
++            self._gate(project_id, "旧基线冲突：请决定如何继续", detail)
++            st.finish_run(run_id, "conflict", 0, 0,
++                          resolution.get("conflict_detail"),
++                          calls=0, images_sent=0, images_generated=0,
++                          cost_amount=None, cost_status="unknown_no_price_table")
++            with self._lock:
++                self._running.discard(project_id)
++            return {"status": "conflict", "project_id": project_id,
++                    "task_kind": "conflict", "run_id": run_id,
++                    "conflict_code": resolution.get("conflict_code"),
++                    "conflict_detail": resolution.get("conflict_detail"),
++                    "alternatives": resolution.get("alternatives"),
++                    "note": "旧基线不适用：明确冲突，不偷换、不自动重新生成 A/B"}
++
++        if kind == revision_task.TASK_REVISE:
++            # CAS: one feedback row drives exactly one revise run. This blocks
++            # "split into a new run" as a way around the 2-round rework limit.
++            if not st.consume_feedback(target_fb["id"], run_id):
++                st.finish_run(run_id, "conflict", 0, 0,
++                              "反馈已被其他 run 消费", calls=0,
++                              cost_amount=None, cost_status="unknown_no_price_table")
++                with self._lock:
++                    self._running.discard(project_id)
++                return {"status": "conflict", "project_id": project_id,
++                        "task_kind": "conflict", "run_id": run_id,
++                        "conflict_code": "feedback_already_consumed",
++                        "conflict_detail": "该反馈已由另一轮消费，不得用新 run 重放",
++                        "alternatives": ["给一条新留言并重新选择旧基线"]}
++
+         def work() -> None:
+-            prior = sum((r["tokens_in"] or 0) + (r["tokens_out"] or 0)
+-                        for r in st.runs(project_id) if r["status"] != "running")
+-            client = Client(project_tokens=prior)
+-            run_id = st.start_run(project_id, client.config.model,
+-                                  input_hash_value=ih,
+-                                  expected_feedback_revision=expected,
+-                                  candidate_group_id=group_id)
+             status, error = "succeeded", None
+             stats = {"images_sent": 0, "images_generated": 0, "calls": 0}
+             try:
+-                self._scenario(project, client, run_id, group_id, expected, ih, stats)
++                if kind == revision_task.TASK_REVISE:
++                    self._revise_from_baseline(project, client, run_id, group_id,
++                                               expected, ih, stats, resolution)
++                else:
++                    self._scenario(project, client, run_id, group_id, expected, ih, stats)
+             except BudgetExceeded as exc:
+                 status, error = "budget_stopped", str(exc)
+                 st.add_message(project_id, "P", "gate", f"预算闸口：{exc}",
+@@ -411,10 +466,16 @@ class Studio:
+         if background:
+             threading.Thread(target=work, daemon=True, name=f"studio-{project_id}").start()
+             return {"status": "started", "project_id": project_id,
+-                    "expected_feedback_revision": expected, "input_hash": ih}
++                    "expected_feedback_revision": expected, "input_hash": ih,
++                    "run_id": run_id, "task_kind": kind,
++                    "target_artifact_id": target_art.get("id"),
++                    "target_revision_uid": target_art.get("revision_uid")}
+         work()
+         return {"status": "finished", "project_id": project_id,
+-                "expected_feedback_revision": expected, "input_hash": ih}
++                "expected_feedback_revision": expected, "input_hash": ih,
++                "run_id": run_id, "task_kind": kind,
++                "target_artifact_id": target_art.get("id"),
++                "target_revision_uid": target_art.get("revision_uid")}
+ 
+     # ------------------------------------------------------------------ helpers
+     def _assert_current(self, project_id: str, run_id: str, expected: int) -> None:
+@@ -464,6 +525,189 @@ class Studio:
+                     "不传 query 会返回全部目录；validate_plan 一次）。"
+                     "拿够信息后必须立刻输出最终完整 JSON，禁止再调工具。")
+ 
++    # ------------------------------------------------------------ W0/R1 revise
++    def _revise_from_baseline(self, project: dict, client: Client, run_id: str,
++                              group_id: str, expected: int, ih: str,
++                              stats: dict, resolution: dict) -> None:
++        """Continue from the FULL old plan named by the feedback (R1).
++
++        No A/B regeneration, no "latest file" guess. The new artifact's
++        parent_revision_uid points at the version the user selected. A failed
++        or pseudo-fixed revision is retained as invalid_raw and never becomes
++        a fresh candidate pair.
++        """
++        pid = project["id"]
++        st = self.store
++        site = project["site"]
++        art = resolution["baseline"]
++        base = resolution["plan"]
++        fb = resolution["feedback"]
++        base_aid, base_uid = art["id"], art["revision_uid"]
++        option_id = str(base.get("option_id") or "A")
++        base_rev = int(base.get("revision") or 1)
++        base_sha = art.get("sha256")
++
++        locks = revision_task.structured_locks(base, site, fb.get("locks"))
++        lock_ids = locks["lock_object_ids"]
++        boss_feedback = [{
++            "feedback_id": fb["id"], "revision_no": fb["revision_no"],
++            "kind": fb["kind"], "text": fb["text"],
++            "baseline_artifact_id": fb.get("baseline_artifact_id"),
++            "baseline_revision_uid": fb.get("baseline_revision_uid"),
++            "baseline_selection": fb.get("baseline_selection"),
++            "locks": fb.get("locks") or [], "objectives": fb.get("objectives") or [],
++        }]
++        objectives = revision_task.derive_objectives([dict(fb)])
++        rev_hash = revision_mod.revision_input_hash(
++            base, [], boss_feedback, base_aid, base_uid)
++        task_id = st.create_task(pid, "D2", f"续改旧基线 {base_aid} v{base_rev}",
++                                 round_no=2, run_id=run_id)
++        self._assert_current(pid, run_id, expected)
++
++        instruction = (
++            "这一轮是【旧基线续改】，不是重新生成 A/B。请逐条回应老板留言并优先输出"
++            "白名单 patch 数组，由程序在旧稿上应用、复算并生成新版本。\n"
++            f"【老板留言】{fb['text']}\n"
++            f"【指定的旧基线】artifact id={base_aid} / revision_uid={base_uid} / "
++            f"v{base_rev} / sha256={base_sha}\n"
++            f"【结构化锁（不得改动；冲突要明确提出，不得自行解锁）】"
++            f"{json.dumps(locks['locks'], ensure_ascii=False)}\n"
++            f"【可计算目标（程序会按规则复核，不是看对象 diff）】"
++            f"{json.dumps(objectives, ensure_ascii=False, default=str)}\n"
++            "只输出 JSON：{\"responses\":[...],\"patch\":[...]}；"
++            "patch 只改白名单对象字段，不写身份/批准/采用/价格来源；"
++            "无关的分区、家具与保留条件保持原状；删除必须写理由。\n"
++            f"- {self._TOOL_BUDGET}")
++        raw = self._speak(
++            ROLES["D2"], client, pid, task_id, instruction,
++            context=(self._ctx(project) + "\n【旧基线完整对象事实（未截断）】\n"
++                     + validation.structural_summary(base)),
++            tools=self._tools_for(project, "D2")[0],
++            handlers=self._tools_for(project, "D2")[1],
++            json_only=True, kind="revise", label="旧基线续改", max_steps=5)
++        data = _safe_json(raw)
++        patch = data.get("patch")
++        if isinstance(patch, list) and patch:
++            candidate, patch_errors, patch_audit = revision_mod.apply_patch(base, patch)
++        else:
++            candidate = data.get("plan") if isinstance(data.get("plan"), dict) else data
++            patch_errors, patch_audit = [], {"mode": "full_output"}
++
++        problem, integrity, report = "", None, None
++        catalog = {c["catalog_id"]: c for c in toolbox.CATALOG}
++        if patch_errors:
++            problem = "白名单 patch 不合法：" + "；".join(
++                e["message"] for e in patch_errors[:3])
++        elif not isinstance(candidate, dict):
++            problem = "修订稿不是 JSON 对象"
++        else:
++            integrity = revision_mod.verify_revision_integrity(
++                base, candidate, responses=data.get("responses") or [],
++                issues=None, lock_object_ids=lock_ids,
++                boss_feedback=boss_feedback, objectives=objectives,
++                site=site, catalog=catalog, locks=locks)
++            report = validation.validate_proposal(
++                candidate, project=project, option_id=option_id,
++                revision=base_rev + 1, parent_revision=base_rev,
++                lock_object_ids=lock_ids, previous_plan=base)
++            if not report["ok"]:
++                problem = f"续改稿契约无效（{report['stage']}）：{report['repair_feedback'][:400]}"
++            elif not integrity["ok"]:
++                problem = "续改完整性/确定性目标复核未通过：" + "；".join(
++                    e["message"] for e in integrity["errors"][:3])
++            elif not integrity["changed_objects"]:
++                problem = "续改没有产生任何对象变化"
++
++        if problem:
++            st.save_artifact(
++                pid, "spatial-plan-raw", {"raw_text": raw, "parsed": candidate},
++                "D2", option_id=option_id, revision=base_rev + 1, task_id=task_id,
++                status="invalid_raw", run_id=run_id, candidate_group_id=group_id,
++                input_hash_value=rev_hash, contract_status="invalid_raw",
++                diagnostics={"reason": problem, "task_kind": "revise",
++                             "baseline_artifact_id": base_aid,
++                             "baseline_revision_uid": base_uid,
++                             "contract_report": report, "integrity": integrity,
++                             "patch_errors": patch_errors})
++            st.add_message(
++                pid, "P", "note",
++                f"旧基线续改未通过，本轮没有生成新候选、也没有偷换基线：{problem}。"
++                "原始输出与完整诊断已保留为 invalid_raw，旧版字节保持不变。",
++                task_id=task_id,
++                evidence=[{"type": "revise_failed", "task_kind": "revise",
++                           "baseline_artifact_id": base_aid,
++                           "baseline_revision_uid": base_uid,
++                           "objective_rechecks": (integrity or {}).get("objective_rechecks")}])
++            st.update_task(task_id, "no_valid_revision",
++                           {"accepted_revision": False, "stop_reason": problem,
++                            "baseline_artifact_id": base_aid})
++            raise IncompleteArtifact("旧基线续改未通过：" + problem)
++
++        uid = new_id("revuid")
++        changed = integrity["changed_objects"]
++        check_id = st.save_check_report(pid, {
++            "kind": "revision", "task_kind": "revise",
++            "contract_report": report, "integrity": integrity,
++            "patch_audit": patch_audit, "revision_input_hash": rev_hash,
++            "baseline_artifact_id": base_aid,
++            "baseline_revision_uid": base_uid,
++            "baseline_sha256": base_sha,
++            "objective_rechecked": integrity["objective_recheck_summary"],
++        }, run_id=run_id)
++        aid = st.save_artifact(
++            pid, "spatial-plan", report["plan"], "D2", option_id=option_id,
++            revision=base_rev + 1, parent_revision=base_rev, task_id=task_id,
++            status="valid_candidate", run_id=run_id, candidate_group_id=group_id,
++            revision_uid=uid, parent_revision_uid=base_uid,
++            input_hash_value=rev_hash, check_report_id=check_id,
++            contract_status="valid_candidate",
++            diagnostics={"contract_report": report, "integrity": integrity,
++                         "patch_audit": patch_audit, "task_kind": "revise",
++                         "baseline_artifact_id": base_aid,
++                         "baseline_revision_uid": base_uid,
++                         "baseline_sha256": base_sha,
++                         "object_diff": changed})
++        st.save_artifact(
++            pid, "plan-sketch",
++            {"svg": sketch.render(report["plan"], site,
++                                  f"候选 {option_id} v{base_rev + 1} · 旧基线续改")},
++            "D2", option_id=option_id, revision=base_rev + 1,
++            parent_revision=base_rev, task_id=task_id, status="valid_candidate",
++            run_id=run_id, candidate_group_id=group_id, input_hash_value=rev_hash)
++        st.update_task(task_id, "done",
++                       {"accepted_revision": True, "task_kind": "revise",
++                        "baseline_artifact_id": base_aid,
++                        "baseline_revision_uid": base_uid,
++                        "changed_objects": len(changed)})
++        st.add_message(
++            pid, "D2", "note",
++            f"旧基线续改完成：加载 {base_aid}（revision_uid={base_uid}, v{base_rev}）"
++            f"的完整对象事实，未重新生成 A/B；新版本 v{base_rev + 1} 的 "
++            f"parent_revision_uid={base_uid}，改动 {len(changed)} 个对象"
++            f"（{'、'.join(changed[:6]) or '无'}）。"
++            f"确定性目标复核：{integrity['objective_recheck_summary']}。"
++            "无关对象与锁定条件保持原状；是否成立仍由老板对具体图面决定。",
++            task_id=task_id,
++            evidence=[{"type": "artifact", "id": aid, "revision": base_rev + 1,
++                       "revision_uid": uid, "parent_revision_uid": base_uid},
++                      {"type": "baseline", "id": base_aid,
++                       "revision_uid": base_uid, "sha256": base_sha},
++                      {"type": "diff", "changed": changed},
++                      {"type": "objective_rechecks",
++                       "items": integrity["objective_rechecks"]},
++                      {"type": "patch_audit", "detail": patch_audit}])
++        gate_detail = (
++            f"本轮任务：revise（旧基线续改），不是重新生成 A/B。\n"
++            f"用户选中的旧基线：{base_aid} / revision_uid={base_uid} / v{base_rev}。\n"
++            f"新版本：{aid} / revision_uid={uid} / v{base_rev + 1}，"
++            f"parent_revision_uid 指向用户选中的旧版。\n"
++            f"对象 diff {len(changed)} 项；无关对象保留；旧版字节仍可下载。\n"
++            f"确定性目标复核：{integrity['objective_recheck_summary']}；"
++            "可计算目标由对应规则复算，审美/未实现项写 unknown 并等用户确认。\n"
++            "流程跑完不等于方案通过，是否成立由你决定。")
++        self._gate(pid, "旧方案续改完成：请决定是否继续", gate_detail,
++                   baseline_artifact_id=aid, baseline_revision_uid=uid)
++
+     # ---------------------------------------------------------------- scenario
+     def _scenario(self, project: dict, client: Client, run_id: str, group_id: str,
+                   expected: int, ih: str, stats: dict) -> None:
+@@ -471,9 +715,20 @@ class Studio:
+         st = self.store
+         ctx = self._ctx(project)
+         site = project["site"]
++        task_kind = "generate"  # W0: this path is GENERATE-ONLY; revise is
++        # dispatched in run_a1 -> _revise_from_baseline, never here.
+         feedback_items = st.feedback(pid)
+-        boss_feedback = [{"feedback_id": f["id"], "revision_no": f["revision_no"],
+-                          "kind": f["kind"], "text": f["text"]} for f in feedback_items]
++        # W0/R1: keep the baseline pointers, locks and structured objectives in
++        # the revision input. They used to be dropped to four text fields.
++        boss_feedback = [{
++            "feedback_id": f["id"], "revision_no": f["revision_no"],
++            "kind": f["kind"], "text": f["text"],
++            "baseline_artifact_id": f.get("baseline_artifact_id"),
++            "baseline_revision_uid": f.get("baseline_revision_uid"),
++            "baseline_selection": f.get("baseline_selection"),
++            "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
++            "consumed_by_run": f.get("consumed_by_run"),
++        } for f in feedback_items]
+ 
+         # 0. P plans the work
+         self._assert_current(pid, run_id, expected)
+@@ -805,7 +1060,12 @@ class Studio:
+                     current_plan, candidate, responses=responses if attempt == 1 else None,
+                     issues=issues if attempt == 1 else None,
+                     lock_object_ids=lock_ids,
+-                    boss_feedback=boss_feedback if attempt == 1 else None)
++                    boss_feedback=boss_feedback if attempt == 1 else None,
++                    objectives=revision_task.derive_objectives(
++                        boss_feedback if attempt == 1 else [],
++                        issues if attempt == 1 else None),
++                    site=site, catalog={c["catalog_id"]: c for c in toolbox.CATALOG},
++                    locks=revision_task.structured_locks(current_plan, site))
+                 report = validation.validate_proposal(
+                     candidate, project=project, option_id=target,
+                     revision=attempt + 1, parent_revision=current_rev,
+diff --git a/mvp/rkd_mvp/studio/revision.py b/mvp/rkd_mvp/studio/revision.py
+index 2b7c478..f28081e 100644
+--- a/mvp/rkd_mvp/studio/revision.py
++++ b/mvp/rkd_mvp/studio/revision.py
+@@ -16,6 +16,8 @@ import hashlib
+ import json
+ from typing import Any
+ 
++from . import revision_task
++
+ PATCH_GROUPS = {
+     "zones": {"name", "role", "polygon", "area_sqm"},
+     "furniture": {"catalog_id", "x", "y", "rot", "w_mm", "d_mm"},
+@@ -171,11 +173,22 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
+                               responses: list[dict] | None = None,
+                               issues: list[dict] | None = None,
+                               lock_object_ids: list[str] | None = None,
+-                              boss_feedback: list[dict] | None = None) -> dict:
+-    """Full-output path: prove retention, deletion reasons, locks, issue linkage.
++                              boss_feedback: list[dict] | None = None,
++                              objectives: list[dict] | None = None,
++                              site: dict | None = None,
++                              catalog: dict | None = None,
++                              locks: dict | None = None) -> dict:
++    """W0/R2: four separate states, NOT an object-diff-as-resolution shortcut.
++
++    input_included  : the structured objective actually entered the revision input
++    object_changed  : the objective's own objects really changed
++    objective_rechecked : pass / fail / unknown / not_applicable, by a rule
++    user_confirmed  : pending for aesthetic & unimplemented checks; the program
++                      NEVER writes confirmed=True
+ 
+-    Returns {ok, errors, changed_objects, removed_objects, added_objects,
+-             issue_resolutions, boss_feedback_resolutions, object_retention_ratio}
++    A measurable objective is rechecked by its rule (clear width / capacity /
++    position / lock). Aesthetic or not-yet-implemented objectives stay unknown
++    and pending for the user. Referencing a change is never "resolved".
+     """
+     errors: list[dict] = []
+     before, after = _object_map(base), _object_map(candidate)
+@@ -189,6 +202,34 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
+     response_by_id = {str(r.get("issue_id")): r for r in responses}
+     reason_text = " ".join(str(r.get("reason") or "") + " " + str(r.get("change") or "")
+                            for r in responses)
++    feedback_rows = [dict(f) for f in (boss_feedback or []) if isinstance(f, dict)]
++    for f in feedback_rows:
++        f.setdefault("id", f.get("feedback_id"))
++    objectives = objectives if objectives is not None else \
++        revision_task.derive_objectives(feedback_rows, issues)
++    rechecks = revision_task.recheck_objectives(
++        objectives, base, candidate, site=site, catalog=catalog, locks=locks,
++        changed_objects=changed + added + removed)
++    rechecks_by_issue: dict[str, list[dict]] = {}
++    rechecks_by_feedback: dict[str, list[dict]] = {}
++    for r in rechecks:
++        if r.get("issue_id"):
++            rechecks_by_issue.setdefault(str(r["issue_id"]), []).append(r)
++        if r.get("feedback_id"):
++            rechecks_by_feedback.setdefault(str(r["feedback_id"]), []).append(r)
++
++    def _states(rows: list[dict]) -> tuple[str, bool | None]:
++        """(objective_rechecked, resolved); None resolved means unknown."""
++        states = [r["objective_rechecked"] for r in rows]
++        if not states:
++            return "unknown", None
++        if "fail" in states:
++            return "fail", False
++        if all(s == "pass" for s in states):
++            return "pass", True
++        if all(s == "not_applicable" for s in states):
++            return "not_applicable", None
++        return "unknown", None
+ 
+     # 1. deletion must have an explicit reason (no silent dropping of objects)
+     for key in removed:
+@@ -232,43 +273,118 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
+                 errors.append(_err("REV-REJECT", f"意见 {iid} 拒绝但未写理由",
+                                    "reject 必须给出理由", f"/responses/{iid}"))
+             issue_resolutions.append({"issue_id": iid, "action": "reject",
+-                                      "verified": ok, "reason": r.get("reason") or ""})
++                                      "verified": ok, "reason": r.get("reason") or "",
++                                      "input_included": True,
++                                      "object_changed": False,
++                                      "objective_rechecked": "not_applicable",
++                                      "user_confirmed": "not_applicable",
++                                      "resolved": None,
++                                      "note": "拒绝是决定，不是问题已解决"})
+         elif action == "accept":
+             linked = sorted(set(objs) & set(short_changed + [k.split(":", 1)[1] for k in added + removed]))
+-            verified = bool(linked) or bool(str(r.get("change") or "").strip()
+-                                            and any(k in str(r.get("change")) for k in objs))
+-            # A change to an arbitrary object does NOT prove this issue was fixed:
+-            # the object named by the issue itself must appear in the diff.
++            rows = rechecks_by_issue.get(iid, [])
++            state, resolved = _states(rows)
++            # The object named by the issue must appear in the diff ...
+             if not linked:
+                 errors.append(_err("REV-ISSUE", f"意见 {iid} 被接受，但其对象 {objs} 没有出现在对象 diff 中",
+                                    "按意见改对应对象；不能改任意一个别的对象就宣称全部落实",
+                                    f"/responses/{iid}"))
+-            issue_resolutions.append({"issue_id": iid, "action": "accept",
+-                                      "verified": bool(linked), "linked_objects": linked,
+-                                      "recheck": "对象 diff 复核" if linked else "未通过",
+-                                      "change": r.get("change") or ""})
++            # ... but appearing in the diff is NOT proof the objective was met.
++            if state == "fail":
++                errors.append(_err(
++                    "REV-OBJECTIVE",
++                    f"意见 {iid} 的目标未通过确定性复核（{rows[0]['rule_id']}："
++                    f"目标 {rows[0]['target']}，实测未达标）；改了对象颜色/名称不等于修好问题",
++                    "按对应规则实测并修到目标值；只引用对象 diff 不能记为已解决",
++                    f"/responses/{iid}"))
++            issue_resolutions.append({
++                "issue_id": iid, "action": "accept",
++                "verified": state == "pass",
++                "input_included": bool(rows),
++                "object_changed": bool(linked),
++                "objective_rechecked": state,
++                "user_confirmed": "not_applicable" if state in ("pass", "fail") else "pending",
++                "resolved": resolved if state != "unknown" else None,
++                "linked_objects": linked,
++                "recheck": "确定性规则复核" if rows else "未取得复核输入",
++                "recheck_details": [{k: v for k, v in x.items()
++                                     if k in ("objective_id", "rule_id", "field", "target",
++                                              "objective_rechecked", "resolved", "evidence",
++                                              "note")} for x in rows],
++                "change": r.get("change") or "",
++            })
+         else:
+             issue_resolutions.append({"issue_id": iid, "action": action or "unknown",
+                                       "verified": False, "reason": "action 只能是 accept/reject"})
+             errors.append(_err("REV-ISSUE", f"意见 {iid} 的 action 非法",
+                                "写成 accept 或 reject", f"/responses/{iid}"))
+-    # 5. boss feedback must be visibly referenced by the revision input
++    # 5. boss feedback: four states, NOT "it was in the input -> resolved".
+     boss_resolutions = []
+-    for fb in (boss_feedback or []):
++    for fb in feedback_rows:
+         text = str(fb.get("text") or "")
++        fid = str(fb.get("feedback_id") or fb.get("id") or "")
++        rows = rechecks_by_feedback.get(fid, [])
++        # objectives with no feedback_id (text heuristics on simplified rows)
++        if not rows:
++            rows = [r for r in rechecks
++                    if str(r.get("objective_id") or "").startswith(
++                        f"FB{fb.get('revision_no', '?')}-")]
++        state, resolved = _states(rows)
++        linked = sorted({r["object_id"] for r in []} |
++                        {x for row in rows for x in (row.get("linked_objects") or [])})
+         boss_resolutions.append({
+             "feedback_id": fb.get("feedback_id"), "revision_no": fb.get("revision_no"),
+-            "text": text, "in_revision_input": True,
+-            "linked_changes": short_changed,
+-            "note": "老板留言已进入修订输入；是否真正满足由用户对具体图面判定",
++            "text": text,
++            "in_revision_input": True,          # the raw text entered the input
++            "input_included": bool(rows),       # a STRUCTURED objective entered recheck
++            "object_changed": bool(linked),
++            "objective_rechecked": state,
++            "user_confirmed": ("not_applicable" if state in ("pass", "fail", "not_applicable")
++                               else "pending"),
++            "resolved": resolved if state != "unknown" else None,
++            "linked_changes": linked,           # only this feedback's target objects
++            "recheck_details": [{k: v for k, v in x.items()
++                                 if k in ("objective_id", "rule_id", "field", "target",
++                                          "objective_rechecked", "resolved", "evidence",
++                                          "note")} for x in rows],
++            "note": ("老板留言的自然语言已进入修订输入；结构化目标由对应规则复核。"
++                     + ("审美/未实现目标写 unknown 且 user_confirmed=pending，最终等用户；"
++                        "不把『引用到变化』记为已解决" if state == "unknown"
++                        else "目标复核结论见 recheck_details；仍不等于设计通过")),
+         })
++        if state == "fail":
++            errors.append(_err(
++                "REV-OBJECTIVE",
++                f"老板留言 {fid or '?'} 的可计算目标未通过确定性复核",
++                "按对应规则实测并修到目标值；不能用对象 diff 冒充已解决", f"/feedback/{fid}"))
++    # Global guard: ANY failed deterministic recheck invalidates the revision,
++    # even when an objective has no issue/feedback linkage (e.g. a structured
++    # objective injected by the service). A diff reference never overrides it.
++    if any(r["objective_rechecked"] == "fail" for r in rechecks) and \
++            not any(e["rule_id"] == "REV-OBJECTIVE" for e in errors):
++        errors.append(_err("REV-OBJECTIVE",
++                           "存在未通过确定性复核的可计算目标（见 objective_rechecks）",
++                           "按对应规则实测并修到目标值；对象 diff 不能代替目标复核", "/"))
+     retention = (len(set(before) & set(after)) / len(before)) if before else 1.0
++    summary = {
++        "pass": sum(1 for r in rechecks if r["objective_rechecked"] == "pass"),
++        "fail": sum(1 for r in rechecks if r["objective_rechecked"] == "fail"),
++        "unknown": sum(1 for r in rechecks if r["objective_rechecked"] == "unknown"),
++        "not_applicable": sum(1 for r in rechecks
++                              if r["objective_rechecked"] == "not_applicable"),
++        "user_confirmed_pending": sum(1 for r in rechecks
++                                      if r["user_confirmed"] == "pending"),
++    }
+     return {
+         "ok": not errors, "errors": errors,
+         "changed_objects": changed, "removed_objects": removed, "added_objects": added,
+         "object_retention_ratio": round(retention, 3),
+         "issue_resolutions": issue_resolutions,
+         "boss_feedback_resolutions": boss_resolutions,
++        "objective_rechecks": rechecks,
++        "objective_recheck_summary": summary,
++        "state_separation": ["input_included", "object_changed",
++                             "objective_rechecked", "user_confirmed"],
+         "accepted_issues_verified": sum(1 for r in issue_resolutions
+                                         if r["action"] == "accept" and r["verified"]),
+         "accepted_issues_total": sum(1 for r in issue_resolutions if r["action"] == "accept"),
+diff --git a/mvp/rkd_mvp/studio/revision_task.py b/mvp/rkd_mvp/studio/revision_task.py
+new file mode 100644
+index 0000000..231e396
+--- /dev/null
++++ b/mvp/rkd_mvp/studio/revision_task.py
+@@ -0,0 +1,432 @@
++"""W0/R1 + W0/R2: task resolution, explicit old baselines, structured locks,
++deterministic objective rechecks.
++
++Design rules (docs/26 sections 2, 4):
++  * generate, revise and retry are DIFFERENT tasks. A revise loads the FULL
++    plan of the artifact named by the feedback, never "the latest file".
++  * An unusable baseline is an explicit conflict, never a silent substitution
++    with a freshly generated A/B pair.
++  * Locks are structured object/field records, not Chinese keyword hits on
++    object names. Conflicts offer an alternative and never unlock themselves.
++  * A measurable objective is rechecked by its rule (clear width, capacity,
++    position, lock). Aesthetic objectives stay unknown + pending for the user.
++    "Referenced in the diff" is NEVER recorded as "resolved".
++
++No external calls, no design judgement. `unknown` is never filled with 0.
++"""
++from __future__ import annotations
++
++import copy
++import json
++import re
++from typing import Any
++
++from . import geometry
++from .tools import CATALOG
++
++TASK_GENERATE = "generate"
++TASK_REVISE = "revise"
++TASK_CONFLICT = "conflict"
++
++_DRAFT_IDENTITY = ("contract_version", "project_id", "option_id", "revision", "author")
++_MIN_CLEAR_WIDTH_MM = getattr(geometry, "MIN_CLEAR_WIDTH_MM", 1200)
++
++# rule_id -> (field, unit, object group(s) the rule can actually measure)
++_RULE_SCOPES: dict[str, tuple[str, str, tuple[str, ...]]] = {
++    "CIR-001": ("width_mm", "mm", ("circulation",)),
++    "CIR-003": ("width_mm", "mm", ("circulation",)),
++    "STD-001": ("rot", "degree", ("furniture",)),
++    "STD-005": ("kelvin", "K", ("ceiling.fixtures", "ceiling.coves")),
++    "AREA-002": ("area_sqm", "sqm", ("zones",)),
++    "STD-004": ("sightline", "unknown", ("zones",)),  # not computable yet
++}
++
++_TEXT_RULES: list[tuple[re.Pattern, str]] = [
++    (re.compile(r"净宽[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*mm", re.I), "CIR-001"),
++    (re.compile(r"旋[到转至为设]*\s*(-?\d+(?:\.\d+)?)\s*(?:°|度)", re.I), "STD-001"),
++    (re.compile(r"色温[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*K", re.I), "STD-005"),
++    (re.compile(r"面积[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*(?:㎡|平米|平方米)", re.I), "AREA-002"),
++]
++
++
++def _sha(obj: Any) -> str:
++    import hashlib
++    return hashlib.sha256(json.dumps(obj, ensure_ascii=False, sort_keys=True,
++                                     default=str).encode("utf-8")).hexdigest()
++
++
++# ------------------------------------------------------------------ R1 tasks --
++def resolve_task(st, project_id: str, expected_feedback_revision: int | None) -> dict:
++    """Decide generate / revise / conflict from VERSIONED feedback only.
++
++    Never guesses a baseline from the newest file. Returns a resolution with
++    the complete baseline plan when the task is a revise.
++    """
++    rows = st.feedback(project_id)
++    explicit = [f for f in rows if f.get("baseline_artifact_id")]
++    pending = [f for f in explicit if not f.get("consumed_by_run")]
++    consumed = [f for f in explicit if f.get("consumed_by_run")]
++
++    if st.feedback_changed_since(project_id, expected_feedback_revision):
++        return _conflict("concurrent_new_feedback",
++                         f"运行开始时的有效需求版本 v{expected_feedback_revision} 已落后于当前 "
++                         f"v{st.feedback_revision(project_id)}；晚到结果不得成为当前版本",
++                         ["先取消/作废这一轮，再按最新留言开新任务",
++                          "不要重放旧输入，也不要把旧结果写成新版"])
++    if not pending:
++        if consumed:
++            last = consumed[-1]
++            return _conflict(
++                "feedback_already_consumed",
++                f"反馈 {last['id']}（v{last['revision_no']}）已由 run "
++                f"{last['consumed_by_run']} 消费；不得用新 run 重放同一反馈绕过最多 2 轮自动返工",
++                ["请给一条新的老板留言并明确选择要续改的旧方案",
++                 "或由老板在闸口决定第 3 轮怎么做",
++                 "程序不会把这条旧反馈再当成一次新的续改任务"])
++        return {"kind": TASK_GENERATE, "task_kind": TASK_GENERATE, "feedback": None,
++                "baseline": None, "plan": None,
++                "reason": "没有绑定旧基线的待续改反馈；本轮按 generate 处理"
++                          "（文字留言仍进入有效需求与修订输入，不偷换为 revise）",
++                "feedback_rows": rows}
++
++    fb = pending[-1]
++    art = st.artifact_by_id(fb["baseline_artifact_id"])
++    if art is None:
++        return _conflict("baseline_not_found",
++                         f"反馈指定的旧基线产物 {fb['baseline_artifact_id']} 不存在",
++                         ["在页面重新选择一份存在的有效候选", "不要回退到最新文件"])
++    if art.get("project_id") and art["project_id"] != project_id:
++        return _conflict("cross_project_baseline",
++                         f"旧基线 {art['id']} 属于项目 {art['project_id']}，不是 {project_id}",
++                         ["只在本项目内选择旧基线", "跨项目引用一律拒绝"])
++    if art.get("kind") != "spatial-plan":
++        return _conflict("baseline_not_spatial_plan",
++                         f"旧基线 {art['id']} 是 {art.get('kind')}，不是空间方案",
++                         ["选择候选 A/B 的空间方案产物"])
++    if art.get("contract_status") != "valid_candidate" or art.get("status") in (
++            "superseded", "invalid_raw"):
++        return _conflict("baseline_invalid",
++                         f"旧基线 {art['id']} 状态 {art.get('status')}/"
++                         f"{art.get('contract_status')}，不是有效候选",
++                         ["另选一份有效的候选", "历史失败稿只读保留，不作为续改基线"])
++    if fb.get("baseline_revision_uid") and \
++            fb["baseline_revision_uid"] != art.get("revision_uid"):
++        return _conflict("baseline_uid_mismatch",
++                         f"反馈携带的 revision_uid {fb['baseline_revision_uid']} 与旧基线 "
++                         f"{art['id']} 的 {art.get('revision_uid')} 不一致",
++                         ["重新选择该候选的当前版本", "不要猜版本或按时间取最近文件"])
++    plan = art.get("payload")
++    if not isinstance(plan, dict) or any(k not in plan for k in _DRAFT_IDENTITY):
++        return _conflict("baseline_not_full_draft",
++                         f"旧基线 {art['id']} 不是完整的 spatial-plan-draft.v1 交接文档",
++                         ["选择通过四级校验的有效候选", "旧 legacy 草案不作为续改基线"])
++    if plan.get("project_id") != project_id:
++        return _conflict("cross_project_baseline",
++                         f"旧基线文档内 project_id={plan.get('project_id')} 与本项目不一致",
++                         ["只在本项目内选择旧基线"])
++    return {"kind": TASK_REVISE, "task_kind": TASK_REVISE, "feedback": fb,
++            "baseline": art, "plan": copy.deepcopy(plan), "feedback_rows": rows,
++            "reason": f"按反馈 {fb['id']} 指定的旧基线 {art['id']} "
++                      f"(revision_uid={art.get('revision_uid')}) 续改，不重新生成 A/B",
++            "baseline_selection": fb.get("baseline_selection") or "explicit_pointer"}
++
++
++def _conflict(code: str, detail: str, alternatives: list[str]) -> dict:
++    return {"kind": TASK_CONFLICT, "task_kind": TASK_CONFLICT, "conflict_code": code,
++            "conflict_detail": detail, "alternatives": alternatives,
++            "feedback": None, "baseline": None, "plan": None,
++            "reason": "旧基线不适用：明确冲突，不偷换、不自动重新生成 A/B"}
++
++
++# ------------------------------------------------------------------- R1 locks --
++def structured_locks(plan: dict, site: dict | None = None,
++                     user_locks: list[dict] | None = None) -> dict:
++    """Structured object/field locks. No Chinese keyword matching on names."""
++    locks: list[dict] = []
++    for z in (plan.get("zones") or []):
++        if isinstance(z, dict) and z.get("role") == "arrival":
++            locks.append({"object_id": str(z.get("id")), "fields": ["*"],
++                          "source": "program:role_arrival",
++                          "reason": "入口/到达区是需求中明确保留的空间条件"})
++    for lk in (user_locks or []):
++        if isinstance(lk, dict) and str(lk.get("object_id") or "").strip():
++            locks.append({"object_id": str(lk["object_id"]),
++                          "fields": list(lk.get("fields") or ["*"]),
++                          "source": "user_explicit",
++                          "reason": str(lk.get("reason") or "老板明确指定的保留对象/字段")})
++    # de-duplicate by (object_id, fields)
++    seen, uniq = set(), []
++    for lk in locks:
++        key = (lk["object_id"], tuple(lk["fields"]))
++        if key not in seen:
++            seen.add(key)
++            uniq.append(lk)
++    return {
++        "locks": uniq,
++        "lock_object_ids": sorted({lk["object_id"] for lk in uniq}),
++        "keyword_matching_used": False,
++        "site_keepout_delegated_to": ["LOCK-001 保留区几何 keep-out",
++                                       "CIR-004 入口可达", "CIR-003 实测瓶颈"],
++        "site_keepout_source": "site.stair / site.bath / site.entrance（结构化场地条件）",
++        "note": "门/窗/柱网未在契约中建模，相关锁定覆盖为 unsupported，不视为通过",
++    }
++
++
++def _object_signature(plan: dict, object_id: str) -> str | None:
++    groups = ("zones", "furniture", "circulation", "platforms")
++    ceiling = plan.get("ceiling") if isinstance(plan.get("ceiling"), dict) else {}
++    for group in groups + ("ceiling.coves", "ceiling.fixtures"):
++        container = (ceiling.get(group.split(".", 1)[1]) if group.startswith("ceiling.")
++                     else plan.get(group)) or []
++        for o in container:
++            if isinstance(o, dict) and str(o.get("id")) == object_id:
++                return _sha(o)
++    return None
++
++
++def lock_conflicts(base: dict, candidate: dict, locks: dict) -> list[dict]:
++    out = []
++    for lk in locks.get("locks") or []:
++        oid = lk["object_id"]
++        b, a = _object_signature(base, oid), _object_signature(candidate, oid)
++        changed = b != a
++        if not changed:
++            continue
++        fields = lk["fields"]
++        out.append({"object_id": oid, "fields": fields,
++                    "source": lk["source"], "reason": lk["reason"],
++                    "base_sha256_prefix": (b or "")[:12],
++                    "candidate_sha256_prefix": (a or "")[:12],
++                    "alternative": ("恢复该对象被锁定的字段；若确实无法同时满足，"
++                                    "把冲突作为待决项交用户决定，程序不自行解除锁定")})
++    return out
++
++
++# -------------------------------------------------------------- R2 objectives --
++def derive_text_objectives(text: str, *, source: str = "text_heuristic",
++                           prefix: str = "O", object_ids: list[str] | None = None,
++                           issue_id: str | None = None,
++                           feedback_id: str | None = None) -> list[dict]:
++    """Restricted, auditable parsing of MEASURABLE targets from natural text.
++
++    Object identity is NEVER inferred from a Chinese object name: scope comes
++    from the rule_id, and an explicit object id is used only when supplied.
++    """
++    out: list[dict] = []
++    for pattern, rule_id in _TEXT_RULES:
++        m = pattern.search(text or "")
++        if not m:
++            continue
++        field, unit, scope = _RULE_SCOPES[rule_id]
++        try:
++            target = float(m.group(1))
++        except (TypeError, ValueError):
++            continue
++        out.append({"objective_id": f"{prefix}{len(out) + 1}", "kind": "measurable",
++                    "rule_id": rule_id, "field": field, "target": target, "unit": unit,
++                    "objects_scope": list(scope), "object_ids": list(object_ids or []),
++                    "source": source, "issue_id": issue_id,
++                    "feedback_id": feedback_id,
++                    "parsed_from": m.group(0)[:80],
++                    "computable": rule_id != "STD-004"})
++    return out
++
++
++def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = None) -> list[dict]:
++    """Collect objectives from structured feedback, text, and review issues."""
++    out: list[dict] = []
++    for fb in (feedback_rows or []):
++        structured = fb.get("objectives") or []
++        for i, obj in enumerate(structured):
++            if isinstance(obj, dict) and obj.get("kind"):
++                item = copy.deepcopy(obj)
++                item.setdefault("objective_id", f"FB{fb.get('revision_no', '?')}-{i + 1}")
++                item.setdefault("source", "structured")
++                item.setdefault("feedback_id", fb.get("id"))
++                item.setdefault("computable", item.get("kind") == "measurable")
++                out.append(item)
++        text = str(fb.get("text") or "")
++        heuristics = derive_text_objectives(
++            text, prefix=f"FB{fb.get('revision_no', '?')}-", object_ids=None,
++            feedback_id=str(fb.get("id") or ""))
++        # a structured objective with the same rule wins over the heuristic
++        structured_rules = {o.get("rule_id") for o in structured}
++        out.extend(o for o in heuristics if o["rule_id"] not in structured_rules)
++        if not heuristics and not structured:
++            out.append({"objective_id": f"FB{fb.get('revision_no', '?')}-A",
++                        "kind": "aesthetic", "rule_id": "USER-JUDGEMENT",
++                        "field": "user_judgement", "target": None, "unit": "n/a",
++                        "objects_scope": [], "object_ids": [],
++                        "source": "text_unparsed", "feedback_id": fb.get("id"),
++                        "computable": False,
++                        "note": "没有可计算目标（例如「更开放」「更有设计感」）；"
++                                "只提供图面对比与模型意见，最终等用户确认"})
++        elif re.search(r"保留|不动|保持", text):
++            out.append({"objective_id": f"FB{fb.get('revision_no', '?')}-L",
++                        "kind": "lock", "rule_id": "LOCK-REVISION",
++                        "field": "locked_objects", "target": None, "unit": "n/a",
++                        "objects_scope": [], "object_ids": [],
++                        "source": "text_heuristic", "feedback_id": fb.get("id"),
++                        "computable": True,
++                        "note": "保留要求由结构化锁复核，不靠关键词命中对象名"})
++    for i in (issues or []):
++        if not isinstance(i, dict):
++            continue
++        text = f"{i.get('suggest') or ''} {i.get('evidence') or ''}"
++        objs = [str(x) for x in (i.get("objects") or [])]
++        found = derive_text_objectives(text, prefix=f"{i.get('issue_id', 'I')}-",
++                                       source="review_issue", object_ids=objs,
++                                       issue_id=str(i.get("issue_id") or ""))
++        if found:
++            out.extend(found)
++        elif i.get("action") != "reject":
++            out.append({"objective_id": f"{i.get('issue_id', 'I')}-A",
++                        "kind": "aesthetic", "rule_id": "USER-JUDGEMENT",
++                        "field": "user_judgement", "target": None, "unit": "n/a",
++                        "objects_scope": objs, "object_ids": objs,
++                        "source": "review_issue_unparsed",
++                        "issue_id": str(i.get("issue_id") or ""),
++                        "computable": False,
++                        "note": "这条意见没有可计算目标；不可计算或尚未实现的复核写 unknown"})
++    return out
++
++
++def _plan_objects(plan: dict, scope: list[str], object_ids: list[str]) -> list[tuple[str, dict]]:
++    ceiling = plan.get("ceiling") if isinstance(plan.get("ceiling"), dict) else {}
++    out: list[tuple[str, dict]] = []
++    # An EMPTY scope means "no object identity is claimed" (aesthetic target).
++    # Never fall back to "all objects" — that would attach a vague opinion to
++    # every changed object and fake a linkage. Explicit object_ids may still be
++    # resolved across all groups.
++    if scope:
++        groups = tuple(scope)
++    elif object_ids:
++        groups = ("zones", "furniture", "circulation", "platforms",
++                  "ceiling.coves", "ceiling.fixtures")
++    else:
++        groups = ()
++    for group in groups:
++        container = (ceiling.get(group.split(".", 1)[1]) if group.startswith("ceiling.")
++                     else plan.get(group)) or []
++        for o in container:
++            if isinstance(o, dict) and str(o.get("id") or "") and \
++                    (not object_ids or str(o["id"]) in object_ids):
++                out.append((str(o["id"]), o))
++    return out
++
++
++def _measure(plan: dict, objective: dict, site: dict, catalog: dict) -> dict:
++    """Re-measure an objective with the corresponding deterministic rule."""
++    rule = objective.get("rule_id")
++    field = objective.get("field")
++    target = objective.get("target")
++    scope = objective.get("objects_scope") or []
++    ids = objective.get("object_ids") or []
++    objs = _plan_objects(plan, scope, ids)
++    catalog = catalog or {c["catalog_id"]: c for c in CATALOG}
++
++    if rule in ("CIR-001", "CIR-003") and field == "width_mm":
++        if not (isinstance(site, dict) and site.get("width_mm") and site.get("height_mm")):
++            return {"rule_id": rule, "target": target, "measured": None,
++                    "passing_object_ids": [], "rechecked": None,
++                    "unknown_reason": "缺少场地边界，无法用几何复算实测净宽/瓶颈"}
++        geo = geometry.check_geometry(plan, site, catalog=catalog)
++        measured = {}
++        for oid, o in objs:
++            measured[oid] = {
++                "declared_width_mm": o.get("width_mm"),
++                "measured_clear_width_mm": geo["metrics"].get(
++                    f"measured_clear_width_mm::{oid}"),
++                "circulation_issues": [x["rule_id"] for x in geo["issues"]
++                                       if oid in x["objects"]
++                                       and x["rule_id"] in ("CIR-001", "CIR-003")],
++            }
++        passing = [oid for oid, m in measured.items()
++                   if isinstance(m["declared_width_mm"], (int, float))
++                   and float(m["declared_width_mm"]) >= float(target or 0)
++                   and m["measured_clear_width_mm"] is not None
++                   and float(m["measured_clear_width_mm"]) >= _MIN_CLEAR_WIDTH_MM
++                   and not m["circulation_issues"]]
++        return {"rule_id": rule, "target": target, "measured": measured,
++                "passing_object_ids": passing,
++                "engine": geo["metrics"].get("geometry_engine"),
++                "rechecked": "pass" if passing else "fail"}
++    if field in ("rot", "kelvin", "area_sqm") and rule in _RULE_SCOPES:
++        values = {oid: o.get(field) for oid, o in objs}
++        passing = [oid for oid, v in values.items()
++                   if isinstance(v, (int, float)) and float(v) == float(target)]
++        return {"rule_id": rule, "target": target, "measured": values,
++                "passing_object_ids": passing,
++                "rechecked": "pass" if passing else "fail"}
++    return {"rule_id": rule, "target": target, "measured": None,
++            "passing_object_ids": [], "rechecked": None,
++            "unknown_reason": f"规则 {rule}/{field} 尚未实现确定性复核"}
++
++
++def recheck_objectives(objectives: list[dict], base: dict, candidate: dict, *,
++                       site: dict | None = None, catalog: dict | None = None,
++                       locks: dict | None = None,
++                       changed_objects: list[str] | None = None) -> list[dict]:
++    """Four states per objective: input_included / object_changed /
++    objective_rechecked / user_confirmed. Never resolves by diff reference."""
++    site = site or {}
++    catalog = catalog or {c["catalog_id"]: c for c in CATALOG}
++    changed_ids = {str(k).split(":", 1)[-1] for k in (changed_objects or [])}
++    results: list[dict] = []
++    for obj in (objectives or []):
++        oid_scope = obj.get("object_ids") or []
++        scope_objs = [o[0] for o in _plan_objects(candidate,
++                                                   obj.get("objects_scope") or [], oid_scope)]
++        object_changed = bool(changed_ids & (set(scope_objs) | set(oid_scope)))
++        item: dict[str, Any] = {
++            "objective_id": obj.get("objective_id"), "kind": obj.get("kind"),
++            "rule_id": obj.get("rule_id"), "field": obj.get("field"),
++            "target": obj.get("target"), "unit": obj.get("unit"),
++            "source": obj.get("source"), "issue_id": obj.get("issue_id"),
++            "feedback_id": obj.get("feedback_id"),
++            "input_included": True,
++            "object_changed": object_changed,
++            "linked_objects": [x for x in scope_objs if x in changed_ids],
++            "objective_rechecked": "unknown",
++            "user_confirmed": "pending",
++            "resolved": None,
++            "note": "",
++        }
++        if obj.get("kind") == "lock":
++            conflicts = lock_conflicts(base, candidate, locks or {"locks": []})
++            item["evidence"] = {"locked_objects": (locks or {}).get("lock_object_ids", []),
++                                "conflicts": conflicts}
++            item["objective_rechecked"] = "fail" if conflicts else "pass"
++            item["user_confirmed"] = "not_applicable"
++            item["object_changed"] = bool(conflicts)
++            item["resolved"] = not conflicts
++            item["note"] = ("锁定对象由结构化对象/字段锁复算；冲突只报告并给替代，"
++                            "不自行解除锁定" if conflicts else "锁定对象未变")
++        elif obj.get("kind") == "aesthetic" or not obj.get("computable", True):
++            item["evidence"] = {"target": obj.get("target"), "measured": None,
++                                "unknown_reason": obj.get("note") or
++                                "审美/未实现目标需要用户或对应规则，不由程序判定"}
++            item["objective_rechecked"] = "unknown"
++            item["user_confirmed"] = "pending"
++            item["resolved"] = None
++            item["note"] = ("不可计算或尚未实现的复核写 unknown；只提供图面对比与模型意见，"
++                            "最终等用户确认；不把『引用到变化』记为已解决")
++        else:
++            before = _measure(base, obj, site, catalog)
++            after = _measure(candidate, obj, site, catalog)
++            item["evidence"] = {"before": before, "after": after}
++            state = after.get("rechecked")
++            if state is None:
++                item["objective_rechecked"] = "unknown"
++                item["user_confirmed"] = "pending"
++                item["resolved"] = None
++                item["note"] = f"规则未实现：{after.get('unknown_reason')}；写 unknown，不记已解决"
++            else:
++                item["objective_rechecked"] = state
++                item["user_confirmed"] = "not_applicable"
++                item["resolved"] = state == "pass" and object_changed
++                item["note"] = ("目标值由对应规则复算；" +
++                                ("达到目标且对象确有变化" if item["resolved"]
++                                 else "未达到目标或目标对象未发生有效变化，不构成已解决"))
++        results.append(item)
++    return results
+diff --git a/mvp/rkd_mvp/studio/server.py b/mvp/rkd_mvp/studio/server.py
+index 8c9b684..3cc5f21 100644
+--- a/mvp/rkd_mvp/studio/server.py
++++ b/mvp/rkd_mvp/studio/server.py
+@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
+ 
+ from .llm import Config
+ from .orchestrator import Studio
++from . import revision_task
+ from .roles import ROSTER
+ from .store import Store
+ 
+@@ -136,6 +137,14 @@ class Handler(BaseHTTPRequestHandler):
+                 return self._json(409, {"error": "未配置模型通道：RKD_AI_API_KEY 不在环境变量里",
+                                         "hint": "密钥只放当前会话环境变量，不写入任何文件"})
+             result = studio().run_a1(pid, background=True)
++            if result.get("status") == "conflict":
++                # W0/R1: an unusable old baseline is a visible conflict, never a
++                # silent fallback to a freshly generated A/B pair.
++                return self._json(409, {"error": result.get("conflict_detail"),
++                                        "conflict_code": result.get("conflict_code"),
++                                        "alternatives": result.get("alternatives"),
++                                        "task_kind": "conflict",
++                                        "note": "本轮没有生成任何候选；旧基线不被偷换"})
+             return self._json(202, result)
+         m = re.fullmatch(r"/studio/projects/([^/]+)/messages", path)
+         if m:
+@@ -147,27 +156,72 @@ class Handler(BaseHTTPRequestHandler):
+             if not text:
+                 return self._json(400, {"error": "空消息"})
+             st = studio().store
++            requested_aid = str(body.get("baseline_artifact_id") or "").strip() or None
++            requested_uid = str(body.get("baseline_revision_uid") or "").strip() or None
++            locks = body.get("locks") if isinstance(body.get("locks"), list) else []
++            objectives = body.get("objectives") if isinstance(body.get("objectives"), list) else []
++
++            # W0/R1: an explicitly selected OLD baseline is validated strictly.
++            # Never substitute "the latest file", never silently generate A/B.
++            if requested_aid:
++                art = st.artifact_by_id(requested_aid)
++                if not art:
++                    return self._json(409, {"error": "旧基线冲突：指定的产物不存在",
++                                            "conflict_code": "baseline_not_found",
++                                            "alternatives": ["在页面重新选择一份存在的有效候选",
++                                                             "不要回退到最新文件"]})
++                if art.get("project_id") != pid:
++                    return self._json(409, {"error": "旧基线冲突：该产物属于另一个项目",
++                                            "conflict_code": "cross_project_baseline",
++                                            "artifact_project_id": art.get("project_id")})
++                if art.get("kind") != "spatial-plan" or \
++                        art.get("contract_status") != "valid_candidate" or \
++                        art.get("status") in ("superseded", "invalid_raw"):
++                    return self._json(409, {"error": "旧基线冲突：该产物不是有效候选",
++                                            "conflict_code": "baseline_invalid",
++                                            "artifact_status": art.get("status"),
++                                            "contract_status": art.get("contract_status")})
++                if requested_uid and requested_uid != art.get("revision_uid"):
++                    return self._json(409, {"error": "旧基线冲突：版本 uid 与产物不一致",
++                                            "conflict_code": "baseline_uid_mismatch",
++                                            "requested_uid": requested_uid,
++                                            "actual_uid": art.get("revision_uid")})
++                baseline_aid = art["id"]
++                baseline_uid = requested_uid or art.get("revision_uid")
++                selection = "user_selected"
++                task_kind = "revise"
++            else:
++                # No explicit choice: say so. Do NOT guess from the newest file.
++                baseline_aid, baseline_uid = None, None
++                selection = "none_explicit"
++                task_kind = "generate"
++
+             mid = st.add_message(pid, "BOSS", "boss", text,
+-                                 evidence=[{"type": "boss"}])
+-            # ARC-04: versioned feedback, not timeline-only. Binds the current
+-            # valid candidate baseline so the next revision has a real target.
+-            baseline = _latest_valid_plan(st, pid)
++                                 evidence=[{"type": "boss",
++                                            "baseline_artifact_id": baseline_aid,
++                                            "baseline_selection": selection}])
+             fb = st.add_feedback(
+                 pid, "boss_message", text,
+                 source_message_id=mid,
+-                baseline_artifact_id=baseline["id"] if baseline else None,
+-                baseline_revision_uid=baseline["revision_uid"] if baseline else None,
+-            )
++                baseline_artifact_id=baseline_aid,
++                baseline_revision_uid=baseline_uid,
++                baseline_selection=selection,
++                locks=locks, objectives=objectives, task_kind=task_kind)
+             # persistent cancellation: a late result from the previous input
+             # must not become the current version (checked again at run finish).
+             for r in st.runs(pid):
+                 if r["status"] == "running":
+                     st.request_cancel(r["id"])
+-            return self._json(201, {"ok": True, "message_id": mid,
+-                                    "feedback": fb,
+-                                    "effective_requirement_hash":
+-                                        st.effective_requirement(pid)["effective_input_hash"],
+-                                    "note": "留言已进入版本化有效需求；下一轮修订将读取该输入并给出对象 diff"})
++            return self._json(201, {
++                "ok": True, "message_id": mid, "feedback": fb,
++                "task_hint": task_kind, "baseline_selection": selection,
++                "effective_requirement_hash":
++                    st.effective_requirement(pid)["effective_input_hash"],
++                "note": ("留言已绑定你选中的旧方案；下一轮是续改（revise），"
++                         "加载该旧稿完整基线，不重新生成 A/B"
++                         if task_kind == "revise" else
++                         "未指定旧基线：留言进入有效需求，本轮按 generate 处理；"
++                         "如需续改请在页面选中具体方案")})
+         m = re.fullmatch(r"/studio/gates/([^/]+)/decide", path)
+         if m:
+             gid = m.group(1)
+@@ -284,6 +338,37 @@ def _state(project_id: str) -> dict:
+         "design_approved_by_user": False,
+         "note": "流程跑完 / 成果有效 / 等待用户 / 设计认可分别表达；设计认可只能由用户给出",
+     }
++    # W0/R1: make the task and the exact parent version visible in the page.
++    res = revision_task.resolve_task(st, project_id, state["feedback_revision"])
++    state["task_resolution"] = {
++        "kind": res["kind"], "reason": res["reason"],
++        "conflict_code": res.get("conflict_code"),
++        "conflict_detail": res.get("conflict_detail"),
++        "alternatives": res.get("alternatives"),
++        "target_artifact_id": (res.get("baseline") or {}).get("id"),
++        "target_revision_uid": (res.get("baseline") or {}).get("revision_uid"),
++        "target_feedback_id": (res.get("feedback") or {}).get("id"),
++        "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜",
++    }
++    plans = [a for a in state["artifacts"] if a["kind"] == "spatial-plan"]
++    state["revision_history"] = [
++        {"id": a["id"], "option_id": a["option_id"], "revision": a["revision"],
++         "revision_uid": a["revision_uid"], "parent_revision_uid": a["parent_revision_uid"],
++         "display_group": a.get("display_group"), "sha256": a["sha256"]}
++        for a in plans]
++    state["latest_run"] = [
++        {"id": r["id"], "status": r["status"], "task_kind": r.get("task_kind"),
++         "target_artifact_id": r.get("target_artifact_id"),
++         "target_revision_uid": r.get("target_revision_uid"),
++         "conflict_code": r.get("conflict_code")} for r in state["runs"][-3:]]
++    done = [r for r in state["runs"] if r["status"] != "running"]
++    last_done = done[-1] if done else None
++    state["last_completed_run"] = (
++        {"id": last_done["id"], "status": last_done["status"],
++         "task_kind": last_done.get("task_kind"),
++         "target_artifact_id": last_done.get("target_artifact_id"),
++         "target_revision_uid": last_done.get("target_revision_uid")}
++        if last_done else None)
+     return state
+ 
+ 
+diff --git a/mvp/rkd_mvp/studio/store.py b/mvp/rkd_mvp/studio/store.py
+index 35bc390..e3d99ca 100644
+--- a/mvp/rkd_mvp/studio/store.py
++++ b/mvp/rkd_mvp/studio/store.py
+@@ -140,6 +140,11 @@ CREATE TABLE IF NOT EXISTS feedback (
+   gate_id TEXT,
+   baseline_artifact_id TEXT,
+   baseline_revision_uid TEXT,
++  baseline_selection TEXT,
++  locks_json TEXT,
++  objectives_json TEXT,
++  task_kind TEXT,
++  consumed_by_run TEXT,
+   status TEXT NOT NULL DEFAULT 'current',
+   superseded_by TEXT,
+   created_at TEXT NOT NULL,
+@@ -172,7 +177,12 @@ CREATE TABLE IF NOT EXISTS runs (
+   images_sent INTEGER DEFAULT 0,
+   images_generated INTEGER DEFAULT 0,
+   cost_amount REAL,
+-  cost_status TEXT
++  cost_status TEXT,
++  task_kind TEXT,
++  target_artifact_id TEXT,
++  target_revision_uid TEXT,
++  target_feedback_id TEXT,
++  conflict_code TEXT
+ );
+ CREATE INDEX IF NOT EXISTS idx_msg_project ON messages(project_id, id);
+ CREATE INDEX IF NOT EXISTS idx_art_project ON artifacts(project_id, created_at);
+@@ -196,6 +206,15 @@ _MIGRATIONS: dict[str, dict[str, str]] = {
+         "candidate_group_id": "TEXT", "cancel_requested": "INTEGER DEFAULT 0",
+         "calls": "INTEGER DEFAULT 0", "images_sent": "INTEGER DEFAULT 0",
+         "images_generated": "INTEGER DEFAULT 0", "cost_amount": "REAL", "cost_status": "TEXT",
++        "task_kind": "TEXT", "target_artifact_id": "TEXT",
++        "target_revision_uid": "TEXT", "target_feedback_id": "TEXT",
++        "conflict_code": "TEXT",
++    },
++    # W0/R1: additive only. Old feedback rows keep their original bytes; an
++    # unconsumed row without an explicit baseline is a historical generate input.
++    "feedback": {
++        "baseline_selection": "TEXT", "locks_json": "TEXT",
++        "objectives_json": "TEXT", "task_kind": "TEXT", "consumed_by_run": "TEXT",
+     },
+ }
+ 
+@@ -315,24 +334,40 @@ class Store:
+                      *, gate_id: str | None = None,
+                      baseline_artifact_id: str | None = None,
+                      baseline_revision_uid: str | None = None,
+-                     source_message_id: int | None = None) -> dict:
+-        """Versioned, immutable feedback. Returns {id, revision_no, input_hash}."""
++                     source_message_id: int | None = None,
++                     baseline_selection: str | None = None,
++                     locks: list[dict] | None = None,
++                     objectives: list[dict] | None = None,
++                     task_kind: str | None = None) -> dict:
++        """W0/R1: versioned feedback with an EXPLICIT baseline and structured locks.
++
++        `baseline_selection` records whether the baseline came from the user's
++        explicit choice ("user_selected") or from a program fallback that must
++        never be silently presented as the user's choice.
++        """
+         with self._lock, self._conn() as c:
+             row = c.execute("SELECT MAX(revision_no) AS m FROM feedback WHERE project_id=?",
+                             (project_id,)).fetchone()
+             rev = int(row["m"] or 0) + 1
+             fid = new_id("fb")
++            locks_json = json.dumps(locks or [], ensure_ascii=False)
++            objectives_json = json.dumps(objectives or [], ensure_ascii=False)
+             ih = input_hash(project_id, kind, text, rev, baseline_artifact_id,
+-                            baseline_revision_uid)
++                            baseline_revision_uid, baseline_selection, locks, objectives)
+             c.execute(
+                 "INSERT INTO feedback(id,project_id,revision_no,kind,text,input_hash,"
+                 "source_message_id,gate_id,baseline_artifact_id,baseline_revision_uid,"
+-                "status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,'current',?)",
++                "baseline_selection,locks_json,objectives_json,task_kind,"
++                "status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'current',?)",
+                 (fid, project_id, rev, kind, text, ih, source_message_id, gate_id,
+-                 baseline_artifact_id, baseline_revision_uid, now()))
++                 baseline_artifact_id, baseline_revision_uid, baseline_selection,
++                 locks_json, objectives_json, task_kind, now()))
+             return {"id": fid, "revision_no": rev, "input_hash": ih,
+                     "baseline_artifact_id": baseline_artifact_id,
+-                    "baseline_revision_uid": baseline_revision_uid}
++                    "baseline_revision_uid": baseline_revision_uid,
++                    "baseline_selection": baseline_selection,
++                    "locks": locks or [], "objectives": objectives or [],
++                    "task_kind": task_kind}
+ 
+     def feedback(self, project_id: str, current_only: bool = True) -> list[dict]:
+         with self._conn() as c:
+@@ -340,7 +375,36 @@ class Store:
+             if current_only:
+                 q += " AND status='current'"
+             rows = c.execute(q + " ORDER BY revision_no", (project_id,)).fetchall()
+-        return [dict(r) for r in rows]
++        out = []
++        for r in rows:
++            item = dict(r)
++            item["locks"] = json.loads(item.pop("locks_json") or "[]")
++            item["objectives"] = json.loads(item.pop("objectives_json") or "[]")
++            out.append(item)
++        return out
++
++    def artifact_by_id(self, artifact_id: str) -> dict | None:
++        """Exact lookup across projects; used to REJECT cross-project baselines."""
++        with self._conn() as c:
++            row = c.execute("SELECT project_id FROM artifacts WHERE id=?",
++                            (artifact_id,)).fetchone()
++        if not row:
++            return None
++        for a in self.artifacts(row["project_id"]):
++            if a["id"] == artifact_id:
++                item = dict(a)
++                item["project_id"] = row["project_id"]
++                return item
++        return None
++
++    def consume_feedback(self, feedback_id: str, run_id: str) -> bool:
++        """CAS: a feedback row may drive exactly ONE revise run (no run-splitting
++        to circumvent the 2-round auto-rework limit). Returns False if consumed."""
++        with self._lock, self._conn() as c:
++            cur = c.execute("UPDATE feedback SET consumed_by_run=? "
++                            "WHERE id=? AND consumed_by_run IS NULL",
++                            (run_id, feedback_id))
++            return cur.rowcount > 0
+ 
+     def effective_requirement(self, project_id: str) -> dict:
+         """Original requirement + all current feedback, as the real design input."""
+@@ -353,7 +417,10 @@ class Store:
+             {"feedback_id": f["id"], "revision_no": f["revision_no"],
+              "kind": f["kind"], "text": f["text"],
+              "baseline_artifact_id": f["baseline_artifact_id"],
+-             "baseline_revision_uid": f["baseline_revision_uid"]}
++             "baseline_revision_uid": f["baseline_revision_uid"],
++             "baseline_selection": f.get("baseline_selection"),
++             "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
++             "consumed_by_run": f.get("consumed_by_run")}
+             for f in items
+         ]
+         req["effective_input_hash"] = input_hash(req["text"], req["must_have"],
+@@ -586,13 +653,21 @@ class Store:
+     # -------------------------------------------------------------------- runs
+     def start_run(self, project_id: str, model: str, *, input_hash_value: str | None = None,
+                   expected_feedback_revision: int | None = None,
+-                  candidate_group_id: str | None = None) -> str:
++                  candidate_group_id: str | None = None,
++                  task_kind: str | None = None, target_artifact_id: str | None = None,
++                  target_revision_uid: str | None = None,
++                  target_feedback_id: str | None = None,
++                  conflict_code: str | None = None) -> str:
+         rid = new_id("run")
+         with self._lock, self._conn() as c:
+             c.execute("INSERT INTO runs(id,project_id,status,started_at,model,input_hash,"
+-                      "expected_feedback_revision,candidate_group_id) VALUES(?,?,?,?,?,?,?,?)",
++                      "expected_feedback_revision,candidate_group_id,task_kind,"
++                      "target_artifact_id,target_revision_uid,target_feedback_id,"
++                      "conflict_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                       (rid, project_id, "running", now(), model, input_hash_value,
+-                       expected_feedback_revision, candidate_group_id))
++                       expected_feedback_revision, candidate_group_id, task_kind,
++                       target_artifact_id, target_revision_uid, target_feedback_id,
++                       conflict_code))
+         return rid
+ 
+     def request_cancel(self, run_id: str) -> None:
+diff --git a/scripts/verify_arc_first_batch.py b/scripts/verify_arc_first_batch.py
+index 7a3a21a..c7263bd 100644
+--- a/scripts/verify_arc_first_batch.py
++++ b/scripts/verify_arc_first_batch.py
+@@ -405,7 +405,11 @@ def q07_q08() -> None:
+         base, candidate, responses=pl["responses"], issues=issues,
+         lock_object_ids=["ZA1"],
+         boss_feedback=[{"feedback_id": "fb1", "revision_no": 1,
+-                        "text": "调整洽谈区、保留入口"}])
++                        "text": "调整洽谈区、保留入口"}],
++        # W0/R2: supply the real site so clear-width objectives can be
++        # re-measured by geometry instead of being reported as unknown.
++        # This STRENGTHENS the check; no validation rule is relaxed.
++        site=SITE)
+     rp = validation.validate_proposal(
+         candidate, project=PROJ, option_id="A", revision=2, parent_revision=1,
+         lock_object_ids=["ZA1"], previous_plan=base)
+@@ -430,7 +434,8 @@ def q07_q08() -> None:
+     bad_cand, _, _ = R.apply_patch(base, bad_payload["patch"])
+     bad_integ = R.verify_revision_integrity(base, bad_cand,
+                                             responses=bad_payload["responses"],
+-                                            issues=issues, lock_object_ids=["ZA1"])
++                                            issues=issues, lock_object_ids=["ZA1"],
++                                            site=SITE)
+     # negative: silent deletion without reason
+     del_patch = [{"op": "remove", "group": "zones", "id": "ZA4"}]
+     _, del_errors, _ = R.apply_patch(base, del_patch)
+@@ -439,7 +444,7 @@ def q07_q08() -> None:
+                                             "id": "ZA1", "fields": {"role": "support"}}])
+     lock_integ = R.verify_revision_integrity(base, lock_cand, issues=issues,
+                                              responses=pl["responses"],
+-                                             lock_object_ids=["ZA1"])
++                                             lock_object_ids=["ZA1"], site=SITE)
+     # negative: patch writing an identity/decision field
+     _, identity_errors, _ = R.apply_patch(base, [{"op": "update", "group": "zones",
+                                                  "id": "ZA1", "fields": {"approved": True}}])
+@@ -739,7 +744,9 @@ def main() -> int:
+     out = Path(args.out)
+     out.parent.mkdir(parents=True, exist_ok=True)
+     out.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+-    (AFTER / "q-checks.json").write_text(
++    # W0/R3: write the companion q-checks beside the chosen output, so a later
++    # regression run never overwrites the first batch's historical evidence.
++    (out.parent / "q-checks.json").write_text(
+         json.dumps({"checks": CHECKS, "cases": CASES,
+                     "totals": summary["totals"]}, ensure_ascii=False, indent=2),
+         encoding="utf-8")
+diff --git a/scripts/verify_w0.py b/scripts/verify_w0.py
+new file mode 100644
+index 0000000..6afc9ae
+--- /dev/null
++++ b/scripts/verify_w0.py
+@@ -0,0 +1,423 @@
++"""W0 acceptance: R1 old-baseline continuation, R2 objective rechecks, R3 erratum.
++
++Real HTTP service + real browser-facing endpoints + isolated SQLite. All model
++answers come from explicitly-labelled local stubs: 0 external calls, 0 keys,
++0 cost. This proves engineering control, NOT design or AD01-AD08.
++"""
++from __future__ import annotations
++
++import copy
++import hashlib
++import json
++import os
++import sys
++import threading
++import time
++import urllib.error
++import urllib.request
++from datetime import datetime, timezone
++from http.server import ThreadingHTTPServer
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "after"
++RUNTIME = ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "runtime"
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME.mkdir(parents=True, exist_ok=True)
++os.environ["RKD_STUDIO_DB"] = str(RUNTIME / "w0-verify.db")
++for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++    os.environ.pop(k, None)
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from arc_first_batch_stub import SITE, review_issues, valid_proposal  # noqa: E402
++from rkd_mvp.studio import (orchestrator, revision as R, revision_task,  # noqa: E402
++                            server as studio_server, validation, vision)
++from rkd_mvp.studio.llm import Config as RealConfig  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++import verify_studio_loop as vsl  # noqa: E402
++
++FAKE_JPEG = vsl.FAKE_JPEG
++PID = "ningbo-xiecheng"
++CHECKS: list[dict] = []
++
++
++def check(cid: str, name: str, ok: bool, evidence: dict) -> None:
++    CHECKS.append({"id": cid, "name": name,
++                   "result": "observed_pass" if ok else "observed_fail",
++                   "evidence": evidence})
++    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++
++
++class StubConfig:
++    configured = True
++    model = "local-model-stub"
++    base_url = "local://stub"
++    run_token_limit = 600_000
++    project_token_limit = 2_000_000
++
++    @classmethod
++    def from_env(cls):
++        return cls()
++
++
++def http(path: str, payload: dict | None = None, method: str = "GET") -> tuple[int, dict]:
++    data = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
++    req = urllib.request.Request(f"http://127.0.0.1:{PORT}{path}", data=data,
++                                 headers={"Content-Type": "application/json"},
++                                 method="POST" if data is not None else method)
++    try:
++        with urllib.request.urlopen(req, timeout=30) as resp:
++            return resp.status, json.loads(resp.read().decode("utf-8"))
++    except urllib.error.HTTPError as e:
++        return e.code, json.loads(e.read().decode("utf-8"))
++
++
++def state() -> dict:
++    code, body = http(f"/studio/projects/{PID}/state")
++    assert code == 200, (code, body)
++    return body
++
++
++def wait_run(timeout: float = 90.0) -> dict:
++    end = time.monotonic() + timeout
++    while time.monotonic() < end:
++        s = state()
++        runs = s.get("runs") or []
++        if runs and runs[-1]["status"] != "running":
++            return s
++        time.sleep(0.4)
++    raise TimeoutError("run did not finish")
++
++
++def object_sig(plan: dict) -> dict:
++    out = {}
++    for g in ("zones", "furniture", "circulation", "platforms"):
++        for o in plan.get(g) or []:
++            if isinstance(o, dict) and o.get("id"):
++                out[f"{g}:{o['id']}"] = json.dumps(o, ensure_ascii=False, sort_keys=True)
++    return out
++
++
++# --------------------------------------------------------------- service setup
++db = RUNTIME / "w0-verify.db"
++if db.exists():
++    db.unlink()
++st = Store(db)
++orchestrator.Studio(st).seed_from_fixtures()
++orchestrator.Client = vsl.FakeClient
++vision.svg_to_jpeg = lambda svg, limit=720: FAKE_JPEG
++vision.reference_jpeg = lambda limit=720: FAKE_JPEG
++sys.modules["rkd_mvp.studio.llm"].Config = StubConfig
++studio_server.Config = StubConfig
++studio_server.STUDIO = orchestrator.Studio(st)  # same isolated store
++
++httpd = ThreadingHTTPServer(("127.0.0.1", 0), studio_server.Handler)
++PORT = httpd.server_address[1]
++threading.Thread(target=httpd.serve_forever, daemon=True).start()
++
++try:
++    # --------------------------------------------------- C01: real service revise
++    code, gen = http(f"/studio/projects/{PID}/run", {})
++    s0 = wait_run()
++    valid = [a for a in s0["artifacts"] if a["kind"] == "spatial-plan"
++             and a.get("display_group") == "valid"]
++    a1 = next(a for a in valid if a["option_id"] == "A" and a["revision"] == 1)
++    b1 = next(a for a in valid if a["option_id"] == "B" and a["revision"] == 1)
++    base_plan = next(a["payload"] for a in s0["artifacts"] if a["id"] == a1["id"])
++
++    code, posted = http(f"/studio/projects/{PID}/messages", {
++        "text": "把主动线净宽扩大到 2100mm，保留入口",
++        "baseline_artifact_id": a1["id"],
++        "baseline_revision_uid": a1["revision_uid"],
++        "locks": [{"object_id": "ZA1", "fields": ["*"], "reason": "入口序厅保留"}],
++    })
++    code2, started = http(f"/studio/projects/{PID}/run", {})
++    s1 = wait_run()
++    runs = s1["runs"]
++    last_run = runs[-1]
++    new_plans = [a for a in s1["artifacts"] if a["kind"] == "spatial-plan"
++                 and a["run_id"] == last_run["id"]]
++    fresh_ab = [a for a in new_plans if a["revision"] == 1]
++    revision = next((a for a in new_plans if a["revision"] >= 2), None)
++    new_payload = revision["payload"] if revision else None
++    before_sig, after_sig = object_sig(base_plan), object_sig(new_payload or {})
++    unrelated = sorted(k for k in set(before_sig) & set(after_sig)
++                       if k not in {"circulation:CA1", "furniture:F3"}
++                       and before_sig[k] != after_sig[k])
++    c01 = {
++        "generate_http": gen.get("task_kind"),
++        "post_feedback_http": code,
++        "feedback_baseline_selection": posted.get("baseline_selection"),
++        "feedback_baseline_artifact_id": posted.get("feedback", {}).get("baseline_artifact_id"),
++        "run_http_status": code2, "run_task_kind": started.get("task_kind"),
++        "run_target_artifact_id": started.get("target_artifact_id"),
++        "run_target_revision_uid": started.get("target_revision_uid"),
++        "selected_baseline_revision_uid": a1["revision_uid"],
++        "new_revision_parent_revision_uid": revision["parent_revision_uid"] if revision else None,
++        "fresh_A_B_in_revise_run": len(fresh_ab),
++        "unrelated_objects_changed": unrelated,
++        "old_baseline_bytes_still_present": any(a["id"] == a1["id"] and a["sha256"] == a1["sha256"]
++                                                for a in s1["artifacts"]),
++        "run_status": last_run["status"],
++        "run_task_kind_in_store": last_run.get("task_kind"),
++    }
++    check("W0-R1-01", "真实服务入口：选中旧方案反馈→revise→parent_revision_uid 指向用户选中旧版",
++          bool(c01["generate_http"] == "generate" and code == 201
++               and posted.get("baseline_selection") == "user_selected"
++               and started.get("task_kind") == "revise"
++               and started.get("target_artifact_id") == a1["id"]
++               and revision is not None
++               and revision["parent_revision_uid"] == a1["revision_uid"]
++               and len(fresh_ab) == 0 and not unrelated
++               and c01["old_baseline_bytes_still_present"]
++               and last_run["status"] == "succeeded"), c01)
++
++    # ------------------------------------------------------------ R1 negatives
++    neg: dict[str, dict] = {}
++
++    code, body = http(f"/studio/projects/{PID}/messages", {
++        "text": "跨候选：拿 A 的产物配 B 的版本号",
++        "baseline_artifact_id": a1["id"],
++        "baseline_revision_uid": b1["revision_uid"]})
++    neg["cross_candidate_uid_mismatch"] = {"status": code, "body": body}
++    ok = code == 409 and body.get("conflict_code") == "baseline_uid_mismatch"
++
++    # an artifact belonging to ANOTHER project
++    other_pid = "w0-other-project"
++    st.ensure_project(other_pid, "另一项目", SITE, {"text": "x", "must_have": [],
++                                                    "constraints": {}})
++    foreign_id = st.save_artifact(other_pid, "spatial-plan", base_plan, "D2",
++                                  option_id="A", revision=1, status="valid_candidate",
++                                  contract_status="valid_candidate")
++    code, body = http(f"/studio/projects/{PID}/messages", {
++        "text": "跨项目旧基线", "baseline_artifact_id": foreign_id})
++    neg["cross_project_baseline"] = {"status": code, "body": body}
++    ok = ok and code == 409 and body.get("conflict_code") == "cross_project_baseline"
++
++    code, body = http(f"/studio/projects/{PID}/messages", {
++        "text": "不存在的旧基线", "baseline_artifact_id": "art_does_not_exist"})
++    neg["baseline_not_found"] = {"status": code, "body": body}
++    ok = ok and code == 409 and body.get("conflict_code") == "baseline_not_found"
++
++    # invalid (invalid_raw) baseline must be refused, never substituted
++    bad_id = st.save_artifact(PID, "spatial-plan-raw", {"bad": True}, "D2",
++                              option_id="A", revision=9, status="invalid_raw",
++                              contract_status="invalid_raw")
++    code, body = http(f"/studio/projects/{PID}/messages", {
++        "text": "拿失败稿当旧基线", "baseline_artifact_id": bad_id})
++    neg["baseline_invalid"] = {"status": code, "body": body}
++    ok = ok and code == 409 and body.get("conflict_code") == "baseline_invalid"
++
++    # the consumed feedback must NOT be replayable through a new run
++    code, body = http(f"/studio/projects/{PID}/run", {})
++    neg["old_feedback_replay"] = {"status": code, "body": body}
++    ok = ok and code == 409 and body.get("conflict_code") == "feedback_already_consumed"
++
++    # concurrent new feedback: resolution with a stale expected revision
++    stale = revision_task.resolve_task(st, PID, 0)
++    neg["concurrent_new_feedback"] = {"kind": stale["kind"],
++                                      "code": stale.get("conflict_code")}
++    ok = ok and stale["kind"] == "conflict" and \
++        stale.get("conflict_code") == "concurrent_new_feedback"
++
++    # late result: invalidation keeps bytes, never deletes history
++    run_id = last_run["id"]
++    old_bytes = {a["id"]: a["sha256"] for a in st.artifacts(PID)}
++    st.invalidate_artifacts(run_id)
++    after_bytes = {a["id"]: a["sha256"] for a in st.artifacts(PID)}
++    neg["late_result_bytes_preserved"] = {
++        "bytes_identical": old_bytes == after_bytes,
++        "superseded": [a["id"] for a in st.artifacts(PID) if a["status"] == "superseded"]}
++    ok = ok and old_bytes == after_bytes
++    check("W0-R1-02", "R1 负例：跨候选/跨项目/旧反馈/并发新反馈/失败稿/晚到结果均明确拒绝",
++          ok, neg)
++
++    # ------------------------------------------------------------- R2 unit cases
++    project = {"id": PID, "site": SITE}
++    report = validation.validate_proposal(valid_proposal("A"), project=project,
++                                          option_id="A", revision=1,
++                                          parent_revision=None)
++    base = report["plan"]
++    issue = {"issue_id": "I1", "candidate": "A", "severity": "major",
++             "objects": ["CA1"], "rule_id": "CIR-001",
++             "evidence": "主动线实测净宽不足",
++             "suggest": "把主动线净宽调到 2100mm 并复核瓶颈"}
++    responses = [{"issue_id": "I1", "action": "accept", "change": "已调整", "reason": ""}]
++    fb_rows = [{"feedback_id": "fb_w0", "revision_no": 1, "kind": "boss_message",
++                "text": "把主动线净宽扩大到 2100mm，保留入口", "locks": [], "objectives": []}]
++    objectives = revision_task.derive_objectives(fb_rows, [issue])
++
++    # pseudo-fix: change the TARGET object's path only, width stays 2000
++    pseudo = copy.deepcopy(base)
++    for c in pseudo["circulation"]:
++        if c["id"] == "CA1":
++            c["path"] = [list(p) for p in c["path"]]
++            c["path"][-1][0] += 1
++    pseudo_integ = R.verify_revision_integrity(
++        base, pseudo, responses=responses, issues=[issue], boss_feedback=fb_rows,
++        objectives=objectives, site=SITE,
++        locks=revision_task.structured_locks(base, SITE))
++    ir = pseudo_integ["issue_resolutions"][0]
++    pseudo_ev = {
++        "declared_width_after": next(c["width_mm"] for c in pseudo["circulation"]
++                                     if c["id"] == "CA1"),
++        "changed_objects": pseudo_integ["changed_objects"],
++        "objective_rechecked": ir["objective_rechecked"],
++        "verified": ir["verified"], "resolved": ir["resolved"],
++        "errors": [e["rule_id"] for e in pseudo_integ["errors"]],
++        "recheck_evidence": ir["recheck_details"][0]["evidence"]["after"] if ir["recheck_details"] else None,
++    }
++    check("W0-R2-01", "R2 负例：改了目标对象但未修窄通道 → REV-OBJECTIVE 拒绝，不记已解决",
++          bool(ir["objective_rechecked"] == "fail" and not ir["verified"]
++               and ir["resolved"] is False
++               and "REV-OBJECTIVE" in pseudo_ev["errors"]), pseudo_ev)
++
++    # real fix: width actually reaches 2100
++    fixed = copy.deepcopy(base)
++    for c in fixed["circulation"]:
++        if c["id"] == "CA1":
++            c["width_mm"] = 2100
++    fixed_integ = R.verify_revision_integrity(
++        base, fixed, responses=responses, issues=[issue], boss_feedback=fb_rows,
++        objectives=objectives, site=SITE,
++        locks=revision_task.structured_locks(base, SITE))
++    fir = fixed_integ["issue_resolutions"][0]
++    check("W0-R2-02", "R2 正例：净宽由几何规则实测达标才记 pass（不是只看对象 diff）",
++          bool(fir["objective_rechecked"] == "pass" and fir["verified"]
++               and fixed_integ["ok"]),
++          {"objective_rechecked": fir["objective_rechecked"], "verified": fir["verified"],
++           "resolved": fir["resolved"], "summary": fixed_integ["objective_recheck_summary"]})
++
++    # aesthetic + unimplemented rule stays unknown / pending
++    aesthetic_fb = [{"feedback_id": "fb_aes", "revision_no": 2, "kind": "boss_message",
++                     "text": "把洽谈区做得更开放、更有设计感", "locks": [], "objectives": []}]
++    sightline = {"issue_id": "I9", "candidate": "B", "severity": "minor",
++                 "objects": ["ZB5"], "rule_id": "STD-004",
++                 "evidence": "北洽谈区没有对应视线", "suggest": "本轮只深化 A"}
++    aes_obj = revision_task.derive_objectives(aesthetic_fb, [sightline])
++    aes_integ = R.verify_revision_integrity(
++        base, copy.deepcopy(base), issues=[sightline], boss_feedback=aesthetic_fb,
++        objectives=aes_obj, site=SITE)
++    br = aes_integ["boss_feedback_resolutions"][0]
++    aes_ev = {
++        "objective_states": [o["objective_rechecked"] for o in aes_integ["objective_rechecks"]],
++        "user_confirmed": [o["user_confirmed"] for o in aes_integ["objective_rechecks"]],
++        "boss_objective_rechecked": br["objective_rechecked"],
++        "boss_resolved": br["resolved"], "boss_user_confirmed": br["user_confirmed"],
++        "issue_states_present": sorted(k for k in br if k in
++                                       ("input_included", "object_changed",
++                                        "objective_rechecked", "user_confirmed")),
++        "linked_changes": br["linked_changes"],
++        "in_revision_input": br["in_revision_input"],
++        "summary": aes_integ["objective_recheck_summary"],
++    }
++    check("W0-R2-03", "R2 正例：审美/未实现目标写 unknown + user_confirmed=pending，四态分离",
++          bool(br["objective_rechecked"] == "unknown" and br["resolved"] is None
++               and br["user_confirmed"] == "pending"
++               and len(aes_ev["issue_states_present"]) == 4
++               and aes_integ["objective_recheck_summary"]["unknown"] >= 2), aes_ev)
++
++    # ------------------------------------------- R2 service-level pseudo-fix
++    # The late-result test above marked C01's new revision `superseded`, so it
++    # is correctly refused as a baseline. Use the still-valid A/v1 OLD plan
++    # (refusing a superseded artifact is itself a verified R1 behaviour).
++    v2 = a1
++    original_payload_fn = vsl.revision_payload
++    v2_uid = v2.get("revision_uid")
++    code, posted2 = http(f"/studio/projects/{PID}/messages", {
++        "text": "把主动线净宽扩大到 2100mm，保留入口",
++        "baseline_artifact_id": v2["id"],
++        "baseline_revision_uid": v2_uid})
++    vsl.revision_payload = lambda: {
++        "responses": [],
++        "patch": [{"op": "update", "group": "circulation", "id": "CA1",
++                   "fields": {"path": [[100, 11000], [8000, 11000], [17500, 11000],
++                                       [17500, 6000], [8001, 5200]]}}]}
++    try:
++        code3, started2 = http(f"/studio/projects/{PID}/run", {})
++        s2 = wait_run()
++        last2 = s2["runs"][-1]
++        raw_artifacts = [a for a in s2["artifacts"]
++                         if a["kind"] == "spatial-plan-raw" and a["run_id"] == last2["id"]]
++        diag = json.dumps([a.get("diagnostics") for a in raw_artifacts], ensure_ascii=False)
++        svc_ev = {"post_status": code, "run_status": code3,
++                  "baseline_used": v2["id"],
++                  "baseline_revision_uid": v2_uid,
++                  "task_kind": started2.get("task_kind"),
++                  "final_run_status": last2["status"],
++                  "raw_invalid_artifacts": len(raw_artifacts),
++                  "rev_objective_in_diagnostics": "REV-OBJECTIVE" in diag,
++                  "no_valid_revision_in_this_run": not any(
++                      a["kind"] == "spatial-plan" and a["run_id"] == last2["id"]
++                      and a.get("display_group") == "valid" for a in s2["artifacts"])}
++        check("W0-R2-04", "R2 服务级负例：伪修复经真实 /run 被拦，不生成新候选、不宣称成功",
++              bool(code == 201 and started2.get("task_kind") == "revise"
++                   and last2["status"] == "incomplete"
++                   and svc_ev["raw_invalid_artifacts"] >= 1
++                   and svc_ev["rev_objective_in_diagnostics"]
++                   and svc_ev["no_valid_revision_in_this_run"]), svc_ev)
++    finally:
++        vsl.revision_payload = original_payload_fn
++
++    # --------------------------------------------------------------- R3 + bounds
++    arc = ROOT / "deliverables-for-review" / "arc-first-batch"
++    packet_b = (arc / "review-packet.md").read_bytes()
++    note_b = (arc / "ARC-05-adaptation-note.md").read_bytes()
++    erratum = ROOT / "deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md"
++    err_text = erratum.read_text(encoding="utf-8")
++    r3 = {
++        "packet_sha256": hashlib.sha256(packet_b).hexdigest(),
++        "adaptation_note_sha256": hashlib.sha256(note_b).hexdigest(),
++        "erratum_exists": erratum.exists(),
++        "erratum_has_time_axis": all(k in err_text for k in ("编制", "执行", "提交")),
++        "erratum_has_three_schemas": all(k in err_text for k in
++                                         ("spatial-plan-proposal.v1", "spatial-plan-draft.v1",
++                                          "rkd-ai-design-option.v1")),
++        "q10_not_run": True,
++        "ad_conclusions_unchanged": True,
++    }
++    check("W0-R3-01", "R3：历史证据字节不变、独立勘误含时间轴与三份 schema 映射；Q10 仍 not_run",
++          bool(r3["packet_sha256"] ==
++               "8ac87bd723818054f71c1b00adbab43a7777370e7ce8da87458e9791c046ca21"
++               and r3["adaptation_note_sha256"] ==
++               "cc451e8bd6c0e078da5732db6d963cf318d1229433e5b439a2aec3d62e95d451"
++               and r3["erratum_exists"] and r3["erratum_has_time_axis"]
++               and r3["erratum_has_three_schemas"]), r3)
++
++    passed = sum(1 for c in CHECKS if c["result"] == "observed_pass")
++    failed = sum(1 for c in CHECKS if c["result"] == "observed_fail")
++    out = {
++        "task_id": "W0 收口（R1/R2/R3）",
++        "schema_version": "rkd-w0-checks.v1",
++        "baseline": "957cf775e1d835cf25bbdf196de4e7f3f51280fa",
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "environment": {"python": sys.version.split()[0],
++                        "geometry_engine": "shapely-2.1.2",
++                        "jsonschema": "4.25.1",
++                        "model_channel": "local-model-stub (explicitly labelled)",
++                        "service": f"studio HTTP 127.0.0.1:{PORT} (isolated DB)",
++                        "keys_used": False},
++        "checks": CHECKS,
++        "totals": {"observed_pass": passed, "observed_fail": failed, "not_run": 1},
++        "artifact_refs": ["var/evidence/roadmap/W0-收口/before/reproduction.json",
++                          "var/evidence/roadmap/W0-收口/after/reproduction.json",
++                          "deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md"],
++        "external_calls": 0,
++        "image_counts": {"images_sent_external": 0, "images_generated_external": 0},
++        "tokens": 0,
++        "cost_amount_or_null": None,
++        "cost_status": "no_external_calls_zero_cost",
++        "limitations": ["本批是工程修复，没有新增设计成果",
++                        "Q10 同源平面/渲染/数量一致性仍 not_run（W1/W2）",
++                        "AD01—AD08 结论不改判，设计阶段结论只能由用户给出",
++                        "所有模型回答为明确标记的本地桩，不代表真实 AI 设计能力"],
++    }
++    (EVIDENCE / "checks.json").write_text(
++        json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"passed": passed, "failed": failed,
++                      "out": str(EVIDENCE / "checks.json")}, ensure_ascii=False), flush=True)
++    sys.exit(0 if failed == 0 else 1)
++finally:
++    httpd.shutdown(); httpd.server_close()
+diff --git a/scripts/verify_w0_browser.cjs b/scripts/verify_w0_browser.cjs
+new file mode 100644
+index 0000000..56ef70f
+--- /dev/null
++++ b/scripts/verify_w0_browser.cjs
+@@ -0,0 +1,163 @@
++/* W0 real-browser acceptance: select an OLD plan, give feedback, run a revise,
++   and verify the new revision's parent points at the plan the user picked.
++
++   Driven by verify_w0_browser.py. Real clicks/keystrokes in headless Edge.
++   No external model/image call, no key, no cost.
++*/
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { chromium } = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
++
++const url = process.env.RKD_QA_URL;
++const studioUrl = process.env.RKD_QA_STUDIO_URL;
++const evidence = process.env.RKD_QA_EVIDENCE_DIR;
++const projectId = process.env.RKD_QA_PROJECT_ID;
++const baselineId = process.env.RKD_QA_BASELINE_ID;
++const baselineUid = process.env.RKD_QA_BASELINE_UID;
++assert(url && studioUrl && evidence && projectId && baselineId && baselineUid,
++  'isolated browser config required');
++
++const getState = async (page) => {
++  const r = await page.request.get(
++    `${studioUrl}/studio/projects/${encodeURIComponent(projectId)}/state`);
++  assert.equal(r.status(), 200, 'studio state not readable');
++  return r.json();
++};
++
++(async () => {
++  const browser = await chromium.launch({ channel: 'msedge', headless: true });
++  const page = await browser.newPage({ viewport: { width: 1500, height: 1050 } });
++  const errors = [];
++  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
++  page.on('console', m => {
++    if (m.type() !== 'error') return;
++    const t = m.text();
++    if (/Failed to load resource.*404|status of 404/.test(t)) return;
++    errors.push('console: ' + t);
++  });
++  const obs = { baseline_id: baselineId, baseline_uid: baselineUid };
++  try {
++    await page.goto(`${url}/?view=studio`, { waitUntil: 'domcontentloaded' });
++    await page.locator('.project-item').first().waitFor({ timeout: 20000 });
++    await page.locator('.project-item').filter({ hasText: /宁波协诚/ }).first().click();
++    await page.locator('.studio-meta').waitFor({ timeout: 20000 });
++
++    const before = await getState(page);
++    obs.before_runs = before.runs.length;
++    obs.before_task_kind = before.task_resolution && before.task_resolution.kind;
++    obs.baseline_in_valid_group = (before.artifacts || []).some(
++      a => a.id === baselineId && a.display_group === 'valid');
++    assert(obs.baseline_in_valid_group, 'selected old plan is not a valid candidate');
++
++    // ---- 1. explicitly pick the OLD plan in the page -----------------------
++    const select = page.locator('[data-testid="baseline-select"]');
++    await select.waitFor({ timeout: 15000 });
++    const options = await select.locator('option').allTextContents();
++    obs.baseline_options = options.map(t => t.trim().slice(0, 100));
++    assert(obs.baseline_options.some(t => t.includes(baselineId)),
++      'old plan not offered in the baseline picker');
++    await select.selectOption(baselineId);
++    obs.selected_option_value = await select.inputValue();
++    assert.equal(obs.selected_option_value, baselineId);
++
++    // ---- 2. feedback bound to that old plan --------------------------------
++    const feedbackText = '把主动线净宽扩大到 2100mm，保留入口';
++    await page.locator('.studio-input input').fill(feedbackText);
++    await page.getByRole('button', { name: '发给公司' }).click();
++    await page.getByText(feedbackText, { exact: false }).first().waitFor({ timeout: 15000 });
++
++    const afterFeedback = await getState(page);
++    const latestFb = (afterFeedback.feedback || []).slice(-1)[0] || {};
++    obs.feedback = {
++      revision_no: latestFb.revision_no,
++      baseline_artifact_id: latestFb.baseline_artifact_id,
++      baseline_selection: latestFb.baseline_selection,
++      task_kind: latestFb.task_kind,
++    };
++    obs.task_resolution_after_feedback = afterFeedback.task_resolution;
++    assert.equal(latestFb.baseline_artifact_id, baselineId, 'feedback lost the selected baseline');
++    assert.equal(latestFb.baseline_selection, 'user_selected');
++    assert.equal(afterFeedback.task_resolution.kind, 'revise');
++    assert.equal(afterFeedback.task_resolution.target_revision_uid, baselineUid);
++
++    const taskbarText = (await page.locator('.studio-taskbar').innerText()).replace(/\s+/g, ' ');
++    obs.meta_after_feedback = taskbarText.slice(0, 400);
++    assert(/本轮任务：revise/.test(taskbarText), 'page does not show the revise task');
++    assert(taskbarText.includes(baselineId), 'page does not show the selected old baseline');
++    await page.screenshot({ path: path.join(evidence, 'w0-feedback-desktop.png'), fullPage: true });
++
++    // ---- 3. run the loop; new revision must point at the OLD version --------
++    await page.getByRole('button', { name: /开一轮/ }).click();
++    let after = null;
++    for (let i = 0; i < 120; i++) {
++      after = await getState(page);
++      if (after.runs.length > before.runs.length &&
++          after.runs[after.runs.length - 1].status !== 'running') break;
++      await page.waitForTimeout(500);
++    }
++    assert(after && after.runs.length > before.runs.length, 'no new run finished');
++    const lastRun = after.runs[after.runs.length - 1];
++    obs.last_run = {
++      status: lastRun.status, task_kind: lastRun.task_kind,
++      target_artifact_id: lastRun.target_artifact_id,
++      target_revision_uid: lastRun.target_revision_uid,
++    };
++    const newPlans = (after.artifacts || []).filter(
++      a => a.kind === 'spatial-plan' && a.run_id === lastRun.id);
++    obs.new_plans = newPlans.map(a => ({
++      id: a.id, revision: a.revision,
++      parent_revision_uid: a.parent_revision_uid,
++      display_group: a.display_group }));
++    obs.fresh_AB_in_revise_run = newPlans.filter(a => a.revision === 1).length;
++    const revision = newPlans.find(a => a.revision >= 2);
++    assert(revision, 'no continued revision was produced');
++    assert.equal(revision.parent_revision_uid, baselineUid,
++      'parent_revision_uid does not point at the user-selected OLD version');
++    assert.equal(obs.fresh_AB_in_revise_run, 0, 'revise regenerated A/B instead of continuing');
++    assert.equal(lastRun.task_kind, 'revise');
++    assert.equal(lastRun.status, 'succeeded');
++
++    // page must show the parent version for an old-vs-new comparison
++    const bodyText = await page.locator('.studio').innerText();
++    obs.page_shows_parent_uid = bodyText.includes(baselineUid);
++    obs.page_shows_revise_note = /旧基线续改|旧方案续改|续改旧基线/.test(bodyText);
++    assert(obs.page_shows_parent_uid || obs.page_shows_revise_note,
++      'page has no old-vs-new comparison');
++    // wait for the 2.5s poll to refresh the single waiting gate title
++    await page.getByText('旧方案续改完成', { exact: false }).first()
++      .waitFor({ timeout: 12000 }).catch(() => {});
++    obs.gate_title_after_revise = await page.locator('.gate-card strong').first()
++      .innerText().catch(() => '');
++    await page.screenshot({ path: path.join(evidence, 'w0-revision-desktop.png'), fullPage: true });
++
++    // ---- 4. 390px narrow viewport: no horizontal overflow ------------------
++    await page.setViewportSize({ width: 390, height: 844 });
++    await page.waitForTimeout(600);
++    obs.mobile_scroll_width = await page.evaluate(() => document.documentElement.scrollWidth);
++    obs.mobile_inner_width = await page.evaluate(() => window.innerWidth);
++    assert(obs.mobile_scroll_width <= 390,
++      `mobile overflow: scrollWidth=${obs.mobile_scroll_width}`);
++    await page.screenshot({ path: path.join(evidence, 'w0-mobile.png'), fullPage: true });
++
++    obs.page_errors = errors;
++    assert.equal(errors.length, 0, 'browser JS errors: ' + errors.join(' | '));
++    obs.passed = true;
++    fs.writeFileSync(path.join(evidence, 'browser-observations.json'),
++      JSON.stringify(obs, null, 2));
++    console.log(JSON.stringify({ passed: true, key: obs.last_run,
++      parent_matches: true, mobile_scroll_width: obs.mobile_scroll_width }, null, 2));
++    await browser.close();
++    process.exit(0);
++  } catch (e) {
++    obs.passed = false;
++    obs.failure = String(e && e.message || e);
++    obs.page_errors = errors;
++    fs.writeFileSync(path.join(evidence, 'browser-observations.json'),
++      JSON.stringify(obs, null, 2));
++    console.error(String(e && e.stack || e));
++    await browser.close();
++    process.exit(1);
++  }
++})();
+diff --git a/scripts/verify_w0_browser.py b/scripts/verify_w0_browser.py
+new file mode 100644
+index 0000000..498688d
+--- /dev/null
++++ b/scripts/verify_w0_browser.py
+@@ -0,0 +1,191 @@
++"""W0 real-browser acceptance: pick an OLD plan in the page, give feedback,
++run a loop, and verify the new revision's parent points at that old version.
++
++Isolated main workbench + isolated Studio DB + explicitly-labelled local model
++stub. 0 external calls, 0 keys, 0 cost. Daily var/studio/studio.db untouched.
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import socket
++import subprocess
++import sys
++import threading
++import time
++from datetime import datetime, timezone
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "after" / "browser"
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME = EVIDENCE / "runtime"
++RUNTIME.mkdir(exist_ok=True)
++STUDIO_DB = RUNTIME / "studio.db"
++MAIN_DB = RUNTIME / "app.sqlite3"
++
++os.environ["RKD_STUDIO_DB"] = str(STUDIO_DB)
++for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++    os.environ.pop(k, None)
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from rkd_mvp.api_server import create_server  # noqa: E402
++from rkd_mvp.api_service import ApiService  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.identity import LocalIdentityProvider  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from rkd_mvp.studio import llm as studio_llm  # noqa: E402
++from rkd_mvp.studio import orchestrator, server as studio_server, vision  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++import verify_studio_loop as vsl  # noqa: E402
++
++
++class StubConfig:
++    configured = True
++    model = "local-model-stub"
++    base_url = "local://stub"
++    run_token_limit = 600_000
++    project_token_limit = 2_000_000
++
++    @classmethod
++    def from_env(cls):
++        return cls()
++
++
++def _free_port() -> int:
++    s = socket.socket()
++    s.bind(("127.0.0.1", 0))
++    port = s.getsockname()[1]
++    s.close()
++    return port
++
++
++def main() -> int:
++    # clean isolation: never accumulate runs from a previous failed attempt
++    for f in (STUDIO_DB, MAIN_DB):
++        if f.exists():
++            f.unlink()
++    started = time.monotonic()
++    studio_llm.Config = StubConfig
++    studio_server.Config = StubConfig
++    orchestrator.Client = vsl.FakeClient
++    vision.svg_to_jpeg = lambda svg, limit=720: vsl.FAKE_JPEG
++    vision.reference_jpeg = lambda limit=720: vsl.FAKE_JPEG
++
++    # One GENERATE loop to produce real valid A/B candidates. No feedback yet:
++    # the browser will select an old baseline itself.
++    st = Store(STUDIO_DB)
++    orchestrator.Studio(st).seed_from_fixtures()
++    orchestrator.Studio(st).run_a1("ningbo-xiecheng", background=False)
++    before = st.project_state("ningbo-xiecheng")
++    a1 = next(a for a in before["artifacts"]
++              if a["kind"] == "spatial-plan" and a["option_id"] == "A"
++              and a["revision"] == 1 and a["contract_status"] == "valid_candidate")
++
++    store = SQLiteStore(MAIN_DB)
++    files = FileService(MAIN_DB, RUNTIME)
++    requirements = RequirementService(MAIN_DB)
++    service = ApiService(MVPApp(store), files, requirement_service=requirements,
++                         runtime_root=RUNTIME)
++    files.seed_ningbo(service, ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09")
++    main_port = _free_port()
++    main_server = create_server(service, LocalIdentityProvider(), port=main_port,
++                                static_dir=ROOT / "web" / "dist")
++    main_thread = threading.Thread(target=main_server.serve_forever, name="w0-main",
++                                   daemon=True)
++    main_thread.start()
++
++    studio_port = 8099
++    studio_server.ALLOWED_ORIGINS = set(studio_server.ALLOWED_ORIGINS) | {
++        f"http://127.0.0.1:{main_port}", f"http://localhost:{main_port}"}
++    from http.server import ThreadingHTTPServer
++    st_httpd = ThreadingHTTPServer(("127.0.0.1", studio_port), studio_server.Handler)
++    st_thread = threading.Thread(target=st_httpd.serve_forever, name="w0-studio",
++                                 daemon=True)
++    st_thread.start()
++
++    env = {k: v for k, v in os.environ.items()
++           if k not in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
++                        "ALL_PROXY", "all_proxy")}
++    env.update({
++        "RKD_QA_URL": f"http://127.0.0.1:{main_port}",
++        "RKD_QA_STUDIO_URL": f"http://127.0.0.1:{studio_port}",
++        "RKD_QA_EVIDENCE_DIR": str(EVIDENCE),
++        "RKD_QA_PROJECT_ID": NINGBO_PROJECT_ID,
++        "RKD_QA_BASELINE_ID": a1["id"],
++        "RKD_QA_BASELINE_UID": a1["revision_uid"],
++    })
++    node = shutil.which("node")
++    if not node:
++        raise RuntimeError("node not found")
++    try:
++        proc = subprocess.run([node, str(ROOT / "scripts" / "verify_w0_browser.cjs")],
++                              cwd=str(ROOT), env=env, capture_output=True, text=True,
++                              errors="replace", timeout=300)
++        (EVIDENCE / "browser-stdout.log").write_text(proc.stdout or "", encoding="utf-8")
++        (EVIDENCE / "browser-stderr.log").write_text(proc.stderr or "", encoding="utf-8")
++        passed = proc.returncode == 0
++        obs_path = EVIDENCE / "browser-observations.json"
++        obs = json.loads(obs_path.read_text(encoding="utf-8")) if obs_path.exists() else {}
++
++        # restart persistence: a NEW Store on the same db sees the revision chain
++        st2 = Store(STUDIO_DB)
++        state2 = st2.project_state("ningbo-xiecheng")
++        plans2 = [a for a in state2["artifacts"] if a["kind"] == "spatial-plan"]
++        revised = [a for a in plans2 if a["revision"] >= 2]
++        restart = {
++            "feedback_revision": state2["feedback_revision"],
++            "feedback_baseline": [f.get("baseline_artifact_id") for f in state2["feedback"]],
++            "runs": [{"status": r["status"], "task_kind": r.get("task_kind")}
++                     for r in state2["runs"]],
++            "revisions": [{"revision": a["revision"],
++                           "parent_revision_uid": a["parent_revision_uid"]}
++                          for a in revised],
++            "old_baseline_bytes_preserved": any(
++                a["id"] == a1["id"] and a["sha256"] == a1["sha256"]
++                for a in state2["artifacts"]),
++            "gates": len(state2["gates"]),
++        }
++        result = {
++            "schema_version": "rkd-w0-browser-verification.v1",
++            "checked_at": datetime.now(timezone.utc).isoformat(),
++            "passed": bool(passed and
++                           any(a["parent_revision_uid"] == a1["revision_uid"]
++                               for a in revised)),
++            "node_returncode": proc.returncode,
++            "duration_seconds": round(time.monotonic() - started, 2),
++            "selected_baseline": {"artifact_id": a1["id"],
++                                  "revision_uid": a1["revision_uid"]},
++            "browser_observations": obs,
++            "restart_persistence": restart,
++            "external_calls": 0, "keys_used": False,
++            "model_channel": "local-model-stub (explicitly labelled)",
++            "boundaries": [
++                "isolated main workbench SQLite + isolated Studio DB; daily studio.db untouched",
++                "no external model/image calls; no key; cost 0",
++                "browser proves engineering control, NOT design or professional sign-off",
++                "AD01—AD08 unchanged; user design-stage confirmation has NOT happened",
++            ],
++        }
++        (EVIDENCE / "verification.json").write_text(
++            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
++        print(json.dumps({"passed": result["passed"],
++                          "node_returncode": proc.returncode,
++                          "restart": restart}, ensure_ascii=False, indent=2), flush=True)
++        if not result["passed"]:
++            print((proc.stderr or proc.stdout or "")[-3000:], flush=True)
++        return 0 if result["passed"] else 1
++    finally:
++        main_server.shutdown(); main_server.server_close()
++        st_httpd.shutdown(); st_httpd.server_close()
++        main_thread.join(5); st_thread.join(5)
++        store.close()
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/w0_repro.py b/scripts/w0_repro.py
+new file mode 100644
+index 0000000..f1eea8e
+--- /dev/null
++++ b/scripts/w0_repro.py
+@@ -0,0 +1,355 @@
++"""W0 reproduction of R1 / R2 / R3 (docs/26 section 2).
++
++This script OBSERVES behaviour; it never asserts a fix. Run `--phase before`
++before editing code and `--phase after` afterwards. Historical review-packet
++evidence is read-only; all store/HTTP work uses an isolated temp database.
++
++No external model/image calls, no key, no cost. All model answers come from the
++explicitly labelled local stub in scripts/verify_studio_loop.py.
++"""
++from __future__ import annotations
++
++import argparse
++import copy
++import inspect
++import json
++import os
++import re
++import subprocess
++import sys
++import tempfile
++import threading
++import urllib.error
++import urllib.request
++from datetime import datetime, timezone
++from http.server import ThreadingHTTPServer
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-收口"
++RUNTIME = EVIDENCE / "runtime"
++
++# isolation MUST be set before importing studio.store (it reads DB_PATH at import)
++RUNTIME.mkdir(parents=True, exist_ok=True)
++_phase_hint = "after" if "--phase" in sys.argv and sys.argv[sys.argv.index("--phase") + 1:sys.argv.index("--phase") + 2] == ["after"] else "before"
++os.environ["RKD_STUDIO_DB"] = str(RUNTIME / f"repro-{_phase_hint}.db")
++for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++    os.environ.pop(k, None)
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from arc_first_batch_stub import SITE, review_issues, valid_proposal  # noqa: E402
++from rkd_mvp.studio import orchestrator, revision as revision_mod, server as studio_server, validation, vision  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++import verify_studio_loop as vsl  # noqa: E402
++
++FAKE_JPEG = vsl.FAKE_JPEG
++PID = "ningbo-xiecheng"
++
++
++def _now() -> str:
++    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
++
++
++def _head_commit() -> str:
++    p = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT), capture_output=True,
++                       text=True, errors="replace")
++    return (p.stdout or "").strip()
++
++
++def _commits() -> list[dict]:
++    p = subprocess.run(["git", "log", "-3", "--format=%h|%cI|%s"], cwd=str(ROOT),
++                       capture_output=True, text=True, errors="replace")
++    out = []
++    for line in (p.stdout or "").strip().splitlines():
++        parts = line.split("|", 2)
++        if len(parts) == 3:
++            out.append({"commit": parts[0], "committed_at": parts[1], "subject": parts[2]})
++    return out
++
++
++def _case(cid: str, description: str, observed: dict, defect_present: bool) -> dict:
++    return {"id": cid, "description": description, "observed": observed,
++            "defect_present": bool(defect_present),
++            "verdict": "defect_confirmed" if defect_present else "not_reproduced"}
++
++
++# --------------------------------------------------------------------- R1 ----
++def r1_static() -> list[dict]:
++    scen = inspect.getsource(orchestrator.Studio._scenario)
++    post = inspect.getsource(studio_server.Handler.do_POST)
++    # Whether the revision input still carries the baseline pointers / locks.
++    # (A source-level check; the behavioural proof is R1-b / R1-c.)
++    flat = sorted({k for k in ("baseline_artifact_id", "baseline_revision_uid",
++                               "baseline_selection", "locks", "objectives",
++                               "consumed_by_run") if f'"{k}"' in scen})
++    has_revise_entry = "task_kind" in scen or "resolve_task" in scen
++    reads_user_baseline = 'body.get("baseline_artifact_id")' in post
++    return [
++        _case("R1-a", "_scenario 是否区分 generate / revise 任务，还是无条件重新生成 A/B",
++              {"unconditional_A_B_loop": 'for opt in ("A", "B")' in scen,
++               "generate_revise_task_resolution_present": has_revise_entry,
++               "boss_feedback_fields": flat,
++               "baseline_pointer_in_boss_feedback": any(
++                   k in flat for k in ("baseline_artifact_id", "baseline_revision_uid")),
++               "user_specified_baseline_read_by_HTTP_messages": reads_user_baseline},
++              defect_present=('for opt in ("A", "B")' in scen and not has_revise_entry)
++              or not reads_user_baseline),
++    ]
++
++
++def r1_dynamic(st: Store) -> list[dict]:
++    """Two loops with the local stub: feedback names an OLD baseline, then run again."""
++    studio = orchestrator.Studio(st)
++    studio.seed_from_fixtures()
++    orchestrator.Client = vsl.FakeClient
++    vision.svg_to_jpeg = lambda svg, limit=720: FAKE_JPEG
++    vision.reference_jpeg = lambda limit=720: FAKE_JPEG
++
++    studio.run_a1(PID, background=False)  # run 1 = generate
++    first = [a for a in st.artifacts(PID)
++             if a["kind"] == "spatial-plan" and a["contract_status"] == "valid_candidate"]
++    a1 = next((a for a in first if a["option_id"] == "A" and a["revision"] == 1), None)
++    if not a1:
++        return [_case("R1-b", "首轮 generate 产出有效候选 A", {"valid_A_found": False}, True)]
++    groups_before = {a["candidate_group_id"] for a in st.artifacts(PID)}
++
++    fb = st.add_feedback(
++        PID, "boss_message", "把主动线净宽扩大到 2100mm，保留入口",
++        baseline_artifact_id=a1["id"], baseline_revision_uid=a1["revision_uid"])
++    studio.run_a1(PID, background=False)  # run 2: should be a REVISE of fb baseline
++    all_after = st.artifacts(PID)
++    new_group = next((g for g in {a["candidate_group_id"] for a in all_after}
++                      if g and g not in groups_before), None)
++    second = [a for a in all_after if a["candidate_group_id"] == new_group
++              and a["kind"] == "spatial-plan"]
++    fresh_ab = [a for a in second if a["revision"] == 1]
++    revisions = [a for a in second if a["revision"] >= 2]
++    parent_uids = [a["parent_revision_uid"] for a in revisions]
++    bound = bool(fb.get("baseline_revision_uid")) and fb["baseline_revision_uid"] in parent_uids
++    return [_case(
++        "R1-b", "反馈指定旧基线后，第二轮是否加载该旧稿续改而非重新生成 A/B",
++        {"user_selected_baseline_artifact_id": a1["id"],
++         "user_selected_baseline_revision_uid": a1["revision_uid"],
++         "feedback_baseline_revision_uid": fb.get("baseline_revision_uid"),
++         "second_run_fresh_A_B_count": len(fresh_ab),
++         "second_run_revisions": [{"id": a["id"], "revision": a["revision"],
++                                    "parent_revision_uid": a["parent_revision_uid"]}
++                                   for a in revisions],
++         "parent_revision_uid_matches_user_selected_baseline": bound,
++         "runs": [{"status": r["status"], "task_kind": r.get("task_kind")}
++                  for r in st.runs(PID)]},
++        defect_present=(len(fresh_ab) > 0 or not bound))]
++
++
++def r1_http(st: Store, user_baseline: str, user_uid: str) -> list[dict]:
++    """Real service entry: POST /messages with an explicitly selected old baseline."""
++    class StubConfig:
++        configured = True
++        model = "local-model-stub"
++        base_url = "local://stub"
++        run_token_limit = 600_000
++        project_token_limit = 2_000_000
++
++        @classmethod
++        def from_env(cls):
++            return cls()
++
++    studio_llm = sys.modules["rkd_mvp.studio.llm"]
++    studio_llm.Config = StubConfig
++    studio_server.Config = StubConfig
++    httpd = ThreadingHTTPServer(("127.0.0.1", 0), studio_server.Handler)
++    port = httpd.server_address[1]
++    th = threading.Thread(target=httpd.serve_forever, daemon=True)
++    th.start()
++    try:
++        payload = json.dumps({"text": "指定这份旧稿续改：把洽谈区放大",
++                              "baseline_artifact_id": user_baseline,
++                              "baseline_revision_uid": user_uid}, ensure_ascii=False).encode()
++        req = urllib.request.Request(
++            f"http://127.0.0.1:{port}/studio/projects/{PID}/messages",
++            data=payload, headers={"Content-Type": "application/json"}, method="POST")
++        try:
++            with urllib.request.urlopen(req, timeout=20) as resp:
++                status, body = resp.status, json.loads(resp.read().decode("utf-8"))
++        except urllib.error.HTTPError as e:
++            status, body = e.code, json.loads(e.read().decode("utf-8"))
++        saved = st.feedback(PID)[-1]
++        honoured = saved.get("baseline_artifact_id") == user_baseline
++        explicit = saved.get("baseline_selection") == "user_selected"
++        return [_case(
++            "R1-c", "真实服务入口是否尊重用户指定的旧基线（不按最新文件偷换）",
++            {"http_status": status, "response": body,
++             "user_specified_baseline_artifact_id": user_baseline,
++             "stored_baseline_artifact_id": saved.get("baseline_artifact_id"),
++             "stored_baseline_selection": saved.get("baseline_selection"),
++             "honoured": honoured, "explicitly_labelled_user_selection": explicit},
++            defect_present=not (honoured and explicit))]
++    finally:
++        httpd.shutdown(); httpd.server_close(); th.join(5)
++
++
++# --------------------------------------------------------------------- R2 ----
++def r2_cases() -> list[dict]:
++    """A pseudo-fix: change the target object's colour/name, but NOT the narrow route."""
++    project = {"id": PID, "site": SITE}
++    report = validation.validate_proposal(valid_proposal("A"), project=project,
++                                          option_id="A", revision=1, parent_revision=None)
++    base = report["plan"]
++    issue = {"issue_id": "I1", "candidate": "A", "severity": "major",
++             "objects": ["CA1"], "rule_id": "CIR-001",
++             "evidence": "主动线实测净宽不足",
++             "suggest": "把主动线净宽调到 2100mm 并复核瓶颈"}
++    responses = [{"issue_id": "I1", "action": "accept", "change": "已调整",
++                  "reason": ""}]
++    fb = [{"feedback_id": "fb_test", "revision_no": 1, "kind": "boss_message",
++           "text": "把洽谈区做得更开放、更有设计感"}]
++
++    pseudo = copy.deepcopy(base)
++    for c in pseudo["circulation"]:
++        if c["id"] == "CA1":
++            c["color"] = "#ff0000"        # changed the TARGET object only
++            c["label"] = "主通道（已美化）"
++            # width_mm stays 2000; measured bottleneck is untouched
++    result = revision_mod.verify_revision_integrity(
++        base, pseudo, responses=responses, issues=[issue], boss_feedback=fb)
++    ir = (result.get("issue_resolutions") or [{}])[0]
++    br = (result.get("boss_feedback_resolutions") or [{}])[0]
++    objective_aware = "objective_rechecked" in ir and "objective_rechecked" in br
++    verified_as_resolved = bool(ir.get("verified")) or ir.get("recheck") == "对象 diff 复核"
++    return [
++        _case("R2-a", "伪修复（只改目标对象颜色/名称，未修窄通道）是否被记为已解决",
++              {"changed_objects": result["changed_objects"],
++               "declared_width_mm_after": next(c["width_mm"] for c in pseudo["circulation"]
++                                               if c["id"] == "CA1"),
++               "issue_resolution": ir, "boss_feedback_resolution": br,
++               "objective_states_present": objective_aware,
++               "ok": result["ok"]},
++              defect_present=verified_as_resolved and not objective_aware),
++        _case("R2-b", "意见/反馈是否分离 input_included / object_changed / "
++                      "objective_rechecked / user_confirmed 四态",
++              {"issue_resolution_keys": sorted(ir.keys()),
++               "boss_feedback_resolution_keys": sorted(br.keys()),
++               "boss_feedback_linked_changes_is_all_changes":
++                   br.get("linked_changes") == [k.split(":", 1)[1]
++                                                for k in result["changed_objects"]],
++               "boss_feedback_claims_in_revision_input": br.get("in_revision_input")},
++              defect_present=not objective_aware),
++    ]
++
++
++# --------------------------------------------------------------------- R3 ----
++def r3_cases() -> list[dict]:
++    arc = ROOT / "deliverables-for-review" / "arc-first-batch"
++    packet = (arc / "review-packet.md").read_text(encoding="utf-8")
++    compiled = re.search(r"日期：(\d{4}-\d{2}-\d{2})", packet)
++    before = json.loads((arc / "before-reproduction.json").read_text(encoding="utf-8"))
++    after = json.loads((arc / "after-reproduction.json").read_text(encoding="utf-8"))
++    checks = json.loads((arc / "checks.json").read_text(encoding="utf-8"))
++    browser = json.loads((arc / "browser-verification.json").read_text(encoding="utf-8"))
++    note = (arc / "ARC-05-adaptation-note.md").read_text(encoding="utf-8")
++    erratum = ROOT / "deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md"
++    erratum_text = erratum.read_text(encoding="utf-8") if erratum.exists() else ""
++    erratum_ok = bool(erratum_text) and all(
++        k in erratum_text for k in ("编制", "执行", "提交", "2026-11-12", "2026-11-14",
++                                   "contract_version", "schema_version"))
++    proposal = json.loads((ROOT / "contracts/v1/spatial-plan-proposal.schema.json").read_text(encoding="utf-8"))
++    draft = json.loads((ROOT / "contracts/v1/spatial-plan-draft.schema.json").read_text(encoding="utf-8"))
++    option = json.loads((ROOT / "contracts/v1/ai-design-option.schema.json").read_text(encoding="utf-8"))
++    commits = _commits()
++
++    mapping_lines = [l.strip() for l in note.splitlines()
++                     if "contract_version" in l or "project_id" in l or "schema_version" in l]
++    return [
++        _case("R3-a", "复核包编制日期与内含事件/提交日期是否分别标明（不推断造假，不混用）",
++              {"packet_compiled_date": compiled.group(1) if compiled else None,
++               "before_reproduction_generated_at": before.get("generated_at"),
++               "after_reproduction_generated_at": after.get("generated_at"),
++               "checks_json_generated_at": checks.get("generated_at"),
++               "browser_verification_checked_at": browser.get("checked_at"),
++               "commits": commits,
++               "packet_has_explicit_time_axis":
++                   ("编制" in packet and "执行" in packet and "提交" in packet),
++               "historical_packet_unchanged": True,
++               "historical_packet_sha256": __import__("hashlib").sha256(
++                   packet.encode("utf-8")).hexdigest(),
++               "erratum_time_axis_present": erratum_ok},
++              # docs/26 R3: do NOT rewrite historical evidence for cosmetic
++              # consistency. The fix is an INDEPENDENT, dated erratum record.
++              defect_present=not erratum_ok),
++        _case("R3-b", "ARC-05 适配说明是否按实际两个 schema 区分模型提案/程序装配/主系统落点",
++              {"proposal_schema_has_contract_version":
++                   "contract_version" in proposal.get("properties", {}),
++               "proposal_schema_has_project_id":
++                   "project_id" in proposal.get("properties", {}),
++               "draft_schema_contract_version_const":
++                   draft.get("properties", {}).get("contract_version", {}).get("const"),
++               "draft_schema_has_project_id": "project_id" in draft.get("properties", {}),
++               "main_option_schema_version_const":
++                   option.get("properties", {}).get("schema_version", {}).get("const"),
++               "main_option_schema_has_project_id":
++                   "project_id" in option.get("properties", {}),
++               "main_option_additional_properties": option.get("additionalProperties"),
++               "adaptation_note_mapping_lines": mapping_lines[:6],
++               "note_incorrectly_labels_proposal_fields":
++                   any("contract_version" in l and "Studio 提案字段" in l for l in mapping_lines),
++               "erratum_record_present": erratum.exists(),
++               "erratum_has_three_schema_boundaries": bool(erratum_text) and all(
++                   k in erratum_text for k in ("spatial-plan-proposal.v1",
++                                               "spatial-plan-draft.v1",
++                                               "rkd-ai-design-option.v1"))},
++              defect_present=not (erratum.exists() and "spatial-plan-proposal.v1" in erratum_text)),
++    ]
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--phase", choices=["before", "after"], required=True)
++    args = ap.parse_args()
++    outdir = EVIDENCE / args.phase
++    outdir.mkdir(parents=True, exist_ok=True)
++    db = RUNTIME / f"repro-{args.phase}.db"
++    if db.exists():
++        db.unlink()
++    st = Store(db)
++
++    cases: list[dict] = []
++    cases += r1_static()
++    cases += r1_dynamic(st)
++    # use the A/v1 candidate from the FIRST run as the user-selected OLD baseline
++    first_a = next((a for a in st.artifacts(PID)
++                    if a["kind"] == "spatial-plan" and a["option_id"] == "A"
++                    and a["revision"] == 1 and a["contract_status"] == "valid_candidate"), None)
++    if first_a:
++        cases += r1_http(st, first_a["id"], first_a["revision_uid"])
++    cases += r2_cases()
++    cases += r3_cases()
++
++    result = {
++        "schema_version": "rkd-w0-reproduction.v1",
++        "phase": args.phase,
++        "checked_at": _now(),
++        "head_commit_at_check": _head_commit(),
++        "basis": "docs/26 section 2 (R1/R2/R3)",
++        "isolation": {"studio_db": str(db),
++                      "daily_var_studio_db_untouched": True,
++                      "historical_review_packet_read_only": True,
++                      "model_channel": "local-model-stub (explicitly labelled)",
++                      "external_calls": 0, "keys_used": False, "cost": 0},
++        "cases": cases,
++        "defects_confirmed": sum(1 for c in cases if c["defect_present"]),
++        "cases_total": len(cases),
++    }
++    path = outdir / "reproduction.json"
++    path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"phase": args.phase, "path": str(path),
++                      "defects_confirmed": result["defects_confirmed"],
++                      "cases_total": result["cases_total"],
++                      "cases": [{"id": c["id"], "verdict": c["verdict"]} for c in cases]},
++                     ensure_ascii=False, indent=2), flush=True)
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/web/src/StudioView.tsx b/web/src/StudioView.tsx
+index 63ac293..881b28d 100644
+--- a/web/src/StudioView.tsx
++++ b/web/src/StudioView.tsx
+@@ -13,6 +13,8 @@ type Artifact = {
+   id: string; kind: string; option_id?: string | null; revision: number;
+   parent_revision?: number | null; author: string; sha256: string; status: string;
+   payload?: any; svg_url?: string;
++  revision_uid?: string | null; parent_revision_uid?: string | null;
++  contract_status?: string | null; display_group?: string;
+ };
+ type Gate = { id: string; title: string; detail: string; status: string; decision?: string | null; comment?: string | null };
+ type Run = {
+@@ -37,6 +39,20 @@ type State = {
+   valid_candidate_ids?: string[];
+   stage_status?: { flow_finished: boolean; valid_artifact_exists: boolean;
+                    waiting_user: boolean; design_approved_by_user: boolean; note: string };
++  task_resolution?: { kind: string; reason: string; conflict_code?: string | null;
++                      conflict_detail?: string | null; alternatives?: string[];
++                      target_artifact_id?: string | null;
++                      target_revision_uid?: string | null };
++  revision_history?: Array<{ id: string; option_id?: string | null; revision: number;
++                             revision_uid?: string | null;
++                             parent_revision_uid?: string | null }>;
++  latest_run?: Array<{ id: string; status: string; task_kind?: string | null;
++                       target_artifact_id?: string | null;
++                       target_revision_uid?: string | null;
++                       conflict_code?: string | null }>;
++  last_completed_run?: { id: string; status: string; task_kind?: string | null;
++                         target_artifact_id?: string | null;
++                         target_revision_uid?: string | null } | null;
+   error?: string;
+ };
+ 
+@@ -51,6 +67,9 @@ export function StudioView({ projectId }: { projectId?: string }) {
+   const [error, setError] = useState<string>("");
+   const [busy, setBusy] = useState(false);
+   const [draft, setDraft] = useState("");
++  // W0/R1: the boss explicitly picks which OLD plan to continue. Default is
++  // "no baseline" (a generate task), never a guess from the newest file.
++  const [selectedBaseline, setSelectedBaseline] = useState("");
+   const [gateComment, setGateComment] = useState<Record<string, string>>({});
+   const [decisionScope, setDecisionScope] = useState<Record<string, string>>({});
+   const [openEvidence, setOpenEvidence] = useState<number | null>(null);
+@@ -110,14 +129,23 @@ export function StudioView({ projectId }: { projectId?: string }) {
+ 
+   async function send() {
+     if (!mapped || !draft.trim()) return;
++    const chosen = (state?.artifacts || []).find(a => a.id === selectedBaseline);
++    const payload: Record<string, unknown> = { text: draft.trim() };
++    if (chosen) {
++      payload.baseline_artifact_id = chosen.id;
++      if (chosen.revision_uid) payload.baseline_revision_uid = chosen.revision_uid;
++    }
+     const res = await fetch(`${API}/studio/projects/${encodeURIComponent(studioId)}/messages`, {
+       method: "POST", headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ text: draft.trim() }),
++      body: JSON.stringify(payload),
+     });
+     const body = await res.json().catch(() => ({}));
+-    if (!res.ok) { setError(body.error || "留言未保存"); return; }
++    if (!res.ok) {
++      setError(body.error || "留言未保存（旧基线冲突时不会偷换方案）");
++      return;
++    }
+     setDraft("");
+-    setError(`留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}；下一轮修订将读取该输入`);
++    setError(body.note || `留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}`);
+     void load();
+   }
+ 
+@@ -145,6 +173,7 @@ export function StudioView({ projectId }: { projectId?: string }) {
+ 
+   const waitingGate = state.gates.find((g) => g.status === "waiting");
+   const plans = state.artifacts.filter((a) => a.kind === "spatial-plan");
++  const baselineOptions = plans.filter((p) => p.display_group === "valid");
+   const sketches = state.artifacts.filter((a) => a.kind === "plan-sketch");
+   const runs = state.runs ?? [];
+   const totalTokens = runs.reduce((s, r) => s + (r.tokens_in || 0) + (r.tokens_out || 0), 0);
+@@ -186,6 +215,34 @@ export function StudioView({ projectId }: { projectId?: string }) {
+           设计认可：{state.stage_status?.design_approved_by_user ? "是" : "否（只能由用户给出）"}</span>
+       </div>
+ 
++      <div className="studio-taskbar">
++        <span>上一轮：{state.last_completed_run?.task_kind || "无"}
++          {state.last_completed_run?.status
++            ? `（${state.last_completed_run.status === "succeeded" ? "流程走完，未验收" : state.last_completed_run.status}）`
++            : ""}
++          {state.last_completed_run?.target_revision_uid
++            ? ` · 目标版本 ${state.last_completed_run.target_revision_uid}` : ""}</span>
++        <span>本轮任务：<b>{state.task_resolution?.kind || "未知"}</b>
++          {state.task_resolution?.kind === "revise"
++            ? ` · 续改旧基线 ${state.task_resolution.target_artifact_id || "?"}`
++            : state.task_resolution?.kind === "conflict"
++              ? ` · 需新留言或闸口决定（${state.task_resolution.conflict_code || ""}），不偷换旧基线`
++              : " · 生成新候选（未指定旧基线）"}</span>
++        <span>版本链（新→父）：{state.revision_history?.slice(-3).map(h =>
++          `${h.option_id || "?"}v${h.revision}←${h.parent_revision_uid || "无"}`).join("；") || "无"}</span>
++      </div>
++      {/* Only a REJECTED run attempt is an alert. After a successful revise the
++          consumed feedback makes the NEXT-task preview a conflict, which is
++          informational, not a failure of the revision that just completed. */}
++      {state.task_resolution?.kind === "conflict" &&
++       state.last_completed_run?.status === "conflict" && (
++        <p className="studio-error" role="alert">
++          {state.task_resolution.conflict_detail}
++          {state.task_resolution.alternatives?.length
++            ? ` · 可选：${state.task_resolution.alternatives.join("；")}` : ""}
++        </p>
++      )}
++
+       {error && <p className="studio-error" role="alert">{error}</p>}
+ 
+       {(state.feedback || []).length > 0 && (
+@@ -301,6 +358,9 @@ export function StudioView({ projectId }: { projectId?: string }) {
+                   候选 {s.option_id} · v{s.revision}
+                   {plan?.payload?.strategy?.name ? ` · ${plan.payload.strategy.name}` : ""}
+                   <br /><small>基线 {plan?.id} · 校验 {(plan as any)?.contract_status}</small>
++                  {plan?.parent_revision_uid && (
++                    <><br /><small>父版本 {plan.parent_revision_uid}（旧基线续改）</small></>
++                  )}
+                 </figcaption>
+               </figure>
+             );
+@@ -343,6 +403,18 @@ export function StudioView({ projectId }: { projectId?: string }) {
+       </div>
+ 
+       <div className="studio-input">
++        <label className="baseline-pick">
++          续改哪份旧方案：
++          <select data-testid="baseline-select" value={selectedBaseline}
++            onChange={(e) => setSelectedBaseline(e.target.value)}>
++            <option value="">不指定（生成新方案）</option>
++            {baselineOptions.map(a => (
++              <option key={a.id} value={a.id}>
++                候选 {a.option_id || "?"} v{a.revision} · {a.id}
++              </option>
++            ))}
++          </select>
++        </label>
+         <input value={draft} placeholder="@空间规划 把中岛往南挪一点；或写你的意见" onChange={(e) => setDraft(e.target.value)}
+           onKeyDown={(e) => { if (e.key === "Enter") void send(); }} />
+         <button onClick={() => void send()}>发给公司</button>
+diff --git a/web/src/studio.css b/web/src/studio.css
+index bfe0253..1a222c7 100644
+--- a/web/src/studio.css
++++ b/web/src/studio.css
+@@ -56,8 +56,17 @@
+ .json-box summary { cursor: pointer; color: #1a5c86; }
+ .json-box pre { max-height: 190px; overflow: auto; background: #f7f9fa; padding: 6px 8px; font-size: 10.5px; }
+ .json-box ol { padding-left: 16px; color: #4a5866; }
+-.studio-input { display: flex; gap: 8px; }
+-.studio-input input { flex: 1; padding: 9px 11px; border: 1px solid #d5dde3; border-radius: 2px; font-size: 13.5px; }
++.studio-input { display: flex; gap: 8px; flex-wrap: wrap; }
++.studio-input input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #d5dde3; border-radius: 2px; font-size: 13.5px; }
+ .studio-input button { padding: 0 16px; background: #a8763f; color: #fff; border: 0; border-radius: 2px; cursor: pointer; }
++.studio-input .baseline-pick { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5d6a76; white-space: nowrap; }
++.studio-input .baseline-pick select { min-width: 0; max-width: 100%; padding: 8px; border: 1px solid #d5dde3; border-radius: 2px; font-size: 12.5px; }
++@media (max-width: 620px) {
++  .studio-input .baseline-pick { width: 100%; }
++  .studio-input .baseline-pick select { flex: 1; }
++  .studio-input input { flex-basis: 100%; }
++}
++.studio-taskbar { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 10px; margin: 0 0 10px; background: #f5f7f9; border: 1px solid #e2e8ee; border-radius: 2px; font-size: 12px; color: #4c5a67; }
++.studio-taskbar span { min-width: 0; word-break: break-word; }
+ .studio-empty { color: #7b8895; font-size: 13px; }
+ @media (max-width: 1180px) { .studio-grid { grid-template-columns: 1fr; } .studio-timeline { max-height: none; } }

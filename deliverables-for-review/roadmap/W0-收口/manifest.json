@@ -1,0 +1,230 @@
+{
+  "schema_version": "rkd-roadmap-manifest.v1",
+  "batch": "W0-收口",
+  "generated_at": "2026-11-14T12:35:45+08:00",
+  "source_baseline": "957cf775e1d835cf25bbdf196de4e7f3f51280fa",
+  "head_commit": "4ef7c724d90bf2e0d9263a26368bde81fb628fae",
+  "head_subject": "W0 收口：R1 反馈旧基线续改、R2 确定性目标复核、R3 证据时间与契约映射勘误",
+  "committed_at": "2026-11-14T12:34:27+08:00",
+  "supplement_commit_note": "补录提交仅追加 manifest.json / changes.patch / commit-reference.md 与文档提交号，无业务代码改动",
+  "model_versions": {
+    "design_model": "local-model-stub (explicitly labelled; NOT a real AI design result)",
+    "material_spec": "not_applicable_no_material_artifacts",
+    "camera_view": "not_applicable_no_render_artifacts",
+    "geometry_engine": "shapely-2.1.2",
+    "contracts_read_only": [
+      "spatial-plan-proposal.v1",
+      "spatial-plan-draft.v1",
+      "rkd-ai-design-option.v1"
+    ],
+    "contract_changes": "none"
+  },
+  "design_artifacts": [],
+  "design_artifact_note": "W0 是工程修复批，没有封面/正式平面/天花/立面/材料灯光板/人眼效果图/汇总 PDF",
+  "source_files": [
+    {
+      "path": "mvp/rkd_mvp/studio/revision_task.py",
+      "bytes": 23757,
+      "sha256": "b673096081fdf51ad5286065b409ad1fba381c42b4890a9ef441dbc732a7ed09",
+      "role": "new_source"
+    }
+  ],
+  "packet_files": [
+    {
+      "path": "after/arc-first-batch-regression-checks.json",
+      "bytes": 39238,
+      "sha256": "b15fbd1259352e7d7e7ccef959cc8f600652ddd4cf90edfcd502eee044998238",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "after/checks.json",
+      "bytes": 8344,
+      "sha256": "cb87518bb3bb0652f7a8412ee3863bdeb091a5e7043c61946f74f008cba7dfda",
+      "role": "review_index",
+      "origin": "generated_by_w0_from_run_evidence"
+    },
+    {
+      "path": "after/frontend-build.log",
+      "bytes": 895,
+      "sha256": "1016f301bf007ca5fdf33a060196e464767820a4185d435882bfb020c3aa2a7a",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "after/full-unittest-final.log",
+      "bytes": 383,
+      "sha256": "ed89c4a40c920de8bd447ab1b95757c65c924d14c02ef7e49a44e6ea622f46f8",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "after/full-unittest.log",
+      "bytes": 383,
+      "sha256": "d01d9dc80f0d1d11a12743dd784986ff1944654eb211a1e5a35e5c03c237df62",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "after/q-checks.json",
+      "bytes": 36323,
+      "sha256": "84f62b2c3b5ceff29a759220ecc3c5acd3e7357446a1e5265eadf617b1832466",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "after/reproduction.json",
+      "bytes": 11072,
+      "sha256": "db53d4237fc40faadd8abdde514c4e53153bae72f132dbf942edf023e98bc7f6",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "after/studio-loop.log",
+      "bytes": 555,
+      "sha256": "5f2803ff2e322bd579e45338ecb2bf0dfe2aeb04e0a91d557f854e7ae82385a2",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "before/reproduction.json",
+      "bytes": 7591,
+      "sha256": "a040b823f65c0ee0e5112d439e0d966f49a4cd464374d699671e7515e8495455",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "browser/browser-observations.json",
+      "bytes": 1909,
+      "sha256": "8a3b259cbc84932d11f58f269e6ed90e7d422412a3fed804bde338573a29dfdd",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "browser/browser-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "browser/browser-stdout.log",
+      "bytes": 249,
+      "sha256": "456526e5d7737c2c6e6a387cc9ba7177361eab5fcf854b9b42419391fac796ad",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "browser/verification.json",
+      "bytes": 3413,
+      "sha256": "4c8874f9295fb3354a46c081476b3f28a9b6f92a8423f358d91eecd79701121b",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "browser/w0-feedback-desktop.png",
+      "bytes": 168744,
+      "sha256": "d1c36d7f807dc2e1b97d6f9e41685915bfc185a1cdd5a96c835f6e2c6dc94545",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "browser/w0-mobile.png",
+      "bytes": 417489,
+      "sha256": "059bf7fb698c667b59a1ca2481984cf32887c268f46a33cee03c0d404747d13d",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "browser/w0-revision-desktop.png",
+      "bytes": 168915,
+      "sha256": "67849a5f87dbc24eeff98a15916dbc0fd49cb9dc71a0848cf8b6ffda0441376a",
+      "role": "evidence_copy",
+      "origin": "copied_from_var/evidence/roadmap/W0-收口/"
+    },
+    {
+      "path": "changes.patch",
+      "bytes": 226728,
+      "sha256": "90fb0de13590c5bbcbd39b0ef71997a3695c57fb33d8500b1549e7c8f4902a4c",
+      "role": "code_patch",
+      "origin": "git diff 957cf77..4ef7c72"
+    },
+    {
+      "path": "checks.json",
+      "bytes": 10908,
+      "sha256": "5fd2d87121e4937c441343d874b42bddca81cde99f081c16a820989fafc5f67b",
+      "role": "review_index",
+      "origin": "generated_by_w0_from_run_evidence"
+    },
+    {
+      "path": "code-diff.md",
+      "bytes": 5143,
+      "sha256": "7856a757f3762e3bf3c9f4658a5d769e192125d3a54426df8748f330340bbd25",
+      "role": "review_document",
+      "origin": "written_by_w0"
+    },
+    {
+      "path": "commit-reference.md",
+      "bytes": 2040,
+      "sha256": "a11e7a40269742e7bbfc880f6778345ea07ce712625a9a19c172f06c6fa4afae",
+      "role": "review_document",
+      "origin": "written_by_w0"
+    },
+    {
+      "path": "evidence-provenance-erratum.md",
+      "bytes": 9667,
+      "sha256": "9604d2a61441de99673453cec5ca30a0cc5c243587c160842a1e47fe4b9b83aa",
+      "role": "review_document",
+      "origin": "written_by_w0"
+    },
+    {
+      "path": "positive-negative-cases.md",
+      "bytes": 6406,
+      "sha256": "f78fc1bca2e5d6239abaea9986bb7a3875624da6551a465d2dc7fb9ac7662d71",
+      "role": "review_document",
+      "origin": "written_by_w0"
+    },
+    {
+      "path": "review-packet.md",
+      "bytes": 14758,
+      "sha256": "192ae2a3eddab71f1c096c93b85db498f2779b3658c19d36a054cfabcca8407c",
+      "role": "review_document",
+      "origin": "written_by_w0"
+    }
+  ],
+  "originals_preserved": [
+    {
+      "path": "deliverables-for-review/arc-first-batch/review-packet.md",
+      "bytes": 17814,
+      "sha256": "8ac87bd723818054f71c1b00adbab43a7777370e7ce8da87458e9791c046ca21",
+      "status": "unchanged_by_w0",
+      "note": "历史证据字节未回写，见勘误记录"
+    },
+    {
+      "path": "deliverables-for-review/arc-first-batch/ARC-05-adaptation-note.md",
+      "bytes": 6193,
+      "sha256": "cc451e8bd6c0e078da5732db6d963cf318d1229433e5b439a2aec3d62e95d451",
+      "status": "unchanged_by_w0",
+      "note": "历史证据字节未回写，见勘误记录"
+    }
+  ],
+  "source_originals": {
+    "path": "source/",
+    "status": "read_only_untouched"
+  },
+  "runtime_evidence": {
+    "path": "var/evidence/roadmap/W0-收口/",
+    "status": "gitignored_var_not_committed"
+  },
+  "external_calls": 0,
+  "image_counts": {
+    "images_sent_external": 0,
+    "images_generated_external": 0,
+    "local_browser_screenshots": 3
+  },
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "keys_used": false,
+  "stop_point": "docs/26 硬节点 1：W0 收口完成，等架构师复核，不自行开始 W1"
+}
