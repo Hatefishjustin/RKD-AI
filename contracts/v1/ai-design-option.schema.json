@@ -342,7 +342,11 @@
         "candidate_group_id",
         "run_id",
         "draft_identity",
-        "site_source"
+        "site_source",
+        "root_revision_uid",
+        "lineage_chain",
+        "parent_link_status",
+        "design_origin"
       ],
       "properties": {
         "origin_kind": {
@@ -405,6 +409,57 @@
         "site_source": {
           "type": "object",
           "additionalProperties": true
+        },
+        "root_revision_uid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lineage_chain": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parent_link_status": {
+          "enum": [
+            "source_root",
+            "resolved",
+            "source_parent_not_imported"
+          ]
+        },
+        "design_origin": {
+          "$ref": "#/$defs/designOrigin"
+        }
+      }
+    },
+    "designOrigin": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Design origin of the UPSTREAM proposal, kept separate from the transport/adaptation origin. The adapter is not AI; that must never relabel a real-model or human upstream as artificial.",
+      "required": [
+        "kind",
+        "declared_by",
+        "declaration",
+        "run_refs"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "real_model",
+            "human",
+            "fixture",
+            "unknown"
+          ]
+        },
+        "declared_by": {
+          "type": "string"
+        },
+        "declaration": {},
+        "run_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

@@ -1,0 +1,152 @@
+{
+  "task_id": "W1 版本谱系收口（W1-R1 / W1-R2）",
+  "schema_version": "rkd-review-packet.v1",
+  "built_at": "2026-11-14T21:20:37+08:00",
+  "code_baseline": {
+    "compare_base": "080f63e",
+    "compare_base_subject": "docs: W1 统一模型适配复核包补提交号与时间轴",
+    "architect_review_head": "080f63e",
+    "head_when_evidence_taken": "080f63e0d039517302912236c72041a3a1d16d19",
+    "rebuild_command": "git diff 080f63e -- mvp contracts scripts web",
+    "patch_bytes": 67892,
+    "migrations_added": 0,
+    "tables_added": 0
+  },
+  "lineage_contract": {
+    "candidate_identity": "studio:{main_project}:{studio_project}:root:{root_revision_uid}",
+    "parent_source": "source parent_revision_uid mapped through imported revisions",
+    "parent_link_status": [
+      "source_root",
+      "resolved",
+      "source_parent_not_imported"
+    ],
+    "design_origin_kinds": [
+      "real_model",
+      "human",
+      "fixture",
+      "unknown"
+    ],
+    "transport_origin": "studio_import",
+    "geometry_authority": "spatial.zones[].polygon_mm (legacy rect = bbox_derived only)"
+  },
+  "timeline": [
+    {
+      "at": "2026-11-14T20:20",
+      "what": "读 W1-architect-review，确认 22 项已独立通过、只修 R1/R2"
+    },
+    {
+      "at": "2026-11-14T20:35",
+      "what": "契约补根谱系/父链状态/设计来源字段；适配器加 lineage()/design_origin()"
+    },
+    {
+      "at": "2026-11-14T20:50",
+      "what": "服务改为源谱系身份 + 写内重检；夹具改真实父 UID"
+    },
+    {
+      "at": "2026-11-14T21:11:59+08:00",
+      "what": "谱系/并发 13/13 observed_pass"
+    },
+    {
+      "at": "2026-11-14T21:12:13+08:00",
+      "what": "原 22 项回归 22/22 observed_pass"
+    },
+    {
+      "at": "2026-11-14T21:12:26Z",
+      "what": "真实 Edge 浏览器 passed=true"
+    },
+    {
+      "at": "2026-11-14T21:19",
+      "what": "定向 55 OK、全量 262 OK"
+    },
+    {
+      "at": "2026-11-14T21:20",
+      "what": "复核包编制完成（本清单时刻）"
+    }
+  ],
+  "packet_files": {
+    "browser/browser-observations.json": {
+      "bytes": 1221,
+      "sha256": "c1748ed4f0c5fd458e54d85f89d1d73e3c3cacea1ee8fe1d693f01bc82050ccb"
+    },
+    "browser/verification.json": {
+      "bytes": 2231,
+      "sha256": "6dbf57874360fcec597abf4a66b14c5c1bd64055de8997137100f12090c82e4f"
+    },
+    "browser/w1-import-desktop.png": {
+      "bytes": 237031,
+      "sha256": "7d0dc22516900419ed68ede96b5ced9d3912df1ce8ab05982abecc820231aca2"
+    },
+    "browser/w1-import-mobile.png": {
+      "bytes": 187076,
+      "sha256": "9ec9c9d0ee988937a783dfebdcae1ca0bfcd5f635fdf9d3a7e0b4c4bc978402b"
+    },
+    "changes.patch": {
+      "bytes": 67892,
+      "sha256": "d50906d9cdd83abb771fd0c92163d3e3435c7f102cf6e760eadaf92dd662f1be"
+    },
+    "checks.json": {
+      "bytes": 12746,
+      "sha256": "c0b49b40cf612a9b0b7fae9be79832003b3992ceceac4759cdc1c9a684e81e09"
+    },
+    "code-diff.md": {
+      "bytes": 4451,
+      "sha256": "7878b3fe6b87a28d6a91c70f796e9a66c3d195a2214498c5c4ec7a19e1bc0cc7"
+    },
+    "lineage-checks.json": {
+      "bytes": 7912,
+      "sha256": "b055e416ef3df262004812b849893753dffebd1ea0211df94027be3ddce001a0"
+    },
+    "lineage-mapping.md": {
+      "bytes": 5545,
+      "sha256": "0350ea78f79c73c89a50df6ce068a1d10011a3388d79493a31408b2c01a8bed5"
+    },
+    "positive-negative-cases.md": {
+      "bytes": 5471,
+      "sha256": "ab1d66e01ed00b585c89c7e5223d90af9bc8d0a5800e5020c4f27b5130c020ac"
+    },
+    "review-packet.md": {
+      "bytes": 11776,
+      "sha256": "073b7c01d1f2addf64a47c6aed9a7fa4228e443f9361f157f3aefbecfd187089"
+    },
+    "runtime/focused-unittest.log": {
+      "bytes": 103,
+      "sha256": "1749ef8b61309fe5fd78931627080f25ad38725f7f333b6dbbc071d4750c419c"
+    },
+    "runtime/full-unittest.log": {
+      "bytes": 383,
+      "sha256": "4dc602114da2670d13892a16bedc3d53e5b868ea261f5314e0555743212b8671"
+    }
+  },
+  "source_files": {
+    "mvp/rkd_mvp/ai_design_option_service.py": {
+      "bytes": 52306,
+      "sha256": "8622adde800257de1ad8d35fdf7963b2cc59b370084387d8c04a281a89788a33"
+    },
+    "mvp/rkd_mvp/ai_design_studio_adapter.py": {
+      "bytes": 46944,
+      "sha256": "872e28c2b884c0fe5a254edac0ee9b5e983a0c25a367e716268833f0d5f81edd"
+    },
+    "contracts/v1/ai-design-option.schema.json": {
+      "bytes": 20069,
+      "sha256": "a9b52f1c3e85daad61985a172dcd079dbfd87d22e5362c6132935d26e8ba48a3"
+    },
+    "scripts/verify_w1_lineage.py": {
+      "bytes": 29438,
+      "sha256": "4086868372e086fb5037ee293e582c2aef6422c00ba6c0ab67d8e68147bf4fbe"
+    },
+    "scripts/verify_w1_unified_model.py": {
+      "bytes": 35084,
+      "sha256": "8c43c5d26c2824a02ba3170a0d8a7dd957b7c1b575d263e2db98e6929ad24cc4"
+    }
+  },
+  "external_calls": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "keys_used": false,
+  "adjudication": {
+    "AD01-AD08": "未改判",
+    "design_stage": "未确认",
+    "w1_release": "未宣布，等架构师复核",
+    "w2_scope": "未授权"
+  }
+}

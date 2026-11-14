@@ -1,0 +1,406 @@
+{
+  "task_id": "W1 统一模型适配（Studio 有效提案 → 主系统版本化候选）",
+  "schema_version": "rkd-w1-unified-model-checks.v1",
+  "executed_at": "2026-11-14T21:12:13+08:00",
+  "code_head": "080f63e0d039517302912236c72041a3a1d16d19",
+  "environment": {
+    "python": "3.12.14",
+    "isolated_main_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W1-版本谱系收口\\runtime-regression\\app.sqlite3",
+    "isolated_studio_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W1-版本谱系收口\\runtime-regression\\studio.db",
+    "model_channel": "labelled local fixtures only (no real AI, no external calls)",
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "W1-01",
+      "name": "Studio 可导入来源列表与显式项目映射（只读）",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "studio_project_id": "ningbo-xiecheng",
+        "mapping": {
+          "source_project_id": "project_ningbo_xiecheng_2026",
+          "mapping_note": "Studio 实验库内部 id 与主系统 /api/v1/projects 的 project_id 不同；此字段是唯一显式映射，不得按名称推断。未映射项目一律拒绝，不回退显示宁波结果。"
+        },
+        "items": [
+          {
+            "artifact_id": "art_186545101f",
+            "sha256": "219976f7464ffeece42fd4e622409b1a24a7327303877a5c3fabf7feb2db37e3",
+            "revision_uid": "revuid_w1_A_1_6",
+            "parent_revision_uid": null,
+            "option_id": "A",
+            "revision": 1,
+            "run_id": "run_w1_fixture",
+            "candidate_group_id": "candgroup_w1_fixture",
+            "created_at": "2026-11-14T21:12:10+08:00",
+            "strategy_name": "环岛漫游",
+            "zone_count": 6
+          },
+          {
+            "artifact_id": "art_cc9e35d024",
+            "sha256": "9974dbc988c50da9ea0d14a5deb3eb2dae61213d390a3885671b0b3fa411cf41",
+            "revision_uid": "revuid_w1_B_1_6",
+            "parent_revision_uid": null,
+            "option_id": "B",
+            "revision": 1,
+            "run_id": "run_w1_fixture",
+            "candidate_group_id": "candgroup_w1_fixture",
+            "created_at": "2026-11-14T21:12:10+08:00",
+            "strategy_name": "一轴到底",
+            "zone_count": 6
+          }
+        ]
+      }
+    },
+    {
+      "id": "W1-02",
+      "name": "布局 A（含非矩形分区）经同一适配器进入主系统版本化候选",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "revision_no": 1,
+        "option_id": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:revuid_w1_A_1_6",
+        "parent_revision_id": null,
+        "zones": 6,
+        "ledger_rows": 45,
+        "unsupported": [
+          "材料规格/产品选型",
+          "相机与人眼视图",
+          "照度/配光计算",
+          "实测标高/层高",
+          "门窗/柱网/构造",
+          "legacy rect 对象"
+        ],
+        "adoption_unchanged": true,
+        "svg_sha256": "4edc63cc1cde4a40262fb5ff18d4c2cabc4cfb7a5de71080dc3fc4cd30381f98"
+      }
+    },
+    {
+      "id": "W1-03",
+      "name": "API 状态、存储版本与图面字节一致；候选未污染采用/生产/采购/发布",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "option_in_state": true,
+        "svg_bytes": 5542,
+        "svg_sha_matches": true,
+        "adoption": null,
+        "rows": {
+          "ai_design_option_sets": 1,
+          "ai_design_option_revisions": 1,
+          "ai_design_option_artifacts": 1,
+          "ai_design_option_adoptions": 0
+        }
+      }
+    },
+    {
+      "id": "W1-04",
+      "name": "布局 B 走同一适配器；两种实质不同布局与精确多边形都可对账",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "option_a": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:revuid_w1_A_1_6",
+        "option_b": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:revuid_w1_B_1_6",
+        "signature_different": true,
+        "arrival_polygon_a": [
+          [
+            0.0,
+            8600.0
+          ],
+          [
+            5400.0,
+            8600.0
+          ],
+          [
+            5400.0,
+            13500.0
+          ],
+          [
+            1600.0,
+            13500.0
+          ],
+          [
+            0.0,
+            11900.0
+          ]
+        ],
+        "arrival_polygon_b": [
+          [
+            0.0,
+            8600.0
+          ],
+          [
+            4200.0,
+            8600.0
+          ],
+          [
+            4200.0,
+            13500.0
+          ],
+          [
+            1200.0,
+            13500.0
+          ],
+          [
+            0.0,
+            12300.0
+          ]
+        ]
+      }
+    },
+    {
+      "id": "W1-05",
+      "name": "同一来源重复导入不重复造版本（幂等）",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "reused": true,
+        "rows_before": {
+          "ai_design_option_sets": 2,
+          "ai_design_option_revisions": 2,
+          "ai_design_option_artifacts": 2,
+          "ai_design_option_adoptions": 0
+        },
+        "rows_after": {
+          "ai_design_option_sets": 2,
+          "ai_design_option_revisions": 2,
+          "ai_design_option_artifacts": 2,
+          "ai_design_option_adoptions": 0
+        }
+      }
+    },
+    {
+      "id": "W1-06",
+      "name": "来源改变形成新版本；父版本指向旧版；同一对象后续修改可追踪，旧字节保留",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "revision_no": 2,
+        "parent_revision_id": "ai-option-revision_66fa2f32c55d",
+        "same_object_diffs": [
+          "spatial.zones.polygon_mm",
+          "spatial.furniture.rot"
+        ],
+        "old_revision_still_readable": true,
+        "old_source_artifact_id": "art_186545101f"
+      }
+    },
+    {
+      "id": "W1-07",
+      "name": "单位错配（expected_unit=m）被拒绝，不猜测换算",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 422,
+        "error_code": "UNIT_MISMATCH"
+      }
+    },
+    {
+      "id": "W1-08",
+      "name": "缺失对象引用（目录不存在）被拒绝，不静默丢弃",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 422,
+        "error_code": "UNKNOWN_CATALOG_REF"
+      }
+    },
+    {
+      "id": "W1-09",
+      "name": "无法表达的几何（两点伪多边形）被拒绝，不静默矩形化",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 422,
+        "error_code": "UNSUPPORTED_GEOMETRY"
+      }
+    },
+    {
+      "id": "W1-10",
+      "name": "无法表达的材料/灯具保持命名缺项，不静默丢失",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "unsupported": [
+          "材料规格/产品选型",
+          "相机与人眼视图",
+          "照度/配光计算",
+          "实测标高/层高",
+          "门窗/柱网/构造",
+          "legacy rect 对象",
+          "天花灯具点位"
+        ]
+      }
+    },
+    {
+      "id": "W1-11a",
+      "name": "错误项目映射（请求与 URL 不一致）被拒绝",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 409,
+        "error_code": "PROJECT_MAPPING_MISMATCH"
+      }
+    },
+    {
+      "id": "W1-11b",
+      "name": "跨项目 Studio 产物不能导入当前主系统项目",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 409,
+        "error_code": "PROJECT_MAPPING_MISMATCH"
+      }
+    },
+    {
+      "id": "W1-11c",
+      "name": "来源字节已变的 expected sha 校验拒绝导入",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 409,
+        "error_code": "SOURCE_SHA_MISMATCH"
+      }
+    },
+    {
+      "id": "W1-11d",
+      "name": "非有效候选（invalid_raw）不能导入",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 422,
+        "error_code": "NOT_VALID_STUDIO_CANDIDATE"
+      }
+    },
+    {
+      "id": "W1-12",
+      "name": "所有失败负例不产生半写入（仅 W1-10 的正例允许新增 1 个版本）",
+      "result": "observed_pass",
+      "evidence": {
+        "rows_before": {
+          "ai_design_option_sets": 3,
+          "ai_design_option_revisions": 3,
+          "ai_design_option_artifacts": 3,
+          "ai_design_option_adoptions": 0
+        },
+        "rows_after": {
+          "ai_design_option_sets": 4,
+          "ai_design_option_revisions": 4,
+          "ai_design_option_artifacts": 4,
+          "ai_design_option_adoptions": 0
+        },
+        "new_revisions_from_negatives": 1
+      }
+    },
+    {
+      "id": "W1-13",
+      "name": "旧版本并发采用被 CAS 拒绝；采用指针未被导入或旧采用改写",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 409,
+        "error_code": "STALE_OPTION_REVISION",
+        "adoption_rows": 0
+      }
+    },
+    {
+      "id": "W1-14",
+      "name": "适配中途失败：set/revision/artifact 全回滚，SVG 文件清理，采用指针不变",
+      "result": "observed_pass",
+      "evidence": {
+        "raised": "RuntimeError: W1 injected failure after SVG write, before commit",
+        "rows_before": {
+          "ai_design_option_sets": 4,
+          "ai_design_option_revisions": 4,
+          "ai_design_option_artifacts": 4,
+          "ai_design_option_adoptions": 0
+        },
+        "rows_after": {
+          "ai_design_option_sets": 4,
+          "ai_design_option_revisions": 4,
+          "ai_design_option_artifacts": 4,
+          "ai_design_option_adoptions": 0
+        },
+        "svg_files_before": 4,
+        "svg_files_after": 4,
+        "adoption_rows": 0
+      }
+    },
+    {
+      "id": "W1-15",
+      "name": "重启后（新仓储连接 + 新 Studio 连接）导入版本、来源、字节与采用状态保持",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "import_count": 4,
+        "ids_equal": true,
+        "adoption": null
+      }
+    },
+    {
+      "id": "W1-16",
+      "name": "两种布局逐字段对账：坐标/单位/对象 ID/来源/父版本/材料与视图缺项都相等或显式标注",
+      "result": "observed_pass",
+      "evidence": {
+        "A": {
+          "rows": 33,
+          "all_equal": true,
+          "non_rect": [
+            "ZA1"
+          ],
+          "ledger": 45
+        },
+        "B": {
+          "rows": 33,
+          "all_equal": true,
+          "non_rect": [
+            "ZB1"
+          ],
+          "ledger": 45
+        }
+      }
+    },
+    {
+      "id": "W1-17",
+      "name": "保存两份源提案/目标模型样本与修订版样本，标明是本地夹具非真实 AI",
+      "result": "observed_pass",
+      "evidence": {
+        "files": [
+          "layout-A-v2.source.json",
+          "layout-A-v2.target.json",
+          "layout-A.source.json",
+          "layout-A.target.json",
+          "layout-B.source.json",
+          "layout-B.target.json"
+        ],
+        "source_kind": "labelled_local_fixture_not_real_AI"
+      }
+    },
+    {
+      "id": "W1-18",
+      "name": "跨项目隔离：另一主系统项目看不到当前项目的导入版本",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "other_project_import_count": 0
+      }
+    },
+    {
+      "id": "W1-19",
+      "name": "旧合成候选格式与历史下载仍可用；导入版本不被旧集合覆盖或丢失",
+      "result": "observed_pass",
+      "evidence": {
+        "legacy_candidates": 2,
+        "legacy_svg_bytes": 6978,
+        "studio_import_sets_after": 4,
+        "adoption_rows": 0
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 22,
+    "observed_fail": 0
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "limitations": [
+    "源提案是明确标记的本地测试夹具，不是系统模型自动生成的设计，不计入 AD01—AD08",
+    "W1 是工程适配批，没有新增客户级平面、人眼效果图、量价或 PDF",
+    "Q10 同源成果仍 not_run（W2）",
+    "正式采用/生产/采购/发布未被导入或采用测试改写"
+  ]
+}

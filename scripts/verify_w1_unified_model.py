@@ -125,13 +125,20 @@ def mutated_plan(plan: dict, mutate) -> dict:
     return out
 
 
-def save_valid(studio: Store, letter: str, plan: dict, *, revision: int = 1) -> dict:
+def save_valid(studio: Store, letter: str, plan: dict, *, revision: int = 1,
+               parent_artifact: dict | None = None, uid: str | None = None) -> dict:
+    """Save a valid Studio artifact with a REAL parent UID chain (W1-R1).
+
+    The fixture must express source lineage explicitly; import order is not a
+    parent relationship.
+    """
+    revision_uid = uid or f"revuid_w1_{letter}_{revision}_{len(plan['zones'])}"
     aid = studio.save_artifact(
         STUDIO_PID, "spatial-plan", plan, "D2", option_id=letter, revision=revision,
         parent_revision=None, status="valid_candidate", run_id="run_w1_fixture",
         candidate_group_id="candgroup_w1_fixture",
-        revision_uid=f"revuid_w1_{letter}_{revision}_{len(plan['zones'])}",
-        parent_revision_uid=None,
+        revision_uid=revision_uid,
+        parent_revision_uid=(parent_artifact or {}).get("revision_uid"),
         input_hash_value=hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest(),
         check_report_id="check_w1_fixture", contract_status="valid_candidate",
         diagnostics={"source": "labelled_local_fixture_not_real_AI"})
@@ -360,7 +367,7 @@ def main() -> int:
             p["zones"][0].update(polygon=[[0, 8600], [5400, 8600], [5400, 13500],
                                          [1800, 13500], [0, 11900]]),
             p["furniture"][2].update(rot=-30)))
-        art_a2 = save_valid(studio, "A", plan_a2, revision=2)
+        art_a2 = save_valid(studio, "A", plan_a2, revision=2, parent_artifact=art_a)
         code, imp_a2, _ = http("POST", f"{base}/import-studio", import_body(art_a2))
         rev_a2 = imp_a2.get("item") or {}
         diffs = rev_a2.get("diff") or []

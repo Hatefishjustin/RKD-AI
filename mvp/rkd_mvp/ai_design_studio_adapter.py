@@ -478,7 +478,10 @@ def adapt_proposal(plan: dict, *, provenance: dict, site: dict, catalog: dict,
                    actor_id: str, created_at: str, set_id: str, option_id: str,
                    revision_no: int, parent_revision_id: str | None,
                    previous_spatial: dict | None = None,
-                   expected_unit: str = "mm") -> dict:
+                   expected_unit: str = "mm",
+                   lineage: dict | None = None,
+                   design_origin: dict | None = None,
+                   parent_link_status: str | None = None) -> dict:
     """Build ONE rkd-ai-design-option.v1 document from a Studio valid draft."""
     validate_source(plan, expected_unit=expected_unit, catalog=catalog)
     validation = exact_geometry_checks(plan, site)
@@ -573,6 +576,16 @@ def adapt_proposal(plan: dict, *, provenance: dict, site: dict, catalog: dict,
             "site_source": {"source": site.get("source"), "width_mm": site["width_mm"],
                             "height_mm": site["height_mm"], "ceiling_mm": site.get("ceiling_mm"),
                             "entrance_mm": list(ent)},
+            "root_revision_uid": str((lineage or {}).get("root_uid")
+                                     or provenance.get("revision_uid") or artifact_id),
+            "lineage_chain": list((lineage or {}).get("chain")
+                                  or [provenance.get("revision_uid") or artifact_id]),
+            "parent_link_status": (parent_link_status
+                                   or ("source_root" if not provenance.get("parent_revision_uid")
+                                       else "resolved")),
+            "design_origin": design_origin or {"kind": "unknown",
+                                               "declared_by": "not_declared",
+                                               "declaration": None, "run_refs": []},
         },
         "adaptation": {
             "adapter_version": ADAPTER_VERSION,
@@ -790,6 +803,64 @@ class StudioProposalSource:
 
     def artifact(self, artifact_id: str) -> dict | None:
         return self.store.artifact_by_id(artifact_id)
+
+    def lineage(self, studio_project_id: str, artifact: dict) -> dict:
+        """Resolve the STABLE root lineage of one source artifact by parent UID.
+
+        Never infers a parent from import order. A missing parent artifact in the
+        Studio store is reported (``source_parent_missing``), not skipped.
+        """
+        arts = self.store.artifacts(studio_project_id)
+        by_uid = {a.get("revision_uid"): a for a in arts if a.get("revision_uid")}
+        uid = artifact.get("revision_uid")
+        if not uid:
+            return {"status": "source_uid_missing", "root_uid": None,
+                    "chain": [], "depth": 0, "missing_uid": None}
+        chain = [str(uid)]
+        current = artifact
+        seen = {str(uid)}
+        while current.get("parent_revision_uid"):
+            parent_uid = str(current["parent_revision_uid"])
+            if parent_uid in seen:
+                return {"status": "source_lineage_cycle", "root_uid": None,
+                        "chain": chain, "depth": len(chain) - 1,
+                        "missing_uid": parent_uid}
+            seen.add(parent_uid)
+            parent = by_uid.get(parent_uid)
+            if parent is None:
+                return {"status": "source_parent_missing", "root_uid": None,
+                        "chain": chain, "depth": len(chain) - 1,
+                        "missing_uid": parent_uid}
+            chain.append(parent_uid)
+            current = parent
+        return {"status": "resolved", "root_uid": chain[-1], "chain": chain,
+                "depth": len(chain) - 1, "missing_uid": None}
+
+    @staticmethod
+    def design_origin(artifact: dict) -> dict:
+        """Upstream DESIGN origin, separate from the transport/adaptation origin.
+
+        Only an explicit declaration on the artifact is used. Anything else stays
+        ``unknown`` — the adapter must not relabel a real-model or human upstream
+        as artificial (or the reverse) just because an adapter moved the document.
+        """
+        declared = (artifact.get("diagnostics") or {}).get("source")
+        run_refs = [str(x) for x in (artifact.get("run_id"),
+                                     artifact.get("candidate_group_id")) if x]
+        if isinstance(declared, str) and declared.strip():
+            low = declared.lower()
+            if "fixture" in low or "stub" in low or "test" in low:
+                kind = "fixture"
+            elif "real_model" in low or "real-model" in low or "openai" in low:
+                kind = "real_model"
+            elif "human" in low or "manual" in low:
+                kind = "human"
+            else:
+                kind = "unknown"
+            return {"kind": kind, "declared_by": "studio_artifact.diagnostics.source",
+                    "declaration": declared, "run_refs": run_refs}
+        return {"kind": "unknown", "declared_by": "not_declared",
+                "declaration": None, "run_refs": run_refs}
 
     def valid_proposals(self, studio_project_id: str) -> list[dict]:
         out = []

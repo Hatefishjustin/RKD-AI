@@ -1,0 +1,270 @@
+{
+  "task_id": "W1 版本谱系收口（源谱系身份 / 父 UID 映射 / 写内并发重检）",
+  "schema_version": "rkd-w1-lineage-checks.v1",
+  "executed_at": "2026-11-14T21:11:59+08:00",
+  "code_head": "080f63e0d039517302912236c72041a3a1d16d19",
+  "environment": {
+    "python": "3.12.14",
+    "isolated_main_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W1-版本谱系收口\\runtime\\app.sqlite3",
+    "isolated_studio_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W1-版本谱系收口\\runtime\\studio.db",
+    "model_channel": "labelled local fixtures only",
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "L01",
+      "name": "两个独立的 A 候选是不同谱系，不因字母相同被串成版本",
+      "result": "observed_pass",
+      "evidence": {
+        "option_ids": [
+          "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-A-1",
+          "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-A-prime-1"
+        ],
+        "revisions": [
+          [
+            1,
+            null
+          ],
+          [
+            1,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "id": "L02",
+      "name": "同根 v1→v2：父链来自源 parent UID 映射，不是导入顺序",
+      "result": "observed_pass",
+      "evidence": {
+        "v1": {
+          "revision_no": 1,
+          "main_id": "ai-option-revision_f044c667fd60"
+        },
+        "v2": {
+          "revision_no": 2,
+          "parent": "ai-option-revision_f044c667fd60",
+          "source_parent_uid": "uid-A-1",
+          "root_uid": "uid-A-1",
+          "link": "resolved"
+        }
+      }
+    },
+    {
+      "id": "L03",
+      "name": "同一父的两个分叉：都指向 v1，彼此不是父子关系",
+      "result": "observed_pass",
+      "evidence": {
+        "fork_a": {
+          "rev": 3,
+          "parent": "ai-option-revision_f044c667fd60"
+        },
+        "fork_b": {
+          "rev": 4,
+          "parent": "ai-option-revision_f044c667fd60"
+        },
+        "shared_parent": "ai-option-revision_f044c667fd60"
+      }
+    },
+    {
+      "id": "L04",
+      "name": "乱序导入：父未导入时明确拒绝；补齐父后父链正确，不把旧稿接在新稿后",
+      "result": "observed_pass",
+      "evidence": {
+        "first_new_import": [
+          409,
+          "SOURCE_PARENT_NOT_IMPORTED"
+        ],
+        "root": [
+          1,
+          null
+        ],
+        "old": [
+          2,
+          "ai-option-revision_cc4ef73b3417"
+        ],
+        "new": [
+          3,
+          "ai-option-revision_ffbd991eea61"
+        ]
+      }
+    },
+    {
+      "id": "L05",
+      "name": "缺父且显式 allow_orphan：parent 为 null 且标记缺父，不伪造父关系",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 200,
+        "revision_no": 1,
+        "parent": null,
+        "link": "source_parent_not_imported",
+        "root": "uid-A-orphan-1"
+      }
+    },
+    {
+      "id": "L06",
+      "name": "源父 UID 在 Studio 库中不存在：明确拒绝，不猜谱系",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 409,
+        "error_code": "SOURCE_PARENT_MISSING"
+      }
+    },
+    {
+      "id": "L07",
+      "name": "同源并发（屏障同时发起）：只产生一个版本，另一个复用；无半记录/遗留文件",
+      "result": "observed_pass",
+      "evidence": {
+        "responses": [
+          [
+            200,
+            false
+          ],
+          [
+            200,
+            true
+          ]
+        ],
+        "versions": 1,
+        "rows_delta": 1,
+        "svg_delta": 1
+      }
+    },
+    {
+      "id": "L08",
+      "name": "同谱系并发（两个分叉同时导入）：版本号不冲突，父都指向 v1，无 500/唯一约束异常",
+      "result": "observed_pass",
+      "evidence": {
+        "responses": [
+          200,
+          200
+        ],
+        "versions": [
+          2,
+          3
+        ],
+        "parents": [
+          "ai-option-revision_08f21255fc86",
+          "ai-option-revision_08f21255fc86"
+        ],
+        "shared_parent": "ai-option-revision_08f21255fc86",
+        "rows_delta": 2,
+        "svg_delta": 2
+      }
+    },
+    {
+      "id": "L09",
+      "name": "设计来源与适配来源分开：传输路径=studio_import，上游来源按声明保留，未声明保持 unknown",
+      "result": "observed_pass",
+      "evidence": {
+        "fixture_origin": {
+          "declaration": "labelled_local_fixture",
+          "declared_by": "studio_artifact.diagnostics.source",
+          "kind": "fixture",
+          "run_refs": [
+            "run_uid-A-1",
+            "group_uid-A-1"
+          ]
+        },
+        "undeclared_origin": {
+          "declaration": null,
+          "declared_by": "not_declared",
+          "kind": "unknown",
+          "run_refs": [
+            "run_uid-A-nodecl-1",
+            "group_uid-A-nodecl-1"
+          ]
+        },
+        "transport_origin": "studio_import"
+      }
+    },
+    {
+      "id": "L10",
+      "name": "精确 spatial 是权威：多边形原样、bbox 只作 legacy 显示且有损失声明",
+      "result": "observed_pass",
+      "evidence": {
+        "polygon_equal": true,
+        "legacy_geometry_mode": "bbox_derived",
+        "losses": [
+          {
+            "compensated_by": "spatial.zones[].polygon_mm",
+            "item": "legacy objects[].shape",
+            "loss": "bounding_box_only"
+          },
+          {
+            "compensated_by": "spatial.circulation[].path_mm",
+            "item": "circulation.segments[].shape",
+            "loss": "centerline_bbox_only"
+          },
+          {
+            "compensated_by": "spatial.unsupported_items + spatial.materials",
+            "item": "materials / views",
+            "loss": "not_modelled_in_studio"
+          }
+        ]
+      }
+    },
+    {
+      "id": "L11",
+      "name": "显式采用指定分叉版本成功；再采用旧版本被 CAS 拒绝（谱系身份可用于采用）",
+      "result": "observed_pass",
+      "evidence": {
+        "adopt": 200,
+        "adopt_old": [
+          409,
+          "STALE_OPTION_REVISION"
+        ],
+        "adopted_revision": 4,
+        "lineage_revisions": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "id": "L12",
+      "name": "确定性并发（同源）：准备后、提交前另一个请求写入，写内重检复用且清理自己的文件",
+      "result": "observed_pass",
+      "evidence": {
+        "outer_reused": true,
+        "inner_reused": false,
+        "versions": 1,
+        "rows_delta": 1,
+        "svg_delta": 1
+      }
+    },
+    {
+      "id": "L13",
+      "name": "确定性并发（同谱系两分叉）：写内重算版本号，父都指向 v1，无双写/唯一冲突",
+      "result": "observed_pass",
+      "evidence": {
+        "revision_numbers": [
+          3,
+          2
+        ],
+        "parents": [
+          "ai-option-revision_37cd00aa13de",
+          "ai-option-revision_37cd00aa13de"
+        ],
+        "shared_parent": "ai-option-revision_37cd00aa13de",
+        "rows_delta": 2,
+        "svg_delta": 2
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 13,
+    "observed_fail": 0
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "limitations": [
+    "源是明确标记的本地夹具，不是真实 AI 设计，不计入 AD01—AD08",
+    "并发用线程屏障同时发起真实 HTTP；不覆盖多进程/断电恢复",
+    "W2 制图/渲染/量价未开始；Q10 仍 not_run"
+  ]
+}

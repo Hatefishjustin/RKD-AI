@@ -1,0 +1,1218 @@
+diff --git a/contracts/v1/ai-design-option.schema.json b/contracts/v1/ai-design-option.schema.json
+index fafeb4b..5cea134 100644
+--- a/contracts/v1/ai-design-option.schema.json
++++ b/contracts/v1/ai-design-option.schema.json
+@@ -342,7 +342,11 @@
+         "candidate_group_id",
+         "run_id",
+         "draft_identity",
+-        "site_source"
++        "site_source",
++        "root_revision_uid",
++        "lineage_chain",
++        "parent_link_status",
++        "design_origin"
+       ],
+       "properties": {
+         "origin_kind": {
+@@ -405,6 +409,57 @@
+         "site_source": {
+           "type": "object",
+           "additionalProperties": true
++        },
++        "root_revision_uid": {
++          "type": "string",
++          "minLength": 1
++        },
++        "lineage_chain": {
++          "type": "array",
++          "items": {
++            "type": "string"
++          }
++        },
++        "parent_link_status": {
++          "enum": [
++            "source_root",
++            "resolved",
++            "source_parent_not_imported"
++          ]
++        },
++        "design_origin": {
++          "$ref": "#/$defs/designOrigin"
++        }
++      }
++    },
++    "designOrigin": {
++      "type": "object",
++      "additionalProperties": false,
++      "description": "Design origin of the UPSTREAM proposal, kept separate from the transport/adaptation origin. The adapter is not AI; that must never relabel a real-model or human upstream as artificial.",
++      "required": [
++        "kind",
++        "declared_by",
++        "declaration",
++        "run_refs"
++      ],
++      "properties": {
++        "kind": {
++          "enum": [
++            "real_model",
++            "human",
++            "fixture",
++            "unknown"
++          ]
++        },
++        "declared_by": {
++          "type": "string"
++        },
++        "declaration": {},
++        "run_refs": {
++          "type": "array",
++          "items": {
++            "type": "string"
++          }
+         }
+       }
+     },
+diff --git a/mvp/rkd_mvp/ai_design_option_service.py b/mvp/rkd_mvp/ai_design_option_service.py
+index 29ca69e..72ced7d 100644
+--- a/mvp/rkd_mvp/ai_design_option_service.py
++++ b/mvp/rkd_mvp/ai_design_option_service.py
+@@ -340,85 +340,163 @@ class AIDesignOptionService:
+                             "mapping_note": project.get("mapping_note")},
+                 "items": source.valid_proposals(studio_pid)}
+ 
++    def _lineage_state(self, tx: Any, option_id: str,
++                       source_parent_uid: str | None) -> dict[str, Any]:
++        """Main-system state of ONE source lineage, read inside the caller txn.
++
++        Parent comes from the SOURCE ``parent_revision_uid`` mapped through
++        previously imported revisions of the same root lineage — never from
++        "latest imported". Missing parents are reported, not faked.
++        """
++        revisions = tx.revisions_for_option(option_id)
++        by_source: dict[str, dict[str, Any]] = {}
++        for revision in revisions:
++            spatial = (revision.get("model") or {}).get("spatial") or {}
++            uid = (spatial.get("source") or {}).get("revision_uid")
++            if uid:
++                by_source[str(uid)] = revision
++        latest = max(revisions, key=lambda r: int(r["revision_no"])) if revisions else None
++        parent_revision = by_source.get(str(source_parent_uid)) if source_parent_uid else None
++        return {
++            "revision_count": len(revisions),
++            "next_revision_no": int(latest["revision_no"]) + 1 if latest else 1,
++            "by_source": by_source,
++            "parent_revision": parent_revision,
++            "parent_missing": bool(source_parent_uid) and parent_revision is None,
++            "parent_spatial": ((parent_revision or {}).get("model") or {}).get("spatial"),
++            "latest_spatial": ((latest or {}).get("model") or {}).get("spatial"),
++        }
++
+     def import_studio_proposal(self, organization_id: str, project_id: str, actor_id: str,
+                                request: dict[str, Any], *,
+-                               on_before_commit: Any | None = None) -> dict[str, Any]:
++                               on_before_commit: Any | None = None,
++                               after_prepare: Any | None = None,
++                               allow_orphan: bool = False) -> dict[str, Any]:
+         """Adapt ONE Studio valid proposal into the main versioned candidate model.
+ 
+-        Single write transaction: set + revision + artifact are committed together,
+-        or nothing is written. Adoption / production / procurement / release are
+-        NEVER touched by an import.
++        Identity and parent chain come from the SOURCE lineage (root revision UID
++        + parent revision UID), not from letter names or import order. The write
++        transaction re-checks idempotency and lineage so concurrent imports cannot
++        duplicate versions or fabricate a parent.
+         """
+         from .ai_design_studio_adapter import (
+             ADAPTER_VERSION, MAPPING_VERSION, StudioAdaptationError,
+-            adapt_proposal, render_spatial_svg, sha256_hex,
++            adapt_proposal, render_spatial_svg,
+         )
+         from .studio.tools import CATALOG
++
++        def fail(status: int, code: str, message: str) -> None:
++            raise AIDesignOptionServiceError(status, code, message)
++
+         if not isinstance(request, dict):
+-            raise AIDesignOptionServiceError(400, "INVALID_IMPORT_REQUEST", "请求体不是对象")
++            fail(400, "INVALID_IMPORT_REQUEST", "请求体不是对象")
+         studio_pid = str(request.get("studio_project_id") or "").strip()
+         artifact_id = str(request.get("studio_artifact_id") or "").strip()
+         if not studio_pid or not artifact_id:
+-            raise AIDesignOptionServiceError(400, "INVALID_IMPORT_REQUEST",
+-                                             "必须显式给出 studio_project_id 与 studio_artifact_id")
++            fail(400, "INVALID_IMPORT_REQUEST",
++                 "必须显式给出 studio_project_id 与 studio_artifact_id")
+         expected_unit = str(request.get("expected_unit") or "mm")
+         if expected_unit != "mm":
+-            raise AIDesignOptionServiceError(
+-                422, "UNIT_MISMATCH",
+-                f"调用方声明单位为 {expected_unit}；Studio 契约是 mm，适配器不猜测换算")
++            fail(422, "UNIT_MISMATCH",
++                 f"调用方声明单位为 {expected_unit}；Studio 契约是 mm，适配器不猜测换算")
+         declared_main = request.get("source_project_id")
+         if declared_main is not None and str(declared_main) != project_id:
+-            raise AIDesignOptionServiceError(409, "PROJECT_MAPPING_MISMATCH",
+-                                             "请求里的主系统项目与 URL 项目不一致")
++            fail(409, "PROJECT_MAPPING_MISMATCH", "请求里的主系统项目与 URL 项目不一致")
++        allow_orphan = bool(request.get("allow_orphan", allow_orphan))
+ 
+         source = self._studio()
+         project = source.project(studio_pid)
+         if not project:
+-            raise AIDesignOptionServiceError(404, "STUDIO_PROJECT_NOT_FOUND",
+-                                             "Studio 项目不存在")
++            fail(404, "STUDIO_PROJECT_NOT_FOUND", "Studio 项目不存在")
+         if project.get("source_project_id") != project_id or source.resolve(project_id) != studio_pid:
+-            raise AIDesignOptionServiceError(409, "PROJECT_MAPPING_MISMATCH",
+-                                             "Studio→主系统项目映射不是显式一致的；拒绝跨项目导入")
++            fail(409, "PROJECT_MAPPING_MISMATCH",
++                 "Studio→主系统项目映射不是显式一致的；拒绝跨项目导入")
+         artifact = source.artifact(artifact_id)
+         if not artifact:
+-            raise AIDesignOptionServiceError(404, "STUDIO_ARTIFACT_NOT_FOUND",
+-                                             "找不到该 Studio 产物")
++            fail(404, "STUDIO_ARTIFACT_NOT_FOUND", "找不到该 Studio 产物")
+         if artifact.get("project_id") != studio_pid:
+-            raise AIDesignOptionServiceError(409, "CROSS_PROJECT_ARTIFACT",
+-                                             "产物属于另一个 Studio 项目")
++            fail(409, "CROSS_PROJECT_ARTIFACT", "产物属于另一个 Studio 项目")
+         if (artifact.get("kind") != "spatial-plan"
+                 or artifact.get("contract_status") != "valid_candidate"
+                 or artifact.get("status") in ("superseded", "invalid_raw")):
+-            raise AIDesignOptionServiceError(422, "NOT_VALID_STUDIO_CANDIDATE",
+-                                             "只允许导入 Studio 的有效 spatial-plan 候选，不导入原始/失效稿")
++            fail(422, "NOT_VALID_STUDIO_CANDIDATE",
++                 "只允许导入 Studio 的有效 spatial-plan 候选，不导入原始/失效稿")
+         source_sha = str(artifact.get("sha256") or "")
+         expected_sha = request.get("expected_source_sha256")
+         if expected_sha is not None and str(expected_sha) != source_sha:
+-            raise AIDesignOptionServiceError(409, "SOURCE_SHA_MISMATCH",
+-                                             "源产物字节已变化，请重新确认后再导入")
++            fail(409, "SOURCE_SHA_MISMATCH", "源产物字节已变化，请重新确认后再导入")
+         plan = artifact.get("payload")
+         if not isinstance(plan, dict) or not plan.get("zones"):
+-            raise AIDesignOptionServiceError(422, "EMPTY_STUDIO_PAYLOAD",
+-                                             "源产物没有可用的完整平面数据")
+-
++            fail(422, "EMPTY_STUDIO_PAYLOAD", "源产物没有可用的完整平面数据")
++
++        lineage = source.lineage(studio_pid, artifact)
++        if lineage["status"] == "source_uid_missing":
++            fail(422, "SOURCE_UID_MISSING", "源产物没有 revision_uid，无法建立稳定谱系")
++        if lineage["status"] == "source_parent_missing":
++            fail(409, "SOURCE_PARENT_MISSING",
++                 f"源产物的父版本 {lineage['missing_uid']} 不在 Studio 库中，不能猜测谱系")
++        if lineage["status"] == "source_lineage_cycle":
++            fail(409, "SOURCE_LINEAGE_CYCLE", "源产物的父链成环，拒绝导入")
++        design_origin = source.design_origin(artifact)
++
++        source_parent_uid = artifact.get("parent_revision_uid")
++        root_uid = str(lineage["root_uid"])
++        # Candidate identity = stable ROOT lineage, not the A/B letter.
++        option_id = f"studio:{project_id}:{studio_pid}:root:{root_uid}"
+         source_key = _digest({"studio_project_id": studio_pid, "artifact_id": artifact_id,
+                               "sha256": source_sha, "adapter_version": ADAPTER_VERSION,
+                               "mapping_version": MAPPING_VERSION,
+                               "main_project_id": project_id,
+-                              "organization_id": organization_id})
++                              "organization_id": organization_id,
++                              "root_revision_uid": root_uid})
+         idempotency_key = "studio-import:" + source_key
+         provenance = {
+             "artifact_id": artifact_id, "sha256": source_sha,
+             "studio_project_id": studio_pid, "main_project_id": project_id,
+             "revision_uid": artifact.get("revision_uid"),
+-            "parent_revision_uid": artifact.get("parent_revision_uid"),
++            "parent_revision_uid": source_parent_uid,
+             "candidate_group_id": artifact.get("candidate_group_id"),
+             "run_id": artifact.get("run_id"),
+         }
+-        option_id = f"studio:{project_id}:{studio_pid}:{plan.get('option_id')}"
+         catalog = {c["catalog_id"]: c for c in CATALOG}
++        set_id = new_id("ai-option-set")
++        option_revision_id = new_id("ai-option-revision")
++        created_at = now_iso()
++        attempt_dir = (self.runtime_root / "projects" / "ai-design-options"
++                       / "studio-import" / set_id)
++        svg_path = attempt_dir / f"layout-{option_revision_id}.svg"
+ 
+-        # Idempotency + version chain, both inside a read transaction.
++        def prepare(revision_no: int, parent_revision_id: str | None,
++                    previous_spatial: dict | None, parent_link_status: str):
++            try:
++                model = adapt_proposal(
++                    plan, provenance=provenance, site=project["site"], catalog=catalog,
++                    actor_id=actor_id, created_at=created_at, set_id=set_id,
++                    option_id=option_id, revision_no=revision_no,
++                    parent_revision_id=parent_revision_id,
++                    previous_spatial=previous_spatial, expected_unit=expected_unit,
++                    lineage=lineage, design_origin=design_origin,
++                    parent_link_status=parent_link_status)
++            except StudioAdaptationError as error:
++                raise self._adapt_error(error) from error
++            except Exception as error:  # noqa: BLE001 - never write half an adaptation
++                raise AIDesignOptionServiceError(
++                    422, "ADAPTATION_FAILED",
++                    f"适配失败，未写入任何候选：{type(error).__name__}: {error}") from error
++            errors = sorted(self.validator.iter_errors(model), key=lambda e: list(e.path))
++            if errors:
++                first = errors[0]
++                raise AIDesignOptionServiceError(
++                    422, "ADAPTED_MODEL_INVALID",
++                    "适配结果不符合主系统版本化契约："
++                    + f"{list(first.path)} {first.message[:160]}")
++            if (model["cost"]["total_project_estimate"]["value"] is not None
++                    or model["cost"]["budget"]["value"] is not None):
++                raise AIDesignOptionServiceError(422, "UNKNOWN_VALUE_FILLED",
++                                                 "适配结果把 unknown 金额填成了数值")
++            return model, render_spatial_svg(model)
++
++        # Provisional read (fast); the write transaction re-checks everything.
+         with self.repository.transaction(organization_id, project_id) as tx:
+             existing_set = tx.set_by_key(idempotency_key)
+             adoption_before = tx.adoption()
+@@ -427,127 +505,158 @@ class AIDesignOptionService:
+                 head = revisions[0] if revisions else None
+                 return {"reused": True, "item": head, "set": existing_set,
+                         "adoption_unchanged": True, "formal_approval": False,
+-                        "note": "同一来源（artifact id + sha256 + 适配器版本）已导入过，未重复造版本"}
+-            latest = tx.latest_revision(option_id)
+-            previous_spatial = (latest or {}).get("model", {}).get("spatial")
+-            revision_no = int(latest["revision_no"]) + 1 if latest else 1
+-            parent_revision_id = latest["option_revision_id"] if latest else None
+-
+-        set_id = new_id("ai-option-set")
+-        option_revision_id = new_id("ai-option-revision")
+-        created_at = now_iso()
+-        try:
+-            model = adapt_proposal(
+-                plan, provenance=provenance, site=project["site"], catalog=catalog,
+-                actor_id=actor_id, created_at=created_at, set_id=set_id,
+-                option_id=option_id, revision_no=revision_no,
+-                parent_revision_id=parent_revision_id,
+-                previous_spatial=previous_spatial, expected_unit=expected_unit)
+-        except StudioAdaptationError as error:
+-            raise self._adapt_error(error) from error
+-        except Exception as error:  # noqa: BLE001 - never write half an adaptation
+-            raise AIDesignOptionServiceError(422, "ADAPTATION_FAILED",
+-                                             f"适配失败，未写入任何候选：{type(error).__name__}: {error}") from error
+-
+-        errors = sorted(self.validator.iter_errors(model), key=lambda e: list(e.path))
+-        if errors:
+-            first = errors[0]
+-            raise AIDesignOptionServiceError(422, "ADAPTED_MODEL_INVALID",
+-                                             "适配结果不符合主系统版本化契约："
+-                                             + f"{list(first.path)} {first.message[:160]}")
+-        # unknown must stay unknown (do not silently fill 0 / invent values)
+-        if (model["cost"]["total_project_estimate"]["value"] is not None
+-                or model["cost"]["budget"]["value"] is not None):
+-            raise AIDesignOptionServiceError(422, "UNKNOWN_VALUE_FILLED",
+-                                             "适配结果把 unknown 金额填成了数值")
+-
+-        svg = render_spatial_svg(model)
+-        attempt_dir = (self.runtime_root / "projects" / "ai-design-options"
+-                       / "studio-import" / set_id)
+-        attempt_dir.mkdir(parents=True, exist_ok=False)
+-        svg_path = attempt_dir / f"layout-{option_revision_id}.svg"
+-        relative = svg_path.relative_to(self.runtime_root).as_posix()
+-        spatial = model["spatial"]
+-        context = {
+-            "schema_version": "rkd-studio-import-context.v1",
+-            "adapter_version": ADAPTER_VERSION,
+-            "mapping_version": MAPPING_VERSION,
+-            "source": provenance, "source_unit": "mm", "target_unit": "m",
+-            "unit_conversion": "mm_to_m_div_1000",
+-            "option_id": option_id, "revision_no": revision_no,
+-            "parent_revision_id": parent_revision_id,
+-            "field_ledger": spatial["adaptation"]["field_ledger"],
+-            "object_id_map": spatial["adaptation"]["object_id_map"],
+-            "unsupported_items": spatial["unsupported_items"],
+-            "losses": spatial["adaptation"]["losses"],
+-            "source_sha256": source_sha,
+-            "geometry_mode": spatial["adaptation"]["geometry_mode"],
+-            "source_contract": "rkd-spatial-plan.v1",
+-            "target_contract": "rkd-ai-design-option.v1",
+-        }
+-        config = {"kind": "studio_proposal_adapter", "real_model": False,
+-                  "configuration_errors": [], "adapter_version": ADAPTER_VERSION}
+-        row = {
+-            "option_revision_id": option_revision_id, "set_id": set_id,
+-            "option_id": option_id, "revision_no": revision_no,
+-            "parent_revision_id": parent_revision_id,
+-            "strategy_id": model["strategy"]["strategy_id"],
+-            "strategy": model["strategy"], "model": model,
+-            "validation": model["validation"], "materials": model["materials"],
+-            "cost": model["cost"], "feedback": model["feedback"],
+-            "diff": model["diff"], "conflicts": model["conflicts"],
+-            "structure_signature": model["structure_signature"],
+-            "lifecycle_status": "candidate", "source_kind": model["source_kind"],
+-            "change_reason": model["change_reason"], "actor_id": actor_id,
+-            "created_at": created_at,
+-        }
+-        artifact_row = {
+-            "artifact_id": new_id("ai-option-artifact"),
+-            "option_revision_id": option_revision_id,
+-            "artifact_kind": "layout_svg",
+-            "filename": f"layout-{option_revision_id}.svg",
+-            "content_type": "image/svg+xml", "relative_path": relative,
+-            "sha256": hashlib.sha256(svg).hexdigest(), "size_bytes": len(svg),
+-            "created_at": created_at,
+-        }
++                        "note": "同一来源（artifact id + sha256 + 适配器版本 + 根谱系）已导入过，未重复造版本"}
++            state = self._lineage_state(tx, option_id, source_parent_uid)
++        if state["parent_missing"] and not allow_orphan:
++            fail(409, "SOURCE_PARENT_NOT_IMPORTED",
++                 f"源父修订 {source_parent_uid} 尚未导入主系统；请先导入父版本，"
++                 "或显式 allow_orphan=true 并以缺父状态留痕（不伪造父关系）")
++        parent_link_status = ("source_root" if not source_parent_uid
++                              else "resolved" if state["parent_revision"]
++                              else "source_parent_not_imported")
++        model, svg = prepare(state["next_revision_no"],
++                             (state["parent_revision"] or {}).get("option_revision_id"),
++                             state["parent_spatial"] or state["latest_spatial"],
++                             parent_link_status)
++
++        committed = False
++        reuse_result: dict[str, Any] | None = None
+         try:
++            attempt_dir.mkdir(parents=True, exist_ok=False)
+             svg_path.write_bytes(svg)
++            if after_prepare is not None:
++                after_prepare()   # W1-R2 seam: a competing import may commit here
+             with self.repository.transaction(organization_id, project_id, write=True) as tx:
+-                tx.insert_set({
+-                    "set_id": set_id, "brief_id": artifact_id, "input_hash": source_key,
+-                    "status": "succeeded", "phase": "completed", "attempt_count": 1,
+-                    "config": config, "context": context, "error_code": None,
+-                    "error_message": None, "idempotency_key": idempotency_key,
+-                    "actor_id": actor_id, "created_at": created_at,
+-                    "updated_at": created_at,
+-                })
+-                tx.insert_revision(row)
+-                tx.insert_artifact(artifact_row)
+-                if on_before_commit is not None:
+-                    on_before_commit()   # explicit rollback seam used by W1 tests
++                # (1) same-source idempotency re-check INSIDE the write txn
++                existing_set = tx.set_by_key(idempotency_key)
++                if existing_set:
++                    revisions = tx.revisions_for_set(existing_set["set_id"])
++                    reuse_result = {
++                        "reused": True, "item": revisions[0] if revisions else None,
++                        "set": existing_set, "adoption_unchanged": True,
++                        "formal_approval": False,
++                        "note": "并发导入：另一个请求已提交同一来源，本次复用其版本"}
++                else:
++                    # (2) lineage + expected version re-check INSIDE the write txn
++                    state2 = self._lineage_state(tx, option_id, source_parent_uid)
++                    if state2["parent_missing"] and not allow_orphan:
++                        fail(409, "SOURCE_PARENT_NOT_IMPORTED",
++                             f"源父修订 {source_parent_uid} 尚未导入主系统；不伪造父关系")
++                    parent2 = (state2["parent_revision"] or {}).get("option_revision_id")
++                    revision_no2 = state2["next_revision_no"]
++                    if (revision_no2 != model["revision_no"]
++                            or parent2 != model["parent_revision_id"]):
++                        # Recompute under the write lock: never reuse a stale
++                        # revision number and never chain to a wrong parent.
++                        parent_link_status2 = ("source_root" if not source_parent_uid
++                                               else "resolved" if state2["parent_revision"]
++                                               else "source_parent_not_imported")
++                        model, svg = prepare(
++                            revision_no2, parent2,
++                            state2["parent_spatial"] or state2["latest_spatial"],
++                            parent_link_status2)
++                        svg_path.write_bytes(svg)
++                    spatial = model["spatial"]
++                    context = {
++                        "schema_version": "rkd-studio-import-context.v1",
++                        "adapter_version": ADAPTER_VERSION,
++                        "mapping_version": MAPPING_VERSION,
++                        "source": provenance, "source_unit": "mm", "target_unit": "m",
++                        "unit_conversion": "mm_to_m_div_1000",
++                        "option_id": option_id,
++                        "root_revision_uid": spatial["source"]["root_revision_uid"],
++                        "lineage_chain": spatial["source"]["lineage_chain"],
++                        "parent_link_status": spatial["source"]["parent_link_status"],
++                        "design_origin": spatial["source"]["design_origin"],
++                        "revision_no": model["revision_no"],
++                        "parent_revision_id": model["parent_revision_id"],
++                        "field_ledger": spatial["adaptation"]["field_ledger"],
++                        "object_id_map": spatial["adaptation"]["object_id_map"],
++                        "unsupported_items": spatial["unsupported_items"],
++                        "losses": spatial["adaptation"]["losses"],
++                        "source_sha256": source_sha,
++                        "geometry_mode": spatial["adaptation"]["geometry_mode"],
++                        "source_contract": "rkd-spatial-plan.v1",
++                        "target_contract": "rkd-ai-design-option.v1",
++                    }
++                    config = {"kind": "studio_proposal_adapter", "real_model": False,
++                              "configuration_errors": [],
++                              "adapter_version": ADAPTER_VERSION}
++                    tx.insert_set({
++                        "set_id": set_id, "brief_id": artifact_id,
++                        "input_hash": source_key, "status": "succeeded",
++                        "phase": "completed", "attempt_count": 1,
++                        "config": config, "context": context, "error_code": None,
++                        "error_message": None, "idempotency_key": idempotency_key,
++                        "actor_id": actor_id, "created_at": created_at,
++                        "updated_at": created_at,
++                    })
++                    tx.insert_revision({
++                        "option_revision_id": option_revision_id, "set_id": set_id,
++                        "option_id": option_id, "revision_no": model["revision_no"],
++                        "parent_revision_id": model["parent_revision_id"],
++                        "strategy_id": model["strategy"]["strategy_id"],
++                        "strategy": model["strategy"], "model": model,
++                        "validation": model["validation"],
++                        "materials": model["materials"], "cost": model["cost"],
++                        "feedback": model["feedback"], "diff": model["diff"],
++                        "conflicts": model["conflicts"],
++                        "structure_signature": model["structure_signature"],
++                        "lifecycle_status": "candidate",
++                        "source_kind": model["source_kind"],
++                        "change_reason": model["change_reason"],
++                        "actor_id": actor_id, "created_at": created_at,
++                    })
++                    tx.insert_artifact({
++                        "artifact_id": new_id("ai-option-artifact"),
++                        "option_revision_id": option_revision_id,
++                        "artifact_kind": "layout_svg",
++                        "filename": f"layout-{option_revision_id}.svg",
++                        "content_type": "image/svg+xml",
++                        "relative_path": svg_path.relative_to(self.runtime_root).as_posix(),
++                        "sha256": hashlib.sha256(svg).hexdigest(),
++                        "size_bytes": len(svg), "created_at": created_at,
++                    })
++                    if on_before_commit is not None:
++                        on_before_commit()   # explicit rollback seam used by tests
++                    committed = True
++            if reuse_result is not None:
++                return reuse_result
+             with self.repository.transaction(organization_id, project_id) as tx:
+                 result_set = tx.set_row(set_id)
+                 revision = tx.revision(option_revision_id)
+                 if revision:
+                     revision["artifacts"] = tx.artifacts(option_revision_id)
+                 adoption_after = tx.adoption()
++            spatial = model["spatial"]
++            context_view = {
++                "field_ledger": spatial["adaptation"]["field_ledger"],
++                "object_id_map": spatial["adaptation"]["object_id_map"],
++                "unsupported_items": spatial["unsupported_items"],
++                "losses": spatial["adaptation"]["losses"],
++            }
+             return {
+                 "reused": False, "item": revision, "set": result_set,
+                 "source": provenance,
+-                "field_ledger": context["field_ledger"],
+-                "object_id_map": context["object_id_map"],
+-                "unsupported_items": context["unsupported_items"],
+-                "losses": context["losses"],
++                "root_revision_uid": spatial["source"]["root_revision_uid"],
++                "lineage_chain": spatial["source"]["lineage_chain"],
++                "parent_link_status": spatial["source"]["parent_link_status"],
++                "design_origin": spatial["source"]["design_origin"],
++                "field_ledger": context_view["field_ledger"],
++                "object_id_map": context_view["object_id_map"],
++                "unsupported_items": context_view["unsupported_items"],
++                "losses": context_view["losses"],
+                 "adaptation": spatial["adaptation"],
+                 "source_unit": "mm", "target_unit": "m",
+                 "adoption_unchanged": _json(adoption_before) == _json(adoption_after),
+                 "adoption": adoption_after,
+                 "formal_approval": False, "production_sync": False,
+-                "svg_sha256": artifact_row["sha256"],
++                "svg_sha256": hashlib.sha256(svg).hexdigest(),
+             }
+-        except Exception:
+-            shutil.rmtree(attempt_dir, ignore_errors=True)
+-            raise
++        finally:
++            # only this attempt's own directory is removed on failure/duplicate
++            if not committed:
++                shutil.rmtree(attempt_dir, ignore_errors=True)
+ 
+     def list_studio_imports(self, organization_id: str, project_id: str,
+                             limit: int = 50) -> dict[str, Any]:
+diff --git a/mvp/rkd_mvp/ai_design_studio_adapter.py b/mvp/rkd_mvp/ai_design_studio_adapter.py
+index 471a219..ad2e080 100644
+--- a/mvp/rkd_mvp/ai_design_studio_adapter.py
++++ b/mvp/rkd_mvp/ai_design_studio_adapter.py
+@@ -478,7 +478,10 @@ def adapt_proposal(plan: dict, *, provenance: dict, site: dict, catalog: dict,
+                    actor_id: str, created_at: str, set_id: str, option_id: str,
+                    revision_no: int, parent_revision_id: str | None,
+                    previous_spatial: dict | None = None,
+-                   expected_unit: str = "mm") -> dict:
++                   expected_unit: str = "mm",
++                   lineage: dict | None = None,
++                   design_origin: dict | None = None,
++                   parent_link_status: str | None = None) -> dict:
+     """Build ONE rkd-ai-design-option.v1 document from a Studio valid draft."""
+     validate_source(plan, expected_unit=expected_unit, catalog=catalog)
+     validation = exact_geometry_checks(plan, site)
+@@ -573,6 +576,16 @@ def adapt_proposal(plan: dict, *, provenance: dict, site: dict, catalog: dict,
+             "site_source": {"source": site.get("source"), "width_mm": site["width_mm"],
+                             "height_mm": site["height_mm"], "ceiling_mm": site.get("ceiling_mm"),
+                             "entrance_mm": list(ent)},
++            "root_revision_uid": str((lineage or {}).get("root_uid")
++                                     or provenance.get("revision_uid") or artifact_id),
++            "lineage_chain": list((lineage or {}).get("chain")
++                                  or [provenance.get("revision_uid") or artifact_id]),
++            "parent_link_status": (parent_link_status
++                                   or ("source_root" if not provenance.get("parent_revision_uid")
++                                       else "resolved")),
++            "design_origin": design_origin or {"kind": "unknown",
++                                               "declared_by": "not_declared",
++                                               "declaration": None, "run_refs": []},
+         },
+         "adaptation": {
+             "adapter_version": ADAPTER_VERSION,
+@@ -791,6 +804,64 @@ class StudioProposalSource:
+     def artifact(self, artifact_id: str) -> dict | None:
+         return self.store.artifact_by_id(artifact_id)
+ 
++    def lineage(self, studio_project_id: str, artifact: dict) -> dict:
++        """Resolve the STABLE root lineage of one source artifact by parent UID.
++
++        Never infers a parent from import order. A missing parent artifact in the
++        Studio store is reported (``source_parent_missing``), not skipped.
++        """
++        arts = self.store.artifacts(studio_project_id)
++        by_uid = {a.get("revision_uid"): a for a in arts if a.get("revision_uid")}
++        uid = artifact.get("revision_uid")
++        if not uid:
++            return {"status": "source_uid_missing", "root_uid": None,
++                    "chain": [], "depth": 0, "missing_uid": None}
++        chain = [str(uid)]
++        current = artifact
++        seen = {str(uid)}
++        while current.get("parent_revision_uid"):
++            parent_uid = str(current["parent_revision_uid"])
++            if parent_uid in seen:
++                return {"status": "source_lineage_cycle", "root_uid": None,
++                        "chain": chain, "depth": len(chain) - 1,
++                        "missing_uid": parent_uid}
++            seen.add(parent_uid)
++            parent = by_uid.get(parent_uid)
++            if parent is None:
++                return {"status": "source_parent_missing", "root_uid": None,
++                        "chain": chain, "depth": len(chain) - 1,
++                        "missing_uid": parent_uid}
++            chain.append(parent_uid)
++            current = parent
++        return {"status": "resolved", "root_uid": chain[-1], "chain": chain,
++                "depth": len(chain) - 1, "missing_uid": None}
++
++    @staticmethod
++    def design_origin(artifact: dict) -> dict:
++        """Upstream DESIGN origin, separate from the transport/adaptation origin.
++
++        Only an explicit declaration on the artifact is used. Anything else stays
++        ``unknown`` — the adapter must not relabel a real-model or human upstream
++        as artificial (or the reverse) just because an adapter moved the document.
++        """
++        declared = (artifact.get("diagnostics") or {}).get("source")
++        run_refs = [str(x) for x in (artifact.get("run_id"),
++                                     artifact.get("candidate_group_id")) if x]
++        if isinstance(declared, str) and declared.strip():
++            low = declared.lower()
++            if "fixture" in low or "stub" in low or "test" in low:
++                kind = "fixture"
++            elif "real_model" in low or "real-model" in low or "openai" in low:
++                kind = "real_model"
++            elif "human" in low or "manual" in low:
++                kind = "human"
++            else:
++                kind = "unknown"
++            return {"kind": kind, "declared_by": "studio_artifact.diagnostics.source",
++                    "declaration": declared, "run_refs": run_refs}
++        return {"kind": "unknown", "declared_by": "not_declared",
++                "declaration": None, "run_refs": run_refs}
++
+     def valid_proposals(self, studio_project_id: str) -> list[dict]:
+         out = []
+         for a in self.store.artifacts(studio_project_id):
+diff --git a/scripts/verify_w1_lineage.py b/scripts/verify_w1_lineage.py
+new file mode 100644
+index 0000000..d9ca22d
+--- /dev/null
++++ b/scripts/verify_w1_lineage.py
+@@ -0,0 +1,540 @@
++"""W1 版本谱系收口：源谱系身份、父 UID 映射、导入顺序不伪造父链、写内并发重检。
++
++用法：
++  python scripts/verify_w1_lineage.py --out <dir> --runtime <dir>
++
++隔离主系统库 + 隔离 Studio 库；源是明确标记的本地夹具（真实 parent_revision_uid 链）。
++0 外部调用、0 密钥、0 费用。
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import sys
++import threading
++from datetime import datetime, timezone
++from http.client import HTTPConnection
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++
++
++def _arg(flag: str, default: Path) -> Path:
++    for i, a in enumerate(sys.argv):
++        if a == flag and i + 1 < len(sys.argv):
++            return Path(sys.argv[i + 1]).resolve()
++        if a.startswith(flag + "="):
++            return Path(a.split("=", 1)[1]).resolve()
++    return default
++
++
++EVIDENCE = _arg("--out", ROOT / "var/evidence/roadmap/W1-版本谱系收口/after")
++RUNTIME = _arg("--runtime", ROOT / "var/evidence/roadmap/W1-版本谱系收口/runtime")
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME.mkdir(parents=True, exist_ok=True)
++MAIN_DB = RUNTIME / "app.sqlite3"
++STUDIO_DB = RUNTIME / "studio.db"
++for f in (MAIN_DB, STUDIO_DB):
++    if f.exists():
++        f.unlink()
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from arc_first_batch_stub import SITE, valid_proposal  # noqa: E402
++from rkd_mvp.ai_design_option_provider import (  # noqa: E402
++    DesignOptionConfig, build_design_option_provider)
++from rkd_mvp.ai_design_option_repository import SQLiteAIDesignOptionRepository  # noqa: E402
++from rkd_mvp.ai_design_option_service import AIDesignOptionService  # noqa: E402
++from rkd_mvp.ai_design_studio_adapter import StudioProposalSource  # noqa: E402
++from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider  # noqa: E402
++from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository  # noqa: E402
++from rkd_mvp.ai_requirement_service import AIRequirementService  # noqa: E402
++from rkd_mvp.api_server import create_server  # noqa: E402
++from rkd_mvp.api_service import ApiService  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from rkd_mvp.studio import orchestrator, validation  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++
++FIXTURE_ROOT = ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09"
++ORG = "org-local"
++PID = NINGBO_PROJECT_ID
++SPID = "ningbo-xiecheng"
++CHECKS: list[dict] = []
++
++
++def check(cid: str, name: str, ok: bool, evidence: dict) -> None:
++    CHECKS.append({"id": cid, "name": name,
++                   "result": "observed_pass" if ok else "observed_fail",
++                   "evidence": evidence})
++    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++
++
++def plan_of(letter: str, mutate=None) -> dict:
++    raw = valid_proposal(letter)
++    if mutate:
++        mutate(raw)
++    rep = validation.validate_proposal(
++        raw, project={"id": SPID, "site": SITE}, option_id=letter,
++        revision=1, parent_revision=None)
++    assert rep["ok"], rep["repair_feedback"][:300]
++    return rep["plan"]
++
++
++def save(studio: Store, letter: str, plan: dict, *, uid: str,
++         parent_uid: str | None, source_label: str | None = "labelled_local_fixture"):
++    aid = studio.save_artifact(
++        SPID, "spatial-plan", plan, "D2", option_id=letter, revision=1,
++        status="valid_candidate", contract_status="valid_candidate",
++        run_id=f"run_{uid}", candidate_group_id=f"group_{uid}",
++        revision_uid=uid, parent_revision_uid=parent_uid,
++        input_hash_value=hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest(),
++        check_report_id=f"check_{uid}",
++        diagnostics=({"source": source_label} if source_label else None))
++    return studio.artifact_by_id(aid)
++
++
++def http(method: str, path: str, body: dict | None = None):
++    payload = json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
++    headers = {"X-Organization-Id": ORG, "Content-Type": "application/json"}
++    if payload is not None:
++        headers["Content-Length"] = str(len(payload))
++    conn = HTTPConnection("127.0.0.1", PORT, timeout=30)
++    conn.request(method, path, payload, headers)
++    resp = conn.getresponse()
++    raw = resp.read()
++    conn.close()
++    try:
++        data = json.loads(raw.decode("utf-8"))
++    except Exception:
++        data = {"_raw": raw[:200].decode("utf-8", "replace")}
++    return resp.status, data
++
++
++def body(art: dict, **extra) -> dict:
++    return {"studio_project_id": SPID, "studio_artifact_id": art["id"],
++            "source_project_id": PID, "expected_unit": "mm", **extra}
++
++
++def revisions() -> list[dict]:
++    import sqlite3
++    c = sqlite3.connect(MAIN_DB)
++    c.row_factory = sqlite3.Row
++    rows = c.execute("SELECT option_id, revision_no, parent_revision_id, option_revision_id, "
++                     "model_json FROM ai_design_option_revisions ORDER BY created_at").fetchall()
++    out = []
++    for r in rows:
++        model = json.loads(r["model_json"])
++        src = (model.get("spatial") or {}).get("source") or {}
++        out.append({"option_id": r["option_id"], "revision_no": r["revision_no"],
++                    "parent_revision_id": r["parent_revision_id"],
++                    "option_revision_id": r["option_revision_id"],
++                    "source_uid": src.get("revision_uid"),
++                    "source_parent_uid": src.get("parent_revision_uid"),
++                    "root_uid": src.get("root_revision_uid"),
++                    "parent_link_status": src.get("parent_link_status"),
++                    "design_origin": src.get("design_origin"),
++                    "origin_kind": src.get("origin_kind")})
++    c.close()
++    return out
++
++
++def svg_count() -> int:
++    d = RUNTIME / "projects" / "ai-design-options" / "studio-import"
++    return len(list(d.rglob("*.svg"))) if d.exists() else 0
++
++
++def main() -> int:
++    global PORT
++    studio = Store(STUDIO_DB)
++    orchestrator.Studio(studio).seed_from_fixtures()
++    source = StudioProposalSource(studio)
++
++    base_a = plan_of("A")
++    base_b = plan_of("B")
++    plan_a2 = plan_of("A", lambda p: (
++        p["zones"][0].update(polygon=[[0, 8600], [5400, 8600], [5400, 13500],
++                                     [1800, 13500], [0, 11900]]),
++        p["furniture"][2].update(rot=-30)))
++    plan_a2a = plan_of("A", lambda p: p["furniture"][0].update(x=8600))
++    plan_a2b = plan_of("A", lambda p: p["furniture"][1].update(rot=15))
++    plan_a_prime = plan_of("A", lambda p: p["zones"][0].update(
++        polygon=[[0, 9000], [4800, 9000], [4800, 13000], [0, 13000]]))
++    plan_orphan = plan_of("A", lambda p: p["furniture"][1].update(y=4400))
++
++    art_a = save(studio, "A", base_a, uid="uid-A-1", parent_uid=None)
++    art_b = save(studio, "B", base_b, uid="uid-B-1", parent_uid=None)
++    art_a2 = save(studio, "A", plan_a2, uid="uid-A-2", parent_uid="uid-A-1")
++    art_a2a = save(studio, "A", plan_a2a, uid="uid-A-2a", parent_uid="uid-A-1")
++    art_a2b = save(studio, "A", plan_a2b, uid="uid-A-2b", parent_uid="uid-A-1")
++    art_aprime = save(studio, "A", plan_a_prime, uid="uid-A-prime-1", parent_uid=None)
++    # parent EXISTS in Studio but is deliberately NOT imported into the main
++    # system: that is the "source parent not imported" case (allow_orphan).
++    art_orphan_parent = save(studio, "A", base_a, uid="uid-A-orphan-1", parent_uid=None)
++    art_orphan = save(studio, "A", plan_orphan, uid="uid-A-orphan-2",
++                      parent_uid="uid-A-orphan-1")
++    # parent does NOT exist in Studio at all: broken source chain, must reject.
++    art_broken = save(studio, "A", base_b, uid="uid-A-broken-2",
++                      parent_uid="uid-A-missing-1")
++    art_nodecl = save(studio, "A", base_a, uid="uid-A-nodecl-1", parent_uid=None,
++                      source_label=None)
++
++    main_store = SQLiteStore(MAIN_DB)
++    files = FileService(MAIN_DB, RUNTIME)
++    requirements = RequirementService(MAIN_DB)
++    brief_config = AIProviderConfig(
++        kind="synthetic", name="本地合成测试通道（非真实 AI）", model_id=None,
++        base_url=None, api_key_present=False, adapter_version="rkd-model-provider.v1",
++        prompt_version="requirement-understanding.zh-CN.v1",
++        schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++        max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++        real_model=False, configuration_errors=[])
++    option_config = DesignOptionConfig(
++        kind="synthetic", name="本地合成设计通道（非真实 AI）",
++        adapter_version="rkd-design-option-provider.v1",
++        prompt_version="design-option-strategy.zh-CN.v1",
++        schema_version="rkd-ai-design-option.v1", max_candidates=2,
++        real_model=False, configuration_errors=[])
++    requirement_ai = AIRequirementService(
++        SQLiteAIRequirementRepository(MAIN_DB), requirements, config=brief_config,
++        provider_factory=lambda config: build_provider(config))
++    options_ai = AIDesignOptionService(
++        SQLiteAIDesignOptionRepository(MAIN_DB),
++        lambda org, project: requirement_ai.status(org, project)["item"],
++        lambda org, project: {"width": "12", "length": "8",
++                              "boundary_source": "test_parameters_not_site_verified",
++                              "obstacles": []},
++        RUNTIME, config=option_config,
++        provider=build_design_option_provider(option_config),
++        studio_source=source)
++    service = ApiService(MVPApp(main_store), files, requirement_service=requirements,
++                         ai_requirement_service=requirement_ai,
++                         ai_design_option_service=options_ai, runtime_root=RUNTIME,
++                         studio_source=source)
++    files.seed_ningbo(service, FIXTURE_ROOT)
++
++    server = create_server(service, port=0, static_dir=ROOT / "web" / "dist")
++    PORT = server.server_port
++    thread = threading.Thread(target=server.serve_forever, daemon=True)
++    thread.start()
++    base = f"/api/v1/projects/{PID}/ai/design-options"
++    try:
++        # ------------------------------------------------ L01 independent A roots
++        code1, imp_a = http("POST", f"{base}/import-studio", body(art_a))
++        code2, imp_ap = http("POST", f"{base}/import-studio", body(art_aprime))
++        rows = revisions()
++        a_rows = [r for r in rows if r["source_uid"] == "uid-A-1"]
++        ap_rows = [r for r in rows if r["source_uid"] == "uid-A-prime-1"]
++        check("L01", "两个独立的 A 候选是不同谱系，不因字母相同被串成版本",
++              bool(code1 == 200 and code2 == 200
++                   and a_rows and ap_rows
++                   and a_rows[0]["option_id"] != ap_rows[0]["option_id"]
++                   and a_rows[0]["revision_no"] == 1 and ap_rows[0]["revision_no"] == 1
++                   and a_rows[0]["parent_revision_id"] is None
++                   and ap_rows[0]["parent_revision_id"] is None),
++              {"option_ids": [a_rows[0]["option_id"] if a_rows else None,
++                              ap_rows[0]["option_id"] if ap_rows else None],
++               "revisions": [[r["revision_no"], r["parent_revision_id"]] for r in rows]})
++
++        # ------------------------------------------- L02 same root v1 -> v2
++        code, imp_a2 = http("POST", f"{base}/import-studio", body(art_a2))
++        rows = revisions()
++        r1 = next(r for r in rows if r["source_uid"] == "uid-A-1")
++        r2 = next(r for r in rows if r["source_uid"] == "uid-A-2")
++        check("L02", "同根 v1→v2：父链来自源 parent UID 映射，不是导入顺序",
++              bool(code == 200 and r2["option_id"] == r1["option_id"]
++                   and r2["revision_no"] == 2
++                   and r2["parent_revision_id"] == r1["option_revision_id"]
++                   and r2["source_parent_uid"] == "uid-A-1"
++                   and r2["root_uid"] == "uid-A-1"
++                   and r2["parent_link_status"] == "resolved"),
++              {"v1": {"revision_no": r1["revision_no"], "main_id": r1["option_revision_id"]},
++               "v2": {"revision_no": r2["revision_no"],
++                      "parent": r2["parent_revision_id"],
++                      "source_parent_uid": r2["source_parent_uid"],
++                      "root_uid": r2["root_uid"],
++                      "link": r2["parent_link_status"]}})
++
++        # ------------------------------------------------------- L03 forks
++        codea, _ = http("POST", f"{base}/import-studio", body(art_a2a))
++        codeb, _ = http("POST", f"{base}/import-studio", body(art_a2b))
++        rows = revisions()
++        fa = next(r for r in rows if r["source_uid"] == "uid-A-2a")
++        fb = next(r for r in rows if r["source_uid"] == "uid-A-2b")
++        check("L03", "同一父的两个分叉：都指向 v1，彼此不是父子关系",
++              bool(codea == 200 and codeb == 200
++                   and fa["parent_revision_id"] == r1["option_revision_id"]
++                   and fb["parent_revision_id"] == r1["option_revision_id"]
++                   and fa["option_revision_id"] not in
++                   {fa["parent_revision_id"], fb["option_revision_id"]}
++                   and fa["revision_no"] != fb["revision_no"]),
++              {"fork_a": {"rev": fa["revision_no"], "parent": fa["parent_revision_id"]},
++               "fork_b": {"rev": fb["revision_no"], "parent": fb["parent_revision_id"]},
++               "shared_parent": r1["option_revision_id"]})
++
++        # --------------------------------------------------- L04 out of order
++        art_new = save(studio, "A", plan_a2, uid="uid-A-order-3",
++                       parent_uid="uid-A-order-2")
++        art_old = save(studio, "A", plan_a2a, uid="uid-A-order-2",
++                       parent_uid="uid-A-order-1")
++        art_root = save(studio, "A", base_a, uid="uid-A-order-1", parent_uid=None)
++        code_new1, resp_new1 = http("POST", f"{base}/import-studio", body(art_new))
++        code_root, _ = http("POST", f"{base}/import-studio", body(art_root))
++        code_old, _ = http("POST", f"{base}/import-studio", body(art_old))
++        code_new2, resp_new2 = http("POST", f"{base}/import-studio", body(art_new))
++        rows = revisions()
++        o_root = next(r for r in rows if r["source_uid"] == "uid-A-order-1")
++        o_old = next(r for r in rows if r["source_uid"] == "uid-A-order-2")
++        o_new = next(r for r in rows if r["source_uid"] == "uid-A-order-3")
++        check("L04", "乱序导入：父未导入时明确拒绝；补齐父后父链正确，不把旧稿接在新稿后",
++              bool(code_new1 == 409
++                   and resp_new1.get("error_code") == "SOURCE_PARENT_NOT_IMPORTED"
++                   and code_root == 200 and code_old == 200 and code_new2 == 200
++                   and o_old["parent_revision_id"] == o_root["option_revision_id"]
++                   and o_new["parent_revision_id"] == o_old["option_revision_id"]
++                   and o_root["parent_revision_id"] is None),
++              {"first_new_import": [code_new1, resp_new1.get("error_code")],
++               "root": [o_root["revision_no"], o_root["parent_revision_id"]],
++               "old": [o_old["revision_no"], o_old["parent_revision_id"]],
++               "new": [o_new["revision_no"], o_new["parent_revision_id"]]})
++
++        # ------------------------------------------------------- L05 orphan
++        code, imp_orphan = http("POST", f"{base}/import-studio",
++                                body(art_orphan, allow_orphan=True))
++        rows = revisions()
++        orphan = next(r for r in rows if r["source_uid"] == "uid-A-orphan-2")
++        check("L05", "缺父且显式 allow_orphan：parent 为 null 且标记缺父，不伪造父关系",
++              bool(code == 200 and orphan["parent_revision_id"] is None
++                   and orphan["parent_link_status"] == "source_parent_not_imported"
++                   and orphan["root_uid"] == "uid-A-orphan-1"),
++              {"status": code, "revision_no": orphan["revision_no"],
++               "parent": orphan["parent_revision_id"],
++               "link": orphan["parent_link_status"], "root": orphan["root_uid"]})
++
++        # ------------------------------------------- L06 source chain broken
++        code, resp = http("POST", f"{base}/import-studio", body(art_broken))
++        check("L06", "源父 UID 在 Studio 库中不存在：明确拒绝，不猜谱系",
++              bool(code == 409 and resp.get("error_code") == "SOURCE_PARENT_MISSING"),
++              {"status": code, "error_code": resp.get("error_code")})
++
++        # ----------------------------- L07 same-source concurrent (HTTP barrier)
++        art_c = save(studio, "C", base_b, uid="uid-C-1", parent_uid=None)
++        before_rows, before_svg = len(revisions()), svg_count()
++        results: list[tuple[int, dict]] = []
++        barrier = threading.Barrier(2)
++
++        def same_source_worker():
++            barrier.wait()
++            results.append(http("POST", f"{base}/import-studio", body(art_c)))
++
++        threads = [threading.Thread(target=same_source_worker) for _ in range(2)]
++        for t in threads:
++            t.start()
++        for t in threads:
++            t.join(60)
++        rows = revisions()
++        c_rows = [r for r in rows if r["source_uid"] == "uid-C-1"]
++        check("L07", "同源并发（屏障同时发起）：只产生一个版本，另一个复用；无半记录/遗留文件",
++              bool(len(results) == 2
++                   and all(code == 200 for code, _ in results)
++                   and sum(1 for _, r in results if r.get("reused") is False) == 1
++                   and len(c_rows) == 1
++                   and len(rows) == before_rows + 1
++                   and svg_count() == before_svg + 1),
++              {"responses": [(c, r.get("reused")) for c, r in results],
++               "versions": len(c_rows), "rows_delta": len(rows) - before_rows,
++               "svg_delta": svg_count() - before_svg})
++
++        # ------------------------ L08 same-lineage concurrent (two forks at once)
++        art_d1 = save(studio, "D", base_a, uid="uid-D-1", parent_uid=None)
++        art_d2 = save(studio, "D", plan_a2, uid="uid-D-2", parent_uid="uid-D-1")
++        art_d3 = save(studio, "D", plan_a2b, uid="uid-D-3", parent_uid="uid-D-1")
++        http("POST", f"{base}/import-studio", body(art_d1))
++        rows = revisions()
++        d1 = next(r for r in rows if r["source_uid"] == "uid-D-1")
++        before_rows, before_svg = len(rows), svg_count()
++        results2: list[tuple[int, dict]] = []
++        barrier2 = threading.Barrier(2)
++
++        def lineage_worker(art):
++            barrier2.wait()
++            results2.append(http("POST", f"{base}/import-studio", body(art)))
++
++        threads = [threading.Thread(target=lineage_worker, args=(a,))
++                   for a in (art_d2, art_d3)]
++        for t in threads:
++            t.start()
++        for t in threads:
++            t.join(60)
++        rows = revisions()
++        d2 = next(r for r in rows if r["source_uid"] == "uid-D-2")
++        d3 = next(r for r in rows if r["source_uid"] == "uid-D-3")
++        check("L08", "同谱系并发（两个分叉同时导入）：版本号不冲突，父都指向 v1，无 500/唯一约束异常",
++              bool(len(results2) == 2
++                   and all(code == 200 for code, _ in results2)
++                   and len(rows) == before_rows + 2
++                   and svg_count() == before_svg + 2
++                   and d2["parent_revision_id"] == d1["option_revision_id"]
++                   and d3["parent_revision_id"] == d1["option_revision_id"]
++                   and d2["revision_no"] != d3["revision_no"]),
++              {"responses": [c for c, _ in results2],
++               "versions": [d2["revision_no"], d3["revision_no"]],
++               "parents": [d2["parent_revision_id"], d3["parent_revision_id"]],
++               "shared_parent": d1["option_revision_id"],
++               "rows_delta": len(rows) - before_rows,
++               "svg_delta": svg_count() - before_svg})
++
++        # --------------------------- L09 design origin vs adaptation origin
++        code, imp_nodecl = http("POST", f"{base}/import-studio", body(art_nodecl))
++        rows = revisions()
++        nodecl = next((r for r in rows if r["source_uid"] == "uid-A-nodecl-1"), None)
++        fixture_row = next(r for r in rows if r["source_uid"] == "uid-A-1")
++        check("L09", "设计来源与适配来源分开：传输路径=studio_import，上游来源按声明保留，未声明保持 unknown",
++              bool(code == 200 and nodecl is not None
++                   and fixture_row["origin_kind"] == "studio_import"
++                   and fixture_row["design_origin"]["kind"] == "fixture"
++                   and nodecl["design_origin"]["kind"] == "unknown"
++                   and nodecl["design_origin"]["declared_by"] == "not_declared"),
++              {"fixture_origin": fixture_row["design_origin"],
++               "undeclared_origin": nodecl["design_origin"] if nodecl else None,
++               "transport_origin": fixture_row["origin_kind"]})
++
++        # ------------------- L10 precise spatial authority + bbox loss visible
++        code, detail = http("GET", f"{base}/studio-imports/{r2['option_revision_id']}")
++        spatial = (detail.get("spatial") or {})
++        model = (detail.get("item") or {}).get("model") or {}
++        zone = (spatial.get("zones") or [{}])[0]
++        legacy = next((o for o in model.get("objects", [])
++                       if o["object_id"] == "ZA1"), {})
++        check("L10", "精确 spatial 是权威：多边形原样、bbox 只作 legacy 显示且有损失声明",
++              bool(code == 200
++                   and zone.get("polygon_mm") == plan_a2["zones"][0]["polygon"]
++                   and legacy.get("properties", {}).get("geometry_mode") == "bbox_derived"
++                   and any("bounding_box_only" in json.dumps(l)
++                           for l in spatial.get("adaptation", {}).get("losses", []))),
++              {"polygon_equal": zone.get("polygon_mm") == plan_a2["zones"][0]["polygon"],
++               "legacy_geometry_mode": legacy.get("properties", {}).get("geometry_mode"),
++               "losses": spatial.get("adaptation", {}).get("losses")})
++
++        # ---------------------- L11 adopt a selected fork, old one still rejected
++        rows = revisions()
++        lineage_rows = [r for r in rows if r["option_id"] == r2["option_id"]]
++        head = max(lineage_rows, key=lambda r: r["revision_no"])
++        code, adopted = http(
++            "POST", f"{base}/{head['option_id']}/adopt",
++            {"expected_revision": head["revision_no"], "expected_version": 0})
++        code_old, stale = http(
++            "POST", f"{base}/{r1['option_id']}/adopt",
++            {"expected_revision": 1, "expected_version": 1})
++        check("L11", "显式采用指定分叉版本成功；再采用旧版本被 CAS 拒绝（谱系身份可用于采用）",
++              bool(code == 200 and adopted.get("formal_approval") is False
++                   and code_old == 409 and stale.get("error_code") == "STALE_OPTION_REVISION"),
++              {"adopt": code, "adopt_old": [code_old, stale.get("error_code")],
++               "adopted_revision": head["revision_no"],
++               "lineage_revisions": [r["revision_no"] for r in lineage_rows]})
++        # ---------- L12/L13 deterministic seam: competing commit between prepare and write
++        art_e = save(studio, "E", base_a, uid="uid-E-1", parent_uid=None)
++        art_f = save(studio, "F", base_b, uid="uid-F-1", parent_uid=None)
++        before_rows, before_svg = len(revisions()), svg_count()
++        inner_done = {"same_source": False}
++        outer_same = {}
++
++        def competing_same_source():
++            if inner_done["same_source"]:
++                return
++            inner_done["same_source"] = True
++            outer_same["inner"] = options_ai.import_studio_proposal(
++                ORG, PID, "tester", body(art_f))
++
++        outer_same["outer"] = options_ai.import_studio_proposal(
++            ORG, PID, "tester", body(art_f),
++            after_prepare=competing_same_source)
++        rows = revisions()
++        f_rows = [r for r in rows if r["source_uid"] == "uid-F-1"]
++        check("L12", "确定性并发（同源）：准备后、提交前另一个请求写入，写内重检复用且清理自己的文件",
++              bool(outer_same["outer"].get("reused") is True
++                   and outer_same["inner"].get("reused") is False
++                   and len(f_rows) == 1
++                   and len(rows) == before_rows + 1
++                   and svg_count() == before_svg + 1),
++              {"outer_reused": outer_same["outer"].get("reused"),
++               "inner_reused": outer_same["inner"].get("reused"),
++               "versions": len(f_rows),
++               "rows_delta": len(rows) - before_rows,
++               "svg_delta": svg_count() - before_svg})
++
++        art_g1 = save(studio, "G", base_a, uid="uid-G-1", parent_uid=None)
++        art_g2 = save(studio, "G", plan_a2, uid="uid-G-2", parent_uid="uid-G-1")
++        art_g3 = save(studio, "G", plan_a2b, uid="uid-G-3", parent_uid="uid-G-1")
++        http("POST", f"{base}/import-studio", body(art_g1))
++        before_rows, before_svg = len(revisions()), svg_count()
++        inner_done2 = {"done": False}
++        outer_lineage = {}
++
++        def competing_sibling():
++            if inner_done2["done"]:
++                return
++            inner_done2["done"] = True
++            outer_lineage["inner"] = options_ai.import_studio_proposal(
++                ORG, PID, "tester", body(art_g3))
++
++        outer_lineage["outer"] = options_ai.import_studio_proposal(
++            ORG, PID, "tester", body(art_g2),
++            after_prepare=competing_sibling)
++        rows = revisions()
++        g1 = next(r for r in rows if r["source_uid"] == "uid-G-1")
++        g2 = next(r for r in rows if r["source_uid"] == "uid-G-2")
++        g3 = next(r for r in rows if r["source_uid"] == "uid-G-3")
++        check("L13", "确定性并发（同谱系两分叉）：写内重算版本号，父都指向 v1，无双写/唯一冲突",
++              bool(outer_lineage["outer"].get("reused") is False
++                   and outer_lineage["inner"].get("reused") is False
++                   and g2["revision_no"] != g3["revision_no"]
++                   and g2["parent_revision_id"] == g1["option_revision_id"]
++                   and g3["parent_revision_id"] == g1["option_revision_id"]
++                   and len(rows) == before_rows + 2
++                   and svg_count() == before_svg + 2),
++              {"revision_numbers": [g2["revision_no"], g3["revision_no"]],
++               "parents": [g2["parent_revision_id"], g3["parent_revision_id"]],
++               "shared_parent": g1["option_revision_id"],
++               "rows_delta": len(rows) - before_rows,
++               "svg_delta": svg_count() - before_svg})
++
++    finally:
++        server.shutdown(); server.server_close(); thread.join(3)
++        main_store.close()
++
++    failed = sum(1 for c in CHECKS if c["result"] != "observed_pass")
++    out = {
++        "task_id": "W1 版本谱系收口（源谱系身份 / 父 UID 映射 / 写内并发重检）",
++        "schema_version": "rkd-w1-lineage-checks.v1",
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "code_head": __import__("subprocess").run(
++            ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
++            capture_output=True, text=True).stdout.strip(),
++        "environment": {"python": sys.version.split()[0],
++                        "isolated_main_db": str(MAIN_DB),
++                        "isolated_studio_db": str(STUDIO_DB),
++                        "model_channel": "labelled local fixtures only",
++                        "keys_used": False},
++        "checks": CHECKS,
++        "totals": {"observed_pass": len(CHECKS) - failed, "observed_fail": failed},
++        "external_calls": 0, "tokens": 0, "cost_amount_or_null": None,
++        "cost_status": "no_external_calls_zero_cost",
++        "limitations": [
++            "源是明确标记的本地夹具，不是真实 AI 设计，不计入 AD01—AD08",
++            "并发用线程屏障同时发起真实 HTTP；不覆盖多进程/断电恢复",
++            "W2 制图/渲染/量价未开始；Q10 仍 not_run",
++        ],
++    }
++    (EVIDENCE / "lineage-checks.json").write_text(
++        json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"passed": len(CHECKS) - failed, "failed": failed,
++                      "out": str(EVIDENCE / "lineage-checks.json")}, ensure_ascii=False))
++    return 0 if failed == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify_w1_unified_model.py b/scripts/verify_w1_unified_model.py
+index c915f60..23057e9 100644
+--- a/scripts/verify_w1_unified_model.py
++++ b/scripts/verify_w1_unified_model.py
+@@ -125,13 +125,20 @@ def mutated_plan(plan: dict, mutate) -> dict:
+     return out
+ 
+ 
+-def save_valid(studio: Store, letter: str, plan: dict, *, revision: int = 1) -> dict:
++def save_valid(studio: Store, letter: str, plan: dict, *, revision: int = 1,
++               parent_artifact: dict | None = None, uid: str | None = None) -> dict:
++    """Save a valid Studio artifact with a REAL parent UID chain (W1-R1).
++
++    The fixture must express source lineage explicitly; import order is not a
++    parent relationship.
++    """
++    revision_uid = uid or f"revuid_w1_{letter}_{revision}_{len(plan['zones'])}"
+     aid = studio.save_artifact(
+         STUDIO_PID, "spatial-plan", plan, "D2", option_id=letter, revision=revision,
+         parent_revision=None, status="valid_candidate", run_id="run_w1_fixture",
+         candidate_group_id="candgroup_w1_fixture",
+-        revision_uid=f"revuid_w1_{letter}_{revision}_{len(plan['zones'])}",
+-        parent_revision_uid=None,
++        revision_uid=revision_uid,
++        parent_revision_uid=(parent_artifact or {}).get("revision_uid"),
+         input_hash_value=hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest(),
+         check_report_id="check_w1_fixture", contract_status="valid_candidate",
+         diagnostics={"source": "labelled_local_fixture_not_real_AI"})
+@@ -360,7 +367,7 @@ def main() -> int:
+             p["zones"][0].update(polygon=[[0, 8600], [5400, 8600], [5400, 13500],
+                                          [1800, 13500], [0, 11900]]),
+             p["furniture"][2].update(rot=-30)))
+-        art_a2 = save_valid(studio, "A", plan_a2, revision=2)
++        art_a2 = save_valid(studio, "A", plan_a2, revision=2, parent_artifact=art_a)
+         code, imp_a2, _ = http("POST", f"{base}/import-studio", import_body(art_a2))
+         rev_a2 = imp_a2.get("item") or {}
+         diffs = rev_a2.get("diff") or []
