@@ -3,6 +3,9 @@
 编制时间：2026-11-14 18:50（北京时间）；证据实际执行时间见 `manifest.json` 时间轴。
 上游依据：`deliverables-for-review/roadmap/TEXT-architect-review/architect-review.md`（结论：原 14 个函数案例与 12 项 HTTP 已独立通过，W0 仍不放行，剩余三处共用解析边界）与同目录 `boundary-cases.json`。
 比较基线（base）：`db9121e0abecb6d5cbe3941ec73aab2fe578e6b1`（`db9121e`）；
+本批业务实现提交：`3688cd41c597703560bdcd626600e9325d88d258`（`3688cd4`，2026-11-14 18:48:48 +08:00）。
+**证据全部在提交前采集**，所以各 JSON 里的 `git_head` 是 `db9121e`；
+时间轴与提交对照见 `commit-reference.md`。
 复核命令：`git diff db9121e -- mvp scripts`（补丁在 `changes.patch`）。
 性质：**工程正确性整改与可复核证据**。不是设计完成，不是设计通过，**本包不宣布 W0 放行**，不改 AD01—AD08。
 

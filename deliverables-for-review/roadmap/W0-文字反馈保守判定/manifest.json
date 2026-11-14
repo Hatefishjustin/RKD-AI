@@ -7,7 +7,10 @@
     "compare_base_subject": "docs: W0 文字反馈收口复核包补提交号与时间轴",
     "head_when_evidence_taken": "db9121e0abecb6d5cbe3941ec73aab2fe578e6b1",
     "rebuild_command": "git diff db9121e -- mvp scripts",
-    "patch_bytes": 72454
+    "patch_bytes": 72454,
+    "batch_commit": "3688cd41c597703560bdcd626600e9325d88d258",
+    "batch_commit_at": "2026-11-14 18:48:48 +0800",
+    "evidence_head_note": "证据在提交前采集，故各 JSON 的 git_head=db9121e；本批代码见 batch_commit"
   },
   "timeline": [
     {
@@ -120,13 +123,17 @@
       "bytes": 4979,
       "sha256": "76d74e41c6357545cc151d491a802e50d78829fc84c3a7cd4922d35e88908fe1"
     },
+    "commit-reference.md": {
+      "bytes": 2857,
+      "sha256": "a9d9617bc65ef9d04af285edb9aef18da228293075622d8a982e06121df187a7"
+    },
     "positive-negative-cases.md": {
       "bytes": 6257,
       "sha256": "a101f88dd5666065eb31a90c39799a8340c132f17f5b1ab0ff9223a16bf9416e"
     },
     "review-packet.md": {
-      "bytes": 15639,
-      "sha256": "44550c54a1624a403ef743335ae4643d4a148e3ce2d6f6f98833575c1faca638"
+      "bytes": 16071,
+      "sha256": "35d025c64f83320a6564a48d48e990ea7b4a7309c71ea1d95daf8334413006e6"
     },
     "runtime/frontend-tsc.log": {
       "bytes": 0,
