@@ -8,7 +8,10 @@
     "decision_base": "4ef7c724d90bf2e0d9263a26368bde81fb628fae",
     "head_when_evidence_taken": "0524d3d87525eb1e05001d10574148e8b22f10bd",
     "rebuild_command": "git diff 0524d3d -- mvp web scripts",
-    "patch_bytes": 197602
+    "patch_bytes": 197602,
+    "batch_commit": "27b389dcd23068d08657103d8f9be56a8abc8a44",
+    "batch_commit_at": "2026-11-14 13:27:53 +0800",
+    "evidence_head_note": "证据在提交前采集，故 checks/repro 的 code_head=0524d3d；本批代码见 batch_commit"
   },
   "timeline": [
     {
@@ -106,13 +109,17 @@
       "bytes": 9980,
       "sha256": "8bc830625b72102b72e8a8c74de30416c918ed78e09ffa7979e86b6ef34fbee3"
     },
+    "commit-reference.md": {
+      "bytes": 2778,
+      "sha256": "f425bfd751f311e2d80b9cd0d4c05da9acc7963da414d0e59638fabaf51bffe4"
+    },
     "positive-negative-cases.md": {
       "bytes": 10266,
       "sha256": "fbe39402a49a9a14d0f9dc122835aa35cf2506ea70e070c5395b3c446c450778"
     },
     "review-packet.md": {
-      "bytes": 18034,
-      "sha256": "b7135c26e5c162b7058bf23c7c7172931db43d6dc0ca20cbfff2be3fa6926596"
+      "bytes": 18342,
+      "sha256": "0f76a37a8b109b9820297fbfb5e30d0f5f7083a4e739626f9bf222a1bdcb3338"
     },
     "runtime/frontend-build.log": {
       "bytes": 895,

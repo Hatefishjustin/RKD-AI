@@ -4,7 +4,9 @@
 上游依据：`deliverables-for-review/roadmap/W0-architect-review/architect-review.md`（结论"限定整改，暂不进入 W1"）、
 `independent-negative-cases.json`、`w0-independent-rerun.json`。
 比较基线（base）：`0524d3d87525eb1e05001d10574148e8b22f10bd`（`0524d3d`）；
-复核代码固定用 `git diff 0524d3d -- mvp web scripts`（补丁在 `changes.patch`）。
+本批业务实现提交：`27b389dcd23068d08657103d8f9be56a8abc8a44`（`27b389d`，2026-11-14 13:27:53 +08:00）。
+**证据全部在提交前采集**，所以 `checks.json` / `repro.json` 里的 `code_head` 是 `0524d3d`；
+时间轴与提交对照见 `commit-reference.md`。复核代码固定用 `git diff 0524d3d -- mvp web scripts`（补丁在 `changes.patch`）。
 性质：**工程缺陷整改与可复核证据**。不是设计完成，不是设计通过，不是 AD 验收，**本包不宣布 W0 放行**。
 
 ## 1. 架构师五项整改的落地位置
@@ -173,7 +175,8 @@ valid_artifacts_of_run_after = 0       cancel_requested = 1
 ## 10. 完整文件路径（均在 `D:\Github\RKD AI\` 下）
 
 复核包：`deliverables-for-review\roadmap\W0-二次收口\`
-- `review-packet.md`（本文件）、`manifest.json`、`code-diff.md`、`changes.patch`、`positive-negative-cases.md`
+- `review-packet.md`（本文件）、`manifest.json`、`code-diff.md`、`changes.patch`、
+  `positive-negative-cases.md`、`commit-reference.md`
 - `before\repro.json`（整改前 17/17 缺陷）
 - `after\repro.json`、`after\checks.json`、`after\arc-first-batch-regression-checks.json`、`after\q-checks.json`
 - `browser\verification.json`、`browser\browser-observations.json`、3 张截图
