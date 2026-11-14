@@ -287,8 +287,12 @@ class ApiRoutes:
                 return
             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs", path)
             if ai_match:
+                query = parse_qs(urlsplit(self.path).query)
                 return self._json(200, self.service.get_ai_spatial_outputs(
-                    organization_id, ai_match.group(1)))
+                    organization_id, ai_match.group(1),
+                    job_id=(query.get("job_id", [""])[0] or None),
+                    production_revision_id=(query.get("production_revision_id", [""])[0]
+                                            or None)))
             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/design-options/studio-sources", path)
             if ai_match:
                 return self._json(200, self.service.get_ai_design_studio_sources(
@@ -520,6 +524,15 @@ class ApiRoutes:
                     organization_id, ai_match.group(1), actor_id,
                     {**self._body(), "option_id": ai_match.group(2)},
                 ))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs/([^/]+)/cancel", path)
+            if ai_match:
+                return self._json(200, self.service.cancel_ai_spatial_output(
+                    organization_id, ai_match.group(1), ai_match.group(2)))
+            ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs/([^/]+)/retry", path)
+            if ai_match:
+                return self._json(202, self.service.retry_ai_spatial_output(
+                    organization_id, ai_match.group(1), actor_id, ai_match.group(2),
+                    self._body(), self.headers.get("Idempotency-Key", "")))
             ai_match = re.fullmatch(r"/api/v1/projects/([^/]+)/ai/spatial-outputs", path)
             if ai_match:
                 return self._json(202, self.service.submit_ai_spatial_outputs(

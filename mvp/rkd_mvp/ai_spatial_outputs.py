@@ -24,12 +24,13 @@ from typing import Any
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
-GENERATOR_VERSION = "rkd-spatial-outputs.v1"
-PLAN_VERSION = "rkd-spatial-plan.v2"
+GENERATOR_VERSION = "rkd-spatial-outputs.v2"
+PLAN_VERSION = "rkd-spatial-plan.v3"
 SCENE_VERSION = "rkd-spatial-scene.v1"
-QUANTITY_VERSION = "rkd-spatial-quantity.v1"
-COST_VERSION = "rkd-spatial-cost.v1"
-MANIFEST_VERSION = "rkd-spatial-output-manifest.v1"
+QUANTITY_VERSION = "rkd-spatial-quantity.v2"
+COST_VERSION = "rkd-spatial-cost.v2"
+MANIFEST_VERSION = "rkd-spatial-output-manifest.v2"
+FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v1"
 
 MM2 = 1_000_000.0
 
@@ -140,12 +141,161 @@ def _shoelace_mm2(points: list) -> float:
     return abs(area) / 2.0
 
 
-def measure(model: dict) -> dict:
-    """Deterministic quantities from EXACT polygons (bbox values kept only to prove they differ)."""
+# ------------------------------------------------- independent area (no Shapely)
+def _scanline_intervals(points: list, x: float) -> list[tuple[float, float]]:
+    """Interior y-intervals of one polygon at abscissa x (even-odd crossings)."""
+    crossings: list[float] = []
+    for i, (x1, y1) in enumerate(points):
+        x2, y2 = points[(i + 1) % len(points)]
+        if x1 == x2:
+            continue
+        if min(x1, x2) < x < max(x1, x2):
+            crossings.append(y1 + (y2 - y1) * (x - x1) / (x2 - x1))
+    crossings.sort()
+    return [(crossings[i], crossings[i + 1]) for i in range(0, len(crossings) - 1, 2)]
+
+
+def _merge(intervals: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    out: list[list[float]] = []
+    for low, high in sorted(intervals):
+        if out and low <= out[-1][1] + 1e-9:
+            out[-1][1] = max(out[-1][1], high)
+        else:
+            out.append([low, high])
+    return [(a, b) for a, b in out]
+
+
+def _subtract(intervals: list[tuple[float, float]],
+              holes: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    result = list(intervals)
+    for hole_low, hole_high in holes:
+        nxt: list[tuple[float, float]] = []
+        for low, high in result:
+            if hole_high <= low or hole_low >= high:
+                nxt.append((low, high))
+                continue
+            if low < hole_low:
+                nxt.append((low, hole_low))
+            if hole_high < high:
+                nxt.append((hole_high, high))
+        result = nxt
+    return result
+
+
+def _length(intervals: list[tuple[float, float]]) -> float:
+    return sum(high - low for low, high in intervals)
+
+
+def scanline_area(polys: list[list[list[float]]]) -> float:
+    """Exact area of the UNION of polygons by vertical-strip integration.
+
+    Deliberately independent of Shapely: stripes are cut at every vertex
+    abscissa and sampled at the mid-point, so overlapping polygons are unioned
+    (not summed) and no GEOS predicate is reused.
+    """
+    xs = sorted({float(p[0]) for poly in polys for p in poly})
+    total = 0.0
+    for a, b in zip(xs, xs[1:]):
+        if b - a <= 0:
+            continue
+        mid = (a + b) / 2.0
+        intervals: list[tuple[float, float]] = []
+        for poly in polys:
+            intervals.extend(_scanline_intervals(poly, mid))
+        total += (b - a) * _length(_merge(intervals))
+    return total
+
+
+def scanline_area_minus(polys: list[list[list[float]]],
+                        holes: list[list[list[float]]]) -> float:
+    """Union(polys) minus Union(holes), same strip method; holes never double-deduct."""
+    if not holes:
+        return scanline_area(polys)
+    xs = sorted({float(p[0]) for poly in polys + holes for p in poly})
+    total = 0.0
+    for a, b in zip(xs, xs[1:]):
+        if b - a <= 0:
+            continue
+        mid = (a + b) / 2.0
+        inside: list[tuple[float, float]] = []
+        for poly in polys:
+            inside.extend(_scanline_intervals(poly, mid))
+        holes_at: list[tuple[float, float]] = []
+        for poly in holes:
+            holes_at.extend(_scanline_intervals(poly, mid))
+        total += (b - a) * _length(_subtract(_merge(inside), _merge(holes_at)))
+    return total
+
+
+def _polygon_pts(obj: dict) -> list[list[float]]:
+    return [[float(p[0]), float(p[1])] for p in obj.get("polygon_mm") or []]
+
+
+def normalize_finish_scope(scope: dict | None) -> dict | None:
+    """Validate an explicitly declared material-face / paving scope.
+
+    The scope must carry its own provenance: it is the only thing that may turn
+    a geometric zone union into a supported finish quantity.
+    """
+    if scope is None:
+        return None
+    if not isinstance(scope, dict):
+        raise ValueError("finish_scope 必须是对象")
+    areas = scope.get("areas")
+    if not isinstance(areas, list) or not areas:
+        raise ValueError("finish_scope.areas 必须是非空数组")
+    declared_by = scope.get("declared_by")
+    if not isinstance(declared_by, str) or not declared_by:
+        raise ValueError("finish_scope.declared_by 必须标明来源（人工/夹具/依据）")
+    parsed = []
+    for index, area in enumerate(areas):
+        pts = _polygon_pts(area)
+        if len(pts) < 3:
+            raise ValueError(f"finish_scope.areas[{index}] 多边形少于 3 点")
+        material = area.get("material_ref") or {}
+        if not material.get("material_id") and area.get("material_id"):
+            material = {"material_id": area.get("material_id"),
+                        "name": area.get("material_name"),
+                        "spec_status": area.get("material_spec_status")}
+        if not material.get("material_id"):
+            raise ValueError(f"finish_scope.areas[{index}] 缺少 material_ref.material_id")
+        parsed.append({
+            "object_id": str(area.get("object_id") or f"FA{index + 1}"),
+            "name": str(area.get("name") or f"材料面 {index + 1}"),
+            "polygon_mm": pts,
+            "material_id": str(material["material_id"]),
+            "material_name": material.get("name"),
+            "material_spec_status": material.get("spec_status") or "unknown",
+            "unit": area.get("unit") or "m2",
+        })
+    return {"schema_version": FINISH_SCOPE_VERSION,
+            "kind": scope.get("kind") or "material_face_slice",
+            "declared_by": declared_by,
+            "declaration": scope.get("declaration"),
+            "unit": scope.get("unit") or "mm",
+            "deduction_basis": scope.get("deduction_basis") or "keepouts_within_scope",
+            "site_verified": False,
+            "areas": parsed}
+
+
+def measure(model: dict, *, finish_scope: dict | None = None) -> dict:
+    """Deterministic quantities from EXACT polygons.
+
+    Two different things are deliberately kept apart:
+
+    * ``Q-FLOOR-GEOMETRIC-NET`` — geometric net area of the functional zones
+      (zones minus keep-outs). Computable, and NOT a finished-floor quantity.
+    * ``Q-FLOOR-FINISH`` — supported finish/paving net area. Only known when an
+      explicitly sourced material-face scope is supplied; otherwise unknown.
+
+    The independent recompute never reuses the Shapely deduction value: it runs a
+    vertical-strip union/subtraction over the raw vertex lists.
+    """
     zones = _zone_polygons(model)
     union = unary_union([p for _oid, p in zones])
     keepouts = _keepouts(model)
-    keep_union = unary_union([p for _oid, p in keepouts]) if keepouts else None
+    keep_polys = [p for _oid, p in keepouts]
+    keep_union = unary_union(keep_polys) if keep_polys else None
     deducted = (union.intersection(keep_union).area if keep_union else 0.0)
     gross = union.area
     net = gross - deducted
@@ -153,9 +303,27 @@ def measure(model: dict) -> dict:
     bbox_gross = bbox_union.area
     bbox_net = bbox_gross - (bbox_union.intersection(keep_union).area
                              if keep_union else 0.0)
-    independent = sum(_shoelace_mm2([(float(p[0]), float(p[1]))
-                                     for p in z["polygon_mm"]])
-                      for z in model["spatial"]["zones"]) / MM2
+
+    # independent path: raw vertices only, no Shapely geometry objects
+    zone_pts = [_polygon_pts(z) for z in model["spatial"]["zones"]]
+    keep_pts = []
+    for o in model["boundary"]["obstacles"]:
+        s = o["shape"]
+        x, y = float(s["x"]) * 1000, float(s["y"]) * 1000
+        w, l = float(s["width"]) * 1000, float(s["length"]) * 1000
+        keep_pts.append([[x, y], [x + w, y], [x + w, y + l], [x, y + l]])
+    independent_gross = scanline_area(zone_pts) / MM2
+    independent_net = scanline_area_minus(zone_pts, keep_pts) / MM2
+
+    # zone overlap: sum of zones is only equal to the union when zones are disjoint
+    overlap = 0.0
+    for i, (_oid_a, pa) in enumerate(zones):
+        for _oid_b, pb in zones[i + 1:]:
+            if pa.intersects(pb):
+                overlap += pa.intersection(pb).area
+    shoelace_sum = sum(_shoelace_mm2(_polygon_pts(z))
+                       for z in model["spatial"]["zones"]) / MM2
+
     declared = sum(float(z.get("area_sqm") or 0) for z in model["spatial"]["zones"])
     deductions = []
     for oid, poly in keepouts:
@@ -166,6 +334,10 @@ def measure(model: dict) -> dict:
     for p in model["spatial"].get("platforms") or []:
         if len(p.get("polygon_mm") or []) >= 3:
             platform_area += Polygon([(q[0], q[1]) for q in p["polygon_mm"]]).area
+
+    scope = normalize_finish_scope(finish_scope)
+    finish_item = _finish_quantity(scope, keep_pts)
+
     items = [
         {"quantity_id": "Q-FLOOR-GROSS", "name": "功能区地坪总面积（未扣）",
          "value": round(gross / MM2, 3), "unit": "m2", "known_status": "known",
@@ -176,14 +348,22 @@ def measure(model: dict) -> dict:
          "value": round(deducted / MM2, 3), "unit": "m2", "known_status": "known",
          "method": "exact_intersection_with_keepouts", "formula_version": QUANTITY_VERSION,
          "source_objects": [d["object_id"] for d in deductions], "deductions": deductions},
-        {"quantity_id": "Q-FLOOR-NET", "name": "地坪完成面净面积",
+        {"quantity_id": "Q-FLOOR-GEOMETRIC-NET", "name": "功能分区几何净面积（非完成面工程量）",
          "value": round(net / MM2, 3), "unit": "m2", "known_status": "known",
          "method": "exact_union_minus_keepouts", "formula_version": QUANTITY_VERSION,
+         "engineering_status": "geometric_only_not_a_finish_quantity",
          "source_objects": [oid for oid, _p in zones],
-         "independent_recompute_m2": round(independent - deducted / MM2, 3),
+         "independent_recompute_m2": round(independent_net, 3),
+         "independent_gross_m2": round(independent_gross, 3),
+         "independent_method": "vertical_strip_union_v1",
+         "independent_delta_m2": round(independent_net - net / MM2, 4),
+         "sum_of_zones_m2": round(shoelace_sum, 3),
+         "zone_overlap_m2": round(overlap / MM2, 3),
          "bbox_value_m2": round(bbox_net / MM2, 3),
          "bbox_delta_m2": round((bbox_net - net) / MM2, 3),
-         "note": "bbox 结果仅用于证明不能据包围盒计量；权威值是精确多边形"},
+         "note": "功能分区并集减保留区；可计算但不等于铺装/饰面完成面范围，"
+                 "不得直接流入已知工程量或正式报价。bbox 结果仅证明不能据包围盒计量"},
+        finish_item,
         {"quantity_id": "Q-PLATFORM-ENVELOPE", "name": "展台包络面积（非实体量）",
          "value": round(platform_area / MM2, 3), "unit": "m2",
          "known_status": "intent_only", "method": "exact_polygon_union",
@@ -203,56 +383,128 @@ def measure(model: dict) -> dict:
     return {"schema_version": QUANTITY_VERSION, "items": items,
             "declared_area_sum_m2": round(declared, 3),
             "declared_vs_exact_delta_m2": round(declared - net / MM2, 3),
-            "coverage": "只覆盖功能区地坪与保留区扣除；隔断/天花/门窗/机电未建模，保持 unknown"}
+            "finish_scope": scope,
+            "coverage": "只覆盖功能区几何面积与保留区扣除，以及可选的、显式标注来源的材料面切片；"
+                        "隔断/天花/门窗/机电未建模，保持 unknown"}
+
+
+def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
+    if scope is None:
+        return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积",
+                "value": None, "unit": "m2", "known_status": "unknown",
+                "unknown_reason": "功能分区几何净面积不等于铺装/饰面范围；"
+                                  "本批没有显式材料面或铺装范围依据，"
+                                  "不得据此推出完成面工程量",
+                "required_basis": "显式材料面切片（铺装范围 + 材料引用 + 计量单位 + 扣除依据 + 来源）"}
+    groups: dict[str, dict] = {}
+    total = 0.0
+    for area in scope["areas"]:
+        pts = area["polygon_mm"]
+        net = scanline_area_minus([pts], keep_pts) / MM2
+        total += net
+        gid = area["material_id"]
+        group = groups.setdefault(gid, {
+            "material_id": gid, "material_name": area["material_name"],
+            "material_spec_status": area["material_spec_status"],
+            "area_m2": 0.0, "area_objects": []})
+        group["area_m2"] = round(group["area_m2"] + net, 3)
+        group["area_objects"].append(area["object_id"])
+    return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积（按材料面切片）",
+            "value": round(total, 3), "unit": "m2", "known_status": "known",
+            "method": "declared_finish_scope_minus_keepouts",
+            "formula_version": QUANTITY_VERSION,
+            "source_objects": [a["object_id"] for a in scope["areas"]],
+            "basis_source": {"declared_by": scope["declared_by"],
+                             "declaration": scope["declaration"],
+                             "kind": scope["kind"], "unit": scope["unit"],
+                             "deduction_basis": scope["deduction_basis"],
+                             "site_verified": False},
+            "material_groups": sorted(groups.values(), key=lambda g: g["material_id"]),
+            "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；"
+                    "材料规格与产品选型仍为假设，单价缺失时金额保持 unknown"}
 
 
 # --------------------------------------------------------------------- cost
 def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
-    """A cost draft. Money is unknown unless the caller supplies an explicit
-    ASSUMPTION price; such an amount is labelled and is never a quote."""
+    """A cost draft. An amount is only shown when BOTH the area basis and an
+    explicit ASSUMPTION unit price exist; it is never a quote."""
     settings = settings or {}
-    net = next((q["value"] for q in quantities["items"]
-                if q["quantity_id"] == "Q-FLOOR-NET"), None)
-    price = settings.get("floor_unit_price_cny")
-    known_items = []
-    pricing_basis = {"unit_prices": "unknown", "loss_rate": "unknown",
-                     "labor_and_process": "unknown",
-                     "tax_rate": "user_confirmed_but_not_applied_without_price_source",
-                     "markup": "user_confirmed_but_not_applied_without_price_source"}
-    if isinstance(price, (int, float)) and not isinstance(price, bool) and price > 0 and net:
-        known_items.append({
-            "item": "地坪完成面（按输入假设单价试算）", "quantity_ref": "Q-FLOOR-NET",
-            "quantity_m2": net, "unit_price_cny": price,
-            "amount_cny": round(net * price, 2),
-            "basis": "caller_provided_assumption_not_a_quote",
-            "note": "单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺",
-        })
-        pricing_basis["unit_prices"] = "provided_by_caller_assumption"
-    unknown = [
-        {"statement": "地坪完成面单价（材料/工艺/损耗/起订量）未提供",
-         "quantity_ref": "Q-FLOOR-NET", "impact": "无法形成地坪金额"},
+    finish = next((q for q in quantities["items"]
+                   if q["quantity_id"] == "Q-FLOOR-FINISH"), None)
+    groups = (finish or {}).get("material_groups") or []
+    prices = settings.get("material_unit_prices")
+    prices = prices if isinstance(prices, dict) else {}
+    legacy_price = settings.get("floor_unit_price_cny")
+    if (not prices and isinstance(legacy_price, (int, float))
+            and not isinstance(legacy_price, bool) and legacy_price > 0 and groups):
+        prices = {groups[0]["material_id"]: legacy_price}
+    basis = {"area_basis": "unknown", "unit_prices": "unknown", "loss_rate": "unknown",
+             "labor_and_process": "unknown",
+             "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+             "markup": "user_confirmed_but_not_applied_without_price_source"}
+    known_items: list[dict] = []
+    unknown: list[dict] = []
+    if (finish or {}).get("known_status") != "known" or not groups:
+        basis["area_basis"] = "missing_finish_scope"
+        unknown.append({"statement": "地坪完成面铺装范围/材料面未提供，面积依据 unknown",
+                        "quantity_ref": "Q-FLOOR-FINISH",
+                        "impact": "即使给了单价也不试算金额，避免用假设单价掩盖未知范围"})
+    else:
+        basis["area_basis"] = (finish.get("basis_source") or {}).get("declared_by") or "declared"
+        for group in groups:
+            price = prices.get(group["material_id"])
+            if isinstance(price, (int, float)) and not isinstance(price, bool) and price > 0:
+                known_items.append({
+                    "item": f"{group.get('material_name') or group['material_id']}"
+                            f"（按输入假设单价试算）",
+                    "material_id": group["material_id"],
+                    "quantity_ref": f"Q-FLOOR-FINISH/{group['material_id']}",
+                    "quantity_m2": group["area_m2"], "unit_price_cny": price,
+                    "amount_cny": round(group["area_m2"] * price, 2),
+                    "basis": "caller_provided_assumption_not_a_quote",
+                    "area_basis_source": basis["area_basis"],
+                    "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，"
+                            "不是价源、不是报价、不含损耗与工艺",
+                })
+            else:
+                unknown.append({
+                    "statement": f"{group.get('material_name') or group['material_id']}"
+                                 f" 没有对应价源（材料/工艺/损耗/起订量）",
+                    "material_id": group["material_id"],
+                    "quantity_ref": f"Q-FLOOR-FINISH/{group['material_id']}",
+                    "impact": f"{group['area_m2']} ㎡ 的金额保持 unknown"})
+        basis["unit_prices"] = ("partially_provided_by_caller_assumption" if known_items
+                                else "not_provided")
+    unknown.extend([
         {"statement": "隔断、天花、门窗工程量未建模", "quantity_ref": "Q-PARTITION-LENGTH",
          "impact": "相关金额保持 unknown"},
-        {"statement": "税率与成本加成虽有用户口径，但没有价源，本批不做金额试算",
-         "quantity_ref": None, "impact": "不输出合计金额"},
-    ]
+        {"statement": "税率与成本加成虽有用户口径，但没有价源，本批不做合计试算",
+         "quantity_ref": None, "impact": "不输出项目合计金额"},
+    ])
     return {
         "schema_version": COST_VERSION, "currency": "CNY",
         "known_items": known_items,
         "unknown_items": unknown,
+        "assumption_trial_total_cny": (round(sum(i["amount_cny"] for i in known_items), 2)
+                                       if known_items else None),
         "total_project_estimate": {"value": None, "known_status": "unknown",
                                    "unknown_reason": "没有价源；不把地坪小计当项目总造价"},
         "formal_quote": False,
-        "pricing_basis": pricing_basis,
-        "note": "本批只证明净量与缺项口径；金额一律 unknown，不填 0",
+        "pricing_basis": basis,
+        "note": ("本页金额全部为调用方假设单价的试算，不是报价；" if known_items
+                 else "本页没有金额：面积依据或价源缺失；") + "金额一律不填 0",
     }
 
 
 def cost_html(cost: dict, quantities: dict) -> bytes:
-    rows = []
     qmap = {q["quantity_id"]: q for q in quantities["items"]}
-    for item in cost["known_items"]:
-        rows.append(f"<tr><td>{escape(str(item))}</td></tr>")
+    known_rows = "".join(
+        f"<tr><td>{escape(i['item'])}</td>"
+        f"<td>{escape(str(i.get('material_id') or '-'))}</td>"
+        f"<td>{i['quantity_m2']} ㎡</td><td>{i['unit_price_cny']}</td>"
+        f"<td>{i['amount_cny']}</td>"
+        f"<td>{escape(i.get('area_basis_source') or 'unknown')}</td></tr>"
+        for i in cost["known_items"])
     unknown_rows = "".join(
         f"<tr><td>{escape(u['statement'])}</td><td>{escape(str(u.get('quantity_ref') or '-'))}</td>"
         f"<td>{escape(u['impact'])}</td></tr>" for u in cost["unknown_items"])
@@ -260,17 +512,34 @@ def cost_html(cost: dict, quantities: dict) -> bytes:
         f"<tr><td>{escape(q['name'])}</td><td>{'' if q['value'] is None else q['value']}</td>"
         f"<td>{escape(q['unit'])}</td><td>{escape(q['known_status'])}</td></tr>"
         for q in quantities["items"])
+    finish = qmap.get("Q-FLOOR-FINISH") or {}
+    scope = finish.get("basis_source") or {}
+    if cost["known_items"]:
+        headline = ("以下金额是<b>假设单价试算</b>，面积依据同时列出；不是报价、不是合同、"
+                    "不含损耗/工艺/税，采购与发布未触发。")
+    else:
+        headline = ("本页没有金额：面积依据或价源缺失，所有金额保持 unknown。"
+                    "不把几何净量当作造价，也不把草案当报价或合同。")
+    scope_note = ("材料面来源：{}；说明：{}；现场复核：未做".format(
+        escape(str(scope.get("declared_by") or "unknown")),
+        escape(str(scope.get("declaration") or "未声明"))) if scope
+        else "材料面来源：未提供（完成面工程量 unknown）")
+    empty_known = '<tr><td colspan="6">无（面积依据或价源缺失）</td></tr>'
     html = f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <title>成本缺项表（草案）</title>
 <style>body{{font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif;margin:32px;color:#1f2937}}
 h1{{font-size:20px}}table{{border-collapse:collapse;width:100%;margin:12px 0 24px}}
 th,td{{border:1px solid #d7dee6;padding:6px 8px;text-align:left}}th{{background:#f1f5f9}}
-.warn{{background:#fff7ed;border-left:4px solid #c2410c;padding:10px 12px}}</style>
+.warn{{background:#fff7ed;border-left:4px solid #c2410c;padding:10px 12px}}
+.scope{{background:#f8fafc;border-left:4px solid #64748b;padding:8px 12px;font-size:13px}}</style>
 <h1>成本缺项表 · 草案（非正式报价）</h1>
-<div class="warn">本页没有金额：单价、损耗、工艺与产品选型均未提供，所有金额保持 unknown。
-不把地坪净量当作造价，也不把草案当报价或合同。</div>
-<h2>净量（已知）</h2><table><thead><tr><th>项目</th><th>数值</th><th>单位</th><th>状态</th></tr></thead>
+<div class="warn">{headline}</div>
+<div class="scope">{scope_note}</div>
+<h2>数量（按来源标注）</h2><table><thead><tr><th>项目</th><th>数值</th><th>单位</th><th>状态</th></tr></thead>
 <tbody>{qrows}</tbody></table>
+<h2>假设单价试算（非报价）</h2><table><thead><tr><th>项目</th><th>材料</th><th>面积</th>
+<th>假设单价</th><th>金额</th><th>面积依据来源</th></tr></thead>
+<tbody>{known_rows or empty_known}</tbody></table>
 <h2>金额缺项</h2><table><thead><tr><th>缺项</th><th>关联量</th><th>影响</th></tr></thead>
 <tbody>{unknown_rows}</tbody></table>
 <p>正式报价：关闭。外部下单/付款：未发生。</p></html>"""
@@ -425,13 +694,27 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
                      f'{escape(z["name"])}</text>')
         parts.append(f'<text x="{lx+250}" y="{yy}" font-size="10" text-anchor="end" '
                      f'fill="#0f172a">{z.get("area_sqm")} ㎡</text>')
-    net_item = next(q for q in quantities["items"] if q["quantity_id"] == "Q-FLOOR-NET")
-    parts.append(f'<text x="{lx}" y="{ty+38+len(spatial["zones"])*18+8}" font-size="10" '
-                 f'font-weight="600" fill="#0f172a">地坪净面积（扣保留区）</text>')
-    parts.append(f'<text x="{lx+250}" y="{ty+38+len(spatial["zones"])*18+8}" font-size="10" '
+    net_item = next(q for q in quantities["items"]
+                    if q["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")
+    base_y = ty + 38 + len(spatial["zones"]) * 18 + 8
+    parts.append(f'<text x="{lx}" y="{base_y}" font-size="10" '
+                 f'font-weight="600" fill="#0f172a">功能分区几何净面积</text>')
+    parts.append(f'<text x="{lx+250}" y="{base_y}" font-size="10" '
                  f'text-anchor="end" font-weight="600" fill="#0f172a">{net_item["value"]} ㎡</text>')
+    parts.append(f'<text x="{lx}" y="{base_y+14}" font-size="9" fill="#b91c1c">'
+                 f'（几何量，不是铺装/完成面工程量）</text>')
+    finish_item = next(q for q in quantities["items"] if q["quantity_id"] == "Q-FLOOR-FINISH")
+    parts.append(f'<text x="{lx}" y="{base_y+30}" font-size="10" fill="#0f172a">'
+                 f'地坪完成面饰面净面积</text>')
+    parts.append(f'<text x="{lx+250}" y="{base_y+30}" font-size="10" text-anchor="end" '
+                 f'fill="#0f172a">'
+                 f'{finish_item["value"] if finish_item["value"] is not None else "unknown"}'
+                 f'{" ㎡" if finish_item["value"] is not None else ""}</text>')
+    if finish_item["value"] is None:
+        parts.append(f'<text x="{lx}" y="{base_y+44}" font-size="9" fill="#b91c1c">'
+                     f'（没有材料面/铺装范围依据，不填 0）</text>')
     # missing items
-    my = ty + 38 + (len(spatial["zones"]) + 1) * 18 + 26
+    my = base_y + 62
     parts.append(f'<text x="{lx}" y="{my}" font-size="12" font-weight="700" fill="#b91c1c">'
                  f'未建模 / 缺项</text>')
     missing = ["墙体构造与门窗（未建模，不画框线冒充）", "洁具（未建模）",
@@ -511,12 +794,24 @@ def build_scene(model: dict, camera: dict) -> dict:
 
 # ------------------------------------------------------------------ package
 def build_package(model: dict, *, project_id: str, option_revision_id: str,
-                  settings: dict | None = None) -> dict:
+                  settings: dict | None = None, finish_scope: dict | None = None,
+                  binding: dict | None = None) -> dict:
     settings = settings or {}
+    scope = normalize_finish_scope(finish_scope if finish_scope is not None
+                                   else settings.get("finish_scope"))
     frozen = freeze_input(model, project_id=project_id,
                           option_revision_id=option_revision_id)
+    if scope:
+        frozen["finish_scope"] = {"kind": scope["kind"], "declared_by": scope["declared_by"],
+                                  "declaration": scope["declaration"],
+                                  "areas": [{"object_id": a["object_id"],
+                                             "material_id": a["material_id"],
+                                             "polygon_mm": a["polygon_mm"]}
+                                            for a in scope["areas"]]}
+    if binding:
+        frozen["binding"] = binding
     camera = derive_camera(model)
-    quantities = measure(model)
+    quantities = measure(model, finish_scope=scope)
     cost = build_cost(quantities, settings=settings)
     plan = build_plan_svg(model, camera, quantities)
     scene = build_scene(model, camera)
@@ -524,14 +819,15 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
         "plan.svg": ("plan_svg", "image/svg+xml", plan),
         "quantity.json": ("development_json", "application/json", _json(quantities)),
         "quantity.csv": ("quantity_csv", "text/csv; charset=utf-8",
-                          _quantity_csv(quantities)),
+                         _quantity_csv(quantities)),
         "cost.html": ("cost_html", "text/html; charset=utf-8",
-                       cost_html(cost, quantities)),
+                      cost_html(cost, quantities)),
         "scene.json": ("development_json", "application/json", _json(scene)),
     }
     manifest = {
         "schema_version": MANIFEST_VERSION,
         "baseline": frozen,
+        "binding": binding or {},
         "camera": camera,
         "quantities": quantities,
         "cost": cost,
@@ -541,7 +837,7 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
     }
     return {"frozen": frozen, "camera": camera, "quantities": quantities,
             "cost": cost, "scene": scene, "plan": plan, "files": files,
-            "manifest": manifest, "settings": settings}
+            "manifest": manifest, "settings": settings, "finish_scope": scope}
 
 
 def _quantity_csv(quantities: dict) -> bytes:
@@ -554,28 +850,67 @@ def _quantity_csv(quantities: dict) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def add_rendered(manifest: dict, *, filename: str, png: bytes, render_meta: dict) -> dict:
-    manifest["files"].append({"filename": filename, "kind": "render_png",
-                              "content_type": "image/png",
-                              "sha256": sha256_bytes(png), "size_bytes": len(png)})
-    manifest["render"] = render_meta
-    return manifest
+def finalize_package(files: dict, manifest: dict) -> dict:
+    """ONE file set -> manifest + ZIP.
 
-
-def finalize_files(files: dict, manifest: dict) -> dict:
-    out = dict(files)
-    listed = {entry["filename"] for entry in manifest.get("files", [])}
-    for name, (kind, ctype, data) in sorted(files.items()):
-        if name in listed:
-            continue
-        manifest.setdefault("files", []).append(
-            {"filename": name, "kind": kind, "content_type": ctype,
-             "sha256": sha256_bytes(data), "size_bytes": len(data)})
-    out["manifest.json"] = ("manifest_json", "application/json",
-                            json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8"))
+    Registration, manifest and archive are built from the same dict, so a render
+    that exists is always inside the archive and a manifest that lists a file
+    always points at real bytes. The finished ZIP is then re-opened and checked
+    against the manifest before anything is registered.
+    """
+    content = {name: tuple(value) for name, value in files.items()}
+    if any(name in {"manifest.json", "package.zip"} for name in content):
+        raise ValueError("内容集合不能包含 manifest.json / package.zip 自身")
+    entries = []
+    for name in sorted(content):
+        kind, ctype, data = content[name]
+        entries.append({"filename": name, "kind": kind, "content_type": ctype,
+                        "sha256": sha256_bytes(data), "size_bytes": len(data)})
+    manifest = dict(manifest)
+    manifest["files"] = entries
+    manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+    out = dict(content)
+    out["manifest.json"] = ("manifest_json", "application/json", manifest_bytes)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name, (_kind, _ctype, data) in sorted(out.items()):
-            zf.writestr(name, data)
+        for name in sorted(out):
+            zf.writestr(name, out[name][2])
     out["package.zip"] = ("package_zip", "application/zip", buf.getvalue())
-    return out
+    check = check_zip_against_manifest(buf.getvalue(), manifest_bytes)
+    if not check["ok"]:
+        raise ValueError(f"交付包自检失败：{check['problems']}")
+    return {"files": out, "manifest": manifest, "check": check}
+
+
+def check_zip_against_manifest(zip_bytes: bytes, manifest_bytes: bytes) -> dict:
+    """Re-open the archive and compare every manifest entry byte-for-byte."""
+    problems: list[str] = []
+    try:
+        manifest = json.loads(manifest_bytes.decode("utf-8"))
+    except Exception as error:  # noqa: BLE001
+        return {"ok": False, "problems": [f"清单不是合法 JSON：{error}"], "checked": 0}
+    listed = {entry.get("filename"): entry for entry in manifest.get("files") or []}
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+            names = set(zf.namelist())
+            if "manifest.json" not in names:
+                problems.append("ZIP 内没有 manifest.json")
+            if zf.read("manifest.json") != manifest_bytes:
+                problems.append("ZIP 内清单字节与登记清单不一致")
+            for name, entry in listed.items():
+                if name not in names:
+                    problems.append(f"清单登记但 ZIP 缺少：{name}")
+                    continue
+                data = zf.read(name)
+                if len(data) != entry.get("size_bytes"):
+                    problems.append(f"大小不一致：{name}")
+                if sha256_bytes(data) != entry.get("sha256"):
+                    problems.append(f"SHA 不一致：{name}")
+            extra = names - set(listed) - {"manifest.json"}
+            if extra:
+                problems.append(f"ZIP 有未登记文件：{sorted(extra)}")
+    except zipfile.BadZipFile as error:
+        problems.append(f"ZIP 无法读取：{error}")
+    return {"ok": not problems, "problems": problems, "checked": len(listed),
+            "zip_bytes": len(zip_bytes), "zip_sha256": sha256_bytes(zip_bytes),
+            "entries": sorted(listed)}

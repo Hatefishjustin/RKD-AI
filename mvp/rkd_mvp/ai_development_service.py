@@ -248,7 +248,7 @@ class AIDevelopmentService:
         adoption = option_state.get("adoption")
         with self.repository.transaction(organization_id, project_id) as tx:
             jobs = tx.jobs()
-            revision = tx.latest_succeeded_revision()
+            revision = tx.latest_succeeded_revision(OUTPUT_VERSION)
             current = None
             if revision:
                 artifacts = tx.artifacts(revision["production_revision_id"])

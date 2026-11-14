@@ -432,9 +432,34 @@ class ApiService:
         except AISpatialOutputError as error:
             raise ApiError(error.status, error.code, error.message) from error
 
-    def get_ai_spatial_outputs(self, organization_id: str, project_id: str) -> dict[str, Any]:
+    def get_ai_spatial_outputs(self, organization_id: str, project_id: str,
+                               job_id: str | None = None,
+                               production_revision_id: str | None = None) -> dict[str, Any]:
         self._require_project(organization_id, project_id)
-        return self._ai_spatial().status(organization_id, project_id)
+        try:
+            return self._ai_spatial().status(organization_id, project_id,
+                                             job_id=job_id,
+                                             production_revision_id=production_revision_id)
+        except AISpatialOutputError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def cancel_ai_spatial_output(self, organization_id: str, project_id: str,
+                                 job_id: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_spatial().cancel(organization_id, project_id, job_id)
+        except AISpatialOutputError as error:
+            raise ApiError(error.status, error.code, error.message) from error
+
+    def retry_ai_spatial_output(self, organization_id: str, project_id: str,
+                                actor_id: str, job_id: str, request: dict[str, Any],
+                                idempotency_key: str) -> dict[str, Any]:
+        self._require_project(organization_id, project_id)
+        try:
+            return self._ai_spatial().retry(organization_id, project_id, actor_id,
+                                            job_id, request, idempotency_key)
+        except AISpatialOutputError as error:
+            raise ApiError(error.status, error.code, error.message) from error
 
     def get_ai_spatial_output_file(self, organization_id: str, project_id: str,
                                    production_revision_id: str,

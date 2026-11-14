@@ -136,6 +136,32 @@ class _DevelopmentTransaction:
             (attempt, self._time(now), *self.scope, job_id),
         )
 
+    def touch_job(self, job_id: str, phase: str, now: str,
+                  *, only_status: str = "running") -> bool:
+        """Conditional phase update: a cancelled job can never move forward."""
+        cursor = self.db.execute(
+            f"UPDATE {self.job_table} SET phase={self._p},updated_at={self._time_p} "
+            f"WHERE organization_id={self._p} AND project_id={self._p} AND job_id={self._p} "
+            f"AND status={self._p}",
+            (phase, self._time(now), *self.scope, job_id, only_status),
+        )
+        return bool(cursor.rowcount)
+
+    def close_job(self, job_id: str, status: str, phase: str, now: str, *,
+                  error_code: str | None = None, error_message: str | None = None,
+                  only_status: tuple[str, ...] = ("queued", "running")) -> bool:
+        """Conditional terminal transition (succeeded/failed/cancelled)."""
+        marks = ",".join(self._p for _ in only_status)
+        cursor = self.db.execute(
+            f"UPDATE {self.job_table} SET status={self._p},phase={self._p},"
+            f"error_code={self._p},error_message={self._p},updated_at={self._time_p} "
+            f"WHERE organization_id={self._p} AND project_id={self._p} AND job_id={self._p} "
+            f"AND status IN ({marks})",
+            (status, phase, error_code, error_message, self._time(now),
+             *self.scope, job_id, *only_status),
+        )
+        return bool(cursor.rowcount)
+
     def recover_running(self, now: str, active_job_ids: tuple[str, ...] = ()) -> None:
         exclusion = ""
         args: tuple[Any, ...] = ("WORKER_RESTARTED", "服务重启，深化量价任务等待显式重试", self._time(now), *self.scope)
@@ -148,10 +174,20 @@ class _DevelopmentTransaction:
             args,
         )
 
-    def latest_succeeded_revision(self) -> dict[str, Any] | None:
-        rows = self._rows(
-            f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} AND project_id={self._p} ORDER BY created_at DESC, production_revision_id DESC LIMIT 1",
-            self.scope)
+    def latest_succeeded_revision(self, output_version: str | None = None) -> dict[str, Any] | None:
+        """Latest revision, optionally restricted to one output contract.
+
+        The table is shared by the development and spatial-output services, so an
+        unfiltered "latest" would let one batch silently take over the other's page.
+        """
+        if output_version is None:
+            rows = self._rows(
+                f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} AND project_id={self._p} ORDER BY created_at DESC, production_revision_id DESC LIMIT 1",
+                self.scope)
+        else:
+            rows = self._rows(
+                f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} AND project_id={self._p} AND output_version={self._p} ORDER BY created_at DESC, production_revision_id DESC LIMIT 1",
+                (*self.scope, output_version))
         return self._public_revision(rows[0]) if rows else None
 
     def revision(self, production_revision_id: str) -> dict[str, Any] | None:

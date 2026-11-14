@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import sys
+import tempfile
 import zipfile
 from datetime import datetime, timezone
 from http.client import HTTPConnection
@@ -196,15 +197,39 @@ def main() -> int:
                               "sha": hashlib.sha256(raw).hexdigest()[:12]}
         manifest = json.loads(http("GET", f"{base}/spatial-outputs/"
                                     f"{revision_a['production_revision_id']}/files/manifest.json")[2])
-        zc = zipfile.ZipFile(io.BytesIO(http(
-            "GET", f"{base}/spatial-outputs/{revision_a['production_revision_id']}"
-                    f"/files/package.zip")[2]))
-        zip_names = sorted(zc.namelist())
-        check("W2-02", "下载逐文件可用：平面/效果图/量/成本/清单/包，清单登记 SHA 与字节一致",
+        zip_bytes = http("GET", f"{base}/spatial-outputs/"
+                         f"{revision_a['production_revision_id']}/files/package.zip")[2]
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "unzip"
+            target.mkdir()
+            with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zc:
+                zc.extractall(target)
+                zip_names = sorted(zc.namelist())
+            zip_problems = []
+            for entry in manifest["files"]:
+                path = target / entry["filename"]
+                if not path.is_file():
+                    zip_problems.append(f"缺少 {entry['filename']}")
+                    continue
+                data = path.read_bytes()
+                if len(data) != entry["size_bytes"] or sha256_bytes(data) != entry["sha256"]:
+                    zip_problems.append(f"字节不符 {entry['filename']}")
+            listed = {e["filename"] for e in manifest["files"]}
+            if listed - set(zip_names):
+                zip_problems.append(f"清单有但 ZIP 无：{sorted(listed - set(zip_names))}")
+            if set(zip_names) - listed - {"manifest.json"}:
+                zip_problems.append(f"ZIP 有但清单无：{sorted(set(zip_names) - listed)}")
+            png_separate = http("GET", f"{base}/spatial-outputs/"
+                                f"{revision_a['production_revision_id']}/files/render.png")[2]
+            png_same = (target / "render.png").is_file() and \
+                (target / "render.png").read_bytes() == png_separate
+        check("W2-02", "下载逐文件可用；ZIP 解压后清单所列文件全部存在、大小与 SHA 一致，PNG 与单下载一致",
               bool(all(v["status"] == 200 and v["bytes"] > 0 for v in files_ok.values())
-                   and manifest["files"] and zip_names),
+                   and manifest["files"] and not zip_problems and png_same),
               {"files": files_ok, "zip_entries": zip_names,
-               "manifest_file_count": len(manifest.get("files") or [])})
+               "manifest_file_count": len(manifest.get("files") or []),
+               "zip_problems": zip_problems, "render_in_zip": "render.png" in zip_names,
+               "render_matches_separate": png_same})
 
         # plan content
         plan_svg = http("GET", f"{base}/spatial-outputs/"
@@ -217,8 +242,8 @@ def main() -> int:
                "has_missing": "未建模" in plan_svg, "bytes": len(plan_svg)})
 
         q = revision_a["quantities"]["items"]
-        net = next(x for x in q if x["quantity_id"] == "Q-FLOOR-NET")
-        check("W2-04", "非矩形净量独立复算一致；bbox 结果故意不同且不用于计量",
+        net = next(x for x in q if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")
+        check("W2-04", "非矩形几何净量经独立扫描线复算一致；bbox 结果故意不同且不用于计量",
               bool(abs(net["independent_recompute_m2"] - net["value"]) < 0.01
                    and abs(net["bbox_delta_m2"]) > 0.2
                    and net["method"].startswith("exact")),
@@ -250,11 +275,13 @@ def main() -> int:
               bool(code == 202 and st_b["revision"]
                    and st_b["revision"]["baseline"]["model_hash"]
                    != revision_a["baseline"]["model_hash"]
-                   and st_b["revision"]["quantities"]["items"][2]["value"]
+                   and next(x for x in st_b["revision"]["quantities"]["items"]
+                            if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
                    != net["value"]),
               {"layout_a_net": net["value"],
-               "layout_b_net": st_b["revision"]["quantities"]["items"][2]["value"]
-               if st_b["revision"] else None,
+               "layout_b_net": (next((x["value"] for x in st_b["revision"]["quantities"]["items"]
+                                      if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET"), None)
+                                if st_b["revision"] else None),
                "model_hashes": [revision_a["baseline"]["model_hash"][:12],
                                 (st_b["revision"] or {}).get("baseline", {}).get("model_hash", "")[:12]],
                "cameras": [revision_a["view_mapping"]["camera"]["position_mm"],
@@ -284,40 +311,55 @@ def main() -> int:
         from rkd_mvp.ai_spatial_outputs import build_plan_svg, build_scene
         cam_plan = build_plan_svg(model_a, cam2, base_pkg["quantities"])
         cam_scene = build_scene(model_a, cam2)
-        # 4) price only
+        # 4) price only — money moves, geometry does not (needs an explicit
+        #    material-face scope, otherwise the area basis is unknown and no
+        #    amount may be produced at all)
+        scope = {"kind": "material_face_slice", "declared_by": "executor_manual_fixture",
+                 "declaration": "夹具：中岛分区铺装范围", "unit": "mm",
+                 "deduction_basis": "keepouts_within_scope",
+                 "areas": [{"object_id": "FA1", "name": "中岛材料面（夹具）",
+                            "polygon_mm": model_a["spatial"]["zones"][1]["polygon_mm"],
+                            "material_ref": {"material_id": "M1", "name": "试验材料",
+                                             "spec_status": "assumption"}}]}
         price_low = build_package(model_a, project_id=PID, option_revision_id="x",
-                                  settings={"floor_unit_price_cny": 1000})
+                                  settings={"floor_unit_price_cny": 1000},
+                                  finish_scope=scope)
         price_pkg = build_package(model_a, project_id=PID, option_revision_id="x",
-                                  settings={"floor_unit_price_cny": 1200})
+                                  settings={"floor_unit_price_cny": 1200},
+                                  finish_scope=scope)
+        price_no_scope = build_package(model_a, project_id=PID, option_revision_id="x",
+                                       settings={"floor_unit_price_cny": 1200})
         q0 = base_pkg["quantities"]["items"]
         q1 = geo_pkg["quantities"]["items"]
         check("W2-07", "四种受控变更：几何改平面/三维/净量；材料改材质；只改相机不改量；只改单价不改几何",
               bool(base_pkg["plan"] != geo_pkg["plan"]
                    and base_pkg["scene"] != geo_pkg["scene"]
-                   and next(x for x in q1 if x["quantity_id"] == "Q-FLOOR-NET")["value"]
-                   != next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-NET")["value"]
+                   and next(x for x in q1 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
+                   != next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
                    and base_pkg["plan"] != mat_pkg["plan"]
                    and base_pkg["scene"] != mat_pkg["scene"]
                    and next(x for x in mat_pkg["quantities"]["items"]
-                            if x["quantity_id"] == "Q-FLOOR-NET")["value"]
-                   == next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-NET")["value"]
+                            if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
+                   == next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]
                    and cam_plan != base_pkg["plan"] and cam_scene != base_pkg["scene"]
                    and cam_pkg["quantities"] == base_pkg["quantities"]
-                   and price_pkg["quantities"] == base_pkg["quantities"]
-                   and price_pkg["plan"] == base_pkg["plan"]
+                   and price_pkg["quantities"] == price_low["quantities"]
+                   and price_pkg["plan"] == price_low["plan"]
                    and base_pkg["cost"]["known_items"] == []
+                   and price_no_scope["cost"]["known_items"] == []
                    and price_pkg["cost"]["known_items"][0]["amount_cny"]
                    > price_low["cost"]["known_items"][0]["amount_cny"]),
-              {"geometry_net": [next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-NET")["value"],
-                                next(x for x in q1 if x["quantity_id"] == "Q-FLOOR-NET")["value"]],
+              {"geometry_net": [next(x for x in q0 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"],
+                                next(x for x in q1 if x["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")["value"]],
                "material_plan_changed": base_pkg["plan"] != mat_pkg["plan"],
                "material_scene_changed": base_pkg["scene"] != mat_pkg["scene"],
                "camera_plan_changed": cam_plan != base_pkg["plan"],
                "camera_quantity_same": cam_pkg["quantities"] == base_pkg["quantities"],
-               "price_quantity_same": price_pkg["quantities"] == base_pkg["quantities"],
-               "price_plan_same": price_pkg["plan"] == base_pkg["plan"],
+               "price_quantity_same": price_pkg["quantities"] == price_low["quantities"],
+               "price_plan_same": price_pkg["plan"] == price_low["plan"],
                "price_amounts": [(price_low["cost"]["known_items"] or [{}])[0].get("amount_cny"),
-                                 (price_pkg["cost"]["known_items"] or [{}])[0].get("amount_cny")]})
+                                 (price_pkg["cost"]["known_items"] or [{}])[0].get("amount_cny")],
+               "price_without_scope_known_items": len(price_no_scope["cost"]["known_items"])})
     finally:
         server.shutdown(); server.server_close(); thread.join(3)
         main_store.close()
