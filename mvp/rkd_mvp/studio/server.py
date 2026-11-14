@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 
 from .llm import Config
 from .orchestrator import Studio
+from . import revision_task
 from .roles import ROSTER
 from .store import Store
 
@@ -136,6 +137,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(409, {"error": "未配置模型通道：RKD_AI_API_KEY 不在环境变量里",
                                         "hint": "密钥只放当前会话环境变量，不写入任何文件"})
             result = studio().run_a1(pid, background=True)
+            if result.get("status") == "conflict":
+                # W0/R1: an unusable old baseline is a visible conflict, never a
+                # silent fallback to a freshly generated A/B pair.
+                return self._json(409, {"error": result.get("conflict_detail"),
+                                        "conflict_code": result.get("conflict_code"),
+                                        "alternatives": result.get("alternatives"),
+                                        "task_kind": "conflict",
+                                        "note": "本轮没有生成任何候选；旧基线不被偷换"})
             return self._json(202, result)
         m = re.fullmatch(r"/studio/projects/([^/]+)/messages", path)
         if m:
@@ -147,27 +156,72 @@ class Handler(BaseHTTPRequestHandler):
             if not text:
                 return self._json(400, {"error": "空消息"})
             st = studio().store
+            requested_aid = str(body.get("baseline_artifact_id") or "").strip() or None
+            requested_uid = str(body.get("baseline_revision_uid") or "").strip() or None
+            locks = body.get("locks") if isinstance(body.get("locks"), list) else []
+            objectives = body.get("objectives") if isinstance(body.get("objectives"), list) else []
+
+            # W0/R1: an explicitly selected OLD baseline is validated strictly.
+            # Never substitute "the latest file", never silently generate A/B.
+            if requested_aid:
+                art = st.artifact_by_id(requested_aid)
+                if not art:
+                    return self._json(409, {"error": "旧基线冲突：指定的产物不存在",
+                                            "conflict_code": "baseline_not_found",
+                                            "alternatives": ["在页面重新选择一份存在的有效候选",
+                                                             "不要回退到最新文件"]})
+                if art.get("project_id") != pid:
+                    return self._json(409, {"error": "旧基线冲突：该产物属于另一个项目",
+                                            "conflict_code": "cross_project_baseline",
+                                            "artifact_project_id": art.get("project_id")})
+                if art.get("kind") != "spatial-plan" or \
+                        art.get("contract_status") != "valid_candidate" or \
+                        art.get("status") in ("superseded", "invalid_raw"):
+                    return self._json(409, {"error": "旧基线冲突：该产物不是有效候选",
+                                            "conflict_code": "baseline_invalid",
+                                            "artifact_status": art.get("status"),
+                                            "contract_status": art.get("contract_status")})
+                if requested_uid and requested_uid != art.get("revision_uid"):
+                    return self._json(409, {"error": "旧基线冲突：版本 uid 与产物不一致",
+                                            "conflict_code": "baseline_uid_mismatch",
+                                            "requested_uid": requested_uid,
+                                            "actual_uid": art.get("revision_uid")})
+                baseline_aid = art["id"]
+                baseline_uid = requested_uid or art.get("revision_uid")
+                selection = "user_selected"
+                task_kind = "revise"
+            else:
+                # No explicit choice: say so. Do NOT guess from the newest file.
+                baseline_aid, baseline_uid = None, None
+                selection = "none_explicit"
+                task_kind = "generate"
+
             mid = st.add_message(pid, "BOSS", "boss", text,
-                                 evidence=[{"type": "boss"}])
-            # ARC-04: versioned feedback, not timeline-only. Binds the current
-            # valid candidate baseline so the next revision has a real target.
-            baseline = _latest_valid_plan(st, pid)
+                                 evidence=[{"type": "boss",
+                                            "baseline_artifact_id": baseline_aid,
+                                            "baseline_selection": selection}])
             fb = st.add_feedback(
                 pid, "boss_message", text,
                 source_message_id=mid,
-                baseline_artifact_id=baseline["id"] if baseline else None,
-                baseline_revision_uid=baseline["revision_uid"] if baseline else None,
-            )
+                baseline_artifact_id=baseline_aid,
+                baseline_revision_uid=baseline_uid,
+                baseline_selection=selection,
+                locks=locks, objectives=objectives, task_kind=task_kind)
             # persistent cancellation: a late result from the previous input
             # must not become the current version (checked again at run finish).
             for r in st.runs(pid):
                 if r["status"] == "running":
                     st.request_cancel(r["id"])
-            return self._json(201, {"ok": True, "message_id": mid,
-                                    "feedback": fb,
-                                    "effective_requirement_hash":
-                                        st.effective_requirement(pid)["effective_input_hash"],
-                                    "note": "留言已进入版本化有效需求；下一轮修订将读取该输入并给出对象 diff"})
+            return self._json(201, {
+                "ok": True, "message_id": mid, "feedback": fb,
+                "task_hint": task_kind, "baseline_selection": selection,
+                "effective_requirement_hash":
+                    st.effective_requirement(pid)["effective_input_hash"],
+                "note": ("留言已绑定你选中的旧方案；下一轮是续改（revise），"
+                         "加载该旧稿完整基线，不重新生成 A/B"
+                         if task_kind == "revise" else
+                         "未指定旧基线：留言进入有效需求，本轮按 generate 处理；"
+                         "如需续改请在页面选中具体方案")})
         m = re.fullmatch(r"/studio/gates/([^/]+)/decide", path)
         if m:
             gid = m.group(1)
@@ -284,6 +338,37 @@ def _state(project_id: str) -> dict:
         "design_approved_by_user": False,
         "note": "流程跑完 / 成果有效 / 等待用户 / 设计认可分别表达；设计认可只能由用户给出",
     }
+    # W0/R1: make the task and the exact parent version visible in the page.
+    res = revision_task.resolve_task(st, project_id, state["feedback_revision"])
+    state["task_resolution"] = {
+        "kind": res["kind"], "reason": res["reason"],
+        "conflict_code": res.get("conflict_code"),
+        "conflict_detail": res.get("conflict_detail"),
+        "alternatives": res.get("alternatives"),
+        "target_artifact_id": (res.get("baseline") or {}).get("id"),
+        "target_revision_uid": (res.get("baseline") or {}).get("revision_uid"),
+        "target_feedback_id": (res.get("feedback") or {}).get("id"),
+        "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜",
+    }
+    plans = [a for a in state["artifacts"] if a["kind"] == "spatial-plan"]
+    state["revision_history"] = [
+        {"id": a["id"], "option_id": a["option_id"], "revision": a["revision"],
+         "revision_uid": a["revision_uid"], "parent_revision_uid": a["parent_revision_uid"],
+         "display_group": a.get("display_group"), "sha256": a["sha256"]}
+        for a in plans]
+    state["latest_run"] = [
+        {"id": r["id"], "status": r["status"], "task_kind": r.get("task_kind"),
+         "target_artifact_id": r.get("target_artifact_id"),
+         "target_revision_uid": r.get("target_revision_uid"),
+         "conflict_code": r.get("conflict_code")} for r in state["runs"][-3:]]
+    done = [r for r in state["runs"] if r["status"] != "running"]
+    last_done = done[-1] if done else None
+    state["last_completed_run"] = (
+        {"id": last_done["id"], "status": last_done["status"],
+         "task_kind": last_done.get("task_kind"),
+         "target_artifact_id": last_done.get("target_artifact_id"),
+         "target_revision_uid": last_done.get("target_revision_uid")}
+        if last_done else None)
     return state
 
 

@@ -13,6 +13,8 @@ type Artifact = {
   id: string; kind: string; option_id?: string | null; revision: number;
   parent_revision?: number | null; author: string; sha256: string; status: string;
   payload?: any; svg_url?: string;
+  revision_uid?: string | null; parent_revision_uid?: string | null;
+  contract_status?: string | null; display_group?: string;
 };
 type Gate = { id: string; title: string; detail: string; status: string; decision?: string | null; comment?: string | null };
 type Run = {
@@ -37,6 +39,20 @@ type State = {
   valid_candidate_ids?: string[];
   stage_status?: { flow_finished: boolean; valid_artifact_exists: boolean;
                    waiting_user: boolean; design_approved_by_user: boolean; note: string };
+  task_resolution?: { kind: string; reason: string; conflict_code?: string | null;
+                      conflict_detail?: string | null; alternatives?: string[];
+                      target_artifact_id?: string | null;
+                      target_revision_uid?: string | null };
+  revision_history?: Array<{ id: string; option_id?: string | null; revision: number;
+                             revision_uid?: string | null;
+                             parent_revision_uid?: string | null }>;
+  latest_run?: Array<{ id: string; status: string; task_kind?: string | null;
+                       target_artifact_id?: string | null;
+                       target_revision_uid?: string | null;
+                       conflict_code?: string | null }>;
+  last_completed_run?: { id: string; status: string; task_kind?: string | null;
+                         target_artifact_id?: string | null;
+                         target_revision_uid?: string | null } | null;
   error?: string;
 };
 
@@ -51,6 +67,9 @@ export function StudioView({ projectId }: { projectId?: string }) {
   const [error, setError] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
+  // W0/R1: the boss explicitly picks which OLD plan to continue. Default is
+  // "no baseline" (a generate task), never a guess from the newest file.
+  const [selectedBaseline, setSelectedBaseline] = useState("");
   const [gateComment, setGateComment] = useState<Record<string, string>>({});
   const [decisionScope, setDecisionScope] = useState<Record<string, string>>({});
   const [openEvidence, setOpenEvidence] = useState<number | null>(null);
@@ -110,14 +129,23 @@ export function StudioView({ projectId }: { projectId?: string }) {
 
   async function send() {
     if (!mapped || !draft.trim()) return;
+    const chosen = (state?.artifacts || []).find(a => a.id === selectedBaseline);
+    const payload: Record<string, unknown> = { text: draft.trim() };
+    if (chosen) {
+      payload.baseline_artifact_id = chosen.id;
+      if (chosen.revision_uid) payload.baseline_revision_uid = chosen.revision_uid;
+    }
     const res = await fetch(`${API}/studio/projects/${encodeURIComponent(studioId)}/messages`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: draft.trim() }),
+      body: JSON.stringify(payload),
     });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) { setError(body.error || "留言未保存"); return; }
+    if (!res.ok) {
+      setError(body.error || "留言未保存（旧基线冲突时不会偷换方案）");
+      return;
+    }
     setDraft("");
-    setError(`留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}；下一轮修订将读取该输入`);
+    setError(body.note || `留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}`);
     void load();
   }
 
@@ -145,6 +173,7 @@ export function StudioView({ projectId }: { projectId?: string }) {
 
   const waitingGate = state.gates.find((g) => g.status === "waiting");
   const plans = state.artifacts.filter((a) => a.kind === "spatial-plan");
+  const baselineOptions = plans.filter((p) => p.display_group === "valid");
   const sketches = state.artifacts.filter((a) => a.kind === "plan-sketch");
   const runs = state.runs ?? [];
   const totalTokens = runs.reduce((s, r) => s + (r.tokens_in || 0) + (r.tokens_out || 0), 0);
@@ -185,6 +214,34 @@ export function StudioView({ projectId }: { projectId?: string }) {
           {state.stage_status?.waiting_user ? "等待用户" : "无需等待"} ·
           设计认可：{state.stage_status?.design_approved_by_user ? "是" : "否（只能由用户给出）"}</span>
       </div>
+
+      <div className="studio-taskbar">
+        <span>上一轮：{state.last_completed_run?.task_kind || "无"}
+          {state.last_completed_run?.status
+            ? `（${state.last_completed_run.status === "succeeded" ? "流程走完，未验收" : state.last_completed_run.status}）`
+            : ""}
+          {state.last_completed_run?.target_revision_uid
+            ? ` · 目标版本 ${state.last_completed_run.target_revision_uid}` : ""}</span>
+        <span>本轮任务：<b>{state.task_resolution?.kind || "未知"}</b>
+          {state.task_resolution?.kind === "revise"
+            ? ` · 续改旧基线 ${state.task_resolution.target_artifact_id || "?"}`
+            : state.task_resolution?.kind === "conflict"
+              ? ` · 需新留言或闸口决定（${state.task_resolution.conflict_code || ""}），不偷换旧基线`
+              : " · 生成新候选（未指定旧基线）"}</span>
+        <span>版本链（新→父）：{state.revision_history?.slice(-3).map(h =>
+          `${h.option_id || "?"}v${h.revision}←${h.parent_revision_uid || "无"}`).join("；") || "无"}</span>
+      </div>
+      {/* Only a REJECTED run attempt is an alert. After a successful revise the
+          consumed feedback makes the NEXT-task preview a conflict, which is
+          informational, not a failure of the revision that just completed. */}
+      {state.task_resolution?.kind === "conflict" &&
+       state.last_completed_run?.status === "conflict" && (
+        <p className="studio-error" role="alert">
+          {state.task_resolution.conflict_detail}
+          {state.task_resolution.alternatives?.length
+            ? ` · 可选：${state.task_resolution.alternatives.join("；")}` : ""}
+        </p>
+      )}
 
       {error && <p className="studio-error" role="alert">{error}</p>}
 
@@ -301,6 +358,9 @@ export function StudioView({ projectId }: { projectId?: string }) {
                   候选 {s.option_id} · v{s.revision}
                   {plan?.payload?.strategy?.name ? ` · ${plan.payload.strategy.name}` : ""}
                   <br /><small>基线 {plan?.id} · 校验 {(plan as any)?.contract_status}</small>
+                  {plan?.parent_revision_uid && (
+                    <><br /><small>父版本 {plan.parent_revision_uid}（旧基线续改）</small></>
+                  )}
                 </figcaption>
               </figure>
             );
@@ -343,6 +403,18 @@ export function StudioView({ projectId }: { projectId?: string }) {
       </div>
 
       <div className="studio-input">
+        <label className="baseline-pick">
+          续改哪份旧方案：
+          <select data-testid="baseline-select" value={selectedBaseline}
+            onChange={(e) => setSelectedBaseline(e.target.value)}>
+            <option value="">不指定（生成新方案）</option>
+            {baselineOptions.map(a => (
+              <option key={a.id} value={a.id}>
+                候选 {a.option_id || "?"} v{a.revision} · {a.id}
+              </option>
+            ))}
+          </select>
+        </label>
         <input value={draft} placeholder="@空间规划 把中岛往南挪一点；或写你的意见" onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void send(); }} />
         <button onClick={() => void send()}>发给公司</button>

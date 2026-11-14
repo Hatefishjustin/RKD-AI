@@ -1,0 +1,102 @@
+{
+  "schema_version": "rkd-w0-browser-verification.v1",
+  "checked_at": "2026-11-14T04:26:54.630770+00:00",
+  "passed": true,
+  "node_returncode": 0,
+  "duration_seconds": 10.34,
+  "selected_baseline": {
+    "artifact_id": "art_9bd893f9a8",
+    "revision_uid": "revuid_3d3553af2d"
+  },
+  "browser_observations": {
+    "baseline_id": "art_9bd893f9a8",
+    "baseline_uid": "revuid_3d3553af2d",
+    "before_runs": 1,
+    "before_task_kind": "generate",
+    "baseline_in_valid_group": true,
+    "baseline_options": [
+      "不指定（生成新方案）",
+      "候选 B v1 · art_32fb08b199",
+      "候选 A v2 · art_82d736722a",
+      "候选 A v1 · art_9bd893f9a8"
+    ],
+    "selected_option_value": "art_9bd893f9a8",
+    "feedback": {
+      "revision_no": 1,
+      "baseline_artifact_id": "art_9bd893f9a8",
+      "baseline_selection": "user_selected",
+      "task_kind": "revise"
+    },
+    "task_resolution_after_feedback": {
+      "kind": "revise",
+      "reason": "按反馈 fb_6b120ac66f 指定的旧基线 art_9bd893f9a8 (revision_uid=revuid_3d3553af2d) 续改，不重新生成 A/B",
+      "conflict_code": null,
+      "conflict_detail": null,
+      "alternatives": null,
+      "target_artifact_id": "art_9bd893f9a8",
+      "target_revision_uid": "revuid_3d3553af2d",
+      "target_feedback_id": "fb_6b120ac66f",
+      "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜"
+    },
+    "meta_after_feedback": "上一轮：generate（流程走完，未验收） 本轮任务：revise · 续改旧基线 art_9bd893f9a8 版本链（新→父）：Bv1←无；Av2←revuid_3d3553af2d；Av1←无",
+    "last_run": {
+      "status": "succeeded",
+      "task_kind": "revise",
+      "target_artifact_id": "art_9bd893f9a8",
+      "target_revision_uid": "revuid_3d3553af2d"
+    },
+    "new_plans": [
+      {
+        "id": "art_c10c58e472",
+        "revision": 2,
+        "parent_revision_uid": "revuid_3d3553af2d",
+        "display_group": "valid"
+      }
+    ],
+    "fresh_AB_in_revise_run": 0,
+    "page_shows_parent_uid": true,
+    "page_shows_revise_note": false,
+    "gate_title_after_revise": "等你决定：旧方案续改完成：请决定是否继续",
+    "mobile_scroll_width": 390,
+    "mobile_inner_width": 390,
+    "page_errors": [],
+    "passed": true
+  },
+  "restart_persistence": {
+    "feedback_revision": 1,
+    "feedback_baseline": [
+      "art_9bd893f9a8"
+    ],
+    "runs": [
+      {
+        "status": "succeeded",
+        "task_kind": "generate"
+      },
+      {
+        "status": "succeeded",
+        "task_kind": "revise"
+      }
+    ],
+    "revisions": [
+      {
+        "revision": 2,
+        "parent_revision_uid": "revuid_3d3553af2d"
+      },
+      {
+        "revision": 2,
+        "parent_revision_uid": "revuid_3d3553af2d"
+      }
+    ],
+    "old_baseline_bytes_preserved": true,
+    "gates": 1
+  },
+  "external_calls": 0,
+  "keys_used": false,
+  "model_channel": "local-model-stub (explicitly labelled)",
+  "boundaries": [
+    "isolated main workbench SQLite + isolated Studio DB; daily studio.db untouched",
+    "no external model/image calls; no key; cost 0",
+    "browser proves engineering control, NOT design or professional sign-off",
+    "AD01—AD08 unchanged; user design-stage confirmation has NOT happened"
+  ]
+}

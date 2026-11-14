@@ -28,6 +28,7 @@ import traceback
 from typing import Any, Callable
 
 from . import revision as revision_mod
+from . import revision_task
 from . import sketch, tools as toolbox, validation, vision
 from .tools import check_plan
 from .llm import BudgetExceeded, Client, ModelError, Usage, extract_json
@@ -343,18 +344,72 @@ class Studio:
         ih = input_hash(project_id, expected, eff)
         group_id = new_id("candgroup")
 
+        # W0/R1: generate, revise, retry and conflict are DIFFERENT tasks.
+        # The task is resolved SYNCHRONOUSLY so an unusable old baseline is a
+        # visible conflict instead of a silent fresh A/B generation.
+        resolution = revision_task.resolve_task(st, project_id, expected)
+        kind = resolution["kind"]
+        target_art = resolution.get("baseline") or {}
+        target_fb = resolution.get("feedback") or {}
+
+        prior = sum((r["tokens_in"] or 0) + (r["tokens_out"] or 0)
+                    for r in st.runs(project_id) if r["status"] != "running")
+        client = Client(project_tokens=prior)
+        run_id = st.start_run(
+            project_id, client.config.model, input_hash_value=ih,
+            expected_feedback_revision=expected, candidate_group_id=group_id,
+            task_kind=kind, target_artifact_id=target_art.get("id"),
+            target_revision_uid=target_art.get("revision_uid"),
+            target_feedback_id=target_fb.get("id"),
+            conflict_code=resolution.get("conflict_code"))
+
+        if kind == revision_task.TASK_CONFLICT:
+            detail = (resolution.get("conflict_detail") or "") + "；可选：" + \
+                     "；".join(resolution.get("alternatives") or [])
+            st.add_message(project_id, "P", "gate",
+                           "旧基线冲突，本轮没有生成任何候选：" + detail,
+                           evidence=[{"type": "task_conflict",
+                                      "conflict_code": resolution.get("conflict_code"),
+                                      "alternatives": resolution.get("alternatives"),
+                                      "expected_feedback_revision": expected}])
+            self._gate(project_id, "旧基线冲突：请决定如何继续", detail)
+            st.finish_run(run_id, "conflict", 0, 0,
+                          resolution.get("conflict_detail"),
+                          calls=0, images_sent=0, images_generated=0,
+                          cost_amount=None, cost_status="unknown_no_price_table")
+            with self._lock:
+                self._running.discard(project_id)
+            return {"status": "conflict", "project_id": project_id,
+                    "task_kind": "conflict", "run_id": run_id,
+                    "conflict_code": resolution.get("conflict_code"),
+                    "conflict_detail": resolution.get("conflict_detail"),
+                    "alternatives": resolution.get("alternatives"),
+                    "note": "旧基线不适用：明确冲突，不偷换、不自动重新生成 A/B"}
+
+        if kind == revision_task.TASK_REVISE:
+            # CAS: one feedback row drives exactly one revise run. This blocks
+            # "split into a new run" as a way around the 2-round rework limit.
+            if not st.consume_feedback(target_fb["id"], run_id):
+                st.finish_run(run_id, "conflict", 0, 0,
+                              "反馈已被其他 run 消费", calls=0,
+                              cost_amount=None, cost_status="unknown_no_price_table")
+                with self._lock:
+                    self._running.discard(project_id)
+                return {"status": "conflict", "project_id": project_id,
+                        "task_kind": "conflict", "run_id": run_id,
+                        "conflict_code": "feedback_already_consumed",
+                        "conflict_detail": "该反馈已由另一轮消费，不得用新 run 重放",
+                        "alternatives": ["给一条新留言并重新选择旧基线"]}
+
         def work() -> None:
-            prior = sum((r["tokens_in"] or 0) + (r["tokens_out"] or 0)
-                        for r in st.runs(project_id) if r["status"] != "running")
-            client = Client(project_tokens=prior)
-            run_id = st.start_run(project_id, client.config.model,
-                                  input_hash_value=ih,
-                                  expected_feedback_revision=expected,
-                                  candidate_group_id=group_id)
             status, error = "succeeded", None
             stats = {"images_sent": 0, "images_generated": 0, "calls": 0}
             try:
-                self._scenario(project, client, run_id, group_id, expected, ih, stats)
+                if kind == revision_task.TASK_REVISE:
+                    self._revise_from_baseline(project, client, run_id, group_id,
+                                               expected, ih, stats, resolution)
+                else:
+                    self._scenario(project, client, run_id, group_id, expected, ih, stats)
             except BudgetExceeded as exc:
                 status, error = "budget_stopped", str(exc)
                 st.add_message(project_id, "P", "gate", f"预算闸口：{exc}",
@@ -411,10 +466,16 @@ class Studio:
         if background:
             threading.Thread(target=work, daemon=True, name=f"studio-{project_id}").start()
             return {"status": "started", "project_id": project_id,
-                    "expected_feedback_revision": expected, "input_hash": ih}
+                    "expected_feedback_revision": expected, "input_hash": ih,
+                    "run_id": run_id, "task_kind": kind,
+                    "target_artifact_id": target_art.get("id"),
+                    "target_revision_uid": target_art.get("revision_uid")}
         work()
         return {"status": "finished", "project_id": project_id,
-                "expected_feedback_revision": expected, "input_hash": ih}
+                "expected_feedback_revision": expected, "input_hash": ih,
+                "run_id": run_id, "task_kind": kind,
+                "target_artifact_id": target_art.get("id"),
+                "target_revision_uid": target_art.get("revision_uid")}
 
     # ------------------------------------------------------------------ helpers
     def _assert_current(self, project_id: str, run_id: str, expected: int) -> None:
@@ -464,6 +525,189 @@ class Studio:
                     "不传 query 会返回全部目录；validate_plan 一次）。"
                     "拿够信息后必须立刻输出最终完整 JSON，禁止再调工具。")
 
+    # ------------------------------------------------------------ W0/R1 revise
+    def _revise_from_baseline(self, project: dict, client: Client, run_id: str,
+                              group_id: str, expected: int, ih: str,
+                              stats: dict, resolution: dict) -> None:
+        """Continue from the FULL old plan named by the feedback (R1).
+
+        No A/B regeneration, no "latest file" guess. The new artifact's
+        parent_revision_uid points at the version the user selected. A failed
+        or pseudo-fixed revision is retained as invalid_raw and never becomes
+        a fresh candidate pair.
+        """
+        pid = project["id"]
+        st = self.store
+        site = project["site"]
+        art = resolution["baseline"]
+        base = resolution["plan"]
+        fb = resolution["feedback"]
+        base_aid, base_uid = art["id"], art["revision_uid"]
+        option_id = str(base.get("option_id") or "A")
+        base_rev = int(base.get("revision") or 1)
+        base_sha = art.get("sha256")
+
+        locks = revision_task.structured_locks(base, site, fb.get("locks"))
+        lock_ids = locks["lock_object_ids"]
+        boss_feedback = [{
+            "feedback_id": fb["id"], "revision_no": fb["revision_no"],
+            "kind": fb["kind"], "text": fb["text"],
+            "baseline_artifact_id": fb.get("baseline_artifact_id"),
+            "baseline_revision_uid": fb.get("baseline_revision_uid"),
+            "baseline_selection": fb.get("baseline_selection"),
+            "locks": fb.get("locks") or [], "objectives": fb.get("objectives") or [],
+        }]
+        objectives = revision_task.derive_objectives([dict(fb)])
+        rev_hash = revision_mod.revision_input_hash(
+            base, [], boss_feedback, base_aid, base_uid)
+        task_id = st.create_task(pid, "D2", f"续改旧基线 {base_aid} v{base_rev}",
+                                 round_no=2, run_id=run_id)
+        self._assert_current(pid, run_id, expected)
+
+        instruction = (
+            "这一轮是【旧基线续改】，不是重新生成 A/B。请逐条回应老板留言并优先输出"
+            "白名单 patch 数组，由程序在旧稿上应用、复算并生成新版本。\n"
+            f"【老板留言】{fb['text']}\n"
+            f"【指定的旧基线】artifact id={base_aid} / revision_uid={base_uid} / "
+            f"v{base_rev} / sha256={base_sha}\n"
+            f"【结构化锁（不得改动；冲突要明确提出，不得自行解锁）】"
+            f"{json.dumps(locks['locks'], ensure_ascii=False)}\n"
+            f"【可计算目标（程序会按规则复核，不是看对象 diff）】"
+            f"{json.dumps(objectives, ensure_ascii=False, default=str)}\n"
+            "只输出 JSON：{\"responses\":[...],\"patch\":[...]}；"
+            "patch 只改白名单对象字段，不写身份/批准/采用/价格来源；"
+            "无关的分区、家具与保留条件保持原状；删除必须写理由。\n"
+            f"- {self._TOOL_BUDGET}")
+        raw = self._speak(
+            ROLES["D2"], client, pid, task_id, instruction,
+            context=(self._ctx(project) + "\n【旧基线完整对象事实（未截断）】\n"
+                     + validation.structural_summary(base)),
+            tools=self._tools_for(project, "D2")[0],
+            handlers=self._tools_for(project, "D2")[1],
+            json_only=True, kind="revise", label="旧基线续改", max_steps=5)
+        data = _safe_json(raw)
+        patch = data.get("patch")
+        if isinstance(patch, list) and patch:
+            candidate, patch_errors, patch_audit = revision_mod.apply_patch(base, patch)
+        else:
+            candidate = data.get("plan") if isinstance(data.get("plan"), dict) else data
+            patch_errors, patch_audit = [], {"mode": "full_output"}
+
+        problem, integrity, report = "", None, None
+        catalog = {c["catalog_id"]: c for c in toolbox.CATALOG}
+        if patch_errors:
+            problem = "白名单 patch 不合法：" + "；".join(
+                e["message"] for e in patch_errors[:3])
+        elif not isinstance(candidate, dict):
+            problem = "修订稿不是 JSON 对象"
+        else:
+            integrity = revision_mod.verify_revision_integrity(
+                base, candidate, responses=data.get("responses") or [],
+                issues=None, lock_object_ids=lock_ids,
+                boss_feedback=boss_feedback, objectives=objectives,
+                site=site, catalog=catalog, locks=locks)
+            report = validation.validate_proposal(
+                candidate, project=project, option_id=option_id,
+                revision=base_rev + 1, parent_revision=base_rev,
+                lock_object_ids=lock_ids, previous_plan=base)
+            if not report["ok"]:
+                problem = f"续改稿契约无效（{report['stage']}）：{report['repair_feedback'][:400]}"
+            elif not integrity["ok"]:
+                problem = "续改完整性/确定性目标复核未通过：" + "；".join(
+                    e["message"] for e in integrity["errors"][:3])
+            elif not integrity["changed_objects"]:
+                problem = "续改没有产生任何对象变化"
+
+        if problem:
+            st.save_artifact(
+                pid, "spatial-plan-raw", {"raw_text": raw, "parsed": candidate},
+                "D2", option_id=option_id, revision=base_rev + 1, task_id=task_id,
+                status="invalid_raw", run_id=run_id, candidate_group_id=group_id,
+                input_hash_value=rev_hash, contract_status="invalid_raw",
+                diagnostics={"reason": problem, "task_kind": "revise",
+                             "baseline_artifact_id": base_aid,
+                             "baseline_revision_uid": base_uid,
+                             "contract_report": report, "integrity": integrity,
+                             "patch_errors": patch_errors})
+            st.add_message(
+                pid, "P", "note",
+                f"旧基线续改未通过，本轮没有生成新候选、也没有偷换基线：{problem}。"
+                "原始输出与完整诊断已保留为 invalid_raw，旧版字节保持不变。",
+                task_id=task_id,
+                evidence=[{"type": "revise_failed", "task_kind": "revise",
+                           "baseline_artifact_id": base_aid,
+                           "baseline_revision_uid": base_uid,
+                           "objective_rechecks": (integrity or {}).get("objective_rechecks")}])
+            st.update_task(task_id, "no_valid_revision",
+                           {"accepted_revision": False, "stop_reason": problem,
+                            "baseline_artifact_id": base_aid})
+            raise IncompleteArtifact("旧基线续改未通过：" + problem)
+
+        uid = new_id("revuid")
+        changed = integrity["changed_objects"]
+        check_id = st.save_check_report(pid, {
+            "kind": "revision", "task_kind": "revise",
+            "contract_report": report, "integrity": integrity,
+            "patch_audit": patch_audit, "revision_input_hash": rev_hash,
+            "baseline_artifact_id": base_aid,
+            "baseline_revision_uid": base_uid,
+            "baseline_sha256": base_sha,
+            "objective_rechecked": integrity["objective_recheck_summary"],
+        }, run_id=run_id)
+        aid = st.save_artifact(
+            pid, "spatial-plan", report["plan"], "D2", option_id=option_id,
+            revision=base_rev + 1, parent_revision=base_rev, task_id=task_id,
+            status="valid_candidate", run_id=run_id, candidate_group_id=group_id,
+            revision_uid=uid, parent_revision_uid=base_uid,
+            input_hash_value=rev_hash, check_report_id=check_id,
+            contract_status="valid_candidate",
+            diagnostics={"contract_report": report, "integrity": integrity,
+                         "patch_audit": patch_audit, "task_kind": "revise",
+                         "baseline_artifact_id": base_aid,
+                         "baseline_revision_uid": base_uid,
+                         "baseline_sha256": base_sha,
+                         "object_diff": changed})
+        st.save_artifact(
+            pid, "plan-sketch",
+            {"svg": sketch.render(report["plan"], site,
+                                  f"候选 {option_id} v{base_rev + 1} · 旧基线续改")},
+            "D2", option_id=option_id, revision=base_rev + 1,
+            parent_revision=base_rev, task_id=task_id, status="valid_candidate",
+            run_id=run_id, candidate_group_id=group_id, input_hash_value=rev_hash)
+        st.update_task(task_id, "done",
+                       {"accepted_revision": True, "task_kind": "revise",
+                        "baseline_artifact_id": base_aid,
+                        "baseline_revision_uid": base_uid,
+                        "changed_objects": len(changed)})
+        st.add_message(
+            pid, "D2", "note",
+            f"旧基线续改完成：加载 {base_aid}（revision_uid={base_uid}, v{base_rev}）"
+            f"的完整对象事实，未重新生成 A/B；新版本 v{base_rev + 1} 的 "
+            f"parent_revision_uid={base_uid}，改动 {len(changed)} 个对象"
+            f"（{'、'.join(changed[:6]) or '无'}）。"
+            f"确定性目标复核：{integrity['objective_recheck_summary']}。"
+            "无关对象与锁定条件保持原状；是否成立仍由老板对具体图面决定。",
+            task_id=task_id,
+            evidence=[{"type": "artifact", "id": aid, "revision": base_rev + 1,
+                       "revision_uid": uid, "parent_revision_uid": base_uid},
+                      {"type": "baseline", "id": base_aid,
+                       "revision_uid": base_uid, "sha256": base_sha},
+                      {"type": "diff", "changed": changed},
+                      {"type": "objective_rechecks",
+                       "items": integrity["objective_rechecks"]},
+                      {"type": "patch_audit", "detail": patch_audit}])
+        gate_detail = (
+            f"本轮任务：revise（旧基线续改），不是重新生成 A/B。\n"
+            f"用户选中的旧基线：{base_aid} / revision_uid={base_uid} / v{base_rev}。\n"
+            f"新版本：{aid} / revision_uid={uid} / v{base_rev + 1}，"
+            f"parent_revision_uid 指向用户选中的旧版。\n"
+            f"对象 diff {len(changed)} 项；无关对象保留；旧版字节仍可下载。\n"
+            f"确定性目标复核：{integrity['objective_recheck_summary']}；"
+            "可计算目标由对应规则复算，审美/未实现项写 unknown 并等用户确认。\n"
+            "流程跑完不等于方案通过，是否成立由你决定。")
+        self._gate(pid, "旧方案续改完成：请决定是否继续", gate_detail,
+                   baseline_artifact_id=aid, baseline_revision_uid=uid)
+
     # ---------------------------------------------------------------- scenario
     def _scenario(self, project: dict, client: Client, run_id: str, group_id: str,
                   expected: int, ih: str, stats: dict) -> None:
@@ -471,9 +715,20 @@ class Studio:
         st = self.store
         ctx = self._ctx(project)
         site = project["site"]
+        task_kind = "generate"  # W0: this path is GENERATE-ONLY; revise is
+        # dispatched in run_a1 -> _revise_from_baseline, never here.
         feedback_items = st.feedback(pid)
-        boss_feedback = [{"feedback_id": f["id"], "revision_no": f["revision_no"],
-                          "kind": f["kind"], "text": f["text"]} for f in feedback_items]
+        # W0/R1: keep the baseline pointers, locks and structured objectives in
+        # the revision input. They used to be dropped to four text fields.
+        boss_feedback = [{
+            "feedback_id": f["id"], "revision_no": f["revision_no"],
+            "kind": f["kind"], "text": f["text"],
+            "baseline_artifact_id": f.get("baseline_artifact_id"),
+            "baseline_revision_uid": f.get("baseline_revision_uid"),
+            "baseline_selection": f.get("baseline_selection"),
+            "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
+            "consumed_by_run": f.get("consumed_by_run"),
+        } for f in feedback_items]
 
         # 0. P plans the work
         self._assert_current(pid, run_id, expected)
@@ -805,7 +1060,12 @@ class Studio:
                     current_plan, candidate, responses=responses if attempt == 1 else None,
                     issues=issues if attempt == 1 else None,
                     lock_object_ids=lock_ids,
-                    boss_feedback=boss_feedback if attempt == 1 else None)
+                    boss_feedback=boss_feedback if attempt == 1 else None,
+                    objectives=revision_task.derive_objectives(
+                        boss_feedback if attempt == 1 else [],
+                        issues if attempt == 1 else None),
+                    site=site, catalog={c["catalog_id"]: c for c in toolbox.CATALOG},
+                    locks=revision_task.structured_locks(current_plan, site))
                 report = validation.validate_proposal(
                     candidate, project=project, option_id=target,
                     revision=attempt + 1, parent_revision=current_rev,

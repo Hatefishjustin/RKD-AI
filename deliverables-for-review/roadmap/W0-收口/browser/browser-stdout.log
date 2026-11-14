@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "key": {
+    "status": "succeeded",
+    "task_kind": "revise",
+    "target_artifact_id": "art_9bd893f9a8",
+    "target_revision_uid": "revuid_3d3553af2d"
+  },
+  "parent_matches": true,
+  "mobile_scroll_width": 390
+}

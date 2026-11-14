@@ -140,6 +140,11 @@ CREATE TABLE IF NOT EXISTS feedback (
   gate_id TEXT,
   baseline_artifact_id TEXT,
   baseline_revision_uid TEXT,
+  baseline_selection TEXT,
+  locks_json TEXT,
+  objectives_json TEXT,
+  task_kind TEXT,
+  consumed_by_run TEXT,
   status TEXT NOT NULL DEFAULT 'current',
   superseded_by TEXT,
   created_at TEXT NOT NULL,
@@ -172,7 +177,12 @@ CREATE TABLE IF NOT EXISTS runs (
   images_sent INTEGER DEFAULT 0,
   images_generated INTEGER DEFAULT 0,
   cost_amount REAL,
-  cost_status TEXT
+  cost_status TEXT,
+  task_kind TEXT,
+  target_artifact_id TEXT,
+  target_revision_uid TEXT,
+  target_feedback_id TEXT,
+  conflict_code TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_msg_project ON messages(project_id, id);
 CREATE INDEX IF NOT EXISTS idx_art_project ON artifacts(project_id, created_at);
@@ -196,6 +206,15 @@ _MIGRATIONS: dict[str, dict[str, str]] = {
         "candidate_group_id": "TEXT", "cancel_requested": "INTEGER DEFAULT 0",
         "calls": "INTEGER DEFAULT 0", "images_sent": "INTEGER DEFAULT 0",
         "images_generated": "INTEGER DEFAULT 0", "cost_amount": "REAL", "cost_status": "TEXT",
+        "task_kind": "TEXT", "target_artifact_id": "TEXT",
+        "target_revision_uid": "TEXT", "target_feedback_id": "TEXT",
+        "conflict_code": "TEXT",
+    },
+    # W0/R1: additive only. Old feedback rows keep their original bytes; an
+    # unconsumed row without an explicit baseline is a historical generate input.
+    "feedback": {
+        "baseline_selection": "TEXT", "locks_json": "TEXT",
+        "objectives_json": "TEXT", "task_kind": "TEXT", "consumed_by_run": "TEXT",
     },
 }
 
@@ -315,24 +334,40 @@ class Store:
                      *, gate_id: str | None = None,
                      baseline_artifact_id: str | None = None,
                      baseline_revision_uid: str | None = None,
-                     source_message_id: int | None = None) -> dict:
-        """Versioned, immutable feedback. Returns {id, revision_no, input_hash}."""
+                     source_message_id: int | None = None,
+                     baseline_selection: str | None = None,
+                     locks: list[dict] | None = None,
+                     objectives: list[dict] | None = None,
+                     task_kind: str | None = None) -> dict:
+        """W0/R1: versioned feedback with an EXPLICIT baseline and structured locks.
+
+        `baseline_selection` records whether the baseline came from the user's
+        explicit choice ("user_selected") or from a program fallback that must
+        never be silently presented as the user's choice.
+        """
         with self._lock, self._conn() as c:
             row = c.execute("SELECT MAX(revision_no) AS m FROM feedback WHERE project_id=?",
                             (project_id,)).fetchone()
             rev = int(row["m"] or 0) + 1
             fid = new_id("fb")
+            locks_json = json.dumps(locks or [], ensure_ascii=False)
+            objectives_json = json.dumps(objectives or [], ensure_ascii=False)
             ih = input_hash(project_id, kind, text, rev, baseline_artifact_id,
-                            baseline_revision_uid)
+                            baseline_revision_uid, baseline_selection, locks, objectives)
             c.execute(
                 "INSERT INTO feedback(id,project_id,revision_no,kind,text,input_hash,"
                 "source_message_id,gate_id,baseline_artifact_id,baseline_revision_uid,"
-                "status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,'current',?)",
+                "baseline_selection,locks_json,objectives_json,task_kind,"
+                "status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'current',?)",
                 (fid, project_id, rev, kind, text, ih, source_message_id, gate_id,
-                 baseline_artifact_id, baseline_revision_uid, now()))
+                 baseline_artifact_id, baseline_revision_uid, baseline_selection,
+                 locks_json, objectives_json, task_kind, now()))
             return {"id": fid, "revision_no": rev, "input_hash": ih,
                     "baseline_artifact_id": baseline_artifact_id,
-                    "baseline_revision_uid": baseline_revision_uid}
+                    "baseline_revision_uid": baseline_revision_uid,
+                    "baseline_selection": baseline_selection,
+                    "locks": locks or [], "objectives": objectives or [],
+                    "task_kind": task_kind}
 
     def feedback(self, project_id: str, current_only: bool = True) -> list[dict]:
         with self._conn() as c:
@@ -340,7 +375,36 @@ class Store:
             if current_only:
                 q += " AND status='current'"
             rows = c.execute(q + " ORDER BY revision_no", (project_id,)).fetchall()
-        return [dict(r) for r in rows]
+        out = []
+        for r in rows:
+            item = dict(r)
+            item["locks"] = json.loads(item.pop("locks_json") or "[]")
+            item["objectives"] = json.loads(item.pop("objectives_json") or "[]")
+            out.append(item)
+        return out
+
+    def artifact_by_id(self, artifact_id: str) -> dict | None:
+        """Exact lookup across projects; used to REJECT cross-project baselines."""
+        with self._conn() as c:
+            row = c.execute("SELECT project_id FROM artifacts WHERE id=?",
+                            (artifact_id,)).fetchone()
+        if not row:
+            return None
+        for a in self.artifacts(row["project_id"]):
+            if a["id"] == artifact_id:
+                item = dict(a)
+                item["project_id"] = row["project_id"]
+                return item
+        return None
+
+    def consume_feedback(self, feedback_id: str, run_id: str) -> bool:
+        """CAS: a feedback row may drive exactly ONE revise run (no run-splitting
+        to circumvent the 2-round auto-rework limit). Returns False if consumed."""
+        with self._lock, self._conn() as c:
+            cur = c.execute("UPDATE feedback SET consumed_by_run=? "
+                            "WHERE id=? AND consumed_by_run IS NULL",
+                            (run_id, feedback_id))
+            return cur.rowcount > 0
 
     def effective_requirement(self, project_id: str) -> dict:
         """Original requirement + all current feedback, as the real design input."""
@@ -353,7 +417,10 @@ class Store:
             {"feedback_id": f["id"], "revision_no": f["revision_no"],
              "kind": f["kind"], "text": f["text"],
              "baseline_artifact_id": f["baseline_artifact_id"],
-             "baseline_revision_uid": f["baseline_revision_uid"]}
+             "baseline_revision_uid": f["baseline_revision_uid"],
+             "baseline_selection": f.get("baseline_selection"),
+             "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
+             "consumed_by_run": f.get("consumed_by_run")}
             for f in items
         ]
         req["effective_input_hash"] = input_hash(req["text"], req["must_have"],
@@ -586,13 +653,21 @@ class Store:
     # -------------------------------------------------------------------- runs
     def start_run(self, project_id: str, model: str, *, input_hash_value: str | None = None,
                   expected_feedback_revision: int | None = None,
-                  candidate_group_id: str | None = None) -> str:
+                  candidate_group_id: str | None = None,
+                  task_kind: str | None = None, target_artifact_id: str | None = None,
+                  target_revision_uid: str | None = None,
+                  target_feedback_id: str | None = None,
+                  conflict_code: str | None = None) -> str:
         rid = new_id("run")
         with self._lock, self._conn() as c:
             c.execute("INSERT INTO runs(id,project_id,status,started_at,model,input_hash,"
-                      "expected_feedback_revision,candidate_group_id) VALUES(?,?,?,?,?,?,?,?)",
+                      "expected_feedback_revision,candidate_group_id,task_kind,"
+                      "target_artifact_id,target_revision_uid,target_feedback_id,"
+                      "conflict_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (rid, project_id, "running", now(), model, input_hash_value,
-                       expected_feedback_revision, candidate_group_id))
+                       expected_feedback_revision, candidate_group_id, task_kind,
+                       target_artifact_id, target_revision_uid, target_feedback_id,
+                       conflict_code))
         return rid
 
     def request_cancel(self, run_id: str) -> None:

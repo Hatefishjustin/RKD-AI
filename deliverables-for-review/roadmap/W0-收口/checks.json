@@ -1,0 +1,269 @@
+{
+  "schema_version": "rkd-roadmap-review-packet.v1",
+  "task_id": "W0 收口（R1/R2/R3）",
+  "packet": "deliverables-for-review/roadmap/W0-收口/",
+  "baseline": "957cf775e1d835cf25bbdf196de4e7f3f51280fa",
+  "generated_at": "2026-11-14T12:34:07+08:00",
+  "environment": {
+    "os": "Windows",
+    "python": "3.12.14 (.venv)",
+    "jsonschema": "4.25.1",
+    "shapely": "2.1.2",
+    "node": "v22",
+    "browser": "Edge headless (Playwright)",
+    "model_channel": "local-model-stub (explicitly labelled)",
+    "keys_used": false
+  },
+  "commands": [
+    ".venv/Scripts/python.exe -B scripts/verify_w0.py",
+    "PYTHONPATH=mvp .venv/Scripts/python.exe -B -m unittest discover -s mvp/tests -q",
+    "npm run build (web/)",
+    "scripts/verify_arc_first_batch.py --out <W0 after>",
+    "scripts/verify_studio_loop.py",
+    "scripts/verify_w0_browser.py + verify_w0_browser.cjs",
+    "scripts/w0_repro.py --phase after",
+    "scripts/w0_repro.py --phase before"
+  ],
+  "checks": [
+    {
+      "id": "W0-R1-01",
+      "name": "真实服务入口：选中旧方案反馈→revise→parent_revision_uid 指向用户选中旧版",
+      "result": "observed_pass",
+      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
+      "evidence": "after/checks.json",
+      "executed_at": "2026-11-14T12:27:12+08:00"
+    },
+    {
+      "id": "W0-R1-02",
+      "name": "R1 负例：跨候选/跨项目/旧反馈/并发新反馈/失败稿/晚到结果均明确拒绝",
+      "result": "observed_pass",
+      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
+      "evidence": "after/checks.json",
+      "executed_at": "2026-11-14T12:27:12+08:00"
+    },
+    {
+      "id": "W0-R2-01",
+      "name": "R2 负例：改了目标对象但未修窄通道 → REV-OBJECTIVE 拒绝，不记已解决",
+      "result": "observed_pass",
+      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
+      "evidence": "after/checks.json",
+      "executed_at": "2026-11-14T12:27:12+08:00"
+    },
+    {
+      "id": "W0-R2-02",
+      "name": "R2 正例：净宽由几何规则实测达标才记 pass（不是只看对象 diff）",
+      "result": "observed_pass",
+      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
+      "evidence": "after/checks.json",
+      "executed_at": "2026-11-14T12:27:12+08:00"
+    },
+    {
+      "id": "W0-R2-03",
+      "name": "R2 正例：审美/未实现目标写 unknown + user_confirmed=pending，四态分离",
+      "result": "observed_pass",
+      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
+      "evidence": "after/checks.json",
+      "executed_at": "2026-11-14T12:27:12+08:00"
+    },
+    {
+      "id": "W0-R2-04",
+      "name": "R2 服务级负例：伪修复经真实 /run 被拦，不生成新候选、不宣称成功",
+      "result": "observed_pass",
+      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
+      "evidence": "after/checks.json",
+      "executed_at": "2026-11-14T12:27:12+08:00"
+    },
+    {
+      "id": "W0-R3-01",
+      "name": "R3：历史证据字节不变、独立勘误含时间轴与三份 schema 映射；Q10 仍 not_run",
+      "result": "observed_pass",
+      "command": ".venv/Scripts/python.exe -B scripts/verify_w0.py",
+      "evidence": "after/checks.json",
+      "executed_at": "2026-11-14T12:27:12+08:00"
+    },
+    {
+      "id": "REG-Q01",
+      "name": "契约有效才进入有效候选；缺role/错类型/无效引用/批准字段被定位；历史保留",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q02",
+      "name": "面积唯一口径：100㎡/3㎡ 显式指出 97㎡ 未分配；完整布局对账；补通道不再自相矛盾",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q03",
+      "name": "实际几何：分离三角形不报相交；真实交集/自交/越界/零面积正确拒绝",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q04",
+      "name": "通行与锁定：断路/障碍/瓶颈/入口不可达/保留卫生间/目录引用均有定位",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q05",
+      "name": "完整交接：超旧截断长度的末尾对象可被评审/修订读取；基线ID与issue_id明确",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q06",
+      "name": "多方案实质不同：换名/换色/顺序/无意义位移不算新拓扑",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q07",
+      "name": "页面反馈进入版本化有效需求，形成绑定原基线的新修订和真实对象 diff",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q08",
+      "name": "意见逐项对应、拒绝有理由、删除/锁定/身份负例被拒、返工上限仍为2",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q09",
+      "name": "项目/版本/闸口隔离：切项目不显示宁波、晚到结果失效、决定重放不覆盖",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q10",
+      "name": "同源成果真实可用（后续适配批）",
+      "result": "not_run",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q11",
+      "name": "重启保留反馈/任务/闸口/检查报告；种子不重写项目事实、不重复事实",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "REG-Q12",
+      "name": "工程完成不自动设计通过；来源明确；未确认不生成下一阶段交付；AD 不改判",
+      "result": "observed_pass",
+      "command": "scripts/verify_arc_first_batch.py --out <W0 after>",
+      "evidence": "after/arc-first-batch-regression-checks.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "W0-REPRO-BEFORE",
+      "name": "整改前 R1/R2/R3 缺陷复现（应为 7/7 确认）",
+      "result": "observed_pass",
+      "command": "scripts/w0_repro.py --phase before",
+      "evidence": "before/reproduction.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "W0-REPRO-AFTER",
+      "name": "整改后同脚本复现（应为 0/7）",
+      "result": "observed_pass",
+      "command": "scripts/w0_repro.py --phase after",
+      "evidence": "after/reproduction.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "W0-UNIT",
+      "name": "全量单测回归",
+      "result": "observed_pass",
+      "command": "PYTHONPATH=mvp .venv/Scripts/python.exe -B -m unittest discover -s mvp/tests -q",
+      "evidence": "after/full-unittest-final.log",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "W0-LOOP",
+      "name": "A1 本地桩管线",
+      "result": "observed_pass",
+      "command": "scripts/verify_studio_loop.py",
+      "evidence": "after/studio-loop.log",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "W0-BUILD",
+      "name": "前端生产构建",
+      "result": "observed_pass",
+      "command": "npm run build (web/)",
+      "evidence": "after/frontend-build.log",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    },
+    {
+      "id": "W0-BROWSER",
+      "name": "真实浏览器：选中旧方案→反馈→续改→父版本对照",
+      "result": "observed_pass",
+      "command": "scripts/verify_w0_browser.py + verify_w0_browser.cjs",
+      "evidence": "browser/verification.json, browser/browser-observations.json",
+      "executed_at": "2026-11-14T12:34:07+08:00"
+    }
+  ],
+  "totals": {
+    "observed_pass": 24,
+    "observed_fail": 0,
+    "not_run": 1
+  },
+  "artifact_refs": [
+    "review-packet.md",
+    "code-diff.md",
+    "changes.patch",
+    "manifest.json",
+    "positive-negative-cases.md",
+    "evidence-provenance-erratum.md",
+    "before/reproduction.json",
+    "after/reproduction.json",
+    "after/checks.json",
+    "after/arc-first-batch-regression-checks.json",
+    "after/q-checks.json",
+    "after/full-unittest-final.log",
+    "after/studio-loop.log",
+    "after/frontend-build.log",
+    "browser/verification.json",
+    "browser/browser-observations.json",
+    "browser/*.png"
+  ],
+  "external_calls": 0,
+  "image_counts": {
+    "images_sent_external": 0,
+    "images_generated_external": 0,
+    "browser_screenshots_local": 3
+  },
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "limitations": [
+    "工程批，无新增设计成果",
+    "Q10 not_run（W1/W2）",
+    "AD01—AD08 结论不改判，阶段设计结论由用户给出",
+    "本地桩不代表真实 AI 设计能力"
+  ],
+  "stop_point": "docs/26 硬节点 1：W0 收口完成，先交架构师复核，不自行开始 W1"
+}

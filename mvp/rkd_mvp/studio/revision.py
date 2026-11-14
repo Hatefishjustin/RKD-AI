@@ -16,6 +16,8 @@ import hashlib
 import json
 from typing import Any
 
+from . import revision_task
+
 PATCH_GROUPS = {
     "zones": {"name", "role", "polygon", "area_sqm"},
     "furniture": {"catalog_id", "x", "y", "rot", "w_mm", "d_mm"},
@@ -171,11 +173,22 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
                               responses: list[dict] | None = None,
                               issues: list[dict] | None = None,
                               lock_object_ids: list[str] | None = None,
-                              boss_feedback: list[dict] | None = None) -> dict:
-    """Full-output path: prove retention, deletion reasons, locks, issue linkage.
+                              boss_feedback: list[dict] | None = None,
+                              objectives: list[dict] | None = None,
+                              site: dict | None = None,
+                              catalog: dict | None = None,
+                              locks: dict | None = None) -> dict:
+    """W0/R2: four separate states, NOT an object-diff-as-resolution shortcut.
 
-    Returns {ok, errors, changed_objects, removed_objects, added_objects,
-             issue_resolutions, boss_feedback_resolutions, object_retention_ratio}
+    input_included  : the structured objective actually entered the revision input
+    object_changed  : the objective's own objects really changed
+    objective_rechecked : pass / fail / unknown / not_applicable, by a rule
+    user_confirmed  : pending for aesthetic & unimplemented checks; the program
+                      NEVER writes confirmed=True
+
+    A measurable objective is rechecked by its rule (clear width / capacity /
+    position / lock). Aesthetic or not-yet-implemented objectives stay unknown
+    and pending for the user. Referencing a change is never "resolved".
     """
     errors: list[dict] = []
     before, after = _object_map(base), _object_map(candidate)
@@ -189,6 +202,34 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
     response_by_id = {str(r.get("issue_id")): r for r in responses}
     reason_text = " ".join(str(r.get("reason") or "") + " " + str(r.get("change") or "")
                            for r in responses)
+    feedback_rows = [dict(f) for f in (boss_feedback or []) if isinstance(f, dict)]
+    for f in feedback_rows:
+        f.setdefault("id", f.get("feedback_id"))
+    objectives = objectives if objectives is not None else \
+        revision_task.derive_objectives(feedback_rows, issues)
+    rechecks = revision_task.recheck_objectives(
+        objectives, base, candidate, site=site, catalog=catalog, locks=locks,
+        changed_objects=changed + added + removed)
+    rechecks_by_issue: dict[str, list[dict]] = {}
+    rechecks_by_feedback: dict[str, list[dict]] = {}
+    for r in rechecks:
+        if r.get("issue_id"):
+            rechecks_by_issue.setdefault(str(r["issue_id"]), []).append(r)
+        if r.get("feedback_id"):
+            rechecks_by_feedback.setdefault(str(r["feedback_id"]), []).append(r)
+
+    def _states(rows: list[dict]) -> tuple[str, bool | None]:
+        """(objective_rechecked, resolved); None resolved means unknown."""
+        states = [r["objective_rechecked"] for r in rows]
+        if not states:
+            return "unknown", None
+        if "fail" in states:
+            return "fail", False
+        if all(s == "pass" for s in states):
+            return "pass", True
+        if all(s == "not_applicable" for s in states):
+            return "not_applicable", None
+        return "unknown", None
 
     # 1. deletion must have an explicit reason (no silent dropping of objects)
     for key in removed:
@@ -232,43 +273,118 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
                 errors.append(_err("REV-REJECT", f"意见 {iid} 拒绝但未写理由",
                                    "reject 必须给出理由", f"/responses/{iid}"))
             issue_resolutions.append({"issue_id": iid, "action": "reject",
-                                      "verified": ok, "reason": r.get("reason") or ""})
+                                      "verified": ok, "reason": r.get("reason") or "",
+                                      "input_included": True,
+                                      "object_changed": False,
+                                      "objective_rechecked": "not_applicable",
+                                      "user_confirmed": "not_applicable",
+                                      "resolved": None,
+                                      "note": "拒绝是决定，不是问题已解决"})
         elif action == "accept":
             linked = sorted(set(objs) & set(short_changed + [k.split(":", 1)[1] for k in added + removed]))
-            verified = bool(linked) or bool(str(r.get("change") or "").strip()
-                                            and any(k in str(r.get("change")) for k in objs))
-            # A change to an arbitrary object does NOT prove this issue was fixed:
-            # the object named by the issue itself must appear in the diff.
+            rows = rechecks_by_issue.get(iid, [])
+            state, resolved = _states(rows)
+            # The object named by the issue must appear in the diff ...
             if not linked:
                 errors.append(_err("REV-ISSUE", f"意见 {iid} 被接受，但其对象 {objs} 没有出现在对象 diff 中",
                                    "按意见改对应对象；不能改任意一个别的对象就宣称全部落实",
                                    f"/responses/{iid}"))
-            issue_resolutions.append({"issue_id": iid, "action": "accept",
-                                      "verified": bool(linked), "linked_objects": linked,
-                                      "recheck": "对象 diff 复核" if linked else "未通过",
-                                      "change": r.get("change") or ""})
+            # ... but appearing in the diff is NOT proof the objective was met.
+            if state == "fail":
+                errors.append(_err(
+                    "REV-OBJECTIVE",
+                    f"意见 {iid} 的目标未通过确定性复核（{rows[0]['rule_id']}："
+                    f"目标 {rows[0]['target']}，实测未达标）；改了对象颜色/名称不等于修好问题",
+                    "按对应规则实测并修到目标值；只引用对象 diff 不能记为已解决",
+                    f"/responses/{iid}"))
+            issue_resolutions.append({
+                "issue_id": iid, "action": "accept",
+                "verified": state == "pass",
+                "input_included": bool(rows),
+                "object_changed": bool(linked),
+                "objective_rechecked": state,
+                "user_confirmed": "not_applicable" if state in ("pass", "fail") else "pending",
+                "resolved": resolved if state != "unknown" else None,
+                "linked_objects": linked,
+                "recheck": "确定性规则复核" if rows else "未取得复核输入",
+                "recheck_details": [{k: v for k, v in x.items()
+                                     if k in ("objective_id", "rule_id", "field", "target",
+                                              "objective_rechecked", "resolved", "evidence",
+                                              "note")} for x in rows],
+                "change": r.get("change") or "",
+            })
         else:
             issue_resolutions.append({"issue_id": iid, "action": action or "unknown",
                                       "verified": False, "reason": "action 只能是 accept/reject"})
             errors.append(_err("REV-ISSUE", f"意见 {iid} 的 action 非法",
                                "写成 accept 或 reject", f"/responses/{iid}"))
-    # 5. boss feedback must be visibly referenced by the revision input
+    # 5. boss feedback: four states, NOT "it was in the input -> resolved".
     boss_resolutions = []
-    for fb in (boss_feedback or []):
+    for fb in feedback_rows:
         text = str(fb.get("text") or "")
+        fid = str(fb.get("feedback_id") or fb.get("id") or "")
+        rows = rechecks_by_feedback.get(fid, [])
+        # objectives with no feedback_id (text heuristics on simplified rows)
+        if not rows:
+            rows = [r for r in rechecks
+                    if str(r.get("objective_id") or "").startswith(
+                        f"FB{fb.get('revision_no', '?')}-")]
+        state, resolved = _states(rows)
+        linked = sorted({r["object_id"] for r in []} |
+                        {x for row in rows for x in (row.get("linked_objects") or [])})
         boss_resolutions.append({
             "feedback_id": fb.get("feedback_id"), "revision_no": fb.get("revision_no"),
-            "text": text, "in_revision_input": True,
-            "linked_changes": short_changed,
-            "note": "老板留言已进入修订输入；是否真正满足由用户对具体图面判定",
+            "text": text,
+            "in_revision_input": True,          # the raw text entered the input
+            "input_included": bool(rows),       # a STRUCTURED objective entered recheck
+            "object_changed": bool(linked),
+            "objective_rechecked": state,
+            "user_confirmed": ("not_applicable" if state in ("pass", "fail", "not_applicable")
+                               else "pending"),
+            "resolved": resolved if state != "unknown" else None,
+            "linked_changes": linked,           # only this feedback's target objects
+            "recheck_details": [{k: v for k, v in x.items()
+                                 if k in ("objective_id", "rule_id", "field", "target",
+                                          "objective_rechecked", "resolved", "evidence",
+                                          "note")} for x in rows],
+            "note": ("老板留言的自然语言已进入修订输入；结构化目标由对应规则复核。"
+                     + ("审美/未实现目标写 unknown 且 user_confirmed=pending，最终等用户；"
+                        "不把『引用到变化』记为已解决" if state == "unknown"
+                        else "目标复核结论见 recheck_details；仍不等于设计通过")),
         })
+        if state == "fail":
+            errors.append(_err(
+                "REV-OBJECTIVE",
+                f"老板留言 {fid or '?'} 的可计算目标未通过确定性复核",
+                "按对应规则实测并修到目标值；不能用对象 diff 冒充已解决", f"/feedback/{fid}"))
+    # Global guard: ANY failed deterministic recheck invalidates the revision,
+    # even when an objective has no issue/feedback linkage (e.g. a structured
+    # objective injected by the service). A diff reference never overrides it.
+    if any(r["objective_rechecked"] == "fail" for r in rechecks) and \
+            not any(e["rule_id"] == "REV-OBJECTIVE" for e in errors):
+        errors.append(_err("REV-OBJECTIVE",
+                           "存在未通过确定性复核的可计算目标（见 objective_rechecks）",
+                           "按对应规则实测并修到目标值；对象 diff 不能代替目标复核", "/"))
     retention = (len(set(before) & set(after)) / len(before)) if before else 1.0
+    summary = {
+        "pass": sum(1 for r in rechecks if r["objective_rechecked"] == "pass"),
+        "fail": sum(1 for r in rechecks if r["objective_rechecked"] == "fail"),
+        "unknown": sum(1 for r in rechecks if r["objective_rechecked"] == "unknown"),
+        "not_applicable": sum(1 for r in rechecks
+                              if r["objective_rechecked"] == "not_applicable"),
+        "user_confirmed_pending": sum(1 for r in rechecks
+                                      if r["user_confirmed"] == "pending"),
+    }
     return {
         "ok": not errors, "errors": errors,
         "changed_objects": changed, "removed_objects": removed, "added_objects": added,
         "object_retention_ratio": round(retention, 3),
         "issue_resolutions": issue_resolutions,
         "boss_feedback_resolutions": boss_resolutions,
+        "objective_rechecks": rechecks,
+        "objective_recheck_summary": summary,
+        "state_separation": ["input_included", "object_changed",
+                             "objective_rechecked", "user_confirmed"],
         "accepted_issues_verified": sum(1 for r in issue_resolutions
                                         if r["action"] == "accept" and r["verified"]),
         "accepted_issues_total": sum(1 for r in issue_resolutions if r["action"] == "accept"),

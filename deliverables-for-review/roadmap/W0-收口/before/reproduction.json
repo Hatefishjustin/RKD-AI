@@ -1,0 +1,201 @@
+{
+  "schema_version": "rkd-w0-reproduction.v1",
+  "phase": "before",
+  "checked_at": "2026-11-14T11:53:38+08:00",
+  "head_commit_at_check": "957cf775e1d835cf25bbdf196de4e7f3f51280fa",
+  "basis": "docs/26 section 2 (R1/R2/R3)",
+  "isolation": {
+    "studio_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W0-收口\\runtime\\repro-before.db",
+    "daily_var_studio_db_untouched": true,
+    "historical_review_packet_read_only": true,
+    "model_channel": "local-model-stub (explicitly labelled)",
+    "external_calls": 0,
+    "keys_used": false,
+    "cost": 0
+  },
+  "cases": [
+    {
+      "id": "R1-a",
+      "description": "_scenario 是否区分 generate / revise 任务，还是无条件重新生成 A/B",
+      "observed": {
+        "unconditional_A_B_loop": true,
+        "generate_revise_task_resolution_present": false,
+        "boss_feedback_fields": [],
+        "baseline_pointer_in_boss_feedback": false,
+        "user_specified_baseline_read_by_HTTP_messages": false
+      },
+      "defect_present": true,
+      "verdict": "defect_confirmed"
+    },
+    {
+      "id": "R1-b",
+      "description": "反馈指定旧基线后，第二轮是否加载该旧稿续改而非重新生成 A/B",
+      "observed": {
+        "user_selected_baseline_artifact_id": "art_414dd516b2",
+        "user_selected_baseline_revision_uid": "revuid_ef1bc05689",
+        "feedback_baseline_revision_uid": "revuid_ef1bc05689",
+        "second_run_fresh_A_B_count": 2,
+        "second_run_revisions": [
+          {
+            "id": "art_271722f044",
+            "revision": 2,
+            "parent_revision_uid": "revuid_10f811980d"
+          }
+        ],
+        "parent_revision_uid_matches_user_selected_baseline": false,
+        "runs": [
+          {
+            "status": "succeeded",
+            "task_kind": null
+          },
+          {
+            "status": "succeeded",
+            "task_kind": null
+          }
+        ]
+      },
+      "defect_present": true,
+      "verdict": "defect_confirmed"
+    },
+    {
+      "id": "R1-c",
+      "description": "真实服务入口是否尊重用户指定的旧基线（不按最新文件偷换）",
+      "observed": {
+        "http_status": 201,
+        "response": {
+          "ok": true,
+          "message_id": 29,
+          "feedback": {
+            "id": "fb_d4b33cad31",
+            "revision_no": 2,
+            "input_hash": "ca22ec9bd850354ea7d3d74d173de3b901693645c24c6f202e90d8a0931ae11d",
+            "baseline_artifact_id": "art_f35ba7261d",
+            "baseline_revision_uid": "revuid_10f811980d"
+          },
+          "effective_requirement_hash": "5e44db8f36a0fe0d21bb5bc83047da375ce1c76e0ada125cba8e769deffe8f0d",
+          "note": "留言已进入版本化有效需求；下一轮修订将读取该输入并给出对象 diff"
+        },
+        "user_specified_baseline_artifact_id": "art_414dd516b2",
+        "stored_baseline_artifact_id": "art_f35ba7261d",
+        "stored_baseline_selection": null,
+        "honoured": false,
+        "explicitly_labelled_user_selection": false
+      },
+      "defect_present": true,
+      "verdict": "defect_confirmed"
+    },
+    {
+      "id": "R2-a",
+      "description": "伪修复（只改目标对象颜色/名称，未修窄通道）是否被记为已解决",
+      "observed": {
+        "changed_objects": [
+          "circulation:CA1"
+        ],
+        "declared_width_mm_after": 2000,
+        "issue_resolution": {
+          "issue_id": "I1",
+          "action": "accept",
+          "verified": true,
+          "linked_objects": [
+            "CA1"
+          ],
+          "recheck": "对象 diff 复核",
+          "change": "已调整"
+        },
+        "boss_feedback_resolution": {
+          "feedback_id": "fb_test",
+          "revision_no": 1,
+          "text": "把洽谈区做得更开放、更有设计感",
+          "in_revision_input": true,
+          "linked_changes": [
+            "CA1"
+          ],
+          "note": "老板留言已进入修订输入；是否真正满足由用户对具体图面判定"
+        },
+        "objective_states_present": false,
+        "ok": true
+      },
+      "defect_present": true,
+      "verdict": "defect_confirmed"
+    },
+    {
+      "id": "R2-b",
+      "description": "意见/反馈是否分离 input_included / object_changed / objective_rechecked / user_confirmed 四态",
+      "observed": {
+        "issue_resolution_keys": [
+          "action",
+          "change",
+          "issue_id",
+          "linked_objects",
+          "recheck",
+          "verified"
+        ],
+        "boss_feedback_resolution_keys": [
+          "feedback_id",
+          "in_revision_input",
+          "linked_changes",
+          "note",
+          "revision_no",
+          "text"
+        ],
+        "boss_feedback_linked_changes_is_all_changes": true,
+        "boss_feedback_claims_in_revision_input": true
+      },
+      "defect_present": true,
+      "verdict": "defect_confirmed"
+    },
+    {
+      "id": "R3-a",
+      "description": "复核包编制日期与内含事件/提交日期是否分别标明（不推断造假，不混用）",
+      "observed": {
+        "packet_compiled_date": "2026-11-12",
+        "before_reproduction_generated_at": "2026-11-12T23:02:01+08:00",
+        "after_reproduction_generated_at": "2026-11-12T23:48:30+08:00",
+        "checks_json_generated_at": "2026-11-14T11:21:20+08:00",
+        "browser_verification_checked_at": "2026-11-12T15:47:39.778763+00:00",
+        "commits": [
+          {
+            "commit": "957cf77",
+            "committed_at": "2026-11-14T11:26:47+08:00",
+            "subject": "docs: 复核包标注本批提交号 eb6513c 与差异复核命令"
+          },
+          {
+            "commit": "eb6513c",
+            "committed_at": "2026-11-14T11:26:18+08:00",
+            "subject": "ARC 首批工程整改：契约四级校验、真实几何与面积口径、完整交接与版本闭环"
+          },
+          {
+            "commit": "d6501a9",
+            "committed_at": "2026-11-11T22:48:29+08:00",
+            "subject": "A1 收口：修订变差自动打回（最多2轮）+ 总监看图自评，真实回路验证完成"
+          }
+        ],
+        "packet_has_explicit_time_axis": false
+      },
+      "defect_present": true,
+      "verdict": "defect_confirmed"
+    },
+    {
+      "id": "R3-b",
+      "description": "ARC-05 适配说明是否按实际两个 schema 区分模型提案/程序装配/主系统落点",
+      "observed": {
+        "proposal_schema_has_contract_version": false,
+        "proposal_schema_has_project_id": false,
+        "draft_schema_contract_version_const": "rkd-spatial-plan.v1",
+        "draft_schema_has_project_id": true,
+        "main_option_schema_version_const": "rkd-ai-design-option.v1",
+        "main_option_schema_has_project_id": false,
+        "main_option_additional_properties": false,
+        "adaptation_note_mapping_lines": [
+          "| `contract_version` / `project_id` | `rkd-spatial-plan.v1` / 与主系统项目 ID 显式映射（`source_project_id`） | `ai-design-option` 的 `schema_version` / `project_id` | 映射必须显式记录，不从名称推断；跨项目引用拒绝 |"
+        ],
+        "note_incorrectly_labels_proposal_fields": false,
+        "erratum_record_present": false
+      },
+      "defect_present": true,
+      "verdict": "defect_confirmed"
+    }
+  ],
+  "defects_confirmed": 7,
+  "cases_total": 7
+}

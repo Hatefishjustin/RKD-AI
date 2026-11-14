@@ -405,7 +405,11 @@ def q07_q08() -> None:
         base, candidate, responses=pl["responses"], issues=issues,
         lock_object_ids=["ZA1"],
         boss_feedback=[{"feedback_id": "fb1", "revision_no": 1,
-                        "text": "调整洽谈区、保留入口"}])
+                        "text": "调整洽谈区、保留入口"}],
+        # W0/R2: supply the real site so clear-width objectives can be
+        # re-measured by geometry instead of being reported as unknown.
+        # This STRENGTHENS the check; no validation rule is relaxed.
+        site=SITE)
     rp = validation.validate_proposal(
         candidate, project=PROJ, option_id="A", revision=2, parent_revision=1,
         lock_object_ids=["ZA1"], previous_plan=base)
@@ -430,7 +434,8 @@ def q07_q08() -> None:
     bad_cand, _, _ = R.apply_patch(base, bad_payload["patch"])
     bad_integ = R.verify_revision_integrity(base, bad_cand,
                                             responses=bad_payload["responses"],
-                                            issues=issues, lock_object_ids=["ZA1"])
+                                            issues=issues, lock_object_ids=["ZA1"],
+                                            site=SITE)
     # negative: silent deletion without reason
     del_patch = [{"op": "remove", "group": "zones", "id": "ZA4"}]
     _, del_errors, _ = R.apply_patch(base, del_patch)
@@ -439,7 +444,7 @@ def q07_q08() -> None:
                                             "id": "ZA1", "fields": {"role": "support"}}])
     lock_integ = R.verify_revision_integrity(base, lock_cand, issues=issues,
                                              responses=pl["responses"],
-                                             lock_object_ids=["ZA1"])
+                                             lock_object_ids=["ZA1"], site=SITE)
     # negative: patch writing an identity/decision field
     _, identity_errors, _ = R.apply_patch(base, [{"op": "update", "group": "zones",
                                                  "id": "ZA1", "fields": {"approved": True}}])
@@ -739,7 +744,9 @@ def main() -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    (AFTER / "q-checks.json").write_text(
+    # W0/R3: write the companion q-checks beside the chosen output, so a later
+    # regression run never overwrites the first batch's historical evidence.
+    (out.parent / "q-checks.json").write_text(
         json.dumps({"checks": CHECKS, "cases": CASES,
                     "totals": summary["totals"]}, ensure_ascii=False, indent=2),
         encoding="utf-8")

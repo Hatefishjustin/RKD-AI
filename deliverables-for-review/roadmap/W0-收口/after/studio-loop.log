@@ -1,0 +1,16 @@
+PASS 有任务拆解
+PASS 有讨论
+PASS 两个候选均为有效候选
+PASS 有修订版
+PASS 有缩略图
+PASS 有评审
+PASS 有逐条回应
+PASS 有闸口且绑定基线
+PASS 有看图自评
+PASS 总监没说通过
+PASS 老板留言进入版本化反馈
+PASS 修订读取基线ID与对象diff
+PASS 有检查报告关联
+PASS 无效原始稿未冒充有效候选
+PASS 阶段状态未自称设计通过
+{"messages": 14, "artifacts": 7, "valid_candidates": 3, "raw_invalid": 0, "check_reports": 3, "runs": ["succeeded"], "tokens": 14600}
