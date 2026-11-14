@@ -7,7 +7,10 @@
     "compare_base_subject": "docs: W0 二次收口复核包补提交号与证据时间轴",
     "head_when_evidence_taken": "5571e4ec82753539793e0ae7ecb046bf1c336a73",
     "rebuild_command": "git diff 5571e4e -- mvp scripts",
-    "patch_bytes": 90309
+    "patch_bytes": 90309,
+    "batch_commit": "48afd01af41286c44497bf1b0d03370102969e5f",
+    "batch_commit_at": "2026-11-14 17:58:35 +0800",
+    "evidence_head_note": "证据在提交前采集，故 text-cases/checks 的 git_head=5571e4e；本批代码见 batch_commit"
   },
   "timeline": [
     {
@@ -104,13 +107,17 @@
       "bytes": 6544,
       "sha256": "0fdfdd9e21bec5cecbf7431150d8bab1cbc608d46cc5fc1808a9582eeb2f3827"
     },
+    "commit-reference.md": {
+      "bytes": 2964,
+      "sha256": "0e09010a254c5db0ba400b88ff652760961020af470b9ffd94da0888e705f179"
+    },
     "positive-negative-cases.md": {
       "bytes": 7565,
       "sha256": "f16bf6b8018f4e6731d8ca69548bf67ba40da1db63c476cdce10b83ab4405c9d"
     },
     "review-packet.md": {
-      "bytes": 14570,
-      "sha256": "4e7cb915a74872f8cd0591e2685418aec63bd99740e7c35d1a56b2ebf1c83b13"
+      "bytes": 15025,
+      "sha256": "d8fec0ff843ab5d901157c599353f31887ecca5b2cee46b8f7e8964d8060d62f"
     },
     "runtime/frontend-tsc.log": {
       "bytes": 0,

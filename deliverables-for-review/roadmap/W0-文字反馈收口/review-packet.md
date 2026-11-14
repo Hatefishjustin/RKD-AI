@@ -3,6 +3,9 @@
 编制时间：2026-11-14 18:05（北京时间）；证据实际执行时间见 `manifest.json` 时间轴。
 上游依据：`deliverables-for-review/roadmap/W0b-architect-review/architect-review.md`（结论：原 17 例与 15 项 HTTP 已独立通过，W0 尚不放行，唯一集中阻断点 TEXT-01）与同目录 `text-feedback-cases.json`。
 比较基线（base）：`5571e4ec82753539793e0ae7ecb046bf1c336a73`（`5571e4e`）；
+本批业务实现提交：`48afd01af41286c44497bf1b0d03370102969e5f`（`48afd01`，2026-11-14 17:58:35 +08:00）。
+**证据全部在提交前采集**，所以 `text-cases.json` / `checks.json` 里的 `git_head` 是 `5571e4e`；
+时间轴与提交对照见 `commit-reference.md`。
 复核命令：`git diff 5571e4e -- mvp scripts`（补丁在 `changes.patch`）。
 性质：**工程缺陷整改与可复核证据**。不是设计完成，不是设计通过，**本包不宣布 W0 放行**，不改 AD01—AD08。
 
