@@ -206,7 +206,7 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
     for f in feedback_rows:
         f.setdefault("id", f.get("feedback_id"))
     objectives = objectives if objectives is not None else \
-        revision_task.derive_objectives(feedback_rows, issues)
+        revision_task.derive_objectives(feedback_rows, issues, plan=base)
     rechecks = revision_task.recheck_objectives(
         objectives, base, candidate, site=site, catalog=catalog, locks=locks,
         changed_objects=changed + added + removed)
@@ -237,13 +237,20 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
         if oid not in reason_text and not any(oid in str(i.get("objects")) for i in issues):
             errors.append(_err("REV-DELETE", f"对象 {key} 被删除但没有理由",
                                "在 responses 里写明删除原因与替代关系，或保留该对象", key))
-    # 2. locked objects unchanged
-    locks = set(lock_object_ids or [])
-    for oid in locks:
-        keys = [k for k in set(before) | set(after) if k.split(":", 1)[1] == oid]
-        if any(before.get(k) != after.get(k) for k in keys):
-            errors.append(_err("LOCK-REVISION", f"锁定对象 {oid} 被改动或删除",
-                               "恢复该对象；无法满足时把冲突作为待决项交用户", "/"))
+    # 2. locked objects unchanged — FIELD level, one shared implementation.
+    # `lock_object_ids` (whole object) stays supported for callers that only have
+    # ids; the structured `locks` argument keeps field granularity (W0-F04).
+    if locks is None and lock_object_ids:
+        locks = {"locks": [{"object_id": str(oid), "fields": ["*"],
+                            "source": "caller", "reason": "锁定对象"}
+                           for oid in lock_object_ids]}
+    lock_hits = revision_task.lock_conflicts(base, candidate, locks or {"locks": []})
+    for hit in lock_hits:
+        errors.append(_err(
+            "LOCK-REVISION",
+            hit.get("message") or f"锁定对象 {hit['object_id']} 被改动或删除",
+            "恢复该对象/字段；无法满足时把冲突作为待决项交用户，不要静默解除锁定",
+            "/"))
     # 3/4. Per-issue checks only apply when a structured review exists. An
     # automatic rework round has no fresh issue list, so it is checked for
     # retention / locks / deletion reasons but not blamed for missing linkage.

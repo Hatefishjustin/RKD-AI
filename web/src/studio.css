@@ -68,5 +68,13 @@
 }
 .studio-taskbar { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 10px; margin: 0 0 10px; background: #f5f7f9; border: 1px solid #e2e8ee; border-radius: 2px; font-size: 12px; color: #4c5a67; }
 .studio-taskbar span { min-width: 0; word-break: break-word; }
+.studio-note { margin: 0 0 10px; padding: 7px 10px; background: #f2f6fa; border-left: 2px solid #9fb3c6; font-size: 12px; color: #4c5a67; }
+.studio-pending { margin: 0 0 10px; padding: 8px 10px; background: #fbf7ef; border: 1px solid #e8dcc4; border-radius: 2px; font-size: 12px; color: #5a4a33; }
+.studio-pending strong { display: block; margin-bottom: 4px; font-weight: 600; }
+.studio-pending ul { margin: 0; padding-left: 16px; }
+.studio-pending li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 0; }
+.studio-pending button { font-size: 11px; padding: 2px 8px; border: 1px solid #c9b995; background: #fff; border-radius: 2px; cursor: pointer; color: #5a4a33; }
+.studio-withdrawn { margin-top: 6px; color: #8a8f96; font-size: 12px; }
+.studio-withdrawn li { text-decoration: line-through; }
 .studio-empty { color: #7b8895; font-size: 13px; }
 @media (max-width: 1180px) { .studio-grid { grid-template-columns: 1fr; } .studio-timeline { max-height: none; } }

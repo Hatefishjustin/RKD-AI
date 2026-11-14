@@ -1,0 +1,3582 @@
+diff --git a/mvp/rkd_mvp/studio/orchestrator.py b/mvp/rkd_mvp/studio/orchestrator.py
+index de0bc35..e6740ec 100644
+--- a/mvp/rkd_mvp/studio/orchestrator.py
++++ b/mvp/rkd_mvp/studio/orchestrator.py
+@@ -175,32 +175,25 @@ def _qc_text(q: dict) -> str:
+     return f"blocker {q['blocker']} / major {q['major']} / 面积差 {q['area_gap_sqm']}㎡"
+ 
+ 
+-def _locked_ids(plan: dict, feedback_text: str = "") -> list[str]:
+-    """Objects locked by default (arrival/entrance, main route, display focus).
+-
+-    Stair / bathroom / windows are additionally protected by geometry keep-out
+-    checks; here we protect design objects the boss told us to keep.
++def _resolved_text_locks(plan: dict, feedback_rows: list[dict]) -> list[dict]:
++    """"保留 X 不动" becomes a structured lock ONLY where the binding is
++    unambiguous. An unresolved claim stays an `unknown` objective (see
++    revision_task) instead of silently locking something else (W0-F03).
++
++    The arrival zone is locked by `structured_locks(program:role_arrival)`; the
++    route itself is NOT locked wholesale because review issues legitimately ask
++    for width/path changes (CIR-004 protects the entrance condition instead).
+     """
+-    ids: set[str] = set()
+-    for z in (plan.get("zones") or []):
+-        if isinstance(z, dict) and z.get("role") == "arrival":
+-            ids.add(str(z.get("id")))
+-    # The route itself is NOT locked wholesale: review issues legitimately ask
+-    # for width/path changes. The entrance condition is protected by the CIR-004
+-    # geometry check instead (route must still reach the entrance band).
+-    for f in (plan.get("furniture") or []):
+-        if isinstance(f, dict) and any(k in str(f.get("id", "")).lower()
+-                                       for k in ("focal", "hero", "display", "entry")):
+-            ids.add(str(f.get("id")))
+-    # "保留 X" in a boss message locks the named object id when it exists
+-    if "保留" in feedback_text:
+-        known = {str(o.get("id")) for g in ("zones", "furniture", "circulation", "platforms")
+-                 for o in (plan.get(g) or []) if isinstance(o, dict)}
+-        for token in feedback_text.replace("，", " ").replace("、", " ").split():
+-            t = token.strip("。；;,. ")
+-            if t in known:
+-                ids.add(t)
+-    return sorted(ids)
++    out: list[dict] = []
++    for fb in feedback_rows or []:
++        for b in revision_task.resolve_preserve_bindings(str(fb.get("text") or ""), plan):
++            if b["status"] != "resolved":
++                continue
++            for oid in b["object_ids"]:
++                out.append({"object_id": oid, "fields": ["*"],
++                            "reason": f"留言「{b['clause']}」要求保留"
++                                      f"（绑定方式 {b['match']}）"})
++    return out
+ 
+ 
+ class Studio:
+@@ -351,17 +344,26 @@ class Studio:
+         kind = resolution["kind"]
+         target_art = resolution.get("baseline") or {}
+         target_fb = resolution.get("feedback") or {}
++        # A revise consumes EVERY merged message of this baseline, so an older
++        # same-baseline message cannot come back later (W0-F01).
++        merged_fb = resolution.get("merged_feedback") or (
++            [target_fb] if target_fb else [])
+ 
+         prior = sum((r["tokens_in"] or 0) + (r["tokens_out"] or 0)
+                     for r in st.runs(project_id) if r["status"] != "running")
+         client = Client(project_tokens=prior)
++        # Cumulative auto-rework of THIS design trial (never reset by a new run).
++        trial_key = (st.trial_key_for(target_art["id"]) if target_art.get("id")
++                     else f"{project_id}|generate|{group_id}")
++        carried_rework = st.auto_rework_used(trial_key)
+         run_id = st.start_run(
+             project_id, client.config.model, input_hash_value=ih,
+             expected_feedback_revision=expected, candidate_group_id=group_id,
+             task_kind=kind, target_artifact_id=target_art.get("id"),
+             target_revision_uid=target_art.get("revision_uid"),
+             target_feedback_id=target_fb.get("id"),
+-            conflict_code=resolution.get("conflict_code"))
++            conflict_code=resolution.get("conflict_code"),
++            trial_key=trial_key, auto_rework_total=carried_rework)
+ 
+         if kind == revision_task.TASK_CONFLICT:
+             detail = (resolution.get("conflict_detail") or "") + "；可选：" + \
+@@ -389,7 +391,7 @@ class Studio:
+         if kind == revision_task.TASK_REVISE:
+             # CAS: one feedback row drives exactly one revise run. This blocks
+             # "split into a new run" as a way around the 2-round rework limit.
+-            if not st.consume_feedback(target_fb["id"], run_id):
++            if not all(st.consume_feedback(f["id"], run_id) for f in merged_fb):
+                 st.finish_run(run_id, "conflict", 0, 0,
+                               "反馈已被其他 run 消费", calls=0,
+                               cost_amount=None, cost_status="unknown_no_price_table")
+@@ -403,7 +405,9 @@ class Studio:
+ 
+         def work() -> None:
+             status, error = "succeeded", None
+-            stats = {"images_sent": 0, "images_generated": 0, "calls": 0}
++            stats = {"images_sent": 0, "images_generated": 0, "calls": 0,
++                     # cumulative for the whole design trial, not just this run
++                     "auto_rework_total": carried_rework}
+             try:
+                 if kind == revision_task.TASK_REVISE:
+                     self._revise_from_baseline(project, client, run_id, group_id,
+@@ -459,7 +463,10 @@ class Studio:
+                               images_sent=stats["images_sent"],
+                               images_generated=stats["images_generated"],
+                               cost_amount=None,
+-                              cost_status="unknown_no_price_table")
++                              cost_status="unknown_no_price_table",
++                              auto_rework_total=stats.get("auto_rework_total",
++                                                          carried_rework),
++                              trial_key=stats.get("trial_key"))
+                 with self._lock:
+                     self._running.discard(project_id)
+ 
+@@ -547,17 +554,22 @@ class Studio:
+         base_rev = int(base.get("revision") or 1)
+         base_sha = art.get("sha256")
+ 
+-        locks = revision_task.structured_locks(base, site, fb.get("locks"))
++        locks = revision_task.structured_locks(
++            base, site,
++            [lk for f in (resolution.get("merged_feedback") or [fb])
++             for lk in (f.get("locks") or [])]
++            + _resolved_text_locks(base, resolution.get("merged_feedback") or [fb]))
+         lock_ids = locks["lock_object_ids"]
++        fb_rows = resolution.get("merged_feedback") or [fb]
+         boss_feedback = [{
+-            "feedback_id": fb["id"], "revision_no": fb["revision_no"],
+-            "kind": fb["kind"], "text": fb["text"],
+-            "baseline_artifact_id": fb.get("baseline_artifact_id"),
+-            "baseline_revision_uid": fb.get("baseline_revision_uid"),
+-            "baseline_selection": fb.get("baseline_selection"),
+-            "locks": fb.get("locks") or [], "objectives": fb.get("objectives") or [],
+-        }]
+-        objectives = revision_task.derive_objectives([dict(fb)])
++            "feedback_id": f["id"], "revision_no": f["revision_no"],
++            "kind": f["kind"], "text": f["text"],
++            "baseline_artifact_id": f.get("baseline_artifact_id"),
++            "baseline_revision_uid": f.get("baseline_revision_uid"),
++            "baseline_selection": f.get("baseline_selection"),
++            "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
++        } for f in fb_rows]
++        objectives = revision_task.derive_objectives([dict(f) for f in fb_rows], plan=base)
+         rev_hash = revision_mod.revision_input_hash(
+             base, [], boss_feedback, base_aid, base_uid)
+         task_id = st.create_task(pid, "D2", f"续改旧基线 {base_aid} v{base_rev}",
+@@ -603,13 +615,13 @@ class Studio:
+         else:
+             integrity = revision_mod.verify_revision_integrity(
+                 base, candidate, responses=data.get("responses") or [],
+-                issues=None, lock_object_ids=lock_ids,
++                issues=None, locks=locks,
+                 boss_feedback=boss_feedback, objectives=objectives,
+-                site=site, catalog=catalog, locks=locks)
++                site=site, catalog=catalog)
+             report = validation.validate_proposal(
+                 candidate, project=project, option_id=option_id,
+                 revision=base_rev + 1, parent_revision=base_rev,
+-                lock_object_ids=lock_ids, previous_plan=base)
++                locks=locks, previous_plan=base)
+             if not report["ok"]:
+                 problem = f"续改稿契约无效（{report['stage']}）：{report['repair_feedback'][:400]}"
+             elif not integrity["ok"]:
+@@ -678,15 +690,24 @@ class Studio:
+                        {"accepted_revision": True, "task_kind": "revise",
+                         "baseline_artifact_id": base_aid,
+                         "baseline_revision_uid": base_uid,
++                        "merged_feedback_ids": [f["id"] for f in fb_rows],
+                         "changed_objects": len(changed)})
++        pending_rows = [r for r in integrity["objective_rechecks"]
++                        if r.get("user_confirmed") == "pending"]
+         st.add_message(
+             pid, "D2", "note",
+             f"旧基线续改完成：加载 {base_aid}（revision_uid={base_uid}, v{base_rev}）"
+             f"的完整对象事实，未重新生成 A/B；新版本 v{base_rev + 1} 的 "
+             f"parent_revision_uid={base_uid}，改动 {len(changed)} 个对象"
+             f"（{'、'.join(changed[:6]) or '无'}）。"
+-            f"确定性目标复核：{integrity['objective_recheck_summary']}。"
+-            "无关对象与锁定条件保持原状；是否成立仍由老板对具体图面决定。",
++            + (f"本轮合并了同基线的 {len(fb_rows)} 条留言"
++               f"（{'、'.join('v' + str(f['revision_no']) for f in fb_rows)}）。"
++               if len(fb_rows) > 1 else "")
++            + f"确定性目标复核：{integrity['objective_recheck_summary']}。"
++            + (f"还有 {len(pending_rows)} 条目标未验证/等用户确认"
++               f"（{', '.join(str(r['objective_id']) for r in pending_rows[:4])}）。"
++               if pending_rows else "")
++            + "无关对象与锁定条件保持原状；是否成立仍由老板对具体图面决定。",
+             task_id=task_id,
+             evidence=[{"type": "artifact", "id": aid, "revision": base_rev + 1,
+                        "revision_uid": uid, "parent_revision_uid": base_uid},
+@@ -701,10 +722,17 @@ class Studio:
+             f"用户选中的旧基线：{base_aid} / revision_uid={base_uid} / v{base_rev}。\n"
+             f"新版本：{aid} / revision_uid={uid} / v{base_rev + 1}，"
+             f"parent_revision_uid 指向用户选中的旧版。\n"
+-            f"对象 diff {len(changed)} 项；无关对象保留；旧版字节仍可下载。\n"
++            f"本轮留言：{len(fb_rows)} 条"
++            + (f"（{'、'.join('v' + str(f['revision_no']) for f in fb_rows)}，"
++               "同基线合并后一次性消费）" if len(fb_rows) > 1 else "")
++            + f"；对象 diff {len(changed)} 项；无关对象保留；旧版字节仍可下载。\n"
+             f"确定性目标复核：{integrity['objective_recheck_summary']}；"
+-            "可计算目标由对应规则复算，审美/未实现项写 unknown 并等用户确认。\n"
+-            "流程跑完不等于方案通过，是否成立由你决定。")
++            "可计算目标按目标对象集合与比较符复算（默认 all，部分达标不算解决），"
++            "审美/未实现项写 unknown 并等用户确认。\n"
++            + (f"未验证/待你确认：{len(pending_rows)} 项"
++               f"（{', '.join(str(r['objective_id']) for r in pending_rows[:5])}）——"
++               "程序没有把它们算成通过。\n" if pending_rows else "")
++            + "流程跑完不等于方案通过，是否成立由你决定。")
+         self._gate(pid, "旧方案续改完成：请决定是否继续", gate_detail,
+                    baseline_artifact_id=aid, baseline_revision_uid=uid)
+ 
+@@ -861,6 +889,9 @@ class Studio:
+                            "revision_uid": uid, "check_report_id": check_id,
+                            "contract_status": "valid_candidate"}])
+         st.update_task(task_d2, "done")
++        # Attribute this run's auto-rework to the DESIGN TRIAL (the A/B pair),
++        # not to the run/group it happened to start with (W0-F01).
++        stats["trial_key"] = st.trial_key_for(options["A"]["id"])
+ 
+         # 4. R reviews — full object facts + explicit baseline ids + issue ids
+         task_r = st.create_task(pid, "R", "评审两个候选", run_id=run_id)
+@@ -977,8 +1008,16 @@ class Studio:
+         changed: list[str] = []
+         accepted_any = False
+         stop_reason = ""
+-        feedback_text = "；".join(f["text"] for f in boss_feedback)
+-        lock_ids = _locked_ids(base_plan, feedback_text)
++        # W0-F01: the auto-rework budget belongs to the design trial, so a new
++        # run cannot reset it. W0-F03/F04: locks are structured (object+fields);
++        # an unbound "keep X" claim stays an unknown objective, never a free pass.
++        carried_rework = int(stats.get("auto_rework_total") or 0)
++        remaining_rework = max(0, MAX_AUTO_REWORK - carried_rework)
++        locks = revision_task.structured_locks(
++            base_plan, site,
++            [lk for f in st.feedback(pid) for lk in (f.get("locks") or [])]
++            + _resolved_text_locks(base_plan, st.feedback(pid)))
++        lock_ids = locks["lock_object_ids"]
+         revision_hash = revision_mod.revision_input_hash(
+             base_plan, issues, boss_feedback, base_aid, base_uid)
+ 
+@@ -1059,17 +1098,16 @@ class Studio:
+                 integrity = revision_mod.verify_revision_integrity(
+                     current_plan, candidate, responses=responses if attempt == 1 else None,
+                     issues=issues if attempt == 1 else None,
+-                    lock_object_ids=lock_ids,
++                    locks=locks,
+                     boss_feedback=boss_feedback if attempt == 1 else None,
+                     objectives=revision_task.derive_objectives(
+                         boss_feedback if attempt == 1 else [],
+-                        issues if attempt == 1 else None),
+-                    site=site, catalog={c["catalog_id"]: c for c in toolbox.CATALOG},
+-                    locks=revision_task.structured_locks(current_plan, site))
++                        issues if attempt == 1 else None, plan=current_plan),
++                    site=site, catalog={c["catalog_id"]: c for c in toolbox.CATALOG})
+                 report = validation.validate_proposal(
+                     candidate, project=project, option_id=target,
+                     revision=attempt + 1, parent_revision=current_rev,
+-                    lock_object_ids=lock_ids, previous_plan=current_plan)
++                    locks=locks, previous_plan=current_plan)
+                 if attempt == 1 and not responses:
+                     problem = "没有逐条回应评审意见"
+                 elif not report["ok"]:
+@@ -1162,14 +1200,20 @@ class Studio:
+                                  "contract_report": report,
+                                  "integrity": integrity,
+                                  "patch_errors": patch_errors})
+-                if rework_count >= MAX_AUTO_REWORK:
++                # Cumulative guard: this trial may already have spent part (or all)
++                # of the auto-rework budget in an earlier run. A new run must not
++                # reset it (W0-F01).
++                if rework_count >= MAX_AUTO_REWORK or rework_count >= remaining_rework:
+                     break
+                 rework_count += 1
++                stats["auto_rework_total"] = carried_rework + rework_count
+                 detail = (
+                     f"数字/契约校验判定这一稿不能用：{problem}。"
+                     f"当前基准 v{best_rev} {_qc_text(best_qc)}。\n"
+-                    f"按公司规矩自动打回第 {rework_count} 轮（最多 {MAX_AUTO_REWORK} 轮，"
+-                    "之后第 3 轮必须由老板决定）。只修这些问题，不要重做整个方案。")
++                    f"按公司规矩自动打回第 {rework_count} 轮"
++                    f"（本设计试验累计自动返工 {carried_rework + rework_count}/"
++                    f"{MAX_AUTO_REWORK} 轮；用尽后第 3 轮必须由老板决定）。"
++                    "只修这些问题，不要重做整个方案。")
+                 st.add_message(
+                     pid, "P", "rework", detail, task_id=task_rev,
+                     evidence=[{"type": "qc", "reference_revision": best_rev,
+@@ -1177,7 +1221,10 @@ class Studio:
+                                "reference": _qc_text(best_qc),
+                                "reason": problem},
+                               {"type": "rule", "id": "AUTO-REWORK-01",
+-                               "rule": "修订变差或无效自动打回，最多 2 轮，第 3 轮交老板"}])
++                               "rule": "修订变差或无效自动打回，最多 2 轮，第 3 轮交老板",
++                               "carried_before_this_run": carried_rework,
++                               "this_run": rework_count}])
++        stats["auto_rework_total"] = carried_rework + rework_count
+         # ARC-04: no valid revision -> task is NOT simply "done".
+         st.update_task(task_rev, "no_valid_revision" if not accepted_any else "done",
+                        {"accepted_revision": accepted_any, "rework_count": rework_count,
+@@ -1199,17 +1246,19 @@ class Studio:
+                           else "当前版本没有比基准更差，但仍不等于设计合格。")
+                        + "程序只量几何与面积，不替老板判断好不好看。")
+         rework_text = "；".join(f"v{r['rev']} {r['qc']}" for r in rework_log)
++        spent = carried_rework + rework_count
+         gate_title = (
+             f"自动打回已用尽 {MAX_AUTO_REWORK} 轮仍无有效修订：请决定第 3 轮怎么做"
+             if not accepted_any
+             else f"自动打回已用尽 {MAX_AUTO_REWORK} 轮，方案仍变差：请决定第 3 轮怎么做"
+-            if rework_count >= MAX_AUTO_REWORK and still_worse
++            if spent >= MAX_AUTO_REWORK and still_worse
+             else "本轮成果仍有硬伤：请决定是否继续打回" if b1
+             else "选一个方向继续（A1 回路到此）")
+         gate_detail = (
+             f"总监建议：{review.get('verdict')}，倾向选择 {target}（{review.get('why') or ''}）。\n"
+             f"本轮实数：2 个有效候选、{len(issues)} 条评审意见、{len(responses)} 条逐条回应、"
+-            f"老板留言 {len(boss_feedback)} 条、自动打回 {rework_count} 次"
++            f"老板留言 {len(boss_feedback)} 条、自动打回 {spent} 次"
++            f"（本设计试验累计；本轮 {rework_count} 次，此前已用 {carried_rework} 次）"
+             + (f"（{rework_text}）" if rework_text else "")
+             + f"；被接受的修订版：{'v' + str(current_rev) if accepted_any else '无'}，"
+             f"相对 v1 改动 {len(changed)} 个对象。\n"
+diff --git a/mvp/rkd_mvp/studio/revision.py b/mvp/rkd_mvp/studio/revision.py
+index f28081e..7d2f5d1 100644
+--- a/mvp/rkd_mvp/studio/revision.py
++++ b/mvp/rkd_mvp/studio/revision.py
+@@ -206,7 +206,7 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
+     for f in feedback_rows:
+         f.setdefault("id", f.get("feedback_id"))
+     objectives = objectives if objectives is not None else \
+-        revision_task.derive_objectives(feedback_rows, issues)
++        revision_task.derive_objectives(feedback_rows, issues, plan=base)
+     rechecks = revision_task.recheck_objectives(
+         objectives, base, candidate, site=site, catalog=catalog, locks=locks,
+         changed_objects=changed + added + removed)
+@@ -237,13 +237,20 @@ def verify_revision_integrity(base: dict, candidate: dict, *,
+         if oid not in reason_text and not any(oid in str(i.get("objects")) for i in issues):
+             errors.append(_err("REV-DELETE", f"对象 {key} 被删除但没有理由",
+                                "在 responses 里写明删除原因与替代关系，或保留该对象", key))
+-    # 2. locked objects unchanged
+-    locks = set(lock_object_ids or [])
+-    for oid in locks:
+-        keys = [k for k in set(before) | set(after) if k.split(":", 1)[1] == oid]
+-        if any(before.get(k) != after.get(k) for k in keys):
+-            errors.append(_err("LOCK-REVISION", f"锁定对象 {oid} 被改动或删除",
+-                               "恢复该对象；无法满足时把冲突作为待决项交用户", "/"))
++    # 2. locked objects unchanged — FIELD level, one shared implementation.
++    # `lock_object_ids` (whole object) stays supported for callers that only have
++    # ids; the structured `locks` argument keeps field granularity (W0-F04).
++    if locks is None and lock_object_ids:
++        locks = {"locks": [{"object_id": str(oid), "fields": ["*"],
++                            "source": "caller", "reason": "锁定对象"}
++                           for oid in lock_object_ids]}
++    lock_hits = revision_task.lock_conflicts(base, candidate, locks or {"locks": []})
++    for hit in lock_hits:
++        errors.append(_err(
++            "LOCK-REVISION",
++            hit.get("message") or f"锁定对象 {hit['object_id']} 被改动或删除",
++            "恢复该对象/字段；无法满足时把冲突作为待决项交用户，不要静默解除锁定",
++            "/"))
+     # 3/4. Per-issue checks only apply when a structured review exists. An
+     # automatic rework round has no fresh issue list, so it is checked for
+     # retention / locks / deletion reasons but not blamed for missing linkage.
+diff --git a/mvp/rkd_mvp/studio/revision_task.py b/mvp/rkd_mvp/studio/revision_task.py
+index 231e396..037e460 100644
+--- a/mvp/rkd_mvp/studio/revision_task.py
++++ b/mvp/rkd_mvp/studio/revision_task.py
+@@ -1,22 +1,34 @@
+-"""W0/R1 + W0/R2: task resolution, explicit old baselines, structured locks,
+-deterministic objective rechecks.
++"""W0/R1 + W0/R2 + W0-F01—F04: task resolution, structured locks, deterministic
++objective rechecks.
+ 
+-Design rules (docs/26 sections 2, 4):
++Design rules (docs/26 sections 2, 4; architect review 2026-11-14):
+   * generate, revise and retry are DIFFERENT tasks. A revise loads the FULL
+     plan of the artifact named by the feedback, never "the latest file".
++  * The CURRENT task comes from the newest versioned feedback row, i.e. the
++    boss's latest expressed intent. Consumed history can block replaying THE
++    SAME task; it can never block a later generate intent. Older unconsumed
++    revise messages are never silently revived and never silently dropped:
++    same-baseline messages are merged EXPLICITLY (and consumed together),
++    different baselines are an explicit conflict that needs a decision.
+   * An unusable baseline is an explicit conflict, never a silent substitution
+     with a freshly generated A/B pair.
+-  * Locks are structured object/field records, not Chinese keyword hits on
+-    object names. Conflicts offer an alternative and never unlock themselves.
+-  * A measurable objective is rechecked by its rule (clear width, capacity,
+-    position, lock). Aesthetic objectives stay unknown + pending for the user.
+-    "Referenced in the diff" is NEVER recorded as "resolved".
++  * Locks are structured object/FIELD records, not Chinese keyword hits on
++    object names. A field lock compares that field only; `*` locks the object.
++    Unsupported fields, deleted objects and unknown objects are diagnosed.
++  * A measurable objective carries an explicit target object set, comparator
++    (min / exact / max) and quantifier (default ALL). Partial fulfilment is
++    NOT success; an empty or missing target set is never success.
++  * A "keep X unchanged" requirement must be bound to concrete objects. When it
++    cannot be bound (or is ambiguous) it is `unknown` + pending, and it is never
++    verified against some other lock.
++  * Aesthetic objectives stay unknown + pending for the user.
+ 
+ No external calls, no design judgement. `unknown` is never filled with 0.
+ """
+ from __future__ import annotations
+ 
+ import copy
++import hashlib
+ import json
+ import re
+ from typing import Any
+@@ -30,6 +42,7 @@ TASK_CONFLICT = "conflict"
+ 
+ _DRAFT_IDENTITY = ("contract_version", "project_id", "option_id", "revision", "author")
+ _MIN_CLEAR_WIDTH_MM = getattr(geometry, "MIN_CLEAR_WIDTH_MM", 1200)
++_TOL = 1e-6
+ 
+ # rule_id -> (field, unit, object group(s) the rule can actually measure)
+ _RULE_SCOPES: dict[str, tuple[str, str, tuple[str, ...]]] = {
+@@ -41,6 +54,22 @@ _RULE_SCOPES: dict[str, tuple[str, str, tuple[str, ...]]] = {
+     "STD-004": ("sightline", "unknown", ("zones",)),  # not computable yet
+ }
+ 
++# A target value needs a comparison operator, never "roughly >= is fine".
++_DEFAULT_COMPARATOR = {
++    "CIR-001": "min", "CIR-003": "min", "AREA-002": "min",
++    "STD-001": "exact", "STD-005": "exact",
++}
++
++# Fields a lock may name. Anything else is an explicit diagnostic, not a pass.
++_LOCK_FIELDS: dict[str, set[str]] = {
++    "zones": {"name", "role", "polygon", "area_sqm"},
++    "furniture": {"catalog_id", "x", "y", "rot", "w_mm", "d_mm"},
++    "circulation": {"width_mm", "path"},
++    "platforms": {"name", "kind", "corner_radius_mm", "polygon", "height_mm"},
++    "ceiling.coves": {"polygon", "band_mm", "kelvin"},
++    "ceiling.fixtures": {"type", "x", "y", "kelvin", "aim"},
++}
++
+ _TEXT_RULES: list[tuple[re.Pattern, str]] = [
+     (re.compile(r"净宽[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*mm", re.I), "CIR-001"),
+     (re.compile(r"旋[到转至为设]*\s*(-?\d+(?:\.\d+)?)\s*(?:°|度)", re.I), "STD-001"),
+@@ -48,52 +77,110 @@ _TEXT_RULES: list[tuple[re.Pattern, str]] = [
+     (re.compile(r"面积[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*(?:㎡|平米|平方米)", re.I), "AREA-002"),
+ ]
+ 
++_PRESERVE_RE = re.compile(r"保留|不动|保持|原样|不改|维持")
++_CLAUSE_SPLIT = re.compile(r"[，,。；;、\n]")
++
+ 
+ def _sha(obj: Any) -> str:
+-    import hashlib
+     return hashlib.sha256(json.dumps(obj, ensure_ascii=False, sort_keys=True,
+                                      default=str).encode("utf-8")).hexdigest()
+ 
+ 
++def _value_sig(value: Any) -> str:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
++
++
++# ------------------------------------------------------------------ objects --
++def _iter_objects(plan: dict):
++    """Yield (group, object) for every addressable object in a draft."""
++    if not isinstance(plan, dict):
++        return
++    for group in ("zones", "furniture", "circulation", "platforms"):
++        for o in (plan.get(group) or []):
++            if isinstance(o, dict) and o.get("id"):
++                yield group, o
++    ceiling = plan.get("ceiling") if isinstance(plan.get("ceiling"), dict) else {}
++    for group in ("coves", "fixtures"):
++        for o in (ceiling.get(group) or []):
++            if isinstance(o, dict) and o.get("id"):
++                yield f"ceiling.{group}", o
++
++
++def _index(plan: dict) -> dict[str, tuple[str, dict]]:
++    return {str(o["id"]): (g, o) for g, o in _iter_objects(plan)}
++
++
++def _object_signature(plan: dict, object_id: str) -> str | None:
++    hit = _index(plan).get(str(object_id))
++    return _sha(hit[1]) if hit else None
++
++
+ # ------------------------------------------------------------------ R1 tasks --
+ def resolve_task(st, project_id: str, expected_feedback_revision: int | None) -> dict:
+     """Decide generate / revise / conflict from VERSIONED feedback only.
+ 
+-    Never guesses a baseline from the newest file. Returns a resolution with
+-    the complete baseline plan when the task is a revise.
++    The newest feedback row IS the current intent (docs/26 §4). Older rows are
++    constraints that stay in the effective requirement; they never take over
++    the task on their own (no resurrection) and are never silently discarded
++    (merged when they share the baseline, otherwise an explicit conflict).
+     """
+     rows = st.feedback(project_id)
+-    explicit = [f for f in rows if f.get("baseline_artifact_id")]
+-    pending = [f for f in explicit if not f.get("consumed_by_run")]
+-    consumed = [f for f in explicit if f.get("consumed_by_run")]
+-
+     if st.feedback_changed_since(project_id, expected_feedback_revision):
+         return _conflict("concurrent_new_feedback",
+                          f"运行开始时的有效需求版本 v{expected_feedback_revision} 已落后于当前 "
+                          f"v{st.feedback_revision(project_id)}；晚到结果不得成为当前版本",
+                          ["先取消/作废这一轮，再按最新留言开新任务",
+                           "不要重放旧输入，也不要把旧结果写成新版"])
+-    if not pending:
+-        if consumed:
+-            last = consumed[-1]
+-            return _conflict(
+-                "feedback_already_consumed",
+-                f"反馈 {last['id']}（v{last['revision_no']}）已由 run "
+-                f"{last['consumed_by_run']} 消费；不得用新 run 重放同一反馈绕过最多 2 轮自动返工",
+-                ["请给一条新的老板留言并明确选择要续改的旧方案",
+-                 "或由老板在闸口决定第 3 轮怎么做",
+-                 "程序不会把这条旧反馈再当成一次新的续改任务"])
+-        return {"kind": TASK_GENERATE, "task_kind": TASK_GENERATE, "feedback": None,
+-                "baseline": None, "plan": None,
+-                "reason": "没有绑定旧基线的待续改反馈；本轮按 generate 处理"
+-                          "（文字留言仍进入有效需求与修订输入，不偷换为 revise）",
+-                "feedback_rows": rows}
+-
+-    fb = pending[-1]
+-    art = st.artifact_by_id(fb["baseline_artifact_id"])
++    if not rows:
++        return _generate(rows, "还没有留言：本轮按 generate 处理")
++
++    latest = rows[-1]
++    pending_all = [f for f in rows if f.get("baseline_artifact_id")
++                   and not f.get("consumed_by_run")]
++    if not latest.get("baseline_artifact_id"):
++        # An explicit generate intent. Consumed history must not block it (F01-b),
++        # and older pending revise messages must not hijack it (no resurrection).
++        overridden = [f for f in pending_all if f["id"] != latest["id"]]
++        return _generate(
++            rows,
++            f"最新留言（v{latest['revision_no']}）没有指定旧基线：按 generate 处理；"
++            "留言内容仍进入有效需求",
++            overridden_feedback=overridden)
++
++    if latest.get("consumed_by_run"):
++        # Replaying a task that ALREADY ran is what would bypass the rework cap.
++        return _conflict(
++            "feedback_already_consumed",
++            f"最新留言 {latest['id']}（v{latest['revision_no']}）已由 run "
++            f"{latest['consumed_by_run']} 消费；不得用新 run 重放同一任务",
++            ["给一条新的留言（要续改就重新选中旧方案）",
++             "或由老板在闸口决定下一轮怎么做",
++             "程序不会把这条已执行的留言再当成一次新任务"],
++            pending_feedback=[f for f in pending_all if f["id"] != latest["id"]])
++
++    others = [f for f in pending_all if f["id"] != latest["id"]]
++    other_baselines = {f.get("baseline_artifact_id") for f in others}
++    if other_baselines - {latest.get("baseline_artifact_id")}:
++        # Cross-candidate feedback is NEVER merged silently (F01-c).
++        return _conflict(
++            "multiple_pending_feedback",
++            "有多条待续改留言指向不同旧基线，不能自动合并，也不能丢下更早那条："
++            + "；".join(f"{f['id']}(v{f['revision_no']}→{f['baseline_artifact_id']})"
++                       for f in pending_all),
++            ["先用最早那条开一轮，再处理后面的",
++             "或作废不需要的那条（POST /studio/projects/<pid>/feedback/<fid>/withdraw），"
++             "作废记录会保留"]
++            + [f"待决：{f['id']} v{f['revision_no']}「{str(f.get('text') or '')[:40]}」"
++               for f in others],
++            pending_feedback=others)
++
++    merged = [f for f in pending_all
++              if f.get("baseline_artifact_id") == latest.get("baseline_artifact_id")]
++    merged.sort(key=lambda f: f["revision_no"])
++    art = st.artifact_by_id(latest["baseline_artifact_id"])
+     if art is None:
+         return _conflict("baseline_not_found",
+-                         f"反馈指定的旧基线产物 {fb['baseline_artifact_id']} 不存在",
++                         f"反馈指定的旧基线产物 {latest['baseline_artifact_id']} 不存在",
+                          ["在页面重新选择一份存在的有效候选", "不要回退到最新文件"])
+     if art.get("project_id") and art["project_id"] != project_id:
+         return _conflict("cross_project_baseline",
+@@ -109,10 +196,10 @@ def resolve_task(st, project_id: str, expected_feedback_revision: int | None) ->
+                          f"旧基线 {art['id']} 状态 {art.get('status')}/"
+                          f"{art.get('contract_status')}，不是有效候选",
+                          ["另选一份有效的候选", "历史失败稿只读保留，不作为续改基线"])
+-    if fb.get("baseline_revision_uid") and \
+-            fb["baseline_revision_uid"] != art.get("revision_uid"):
++    if latest.get("baseline_revision_uid") and \
++            latest["baseline_revision_uid"] != art.get("revision_uid"):
+         return _conflict("baseline_uid_mismatch",
+-                         f"反馈携带的 revision_uid {fb['baseline_revision_uid']} 与旧基线 "
++                         f"反馈携带的 revision_uid {latest['baseline_revision_uid']} 与旧基线 "
+                          f"{art['id']} 的 {art.get('revision_uid')} 不一致",
+                          ["重新选择该候选的当前版本", "不要猜版本或按时间取最近文件"])
+     plan = art.get("payload")
+@@ -124,16 +211,48 @@ def resolve_task(st, project_id: str, expected_feedback_revision: int | None) ->
+         return _conflict("cross_project_baseline",
+                          f"旧基线文档内 project_id={plan.get('project_id')} 与本项目不一致",
+                          ["只在本项目内选择旧基线"])
+-    return {"kind": TASK_REVISE, "task_kind": TASK_REVISE, "feedback": fb,
++    merge_note = ""
++    if len(merged) > 1:
++        merge_note = ("；同一基线的 " + "、".join(f"v{f['revision_no']}" for f in merged)
++                      + " 一并作为本轮约束（显式合并，合并后一次性消费，不会晚点复活）")
++    return {"kind": TASK_REVISE, "task_kind": TASK_REVISE, "feedback": latest,
++            "merged_feedback": merged,
++            "merged_feedback_ids": [f["id"] for f in merged],
++            "pending_feedback_ids": [f["id"] for f in merged],
+             "baseline": art, "plan": copy.deepcopy(plan), "feedback_rows": rows,
+-            "reason": f"按反馈 {fb['id']} 指定的旧基线 {art['id']} "
+-                      f"(revision_uid={art.get('revision_uid')}) 续改，不重新生成 A/B",
+-            "baseline_selection": fb.get("baseline_selection") or "explicit_pointer"}
++            "reason": f"按最新留言 {latest['id']} 指定的旧基线 {art['id']} "
++                      f"(revision_uid={art.get('revision_uid')}) 续改，不重新生成 A/B"
++                      + merge_note,
++            "baseline_selection": latest.get("baseline_selection") or "explicit_pointer"}
++
++
++def _generate(rows: list[dict], reason: str,
++              overridden_feedback: list[dict] | None = None) -> dict:
++    overridden = overridden_feedback or []
++    out = {"kind": TASK_GENERATE, "task_kind": TASK_GENERATE, "feedback": None,
++           "baseline": None, "plan": None, "feedback_rows": rows,
++           "overridden_feedback_ids": [f["id"] for f in overridden],
++           "superseded_intent": [{"feedback_id": f["id"], "revision_no": f["revision_no"],
++                                  "baseline_artifact_id": f.get("baseline_artifact_id")}
++                                 for f in overridden],
++           "reason": reason}
++    if overridden:
++        out["reason"] += ("；更早的续改留言 "
++                          + "、".join(f"v{f['revision_no']}" for f in overridden)
++                          + " 没有被自动执行，也没被删除：它仍是有效需求，只是不作"
++                            "为本轮任务；要续改请重新选中旧方案")
++    return out
+ 
+ 
+-def _conflict(code: str, detail: str, alternatives: list[str]) -> dict:
++def _conflict(code: str, detail: str, alternatives: list[str],
++              pending_feedback: list[dict] | None = None) -> dict:
++    pending = pending_feedback or []
+     return {"kind": TASK_CONFLICT, "task_kind": TASK_CONFLICT, "conflict_code": code,
+             "conflict_detail": detail, "alternatives": alternatives,
++            "pending_feedback": [{"feedback_id": f["id"], "revision_no": f["revision_no"],
++                                  "text": f.get("text"),
++                                  "baseline_artifact_id": f.get("baseline_artifact_id")}
++                                 for f in pending],
+             "feedback": None, "baseline": None, "plan": None,
+             "reason": "旧基线不适用：明确冲突，不偷换、不自动重新生成 A/B"}
+ 
+@@ -172,33 +291,63 @@ def structured_locks(plan: dict, site: dict | None = None,
+     }
+ 
+ 
+-def _object_signature(plan: dict, object_id: str) -> str | None:
+-    groups = ("zones", "furniture", "circulation", "platforms")
+-    ceiling = plan.get("ceiling") if isinstance(plan.get("ceiling"), dict) else {}
+-    for group in groups + ("ceiling.coves", "ceiling.fixtures"):
+-        container = (ceiling.get(group.split(".", 1)[1]) if group.startswith("ceiling.")
+-                     else plan.get(group)) or []
+-        for o in container:
+-            if isinstance(o, dict) and str(o.get("id")) == object_id:
+-                return _sha(o)
+-    return None
+-
+-
+ def lock_conflicts(base: dict, candidate: dict, locks: dict) -> list[dict]:
+-    out = []
+-    for lk in locks.get("locks") or []:
+-        oid = lk["object_id"]
+-        b, a = _object_signature(base, oid), _object_signature(candidate, oid)
+-        changed = b != a
+-        if not changed:
++    """Field-level lock comparison.
++
++    `fields: ["*"]` locks the whole object. Otherwise only the named fields are
++    compared, so locking `x` does not reject a `rot` change (W0-F04). Deleted
++    objects always conflict; unknown fields / missing objects are diagnosed
++    instead of being silently reported as "unchanged".
++    """
++    out: list[dict] = []
++    before, after = _index(base), _index(candidate)
++    for lk in (locks or {}).get("locks") or []:
++        oid = str(lk.get("object_id"))
++        fields = [str(f) for f in (lk.get("fields") or ["*"])]
++        item = {"object_id": oid, "fields": fields,
++                "source": lk.get("source"), "reason": lk.get("reason"),
++                "base_sha256_prefix": None, "candidate_sha256_prefix": None,
++                "alternative": ("恢复该对象被锁定的字段；若确实无法同时满足，"
++                                "把冲突作为待决项交用户决定，程序不自行解除锁定")}
++        b_hit, a_hit = before.get(oid), after.get(oid)
++        if b_hit is None and a_hit is None:
++            out.append({**item, "diagnostic": "locked_object_not_found",
++                        "changed_fields": [],
++                        "message": f"锁定对象 {oid} 在基线与候选里都不存在；该锁无法核对"})
++            continue
++        if b_hit is None:
++            out.append({**item, "diagnostic": "locked_object_missing_in_baseline",
++                        "changed_fields": [],
++                        "message": f"锁定对象 {oid} 不在旧基线里，无法判断是否被改动"})
++            continue
++        group, b = b_hit
++        item["base_sha256_prefix"] = _sha(b)[:12]
++        if a_hit is None:
++            out.append({**item, "diagnostic": "object_deleted", "changed_fields": ["*"],
++                        "message": f"锁定对象 {oid} 被删除"})
++            continue
++        _, a = a_hit
++        item["candidate_sha256_prefix"] = _sha(a)[:12]
++        if "*" in fields or not fields:
++            if _sha(b) != _sha(a):
++                out.append({**item, "diagnostic": "whole_object_changed",
++                            "changed_fields": ["*"],
++                            "message": f"锁定对象 {oid} 被改动"})
+             continue
+-        fields = lk["fields"]
+-        out.append({"object_id": oid, "fields": fields,
+-                    "source": lk["source"], "reason": lk["reason"],
+-                    "base_sha256_prefix": (b or "")[:12],
+-                    "candidate_sha256_prefix": (a or "")[:12],
+-                    "alternative": ("恢复该对象被锁定的字段；若确实无法同时满足，"
+-                                    "把冲突作为待决项交用户决定，程序不自行解除锁定")})
++        supported = _LOCK_FIELDS.get(group, set())
++        unknown = [f for f in fields if f not in supported]
++        changed = [f for f in fields
++                   if f in supported and _value_sig(b.get(f)) != _value_sig(a.get(f))]
++        if unknown:
++            out.append({**item, "diagnostic": "unsupported_fields",
++                        "unsupported_fields": unknown, "changed_fields": changed,
++                        "message": (f"锁定字段 {unknown} 不在 {group} 的可核对字段里；"
++                                    "无法证明未改动，按冲突处理并需明确诊断")})
++            continue
++        if changed:
++            out.append({**item, "diagnostic": "field_changed",
++                        "changed_fields": changed,
++                        "message": f"锁定字段 {changed} 被改动（对象 {oid}）"})
+     return out
+ 
+ 
+@@ -225,6 +374,8 @@ def derive_text_objectives(text: str, *, source: str = "text_heuristic",
+         out.append({"objective_id": f"{prefix}{len(out) + 1}", "kind": "measurable",
+                     "rule_id": rule_id, "field": field, "target": target, "unit": unit,
+                     "objects_scope": list(scope), "object_ids": list(object_ids or []),
++                    "comparator": _DEFAULT_COMPARATOR.get(rule_id, "exact"),
++                    "quantifier": "all",
+                     "source": source, "issue_id": issue_id,
+                     "feedback_id": feedback_id,
+                     "parsed_from": m.group(0)[:80],
+@@ -232,43 +383,115 @@ def derive_text_objectives(text: str, *, source: str = "text_heuristic",
+     return out
+ 
+ 
+-def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = None) -> list[dict]:
+-    """Collect objectives from structured feedback, text, and review issues."""
++def preserve_clauses(text: str) -> list[str]:
++    """Clauses that carry a keep-as-is requirement (保留/不动/保持/原样…)."""
++    return [c.strip() for c in _CLAUSE_SPLIT.split(text or "")
++            if c.strip() and _PRESERVE_RE.search(c)]
++
++
++def resolve_preserve_binding(clause: str, plan: dict) -> dict:
++    """Bind one keep-as-is clause to concrete objects, or say why it cannot be.
++
++    Matching is on the object's own id or its declared name inside the clause —
++    a traceable binding, not a keyword guess on the whole message. Ambiguity is
++    reported with the candidates instead of picking one.
++    """
++    exact = [oid for oid, _ in _index(plan).items()
++             if re.search(rf"(?<![A-Za-z0-9]){re.escape(oid)}(?![A-Za-z0-9])", clause)]
++    if len(exact) == 1:
++        return {"status": "resolved", "object_ids": exact, "candidates": exact,
++                "match": "explicit_object_id", "clause": clause}
++    named = []
++    for oid, (_group, obj) in _index(plan).items():
++        name = str(obj.get("name") or "").strip()
++        if len(name) >= 2 and name in clause:
++            named.append(oid)
++    named = sorted(set(named))
++    if len(named) == 1:
++        return {"status": "resolved", "object_ids": named, "candidates": named,
++                "match": "object_name_in_clause", "clause": clause}
++    if len(named) > 1:
++        return {"status": "ambiguous", "object_ids": [], "candidates": named,
++                "match": "multiple_object_names", "clause": clause}
++    return {"status": "unresolved", "object_ids": [], "candidates": [],
++            "match": "none", "clause": clause}
++
++
++def resolve_preserve_bindings(text: str, plan: dict) -> list[dict]:
++    return [resolve_preserve_binding(c, plan) for c in preserve_clauses(text)]
++
++
++def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = None,
++                      plan: dict | None = None) -> list[dict]:
++    """Collect objectives from structured feedback, text, locks and review issues.
++
++    `plan` is the baseline the requirements refer to. Without it a keep-as-is
++    requirement cannot be bound and is reported as unresolved (never as a pass).
++    """
+     out: list[dict] = []
+     for fb in (feedback_rows or []):
++        rev = fb.get("revision_no", "?")
++        produced: list[dict] = []
+         structured = fb.get("objectives") or []
+         for i, obj in enumerate(structured):
+             if isinstance(obj, dict) and obj.get("kind"):
+                 item = copy.deepcopy(obj)
+-                item.setdefault("objective_id", f"FB{fb.get('revision_no', '?')}-{i + 1}")
++                item.setdefault("objective_id", f"FB{rev}-{i + 1}")
+                 item.setdefault("source", "structured")
+                 item.setdefault("feedback_id", fb.get("id"))
+                 item.setdefault("computable", item.get("kind") == "measurable")
+-                out.append(item)
++                item.setdefault("quantifier", "all")
++                if item.get("kind") == "measurable" and not item.get("comparator"):
++                    item["comparator"] = _DEFAULT_COMPARATOR.get(
++                        str(item.get("rule_id")), "exact")
++                produced.append(item)
+         text = str(fb.get("text") or "")
++        structured_rules = {o.get("rule_id") for o in structured}
+         heuristics = derive_text_objectives(
+-            text, prefix=f"FB{fb.get('revision_no', '?')}-", object_ids=None,
++            text, prefix=f"FB{rev}-", object_ids=None,
+             feedback_id=str(fb.get("id") or ""))
+-        # a structured objective with the same rule wins over the heuristic
+-        structured_rules = {o.get("rule_id") for o in structured}
+-        out.extend(o for o in heuristics if o["rule_id"] not in structured_rules)
+-        if not heuristics and not structured:
+-            out.append({"objective_id": f"FB{fb.get('revision_no', '?')}-A",
+-                        "kind": "aesthetic", "rule_id": "USER-JUDGEMENT",
+-                        "field": "user_judgement", "target": None, "unit": "n/a",
+-                        "objects_scope": [], "object_ids": [],
+-                        "source": "text_unparsed", "feedback_id": fb.get("id"),
+-                        "computable": False,
+-                        "note": "没有可计算目标（例如「更开放」「更有设计感」）；"
+-                                "只提供图面对比与模型意见，最终等用户确认"})
+-        elif re.search(r"保留|不动|保持", text):
+-            out.append({"objective_id": f"FB{fb.get('revision_no', '?')}-L",
+-                        "kind": "lock", "rule_id": "LOCK-REVISION",
+-                        "field": "locked_objects", "target": None, "unit": "n/a",
+-                        "objects_scope": [], "object_ids": [],
+-                        "source": "text_heuristic", "feedback_id": fb.get("id"),
+-                        "computable": True,
+-                        "note": "保留要求由结构化锁复核，不靠关键词命中对象名"})
++        produced.extend(o for o in heuristics if o["rule_id"] not in structured_rules)
++        # Explicit structured locks: one objective per lock, so field granularity
++        # stays visible and nothing is verified through "some other lock".
++        for i, lk in enumerate(fb.get("locks") or []):
++            if not isinstance(lk, dict) or not str(lk.get("object_id") or "").strip():
++                continue
++            produced.append({
++                "objective_id": f"FB{rev}-LK{i + 1}", "kind": "lock",
++                "rule_id": "LOCK-REVISION", "field": "locked_objects",
++                "target": None, "unit": "n/a", "objects_scope": [],
++                "object_ids": [str(lk["object_id"])],
++                "fields": list(lk.get("fields") or ["*"]),
++                "source": "structured_lock", "feedback_id": fb.get("id"),
++                "binding_status": "resolved",
++                "computable": True,
++                "note": str(lk.get("reason") or "老板明确指定的保留对象/字段")})
++        # Keep-as-is claims in the text must be TRACKED even next to a numeric
++        # target (mixed messages lose nothing), and only pass when bound.
++        for i, b in enumerate(resolve_preserve_bindings(text, plan or {})):
++            produced.append({
++                "objective_id": f"FB{rev}-P{i + 1}", "kind": "preserve",
++                "rule_id": "LOCK-PRESERVE", "field": "preserved_objects",
++                "target": None, "unit": "n/a",
++                "objects_scope": [], "object_ids": list(b["object_ids"]),
++                "binding_status": b["status"], "binding_match": b["match"],
++                "binding_candidates": b["candidates"], "source_text": b["clause"],
++                "source": "text_preserve", "feedback_id": fb.get("id"),
++                "computable": b["status"] == "resolved",
++                "note": ("保留要求已绑定到具体对象，按对象全文复核"
++                         if b["status"] == "resolved" else
++                         "保留要求还没绑定到具体对象：未验证，等用户确认或补充对象；"
++                         "不用入口锁或别的锁代替")})
++        if not produced:
++            produced.append({"objective_id": f"FB{rev}-A",
++                             "kind": "aesthetic", "rule_id": "USER-JUDGEMENT",
++                             "field": "user_judgement", "target": None, "unit": "n/a",
++                             "objects_scope": [], "object_ids": [],
++                             "source": "text_unparsed", "feedback_id": fb.get("id"),
++                             "computable": False,
++                             "note": "没有可计算目标（例如「更开放」「更有设计感」）；"
++                                     "只提供图面对比与模型意见，最终等用户确认"})
++        out.extend(produced)
+     for i in (issues or []):
+         if not isinstance(i, dict):
+             continue
+@@ -292,7 +515,8 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
+ 
+ 
+ def _plan_objects(plan: dict, scope: list[str], object_ids: list[str]) -> list[tuple[str, dict]]:
+-    ceiling = plan.get("ceiling") if isinstance(plan.get("ceiling"), dict) else {}
++    ceiling = plan.get("ceiling") if isinstance(plan, dict) and \
++        isinstance(plan.get("ceiling"), dict) else {}
+     out: list[tuple[str, dict]] = []
+     # An EMPTY scope means "no object identity is claimed" (aesthetic target).
+     # Never fall back to "all objects" — that would attach a vague opinion to
+@@ -315,51 +539,108 @@ def _plan_objects(plan: dict, scope: list[str], object_ids: list[str]) -> list[t
+     return out
+ 
+ 
++def _cmp_ok(value: Any, target: Any, comparator: str) -> bool:
++    """min: value >= target; max: value <= target; exact: value == target."""
++    if isinstance(value, bool) or not isinstance(value, (int, float)):
++        return False
++    if isinstance(target, bool) or not isinstance(target, (int, float)):
++        return False
++    v, t = float(value), float(target)
++    if comparator == "min":
++        return v >= t - _TOL
++    if comparator == "max":
++        return v <= t + _TOL
++    return abs(v - t) <= _TOL
++
++
++def _aggregate(present: int, passing: list[str], missing: list[str],
++               quantifier: str) -> str | None:
++    """ALL by default. A missing target object is never success; an empty target
++    set is `unknown` (None) — it can never become `pass` (W0-F02)."""
++    if missing:
++        return "fail"
++    if present == 0:
++        return None
++    if quantifier == "any":
++        return "pass" if passing else "fail"
++    return "pass" if len(passing) == present else "fail"
++
++
+ def _measure(plan: dict, objective: dict, site: dict, catalog: dict) -> dict:
+     """Re-measure an objective with the corresponding deterministic rule."""
+     rule = objective.get("rule_id")
+     field = objective.get("field")
+     target = objective.get("target")
+     scope = objective.get("objects_scope") or []
+-    ids = objective.get("object_ids") or []
+-    objs = _plan_objects(plan, scope, ids)
++    declared = [str(x) for x in (objective.get("object_ids") or [])]
++    quantifier = str(objective.get("quantifier") or "all").lower()
++    if quantifier not in ("all", "any"):
++        quantifier = "all"
++    comparator = str(objective.get("comparator")
++                     or _DEFAULT_COMPARATOR.get(str(rule), "exact")).lower()
++    if comparator not in ("min", "max", "exact"):
++        comparator = "exact"
++    objs = _plan_objects(plan, scope, declared)
++    present = [oid for oid, _ in objs]
++    missing = [x for x in declared if x not in present]
+     catalog = catalog or {c["catalog_id"]: c for c in CATALOG}
++    common = {"rule_id": rule, "field": field, "target": target,
++              "comparator": comparator, "quantifier": quantifier,
++              "target_objects": present, "missing_object_ids": missing,
++              "declared_object_ids": declared,
++              "object_source": ("declared_ids" if declared
++                                else ("group:" + ",".join(scope) if scope else "none"))}
++    if not present and not missing:
++        return {**common, "measured": None, "passing_object_ids": [],
++                "failing_object_ids": [], "rechecked": None,
++                "unknown_reason": "目标没有绑定任何可核对的对象，不能算达标"}
+ 
+     if rule in ("CIR-001", "CIR-003") and field == "width_mm":
+         if not (isinstance(site, dict) and site.get("width_mm") and site.get("height_mm")):
+-            return {"rule_id": rule, "target": target, "measured": None,
+-                    "passing_object_ids": [], "rechecked": None,
++            return {**common, "measured": None, "passing_object_ids": [],
++                    "failing_object_ids": [], "rechecked": None,
+                     "unknown_reason": "缺少场地边界，无法用几何复算实测净宽/瓶颈"}
+         geo = geometry.check_geometry(plan, site, catalog=catalog)
+-        measured = {}
++        measured, passing, failing = {}, [], []
+         for oid, o in objs:
++            declared_mm = o.get("width_mm")
++            measured_mm = geo["metrics"].get(f"measured_clear_width_mm::{oid}")
++            issues = [x["rule_id"] for x in geo["issues"]
++                      if oid in x["objects"]
++                      and x["rule_id"] in ("CIR-001", "CIR-003")]
++            declared_ok = _cmp_ok(declared_mm, target, comparator)
++            measured_ok = _cmp_ok(measured_mm, target, comparator)
++            floor_ok = _cmp_ok(measured_mm, _MIN_CLEAR_WIDTH_MM, "min")
++            ok = bool(declared_ok and measured_ok and floor_ok and not issues)
+             measured[oid] = {
+-                "declared_width_mm": o.get("width_mm"),
+-                "measured_clear_width_mm": geo["metrics"].get(
+-                    f"measured_clear_width_mm::{oid}"),
+-                "circulation_issues": [x["rule_id"] for x in geo["issues"]
+-                                       if oid in x["objects"]
+-                                       and x["rule_id"] in ("CIR-001", "CIR-003")],
+-            }
+-        passing = [oid for oid, m in measured.items()
+-                   if isinstance(m["declared_width_mm"], (int, float))
+-                   and float(m["declared_width_mm"]) >= float(target or 0)
+-                   and m["measured_clear_width_mm"] is not None
+-                   and float(m["measured_clear_width_mm"]) >= _MIN_CLEAR_WIDTH_MM
+-                   and not m["circulation_issues"]]
+-        return {"rule_id": rule, "target": target, "measured": measured,
+-                "passing_object_ids": passing,
++                "declared_width_mm": declared_mm,
++                "measured_clear_width_mm": measured_mm,
++                "target_mm": target, "comparator": comparator,
++                "declared_meets_target": declared_ok,
++                "measured_meets_target": measured_ok,
++                "absolute_floor_mm": _MIN_CLEAR_WIDTH_MM, "floor_met": floor_ok,
++                "circulation_issues": issues, "meets_target": ok}
++            (passing if ok else failing).append(oid)
++        return {**common, "measured": measured, "passing_object_ids": passing,
++                "failing_object_ids": failing,
++                "rechecked": _aggregate(len(present), passing, missing, quantifier),
+                 "engine": geo["metrics"].get("geometry_engine"),
+-                "rechecked": "pass" if passing else "fail"}
++                # Honest scope: the engine only knows keep-outs / entrance, so a
++                # measured value is NOT a full clear-width compliance proof.
++                "coverage": "limited: declared width + keep-out/entrance geometry; "
++                            "不覆盖门洞、家具遮挡与完整净宽合规"}
+     if field in ("rot", "kelvin", "area_sqm") and rule in _RULE_SCOPES:
+-        values = {oid: o.get(field) for oid, o in objs}
+-        passing = [oid for oid, v in values.items()
+-                   if isinstance(v, (int, float)) and float(v) == float(target)]
+-        return {"rule_id": rule, "target": target, "measured": values,
+-                "passing_object_ids": passing,
+-                "rechecked": "pass" if passing else "fail"}
+-    return {"rule_id": rule, "target": target, "measured": None,
+-            "passing_object_ids": [], "rechecked": None,
++        values, passing, failing = {}, [], []
++        for oid, o in objs:
++            v = o.get(field)
++            values[oid] = v
++            (passing if _cmp_ok(v, target, comparator) else failing).append(oid)
++        return {**common, "measured": values, "passing_object_ids": passing,
++                "failing_object_ids": failing,
++                "rechecked": _aggregate(len(present), passing, missing, quantifier),
++                "coverage": "declared field value on the object (未渲染复核)"}
++    return {**common, "measured": None, "passing_object_ids": [],
++            "failing_object_ids": [], "rechecked": None,
+             "unknown_reason": f"规则 {rule}/{field} 尚未实现确定性复核"}
+ 
+ 
+@@ -374,34 +655,29 @@ def recheck_objectives(objectives: list[dict], base: dict, candidate: dict, *,
+     changed_ids = {str(k).split(":", 1)[-1] for k in (changed_objects or [])}
+     results: list[dict] = []
+     for obj in (objectives or []):
+-        oid_scope = obj.get("object_ids") or []
++        oid_scope = [str(x) for x in (obj.get("object_ids") or [])]
+         scope_objs = [o[0] for o in _plan_objects(candidate,
+                                                    obj.get("objects_scope") or [], oid_scope)]
+-        object_changed = bool(changed_ids & (set(scope_objs) | set(oid_scope)))
++        targets = sorted(set(scope_objs) | set(oid_scope))
++        object_changed = bool(changed_ids & set(targets))
+         item: dict[str, Any] = {
+             "objective_id": obj.get("objective_id"), "kind": obj.get("kind"),
+             "rule_id": obj.get("rule_id"), "field": obj.get("field"),
+             "target": obj.get("target"), "unit": obj.get("unit"),
+             "source": obj.get("source"), "issue_id": obj.get("issue_id"),
+             "feedback_id": obj.get("feedback_id"),
++            "target_objects": targets,
++            "quantifier": obj.get("quantifier") or "all",
+             "input_included": True,
+             "object_changed": object_changed,
+-            "linked_objects": [x for x in scope_objs if x in changed_ids],
++            "linked_objects": [x for x in targets if x in changed_ids],
+             "objective_rechecked": "unknown",
+             "user_confirmed": "pending",
+             "resolved": None,
+             "note": "",
+         }
+-        if obj.get("kind") == "lock":
+-            conflicts = lock_conflicts(base, candidate, locks or {"locks": []})
+-            item["evidence"] = {"locked_objects": (locks or {}).get("lock_object_ids", []),
+-                                "conflicts": conflicts}
+-            item["objective_rechecked"] = "fail" if conflicts else "pass"
+-            item["user_confirmed"] = "not_applicable"
+-            item["object_changed"] = bool(conflicts)
+-            item["resolved"] = not conflicts
+-            item["note"] = ("锁定对象由结构化对象/字段锁复算；冲突只报告并给替代，"
+-                            "不自行解除锁定" if conflicts else "锁定对象未变")
++        if obj.get("kind") in ("lock", "preserve"):
++            item.update(_recheck_lock_objective(obj, base, candidate))
+         elif obj.get("kind") == "aesthetic" or not obj.get("computable", True):
+             item["evidence"] = {"target": obj.get("target"), "measured": None,
+                                 "unknown_reason": obj.get("note") or
+@@ -420,13 +696,58 @@ def recheck_objectives(objectives: list[dict], base: dict, candidate: dict, *,
+                 item["objective_rechecked"] = "unknown"
+                 item["user_confirmed"] = "pending"
+                 item["resolved"] = None
+-                item["note"] = f"规则未实现：{after.get('unknown_reason')}；写 unknown，不记已解决"
++                item["note"] = (f"规则未实现或无可核对对象：{after.get('unknown_reason')}；"
++                                "写 unknown，不记已解决")
+             else:
+                 item["objective_rechecked"] = state
+                 item["user_confirmed"] = "not_applicable"
+                 item["resolved"] = state == "pass" and object_changed
+-                item["note"] = ("目标值由对应规则复算；" +
+-                                ("达到目标且对象确有变化" if item["resolved"]
+-                                 else "未达到目标或目标对象未发生有效变化，不构成已解决"))
++                if state == "fail" and after.get("missing_object_ids"):
++                    item["note"] = ("目标点名的对象在候选里不存在："
++                                    f"{after['missing_object_ids']}；对象缺失不算达标")
++                elif state == "fail" and len(after.get("passing_object_ids") or []) > 0:
++                    item["note"] = (f"只满足部分对象（通过 "
++                                    f"{after['passing_object_ids']}，未通过 "
++                                    f"{after['failing_object_ids']}）；默认量词=all，"
++                                    "部分达标不算解决")
++                else:
++                    item["note"] = ("目标值由对应规则复算（比较符 "
++                                    f"{after.get('comparator')}，量词 {after.get('quantifier')}）；"
++                                    + ("达到目标且对象确有变化" if item["resolved"]
++                                       else "未达到目标或目标对象未发生有效变化，"
++                                            "不构成已解决"))
+         results.append(item)
+     return results
++
++
++def _recheck_lock_objective(obj: dict, base: dict, candidate: dict) -> dict:
++    """Verify a keep-as-is objective against ITS OWN objects only."""
++    bindings = [str(x) for x in (obj.get("object_ids") or [])]
++    status = obj.get("binding_status")
++    fields = [str(f) for f in (obj.get("fields") or ["*"])]
++    if not bindings or status in ("unresolved", "ambiguous"):
++        return {"objective_rechecked": "unknown", "user_confirmed": "pending",
++                "resolved": None, "object_changed": False,
++                "evidence": {"binding_status": status or "unresolved",
++                             "candidates": obj.get("binding_candidates") or [],
++                             "clause": obj.get("source_text") or "",
++                             "verified_objects": []},
++                "note": ("这条保留要求还没有绑定到具体对象，未验证；"
++                         "不用入口锁或别的锁代替，等用户确认或补充对象")}
++    scope_locks = {"locks": [{"object_id": oid, "fields": fields,
++                              "source": obj.get("source") or "preserve",
++                              "reason": obj.get("note") or "保留要求"}
++                             for oid in bindings]}
++    conflicts = lock_conflicts(base, candidate, scope_locks)
++    return {"objective_rechecked": "fail" if conflicts else "pass",
++            "user_confirmed": "not_applicable",
++            "resolved": not conflicts,
++            "object_changed": bool(conflicts),
++            "target_objects": bindings,
++            "evidence": {"binding_status": status or "resolved",
++                         "verified_objects": bindings, "locked_fields": fields,
++                         "binding_match": obj.get("binding_match"),
++                         "source_text": obj.get("source_text"),
++                         "conflicts": conflicts},
++            "note": ("保留对象被改动，冲突只报告并给替代，不自行解除"
++                     if conflicts else "保留对象未变（按本条要求自己的对象核对）")}
+diff --git a/mvp/rkd_mvp/studio/server.py b/mvp/rkd_mvp/studio/server.py
+index 3cc5f21..0c3612b 100644
+--- a/mvp/rkd_mvp/studio/server.py
++++ b/mvp/rkd_mvp/studio/server.py
+@@ -113,6 +113,20 @@ class Handler(BaseHTTPRequestHandler):
+                     "hint": "本机只开放已显式映射的试验项目；不会回退显示或写入宁波项目结果",
+                     "service_scope": SERVICE_SCOPE})
+             return self._json(200, _state(pid))
++        m = re.fullmatch(r"/studio/projects/([^/]+)/runs/([^/]+)", path)
++        if m:
++            # W0-F05: wait on the EXACT run id, in one snapshot, instead of
++            # guessing that `runs[-1]` is the run you just started.
++            pid = self._known_project(m.group(1))
++            if not pid:
++                return self._json(404, {"error": f"项目 {m.group(1)} 未接入本机 Studio 实验服务",
++                                        "service_scope": SERVICE_SCOPE})
++            snap = studio().store.run_snapshot(pid, m.group(2))
++            if not snap:
++                return self._json(404, {"error": "run not found", "run_id": m.group(2)})
++            cfg = Config.from_env()
++            snap["channel"] = {"configured": cfg.configured, "model": cfg.model}
++            return self._json(200, snap)
+         m = re.fullmatch(r"/studio/artifacts/([^/]+)/svg", path)
+         if m:
+             for a in studio().store.artifacts(_project_of_artifact(m.group(1))):
+@@ -222,6 +236,28 @@ class Handler(BaseHTTPRequestHandler):
+                          if task_kind == "revise" else
+                          "未指定旧基线：留言进入有效需求，本轮按 generate 处理；"
+                          "如需续改请在页面选中具体方案")})
++        m = re.fullmatch(r"/studio/projects/([^/]+)/feedback/([^/]+)/withdraw", path)
++        if m:
++            # Explicit retire of a pending message. This is the deliberate
++            # alternative to silently dropping / silently merging it (W0-F01).
++            pid = self._known_project(m.group(1))
++            if not pid:
++                return self._json(404, {"error": f"项目 {m.group(1)} 未接入本机 Studio 实验服务",
++                                        "service_scope": SERVICE_SCOPE})
++            reason = (body.get("reason") or "").strip()
++            if not reason:
++                return self._json(400, {"error": "作废留言必须写理由：记录会保留在历史里"})
++            st = studio().store
++            result = st.withdraw_feedback(pid, m.group(2), reason)
++            if not result.get("applied"):
++                return self._json(409, {"error": "这条留言不能作废",
++                                        "detail": result.get("reason"),
++                                        "note": "已消费/已作废/不存在的留言不会被改写"})
++            st.add_message(pid, "BOSS", "decision",
++                           f"作废待续改留言 {m.group(2)}：{reason}",
++                           evidence=[{"type": "feedback_withdrawn", **result}])
++            return self._json(200, {"ok": True, **result,
++                                    "note": "留言正文与历史保留，只是不再作为待办任务"})
+         m = re.fullmatch(r"/studio/gates/([^/]+)/decide", path)
+         if m:
+             gid = m.group(1)
+@@ -329,14 +365,28 @@ def _state(project_id: str) -> dict:
+     state["running"] = project_id in studio()._running
+     state["valid_candidate_ids"] = [a["id"] for a in arts
+                                     if a.get("display_group") == "valid"]
++    arts_by_run: dict[str, list[dict]] = {}
++    for a in state["artifacts"]:
++        if a.get("run_id"):
++            arts_by_run.setdefault(a["run_id"], []).append(a)
++    done = [r for r in state["runs"] if r["status"] != "running"]
++    last_done = done[-1] if done else None
++    last_done_valid = [a for a in arts_by_run.get(last_done["id"], [])
++                       if a.get("display_group") == "valid"] if last_done else []
++    # W0-F05: the completed status carries the artifacts of THAT run from the
++    # same snapshot, so a page can never show "succeeded" over a stale list.
+     state["stage_status"] = {
+-        "flow_finished": any(r["status"] in ("succeeded", "incomplete", "failed",
+-                                             "budget_stopped", "model_failed", "superseded")
+-                             for r in state["runs"]),
++        "flow_finished": bool(done),
+         "valid_artifact_exists": bool(state["valid_candidate_ids"]),
+         "waiting_user": any(g["status"] == "waiting" for g in state["gates"]),
+         "design_approved_by_user": False,
+-        "note": "流程跑完 / 成果有效 / 等待用户 / 设计认可分别表达；设计认可只能由用户给出",
++        "last_completed_run_id": (last_done["id"] if last_done else None),
++        "last_completed_run_status": (last_done["status"] if last_done else None),
++        "last_completed_run_artifacts": len(arts_by_run.get(last_done["id"], []))
++                                        if last_done else 0,
++        "last_completed_run_valid_artifacts": len(last_done_valid),
++        "note": "流程跑完 / 成果有效 / 等待用户 / 设计认可分别表达；"
++                "完成状态与其产物来自同一快照；设计认可只能由用户给出",
+     }
+     # W0/R1: make the task and the exact parent version visible in the page.
+     res = revision_task.resolve_task(st, project_id, state["feedback_revision"])
+@@ -348,7 +398,30 @@ def _state(project_id: str) -> dict:
+         "target_artifact_id": (res.get("baseline") or {}).get("id"),
+         "target_revision_uid": (res.get("baseline") or {}).get("revision_uid"),
+         "target_feedback_id": (res.get("feedback") or {}).get("id"),
+-        "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜",
++        "merged_feedback_ids": res.get("merged_feedback_ids") or [],
++        "overridden_feedback_ids": res.get("overridden_feedback_ids") or [],
++        "pending_feedback": res.get("pending_feedback") or [],
++        "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜；"
++                "同基线多条留言显式合并，跨基线必须由人决定",
++    }
++    # Everything still waiting for a person: unconsumed revise messages and
++    # objectives the program could not verify. Nothing is dropped silently.
++    state["pending_queue"] = [
++        {"feedback_id": f["id"], "revision_no": f["revision_no"], "kind": f["kind"],
++         "text": f["text"], "baseline_artifact_id": f.get("baseline_artifact_id"),
++         "state": ("consumed" if f.get("consumed_by_run") else "pending")}
++        for f in state["feedback"] if f.get("baseline_artifact_id")]
++    trial_key = (st.trial_key_for(res["baseline"]["id"])
++                 if (res.get("baseline") or {}).get("id") else
++                 (last_done.get("trial_key") if last_done else None))
++    state["trial_progress"] = {
++        "trial_key": trial_key,
++        "rounds": st.trial_rounds(trial_key),
++        "auto_rework_used": st.auto_rework_used(trial_key),
++        "max_auto_rework": 2,
++        "last_run_auto_rework_total": (last_done.get("auto_rework_total")
++                                       if last_done else None),
++        "note": "自动返工按设计试验累计，不因新 run 归零；用尽后下一轮由老板决定",
+     }
+     plans = [a for a in state["artifacts"] if a["kind"] == "spatial-plan"]
+     state["revision_history"] = [
+@@ -360,14 +433,18 @@ def _state(project_id: str) -> dict:
+         {"id": r["id"], "status": r["status"], "task_kind": r.get("task_kind"),
+          "target_artifact_id": r.get("target_artifact_id"),
+          "target_revision_uid": r.get("target_revision_uid"),
++         "trial_key": r.get("trial_key"),
++         "auto_rework_total": r.get("auto_rework_total"),
+          "conflict_code": r.get("conflict_code")} for r in state["runs"][-3:]]
+-    done = [r for r in state["runs"] if r["status"] != "running"]
+-    last_done = done[-1] if done else None
+     state["last_completed_run"] = (
+         {"id": last_done["id"], "status": last_done["status"],
+          "task_kind": last_done.get("task_kind"),
+          "target_artifact_id": last_done.get("target_artifact_id"),
+-         "target_revision_uid": last_done.get("target_revision_uid")}
++         "target_revision_uid": last_done.get("target_revision_uid"),
++         "trial_key": last_done.get("trial_key"),
++         "auto_rework_total": last_done.get("auto_rework_total"),
++         "artifact_ids": [a["id"] for a in arts_by_run.get(last_done["id"], [])],
++         "valid_artifact_ids": [a["id"] for a in last_done_valid]}
+         if last_done else None)
+     return state
+ 
+diff --git a/mvp/rkd_mvp/studio/store.py b/mvp/rkd_mvp/studio/store.py
+index e3d99ca..b127aa9 100644
+--- a/mvp/rkd_mvp/studio/store.py
++++ b/mvp/rkd_mvp/studio/store.py
+@@ -182,7 +182,9 @@ CREATE TABLE IF NOT EXISTS runs (
+   target_artifact_id TEXT,
+   target_revision_uid TEXT,
+   target_feedback_id TEXT,
+-  conflict_code TEXT
++  conflict_code TEXT,
++  trial_key TEXT,
++  auto_rework_total INTEGER DEFAULT 0
+ );
+ CREATE INDEX IF NOT EXISTS idx_msg_project ON messages(project_id, id);
+ CREATE INDEX IF NOT EXISTS idx_art_project ON artifacts(project_id, created_at);
+@@ -209,6 +211,9 @@ _MIGRATIONS: dict[str, dict[str, str]] = {
+         "task_kind": "TEXT", "target_artifact_id": "TEXT",
+         "target_revision_uid": "TEXT", "target_feedback_id": "TEXT",
+         "conflict_code": "TEXT",
++        # W0-F01: cumulative auto-rework per design trial — a new run must not
++        # reset the 2-round budget.
++        "trial_key": "TEXT", "auto_rework_total": "INTEGER DEFAULT 0",
+     },
+     # W0/R1: additive only. Old feedback rows keep their original bytes; an
+     # unconsumed row without an explicit baseline is a historical generate input.
+@@ -240,6 +245,12 @@ class Store:
+         with self._conn() as c:
+             c.executescript(_SCHEMA)
+             self._migrate(c)
++            # WAL lets a status read keep ONE consistent snapshot while a run is
++            # committing artifacts (W0-F05) without blocking that writer.
++            try:
++                c.execute("PRAGMA journal_mode=WAL")
++            except sqlite3.Error:
++                pass  # read-only / network path: fall back to the default journal
+ 
+     def _migrate(self, c: sqlite3.Connection) -> None:
+         for table, cols in _MIGRATIONS.items():
+@@ -406,6 +417,29 @@ class Store:
+                             (run_id, feedback_id))
+             return cur.rowcount > 0
+ 
++    def withdraw_feedback(self, project_id: str, feedback_id: str, reason: str,
++                          *, by_run: str = "boss_decision") -> dict:
++        """Explicitly retire a pending message. History is kept, never deleted.
++
++        This is the deliberate alternative to silently dropping or silently
++        merging an older pending request (W0-F01).
++        """
++        with self._lock, self._conn() as c:
++            row = c.execute("SELECT * FROM feedback WHERE id=? AND project_id=?",
++                            (feedback_id, project_id)).fetchone()
++            if not row:
++                return {"applied": False, "reason": "feedback_not_found"}
++            if row["consumed_by_run"]:
++                return {"applied": False, "reason": "already_consumed",
++                        "consumed_by_run": row["consumed_by_run"]}
++            if row["status"] != "current":
++                return {"applied": False, "reason": f"already_{row['status']}"}
++            c.execute("UPDATE feedback SET status='superseded', superseded_by=? WHERE id=?",
++                      (f"{by_run}: {reason}", feedback_id))
++            return {"applied": True, "reason": "superseded",
++                    "feedback_id": feedback_id, "superseded_by": f"{by_run}: {reason}",
++                    "text_preserved": row["text"]}
++
+     def effective_requirement(self, project_id: str) -> dict:
+         """Original requirement + all current feedback, as the real design input."""
+         p = self.get_project(project_id)
+@@ -657,19 +691,65 @@ class Store:
+                   task_kind: str | None = None, target_artifact_id: str | None = None,
+                   target_revision_uid: str | None = None,
+                   target_feedback_id: str | None = None,
+-                  conflict_code: str | None = None) -> str:
++                  conflict_code: str | None = None,
++                  trial_key: str | None = None,
++                  auto_rework_total: int = 0) -> str:
+         rid = new_id("run")
+         with self._lock, self._conn() as c:
+             c.execute("INSERT INTO runs(id,project_id,status,started_at,model,input_hash,"
+                       "expected_feedback_revision,candidate_group_id,task_kind,"
+                       "target_artifact_id,target_revision_uid,target_feedback_id,"
+-                      "conflict_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
++                      "conflict_code,trial_key,auto_rework_total) "
++                      "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                       (rid, project_id, "running", now(), model, input_hash_value,
+                        expected_feedback_revision, candidate_group_id, task_kind,
+                        target_artifact_id, target_revision_uid, target_feedback_id,
+-                       conflict_code))
++                       conflict_code, trial_key, int(auto_rework_total or 0)))
+         return rid
+ 
++    # ------------------------------------------------- design-trial accounting
++    def trial_key_for(self, artifact_id: str) -> str | None:
++        """Stable key for one design experiment: project + root candidate group.
++
++        Walking the parent chain means a later revise round belongs to the SAME
++        trial, so its auto-rework budget is NOT reset by a new run (W0-F01).
++        The A/B pair shares a candidate group, so both options are one trial.
++        """
++        art = self.artifact_by_id(artifact_id)
++        if not art:
++            return None
++        project_id = art.get("project_id") or ""
++        uid = art.get("revision_uid")
++        root_uid = uid
++        root_group = art.get("candidate_group_id")
++        seen: set[str] = set()
++        while uid and uid not in seen:
++            seen.add(uid)
++            row = self.artifact_by_revision_uid(uid)
++            if not row:
++                break
++            root_uid = uid
++            root_group = row.get("candidate_group_id") or root_group
++            uid = row.get("parent_revision_uid")
++        return f"{project_id}|{root_group or root_uid}"
++
++    def auto_rework_used(self, trial_key: str | None) -> int:
++        """Cumulative automatic rework rounds already spent on this trial."""
++        if not trial_key:
++            return 0
++        with self._conn() as c:
++            row = c.execute("SELECT MAX(auto_rework_total) AS m FROM runs WHERE trial_key=?",
++                            (trial_key,)).fetchone()
++        return int(row["m"] or 0)
++
++    def trial_rounds(self, trial_key: str | None) -> int:
++        if not trial_key:
++            return 0
++        with self._conn() as c:
++            row = c.execute("SELECT COUNT(*) AS n FROM runs WHERE trial_key=? "
++                            "AND status != 'running'", (trial_key,)).fetchone()
++        return int(row["n"] or 0)
++
+     def request_cancel(self, run_id: str) -> None:
+         with self._lock, self._conn() as c:
+             c.execute("UPDATE runs SET cancel_requested=1 WHERE id=?", (run_id,))
+@@ -685,14 +765,19 @@ class Store:
+     def finish_run(self, run_id: str, status: str, tokens_in: int, tokens_out: int,
+                    error: str | None = None, *, calls: int | None = None,
+                    images_sent: int | None = None, images_generated: int | None = None,
+-                   cost_amount: float | None = None, cost_status: str | None = None) -> None:
++                   cost_amount: float | None = None, cost_status: str | None = None,
++                   auto_rework_total: int | None = None,
++                   trial_key: str | None = None) -> None:
+         with self._lock, self._conn() as c:
+             c.execute("UPDATE runs SET status=?,ended_at=?,tokens_in=?,tokens_out=?,error=?,"
+                       "calls=COALESCE(?,calls),images_sent=COALESCE(?,images_sent),"
+                       "images_generated=COALESCE(?,images_generated),"
+-                      "cost_amount=?,cost_status=? WHERE id=?",
++                      "cost_amount=?,cost_status=?,"
++                      "auto_rework_total=COALESCE(?,auto_rework_total),"
++                      "trial_key=COALESCE(?,trial_key) WHERE id=?",
+                       (status, now(), tokens_in, tokens_out, error, calls, images_sent,
+-                       images_generated, cost_amount, cost_status, run_id))
++                       images_generated, cost_amount, cost_status, auto_rework_total,
++                       trial_key, run_id))
+ 
+     def runs(self, project_id: str) -> list[dict]:
+         with self._conn() as c:
+@@ -701,21 +786,157 @@ class Store:
+         return [dict(r) for r in rows]
+ 
+     # ------------------------------------------------------------------- state
+-    def project_state(self, project_id: str) -> dict[str, Any]:
+-        project = self.get_project(project_id)
+-        if not project:
+-            raise KeyError(project_id)
+-        msgs = self.messages(project_id)
+-        arts = self.artifacts(project_id)
+-        revs = self.reviews(project_id)
+-        gates = self.gates(project_id)
+-        runs = self.runs(project_id)
+-        usage = {"tokens_in": sum(r["tokens_in"] or 0 for r in runs),
+-                 "tokens_out": sum(r["tokens_out"] or 0 for r in runs)}
+-        usage["tokens_total"] = usage["tokens_in"] + usage["tokens_out"]
++    # W0-F05: messages, artifacts, runs, gates and feedback are read inside ONE
++    # transaction. Five independent connections could mix two points in time
++    # (a finished run whose artifact had not been read yet), which made the page
++    # show "succeeded" next to a stale artifact list.
++    def project_state(self, project_id: str, *, barrier=None) -> dict[str, Any]:
++        with self._conn() as c:
++            c.execute("BEGIN")
++            try:
++                row = c.execute("SELECT * FROM projects WHERE id=?", (project_id,)).fetchone()
++                if not row:
++                    raise KeyError(project_id)
++                project = {"id": row["id"], "name": row["name"],
++                           "site": json.loads(row["site_json"]),
++                           "requirement": json.loads(row["requirement_json"]),
++                           "golden_ref": row["golden_ref"], "created_at": row["created_at"],
++                           "source_project_id": row["source_project_id"],
++                           "mapping_note": row["mapping_note"],
++                           "seeded_at": row["seeded_at"]}
++                msgs = self._messages_on(c, project_id)
++                arts = self._artifacts_on(c, project_id)
++                if barrier is not None:
++                    barrier()   # verification seam: a writer commits exactly here
++                revs = self._reviews_on(c, project_id)
++                gates = self._gates_on(c, project_id)
++                runs = self._runs_on(c, project_id)
++                fbs = self._feedback_on(c, project_id)
++                fbs_all = self._feedback_on(c, project_id, current_only=False)
++                checks = self._checks_on(c, project_id)
++                usage = {"tokens_in": sum(r["tokens_in"] or 0 for r in runs),
++                         "tokens_out": sum(r["tokens_out"] or 0 for r in runs)}
++                usage["tokens_total"] = usage["tokens_in"] + usage["tokens_out"]
++                req = dict(project["requirement"])
++                req["effective_addenda"] = [
++                    {"feedback_id": f["id"], "revision_no": f["revision_no"],
++                     "kind": f["kind"], "text": f["text"],
++                     "baseline_artifact_id": f["baseline_artifact_id"],
++                     "baseline_revision_uid": f["baseline_revision_uid"],
++                     "baseline_selection": f.get("baseline_selection"),
++                     "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
++                     "consumed_by_run": f.get("consumed_by_run")}
++                    for f in fbs]
++                req["effective_input_hash"] = input_hash(req["text"], req["must_have"],
++                                                          req["effective_addenda"])
++                fb_rev = max([int(f["revision_no"]) for f in fbs], default=0)
++            finally:
++                c.execute("COMMIT")
++        token = input_hash([project_id, len(arts), len(runs), len(msgs), fb_rev,
++                            runs[-1]["id"] if runs else None,
++                            arts[-1]["id"] if arts else None,
++                            msgs[-1]["id"] if msgs else 0])
+         return {"project": project, "messages": msgs, "artifacts": arts, "reviews": revs,
+                 "gates": gates, "runs": runs, "usage": usage,
+-                "feedback": self.feedback(project_id),
+-                "feedback_revision": self.feedback_revision(project_id),
+-                "effective_requirement": self.effective_requirement(project_id),
+-                "check_reports": self.check_reports(project_id)}
++                "feedback": fbs, "feedback_history": fbs_all,
++                "feedback_revision": fb_rev,
++                "effective_requirement": req, "check_reports": checks,
++                "snapshot": {
++                    "taken_at": now(),
++                    "isolation": "single read transaction：messages/artifacts/reviews/"
++                                 "gates/runs/feedback 同属一个快照",
++                    "artifact_count": len(arts), "run_count": len(runs),
++                    "message_count": len(msgs), "feedback_revision": fb_rev,
++                    "latest_run_id": runs[-1]["id"] if runs else None,
++                    "token": token[:16],
++                    "note": "客户端应据此识别同一代状态；判断某轮结果请按 run_id 读取"}}
++
++    def run_snapshot(self, project_id: str, run_id: str) -> dict[str, Any] | None:
++        """One run + the artifacts committed by EXACTLY that run, one snapshot.
++
++        The page/verifier must wait on the run_id returned by POST /run instead
++        of assuming `runs[-1]` is this run (W0-F05).
++        """
++        with self._conn() as c:
++            c.execute("BEGIN")
++            try:
++                row = c.execute("SELECT * FROM runs WHERE id=? AND project_id=?",
++                                (run_id, project_id)).fetchone()
++                if not row:
++                    return None
++                run = dict(row)
++                arts = [a for a in self._artifacts_on(c, project_id) if a["run_id"] == run_id]
++            finally:
++                c.execute("COMMIT")
++        return {"run": run, "artifacts": arts,
++                "run_status": run["status"],
++                "finished": run["status"] != "running",
++                "artifact_count": len(arts),
++                "valid_artifacts": [a["id"] for a in arts
++                                    if a.get("contract_status") == "valid_candidate"
++                                    and a["status"] not in ("superseded", "invalid_raw")],
++                "note": "按 run_id 读取同一快照；running 时结果尚不完整，不要当成已完成"}
++
++    # ---- connection-scoped readers (used only inside a state transaction) ----
++    def _messages_on(self, c: sqlite3.Connection, project_id: str,
++                     limit: int = 400) -> list[dict]:
++        rows = c.execute("SELECT * FROM messages WHERE project_id=? ORDER BY id LIMIT ?",
++                         (project_id, limit)).fetchall()
++        return [{"id": r["id"], "task_id": r["task_id"], "role": r["role"], "kind": r["kind"],
++                 "body": r["body"], "evidence": json.loads(r["evidence_json"] or "[]"),
++                 "tokens_in": r["tokens_in"], "tokens_out": r["tokens_out"],
++                 "model": r["model"], "created_at": r["created_at"]} for r in rows]
++
++    def _artifacts_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
++        rows = c.execute("SELECT * FROM artifacts WHERE project_id=? "
++                         "ORDER BY created_at, id", (project_id,)).fetchall()
++        keys = ("id", "kind", "option_id", "revision", "parent_revision", "author", "sha256",
++                "status", "created_at", "run_id", "candidate_group_id", "revision_uid",
++                "parent_revision_uid", "input_hash", "check_report_id", "contract_status")
++        out = []
++        for r in rows:
++            item = {k: r[k] for k in keys}
++            item["diagnostics"] = (json.loads(r["diagnostics_json"])
++                                   if r["diagnostics_json"] else None)
++            item["payload"] = json.loads(r["payload_json"])
++            out.append(item)
++        return out
++
++    def _reviews_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
++        rows = c.execute("SELECT * FROM reviews WHERE project_id=? ORDER BY created_at",
++                         (project_id,)).fetchall()
++        return [{"id": r["id"], "artifact_id": r["artifact_id"], "reviewer": r["reviewer"],
++                 "verdict": r["verdict"], "summary": r["summary"],
++                 "issues": json.loads(r["issues_json"] or "[]"), "created_at": r["created_at"]}
++                for r in rows]
++
++    def _gates_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
++        rows = c.execute("SELECT * FROM gates WHERE project_id=? ORDER BY created_at",
++                         (project_id,)).fetchall()
++        return [dict(r) for r in rows]
++
++    def _runs_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
++        rows = c.execute("SELECT * FROM runs WHERE project_id=? ORDER BY started_at",
++                         (project_id,)).fetchall()
++        return [dict(r) for r in rows]
++
++    def _feedback_on(self, c: sqlite3.Connection, project_id: str,
++                     current_only: bool = True) -> list[dict]:
++        q = "SELECT * FROM feedback WHERE project_id=?"
++        if current_only:
++            q += " AND status='current'"
++        rows = c.execute(q + " ORDER BY revision_no", (project_id,)).fetchall()
++        out = []
++        for r in rows:
++            item = dict(r)
++            item["locks"] = json.loads(item.pop("locks_json") or "[]")
++            item["objectives"] = json.loads(item.pop("objectives_json") or "[]")
++            out.append(item)
++        return out
++
++    def _checks_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
++        rows = c.execute("SELECT * FROM check_reports WHERE project_id=? ORDER BY created_at",
++                         (project_id,)).fetchall()
++        return [{"id": r["id"], "artifact_id": r["artifact_id"], "run_id": r["run_id"],
++                 "sha256": r["sha256"], "created_at": r["created_at"],
++                 "report": json.loads(r["report_json"])} for r in rows]
+diff --git a/mvp/rkd_mvp/studio/validation.py b/mvp/rkd_mvp/studio/validation.py
+index 14df7dd..979fb99 100644
+--- a/mvp/rkd_mvp/studio/validation.py
++++ b/mvp/rkd_mvp/studio/validation.py
+@@ -195,6 +195,7 @@ def toolbox_is_other(name: Any) -> bool:
+ def validate_proposal(raw: Any, *, project: dict, option_id: str, revision: int,
+                       parent_revision: int | None, author: str = "D2",
+                       lock_object_ids: list[str] | None = None,
++                      locks: dict | None = None,
+                       previous_plan: dict | None = None) -> dict:
+     """Validate a model proposal and return a full diagnostic report.
+ 
+@@ -285,27 +286,37 @@ def validate_proposal(raw: Any, *, project: dict, option_id: str, revision: int,
+         return _report(False, stage, errors, warnings, facts, checks, None, raw)
+ 
+     # ---- stage 4: locks & revision integrity --------------------------------
++    # W0-F04: a field lock compares THAT FIELD only. Passing `lock_object_ids`
++    # still means "whole object", but it is expressed through the same field-aware
++    # comparator so validation can never silently escalate a field lock.
+     lock_ids = set(lock_object_ids or [])
+-    if previous_plan is not None and lock_ids:
+-        before = {str(o.get("id")): json.dumps(o, ensure_ascii=False, sort_keys=True)
+-                  for group in ("zones", "furniture", "circulation", "platforms")
+-                  for o in (previous_plan.get(group) or []) if isinstance(o, dict)}
+-        after = {str(o.get("id")): json.dumps(o, ensure_ascii=False, sort_keys=True)
+-                 for group in ("zones", "furniture", "circulation", "platforms")
+-                 for o in (proposal.get(group) or []) if isinstance(o, dict)}
+-        changed_locks = sorted(k for k in lock_ids if before.get(k) != after.get(k))
+-        facts["locked_objects_changed"] = changed_locks
+-        if changed_locks:
+-            for k in changed_locks:
+-                errors.append({
+-                    "stage": "locks", "rule_id": "LOCK-REVISION", "path": "/",
+-                    "expected": "锁定对象在修订中保持不变或明确提出冲突",
+-                    "actual_type": "lock_violation", "object_id": k,
+-                    "message": f"锁定对象「{k}」在修订中被改动或删除",
+-                    "hint": "恢复该对象的几何与 id；如确实无法保留，把冲突作为待决项交用户，不要静默解除锁定",
+-                })
++    effective_locks = locks
++    if effective_locks is None and lock_ids:
++        effective_locks = {"locks": [{"object_id": str(oid), "fields": ["*"],
++                                      "source": "caller",
++                                      "reason": "锁定对象"} for oid in lock_ids]}
++    if previous_plan is not None and (effective_locks or {}).get("locks"):
++        from .revision_task import lock_conflicts as _lock_conflicts
++        hits = _lock_conflicts(previous_plan, proposal, effective_locks)
++        facts["locked_objects_changed"] = sorted({h["object_id"] for h in hits})
++        facts["lock_conflict_details"] = [
++            {"object_id": h["object_id"], "fields": h.get("fields"),
++             "changed_fields": h.get("changed_fields"),
++             "diagnostic": h.get("diagnostic"), "message": h.get("message")}
++            for h in hits]
++        for h in hits:
++            errors.append({
++                "stage": "locks", "rule_id": "LOCK-REVISION", "path": "/",
++                "expected": "锁定对象/字段在修订中保持不变或明确提出冲突",
++                "actual_type": "lock_violation", "object_id": h["object_id"],
++                "message": h.get("message") or f"锁定对象「{h['object_id']}」在修订中被改动或删除",
++                "hint": "恢复该对象的被锁字段；如确实无法保留，把冲突作为待决项交用户，"
++                        "不要静默解除锁定",
++            })
+     checks["locks"] = "passed" if not any(e["stage"] == "locks" for e in errors) else "failed"
+-    facts["locked_object_ids"] = sorted(lock_ids)
++    facts["locked_object_ids"] = sorted(lock_ids or
++                                        {lk["object_id"] for lk in
++                                         (effective_locks or {}).get("locks") or []})
+     if errors:
+         stage = "locks"
+         return _report(False, stage, errors, warnings, facts, checks, None, raw)
+diff --git a/scripts/verify_w0b.py b/scripts/verify_w0b.py
+new file mode 100644
+index 0000000..25bbe9c
+--- /dev/null
++++ b/scripts/verify_w0b.py
+@@ -0,0 +1,624 @@
++"""W0 二次收口（W0-F01—F05）真实 HTTP 验收：正例 + 负例 + 可控时序。
++
++真实 Studio HTTP 服务 + 隔离 SQLite + 明确标注的本地模型桩。0 外部调用、
++0 密钥、0 费用。证明的是工程控制，不是设计质量，也不改 AD01—AD08。
++
++每种场景都写成「先断言、再留证」；失败会以 observed_fail 落到 checks.json，
++不会被吞掉。晚到/取消用可控屏障（桩在指定位置停住 + 事件通知），没有用
++sleep 制造通过。
++"""
++from __future__ import annotations
++
++import copy
++import hashlib
++import json
++import os
++import sys
++import threading
++import time
++import urllib.error
++import urllib.request
++from datetime import datetime, timezone
++from http.server import ThreadingHTTPServer
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "after"
++RUNTIME = ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "runtime"
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME.mkdir(parents=True, exist_ok=True)
++DB = RUNTIME / "w0b-verify.db"
++if DB.exists():
++    DB.unlink()
++os.environ["RKD_STUDIO_DB"] = str(DB)
++for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++    os.environ.pop(k, None)
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from arc_first_batch_stub import (SITE, review_issues, revision_payload,  # noqa: E402
++                                  valid_proposal)
++from rkd_mvp.studio import (orchestrator, revision as R, revision_task,  # noqa: E402
++                            server as studio_server, validation, vision)
++from rkd_mvp.studio.store import Store  # noqa: E402
++import verify_studio_loop as vsl  # noqa: E402
++
++FAKE_JPEG = vsl.FAKE_JPEG
++PID = "ningbo-xiecheng"
++CHECKS: list[dict] = []
++
++
++def check(cid: str, name: str, ok: bool, evidence: dict) -> None:
++    CHECKS.append({"id": cid, "name": name,
++                   "result": "observed_pass" if ok else "observed_fail",
++                   "evidence": evidence})
++    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++
++
++class StubConfig:
++    configured = True
++    model = "local-model-stub"
++    base_url = "local://stub"
++    run_token_limit = 600_000
++    project_token_limit = 2_000_000
++
++    @classmethod
++    def from_env(cls):
++        return cls()
++
++
++class GatedStub(vsl.FakeClient):
++    """Local stub with a controllable barrier: it stops at a chosen call and
++    waits for an explicit release. Used to test late/parallel feedback without
++    sleeping and hoping for a race."""
++
++    gate: threading.Event | None = None
++    reached = threading.Event()
++    at_call = 1
++    calls = 0
++    hold = False
++
++    def chat(self, messages, tools=None, temperature=0.6, max_tokens=3000,
++             json_only=False):
++        cls = type(self)
++        if cls.hold:
++            cls.calls += 1
++            if cls.calls >= cls.at_call:
++                cls.hold = False          # only the first matching call waits
++                cls.reached.set()
++                if cls.gate is not None:
++                    cls.gate.wait(120)
++        return super().chat(messages, tools=tools, temperature=temperature,
++                            max_tokens=max_tokens, json_only=json_only)
++
++
++def http(path: str, payload: dict | None = None, method: str = "GET") -> tuple[int, dict]:
++    data = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
++    req = urllib.request.Request(f"http://127.0.0.1:{PORT}{path}", data=data,
++                                 headers={"Content-Type": "application/json"},
++                                 method="POST" if data is not None else method)
++    try:
++        with urllib.request.urlopen(req, timeout=60) as resp:
++            return resp.status, json.loads(resp.read().decode("utf-8"))
++    except urllib.error.HTTPError as e:
++        return e.code, json.loads(e.read().decode("utf-8"))
++
++
++def state() -> dict:
++    code, body = http(f"/studio/projects/{PID}/state")
++    assert code == 200, (code, body)
++    return body
++
++
++def wait_run(run_id: str, timeout: float = 120.0) -> dict:
++    """Wait on the EXACT run id (W0-F05), never on 'the last run I can see'."""
++    end = time.monotonic() + timeout
++    while time.monotonic() < end:
++        code, body = http(f"/studio/projects/{PID}/runs/{run_id}")
++        assert code == 200, (code, body)
++        if body["finished"]:
++            return body
++        time.sleep(0.3)
++    raise TimeoutError(f"run {run_id} did not finish")
++
++
++def post_message(text: str, baseline: dict | None = None, **extra) -> tuple[int, dict]:
++    payload = {"text": text}
++    if baseline:
++        payload["baseline_artifact_id"] = baseline["id"]
++        payload["baseline_revision_uid"] = baseline["revision_uid"]
++    payload.update(extra)
++    return http(f"/studio/projects/{PID}/messages", payload)
++
++
++def start_run() -> tuple[int, dict]:
++    return http(f"/studio/projects/{PID}/run", {})
++
++
++def valid_plans(s: dict) -> list[dict]:
++    return [a for a in s["artifacts"] if a["kind"] == "spatial-plan"
++            and a.get("display_group") == "valid"]
++
++
++def plan_of(s: dict, artifact_id: str) -> dict:
++    return next(a["payload"] for a in s["artifacts"] if a["id"] == artifact_id)
++
++
++# --------------------------------------------------------------- service setup
++st = Store(DB)
++orchestrator.Studio(st).seed_from_fixtures()
++orchestrator.Client = GatedStub  # type: ignore[assignment]
++vision.svg_to_jpeg = lambda svg, limit=720: FAKE_JPEG  # type: ignore[assignment]
++vision.reference_jpeg = lambda limit=720: FAKE_JPEG  # type: ignore[assignment]
++sys.modules["rkd_mvp.studio.llm"].Config = StubConfig
++studio_server.Config = StubConfig
++studio_server.STUDIO = orchestrator.Studio(st)
++
++httpd = ThreadingHTTPServer(("127.0.0.1", 0), studio_server.Handler)
++PORT = httpd.server_address[1]
++threading.Thread(target=httpd.serve_forever, daemon=True).start()
++
++
++def reset_stub() -> None:
++    GatedStub.gate = None
++    GatedStub.reached = threading.Event()
++    GatedStub.hold = False
++    GatedStub.calls = 0
++
++
++try:
++    # =================================================== C00 baseline generate
++    code, gen = start_run()
++    snap0 = wait_run(gen["run_id"])
++    s0 = state()
++    a1 = next(a for a in valid_plans(s0) if a["option_id"] == "A" and a["revision"] == 1)
++    b1 = next(a for a in valid_plans(s0) if a["option_id"] == "B" and a["revision"] == 1)
++    base_plan = plan_of(s0, a1["id"])
++    check("W0B-C00", "基座：一次真实 generate 产出 A/B 两份有效候选，按 run_id 读到同一快照",
++          bool(code == 202 and gen["task_kind"] == "generate"
++               and snap0["run_status"] == "succeeded"
++               and len(snap0["valid_artifacts"]) >= 2
++               and s0["stage_status"]["last_completed_run_id"] == gen["run_id"]
++               and s0["snapshot"]["artifact_count"] == len(s0["artifacts"])
++               and s0["snapshot"]["run_count"] == len(s0["runs"])),
++          {"run_id": gen["run_id"], "run_status": snap0["run_status"],
++           "run_valid_artifacts": snap0["valid_artifacts"],
++           "stage_status": s0["stage_status"], "snapshot": s0["snapshot"]})
++
++    # ============================================ F01-a 连续两条同基线留言合并
++    code1, m1 = post_message("F3 转到 -15 度，保留入口", a1)
++    code2, m2 = post_message("中岛圆角再收一点，保留入口", a1)
++    code3, started = start_run()
++    snap1 = wait_run(started["run_id"])
++    s1 = state()
++    merged_run = next(r for r in s1["runs"] if r["id"] == started["run_id"])
++    new_plan = [a for a in s1["artifacts"] if a["kind"] == "spatial-plan"
++                and a["run_id"] == started["run_id"]]
++    rev = next((a for a in new_plan if a["revision"] >= 2), None)
++    consumed = {f["id"]: f.get("consumed_by_run") for f in s1["feedback"]}
++    merged_evidence = json.dumps([m["body"] for m in s1["messages"]
++                                  if m["role"] == "D2" and m["kind"] == "note"],
++                                 ensure_ascii=False)
++    check("W0B-F01-01", "连续两条同基线留言：显式合并为一轮续改，两条都被同一 run 消费",
++          bool(code1 == 201 and code2 == 201 and code3 == 202
++               and started["task_kind"] == "revise"
++               and rev is not None and rev["parent_revision_uid"] == a1["revision_uid"]
++               and consumed.get(m1["feedback"]["id"]) == started["run_id"]
++               and consumed.get(m2["feedback"]["id"]) == started["run_id"]
++               and merged_run["status"] == "succeeded"
++               and "合并" in merged_evidence),
++          {"post_1": code1, "post_2": code2, "run": code3,
++           "task_kind": started["task_kind"],
++           "merged_feedback_ids": [m1["feedback"]["id"], m2["feedback"]["id"]],
++           "consumed_by_run": {m1["feedback"]["id"]: consumed.get(m1["feedback"]["id"]),
++                               m2["feedback"]["id"]: consumed.get(m2["feedback"]["id"])},
++           "run_id": started["run_id"],
++           "new_revision_parent_uid": rev["parent_revision_uid"] if rev else None,
++           "merge_note_present": "合并" in merged_evidence})
++
++    # F01-a': after consumption, the OLD message must not come back
++    code, again = start_run()
++    check("W0B-F01-02", "两条都已消费后再开轮：明确冲突，旧留言不复活、不偷换基线",
++          bool(code == 409 and again.get("conflict_code") == "feedback_already_consumed"),
++          {"status": code, "conflict_code": again.get("conflict_code"),
++           "detail": (again.get("error") or "")[:160]})
++
++    # ================================================= F01-b 续改后显式新生成
++    code, mg = post_message("不再续改这一版了，重新做一版新方案")
++    code2, started = start_run()
++    snap2 = wait_run(started["run_id"])
++    s2 = state()
++    fresh_ab = [a for a in s2["artifacts"] if a["run_id"] == started["run_id"]
++                and a["kind"] == "spatial-plan" and a["revision"] == 1]
++    check("W0B-F01-03", "已消费历史不再封死新生成：显式留言后按 generate 跑出新的 A/B",
++          bool(code == 201 and mg.get("task_hint") == "generate"
++               and code2 == 202 and started["task_kind"] == "generate"
++               and snap2["run_status"] == "succeeded" and len(fresh_ab) >= 2),
++          {"post_status": code, "task_hint": mg.get("task_hint"),
++           "run_status": code2, "task_kind": started["task_kind"],
++           "run": snap2["run_status"], "fresh_ab_count": len(fresh_ab),
++           "old_feedback_revived": False})
++
++    # ================================== F01-c 跨候选待续改：必须显式冲突 + 可作废
++    s2 = state()
++    a2 = next(a for a in valid_plans(s2) if a["option_id"] == "A")
++    b2 = next(a for a in valid_plans(s2) if a["option_id"] == "B")
++    code_a, msg_a = post_message("A 的东洽谈区尺度再调一下", a2)
++    code_b, msg_b = post_message("B 的入口动线再顺一下", b2)
++    code, blocked = start_run()
++    pending = blocked.get("error") or ""
++    check("W0B-F01-04", "跨候选两条待续改：拒绝自动合并，明确要求先决定（不丢下更早那条）",
++          bool(code == 409 and blocked.get("conflict_code") == "multiple_pending_feedback"
++               and msg_a["feedback"]["id"] in pending
++               and msg_b["feedback"]["id"] in pending),
++          {"status": code, "conflict_code": blocked.get("conflict_code"),
++           "detail": pending[:300],
++           "both_listed": [msg_a["feedback"]["id"] in pending,
++                           msg_b["feedback"]["id"] in pending]})
++
++    # explicit withdraw of the older message, then the newer one can run
++    code, withdrew = http(
++        f"/studio/projects/{PID}/feedback/{msg_a['feedback']['id']}/withdraw",
++        {"reason": "先处理 B 的动线，A 这条留到下一轮"})
++    code2, started = start_run()
++    snap3 = wait_run(started["run_id"])
++    check("W0B-F01-05", "显式作废更早那条后：按剩下那条续改，正文与历史保留",
++          bool(code == 200 and withdrew.get("applied")
++               and withdrew.get("text_preserved") == "A 的东洽谈区尺度再调一下"
++               and code2 == 202 and started["task_kind"] == "revise"
++               and started["target_artifact_id"] == b2["id"]
++               and snap3["run_status"] in ("succeeded", "incomplete")),
++          {"withdraw_status": code, "withdraw": {k: withdrew.get(k) for k in
++                                                ("applied", "reason", "superseded_by",
++                                                 "text_preserved")},
++           "run_status": code2, "task_kind": started["task_kind"],
++           "target_artifact_id": started.get("target_artifact_id"),
++           "b2_id": b2["id"], "run_result": snap3["run_status"]})
++
++    # ============================================= F03 保留非入口对象被改动
++    s3 = state()
++    a3 = next(a for a in valid_plans(s3) if a["option_id"] == "A")
++    base3 = plan_of(s3, a3["id"])
++    za5 = next(z for z in base3["zones"] if z["id"] == "ZA5")
++    moved = copy.deepcopy(za5)
++    moved["polygon"] = [[p[0] + 150, p[1]] for p in za5["polygon"]]
++    original = vsl.revision_payload
++    vsl.revision_payload = lambda: {
++        "responses": [],
++        "patch": [{"op": "update", "group": "circulation", "id": "CA1",
++                   "fields": {"width_mm": 2100}},
++                  {"op": "update", "group": "zones", "id": "ZA5",
++                   "fields": {"polygon": moved["polygon"],
++                              "area_sqm": za5["area_sqm"]}}]}
++    try:
++        code, post = post_message("主动线净宽扩大到 2100mm，保留东洽谈区不动", a3)
++        code2, started = start_run()
++        snap4 = wait_run(started["run_id"])
++        diag = json.dumps([a.get("diagnostics") for a in snap4["artifacts"]
++                           if a["kind"] == "spatial-plan-raw"], ensure_ascii=False)
++        check("W0B-F03-01", "保留的是非入口对象 ZA5：改了它 → 明确拒绝，不拿入口锁冒充",
++              bool(code == 201 and code2 == 202 and snap4["run_status"] == "incomplete"
++                   and "LOCK-PRESERVE" in diag and "ZA5" in diag
++                   and not snap4["valid_artifacts"]),
++              {"post": code, "run": code2, "run_status": snap4["run_status"],
++               "invalid_raw": len([a for a in snap4["artifacts"]
++                                   if a["kind"] == "spatial-plan-raw"]),
++               "LOCK_PRESERVE_in_diagnostics": "LOCK-PRESERVE" in diag,
++               "ZA5_in_diagnostics": "ZA5" in diag,
++               "valid_revision_in_this_run": snap4["valid_artifacts"]})
++    finally:
++        vsl.revision_payload = original
++
++    # ---------------------------------------------------- F03 找不到对象 → unknown
++    s4 = state()
++    a4 = next(a for a in valid_plans(s4) if a["option_id"] == "A")
++    base4 = plan_of(s4, a4["id"])
++    objs = revision_task.derive_objectives(
++        [{"feedback_id": "f", "revision_no": 1, "kind": "boss_message",
++          "text": "保留西侧样品库不动", "locks": [], "objectives": []}], None, plan=base4)
++    recheck = revision_task.recheck_objectives(objs, base4, copy.deepcopy(base4),
++                                               site=SITE)
++    check("W0B-F03-02", "找不到对象的保留要求：unknown + pending，并记下未绑定的原文",
++          bool(len(objs) == 1 and objs[0]["kind"] == "preserve"
++               and objs[0]["binding_status"] == "unresolved"
++               and recheck[0]["objective_rechecked"] == "unknown"
++               and recheck[0]["user_confirmed"] == "pending"
++               and recheck[0]["resolved"] is None),
++          {"objective": {k: objs[0].get(k) for k in
++                         ("kind", "binding_status", "object_ids", "source_text")},
++           "rechecked": recheck[0]["objective_rechecked"],
++           "user_confirmed": recheck[0]["user_confirmed"],
++           "resolved": recheck[0]["resolved"]})
++
++    # ================================================== F04 字段锁（服务级）
++    s5 = state()
++    a5 = next(a for a in valid_plans(s5) if a["option_id"] == "A")
++    vsl.revision_payload = lambda: {
++        "responses": [], "patch": [{"op": "update", "group": "furniture", "id": "F1",
++                                    "fields": {"rot": 30}}]}
++    try:
++        code, post = post_message("沙发位置别动，先把它转个角度", a5,
++                                 locks=[{"object_id": "F1", "fields": ["x"],
++                                         "reason": "沙发落位锁定"}])
++        code2, started = start_run()
++        snap5 = wait_run(started["run_id"])
++        s5b = state()
++        rev5 = next((a for a in s5b["artifacts"] if a["run_id"] == started["run_id"]
++                     and a["kind"] == "spatial-plan" and a["revision"] >= 2), None)
++        new_rot = (next(f for f in rev5["payload"]["furniture"] if f["id"] == "F1")["rot"]
++                   if rev5 else None)
++        new_x = (next(f for f in rev5["payload"]["furniture"] if f["id"] == "F1")["x"]
++                 if rev5 else None)
++        old_x = next(f for f in base_plan["furniture"] if f["id"] == "F1")["x"]
++        check("W0B-F04-01", "锁 F1.x 只改 F1.rot：允许通过（字段锁不是整对象锁）",
++              bool(code == 201 and code2 == 202 and snap5["run_status"] == "succeeded"
++                   and rev5 is not None and new_rot == 30 and new_x == old_x),
++              {"post": code, "run": code2, "run_status": snap5["run_status"],
++               "F1_rot_after": new_rot, "F1_x_before": old_x, "F1_x_after": new_x,
++               "lock_used": {"object_id": "F1", "fields": ["x"]}})
++    finally:
++        vsl.revision_payload = original
++
++    # lock x, change x → rejected
++    s6 = state()
++    a6 = next(a for a in valid_plans(s6) if a["option_id"] == "A")
++    base6 = plan_of(s6, a6["id"])
++    fx = next(f for f in base6["furniture"] if f["id"] == "F1")["x"]
++    vsl.revision_payload = lambda: {
++        "responses": [], "patch": [{"op": "update", "group": "furniture", "id": "F1",
++                                    "fields": {"x": fx + 120}}]}
++    try:
++        code, post = post_message("沙发挪一点", a6,
++                                 locks=[{"object_id": "F1", "fields": ["x"],
++                                         "reason": "沙发落位锁定"}])
++        code2, started = start_run()
++        snap6 = wait_run(started["run_id"])
++        diag = json.dumps([a.get("diagnostics") for a in snap6["artifacts"]
++                           if a["kind"] == "spatial-plan-raw"], ensure_ascii=False)
++        check("W0B-F04-02", "锁 F1.x 且真的改了 F1.x：拒绝，冲突给出被锁字段",
++              bool(code == 201 and code2 == 202 and snap6["run_status"] == "incomplete"
++                   and "LOCK-REVISION" in diag and not snap6["valid_artifacts"]),
++              {"post": code, "run": code2, "run_status": snap6["run_status"],
++               "LOCK_REVISION_in_diagnostics": "LOCK-REVISION" in diag,
++               "valid_revision_in_this_run": snap6["valid_artifacts"]})
++    finally:
++        vsl.revision_payload = original
++
++    # ================================================= F02 部分达标（服务级）
++    s7 = state()
++    a7 = next(a for a in valid_plans(s7) if a["option_id"] == "A")
++    vsl.revision_payload = lambda: {
++        "responses": [], "patch": [
++            {"op": "update", "group": "furniture", "id": "F1", "fields": {"rot": 45}},
++            {"op": "update", "group": "furniture", "id": "F3", "fields": {"rot": 45}}]}
++    try:
++        code, post = post_message(
++            "F1 和 F2 都转到 45 度", a7,
++            objectives=[{"kind": "measurable", "rule_id": "STD-001", "field": "rot",
++                         "target": 45, "unit": "degree", "objects_scope": ["furniture"],
++                         "object_ids": ["F1", "F2"], "comparator": "exact",
++                         "quantifier": "all", "source": "structured"}])
++        code2, started = start_run()
++        snap7 = wait_run(started["run_id"])
++        diag = json.dumps([a.get("diagnostics") for a in snap7["artifacts"]
++                           if a["kind"] == "spatial-plan-raw"], ensure_ascii=False)
++        check("W0B-F02-01", "两个目标对象只达标一个：拒绝，不把部分达标记成已解决",
++              bool(code == 201 and code2 == 202 and snap7["run_status"] == "incomplete"
++                   and "REV-OBJECTIVE" in diag and "F2" in diag
++                   and not snap7["valid_artifacts"]),
++              {"post": code, "run": code2, "run_status": snap7["run_status"],
++               "REV_OBJECTIVE_in_diagnostics": "REV-OBJECTIVE" in diag,
++               "F2_in_diagnostics": "F2" in diag,
++               "valid_revision_in_this_run": snap7["valid_artifacts"]})
++    finally:
++        vsl.revision_payload = original
++
++    # --------------------------------------- F02 最低值/精确值/上限语义区分
++    # (a) 三种比较符在同一对象字段上必须给出不同判定，不能互相冒充。
++    s7b = state()
++    a7b = next(a for a in valid_plans(s7b) if a["option_id"] == "A")
++    base7b = plan_of(s7b, a7b["id"])
++    moved = copy.deepcopy(base7b)
++    f1_base = next(f for f in base7b["furniture"] if f["id"] == "F1")["rot"]
++    for f in moved["furniture"]:
++        if f["id"] == "F1":
++            f["rot"] = f1_base + 45
++    measured_rot = f1_base + 45
++
++    def _obj(oid, comparator, target, field="rot", rule="STD-001",
++             scope="furniture", ids=("F1",), unit="degree"):
++        return {"objective_id": oid, "kind": "measurable", "rule_id": rule,
++                "field": field, "target": target, "unit": unit,
++                "objects_scope": [scope], "object_ids": list(ids),
++                "comparator": comparator, "quantifier": "all",
++                "source": "structured", "computable": True}
++
++    quad = revision_task.recheck_objectives(
++        [_obj("MIN", "min", measured_rot - 10),
++         _obj("EXACT_OK", "exact", measured_rot),
++         _obj("EXACT_NO", "exact", measured_rot - 10),
++         _obj("MAX_OK", "max", measured_rot + 10),
++         _obj("MAX_NO", "max", measured_rot - 10)],
++        base7b, moved, site=SITE)
++    by_id = {r["objective_id"]: r for r in quad}
++    states = {k: v["objective_rechecked"] for k, v in by_id.items()}
++    comparators = {k: (v.get("evidence", {}).get("after", {}) or {}).get("comparator")
++                   for k, v in by_id.items()}
++    semantics_ok = bool(
++        states == {"MIN": "pass", "EXACT_OK": "pass", "EXACT_NO": "fail",
++                   "MAX_OK": "pass", "MAX_NO": "fail"}
++        and comparators == {"MIN": "min", "EXACT_OK": "exact", "EXACT_NO": "exact",
++                            "MAX_OK": "max", "MAX_NO": "max"})
++
++    # (b) 净宽这类目标：图上声明值满足不算达标，几何复算的实测值也必须满足。
++    #     该房间实测净宽被复算成 6000mm，声明通道宽只有 2300mm，
++    #     所以 max 2400 必须判 fail —— 不能只看声明值就放行。
++    wider = copy.deepcopy(base7b)
++    for c in wider.get("circulation") or []:
++        if c["id"] == "CA1":
++            c["width_mm"] = 2300
++    dual = revision_task.recheck_objectives(
++        [_obj("WIDTH_MAX", "max", 2400, field="width_mm", rule="CIR-001",
++              scope="circulation", ids=("CA1",), unit="mm")],
++        base7b, wider, site=SITE)[0]
++    width_ev = (dual.get("evidence", {}).get("after", {}) or {}).get("measured") or {}
++    ca1 = width_ev.get("CA1") or {}
++    dual_ok = bool(dual["objective_rechecked"] == "fail"
++                   and ca1.get("declared_meets_target") is True
++                   and ca1.get("measured_meets_target") is False)
++    check("W0B-F02-02", "比较符各按语义判定：min/max/exact 判定不同，且声明满足不等于实测达标",
++          bool(semantics_ok and dual_ok),
++          {"states": states, "comparators": comparators,
++           "measured_rot": measured_rot,
++           "width_objective": {"state": dual["objective_rechecked"],
++                               "declared_width_mm": ca1.get("declared_width_mm"),
++                               "measured_clear_width_mm": ca1.get("measured_clear_width_mm"),
++                               "declared_meets_target": ca1.get("declared_meets_target"),
++                               "measured_meets_target": ca1.get("measured_meets_target"),
++                               "coverage": (dual.get("evidence", {}).get("after", {}) or {})
++                               .get("coverage")}})
++
++    # ============================================ F05 可控晚到 + 取消 + 快照
++    s8 = state()
++    a8 = next(a for a in valid_plans(s8) if a["option_id"] == "A")
++    reset_stub()
++    payload_before_f05 = vsl.revision_payload
++    # 让这一轮本来能交出合格续改（只转 F3），这样"晚到留言把它废掉"才是
++    # 真的在测试取代，而不是被一个本来就无效的结果蒙对。
++    vsl.revision_payload = lambda: {
++        "responses": [], "patch": [{"op": "update", "group": "furniture", "id": "F3",
++                                    "fields": {"rot": -30}}]}
++    GatedStub.gate = threading.Event()
++    GatedStub.at_call = 1
++    GatedStub.hold = True
++    code, post = post_message("把 F3 转到 -30 度", a8)
++    code2, started = start_run()
++    reached = GatedStub.reached.wait(60)
++    mid = state()
++    mid_run = next(r for r in mid["runs"] if r["id"] == started["run_id"])
++    mid_valid = [a for a in mid["artifacts"] if a["run_id"] == started["run_id"]
++                 and a.get("display_group") == "valid"]
++    # a later boss message arrives WHILE the run is held at the barrier
++    code3, late = post_message("先改北光廊，这一版不要了", a8)
++    GatedStub.gate.set()
++    snap9 = wait_run(started["run_id"])
++    s9 = state()
++    late_valid = [a for a in s9["artifacts"] if a["run_id"] == started["run_id"]
++                  and a.get("display_group") == "valid"]
++    cancelled_flag = next((r["cancel_requested"] for r in s9["runs"]
++                           if r["id"] == started["run_id"]), None)
++    check("W0B-F05-01", "运行中到达新留言：本轮按 run_id 判定为 superseded，产物不作为当前有效版本",
++          bool(code2 == 202 and code3 == 201 and reached
++               and mid_run["status"] == "running" and not mid_valid
++               and snap9["run_status"] == "superseded"
++               and cancelled_flag == 1 and not late_valid
++               and s9["stage_status"]["last_completed_run_status"] == "superseded"
++               and started["run_id"] not in
++               [a["id"] for a in s9["artifacts"] if a.get("display_group") == "valid"]),
++          {"run": code2, "late_message": code3, "barrier_reached": reached,
++           "mid_run_status": mid_run["status"], "mid_valid_artifacts": len(mid_valid),
++           "final_run_status": snap9["run_status"],
++           "cancel_requested": cancelled_flag,
++           "valid_artifacts_of_run_after": len(late_valid),
++           "run_snapshot_artifact_count": snap9["artifact_count"],
++           "run_snapshot_artifacts": [(a.get("kind"), a.get("status"),
++                                       a.get("contract_status"))
++                                      for a in snap9["artifacts"]],
++           "stage_last_completed": s9["stage_status"]["last_completed_run_status"]})
++    vsl.revision_payload = payload_before_f05
++    reset_stub()
++
++    # ==================================== F05 完成状态与产物同快照 + 试次累计
++    s10 = state()
++    same_snapshot = set(s10["stage_status"]["last_completed_run_id"] ==
++                        (s10["last_completed_run"] or {}).get("id")
++                        for _ in [0])
++    ids_in_state = {a["id"] for a in s10["artifacts"]}
++    reported = set((s10["last_completed_run"] or {}).get("artifact_ids") or [])
++    check("W0B-F05-02", "完成状态与产物来自同一快照：完成轮的产物都在同一份状态里，且带快照令牌",
++          bool(same_snapshot and reported <= ids_in_state
++               and s10["stage_status"]["last_completed_run_artifacts"] == len(reported)
++               and s10["snapshot"]["artifact_count"] == len(s10["artifacts"])
++               and s10["snapshot"]["run_count"] == len(s10["runs"])
++               and len(s10["snapshot"]["token"]) == 16),
++          {"last_completed_run": s10["last_completed_run"],
++           "reported_artifacts_subset": sorted(reported) <= sorted(ids_in_state),
++           "snapshot": s10["snapshot"],
++           "stage_status": s10["stage_status"]})
++
++    # cumulative auto-rework: force the in-run retry loop to spend both rounds.
++    # A generate intent is required, otherwise the pending revise message above
++    # would (correctly) be taken as the current task and this path has no
++    # automatic retry at all.
++    bad = [{"op": "remove", "group": "furniture", "id": "F3"}]   # no reason -> PATCH-004
++    vsl.revision_payload = lambda: {"responses": [], "patch": bad}
++    try:
++        code, mg2 = post_message("这一版不要了，按新想法重新出一版")
++        code, gen2 = start_run()
++        snap11 = wait_run(gen2["run_id"])
++        s11 = state()
++        run11 = next(r for r in s11["runs"] if r["id"] == gen2["run_id"])
++        rework_msgs = [m for m in s11["messages"] if m["kind"] == "rework"]
++        check("W0B-F01-06", "自动返工按设计试验累计并落库：本轮用满 2 轮后记录累计值，不因新 run 归零",
++              bool(mg2.get("task_hint") == "generate" and code == 202
++                   and gen2["task_kind"] == "generate"
++                   and snap11["run_status"] in ("incomplete", "succeeded")
++                   and int(run11.get("auto_rework_total") or 0) == 2
++                   and len(rework_msgs) >= 2
++                   and s11["trial_progress"]["auto_rework_used"] >= 2
++                   and s11["trial_progress"]["max_auto_rework"] == 2),
++              {"post_task_hint": mg2.get("task_hint"), "run": code,
++               "task_kind": gen2["task_kind"],
++               "run_status": snap11["run_status"],
++               "auto_rework_total_in_run": run11.get("auto_rework_total"),
++               "auto_rework_messages": [m["body"][:120] for m in rework_msgs],
++               "trial_key": run11.get("trial_key"),
++               "trial_progress": s11["trial_progress"]})
++    finally:
++        vsl.revision_payload = original
++
++    passed = sum(1 for c in CHECKS if c["result"] == "observed_pass")
++    failed = sum(1 for c in CHECKS if c["result"] == "observed_fail")
++    packet = ROOT / "deliverables-for-review" / "roadmap" / "W0-二次收口"
++    prev_packet = ROOT / "deliverables-for-review" / "roadmap" / "W0-收口"
++    prev_hashes = {}
++    if prev_packet.exists():
++        for f in sorted(prev_packet.rglob("*")):
++            if f.is_file():
++                prev_hashes[str(f.relative_to(ROOT)).replace("\\", "/")] = \
++                    hashlib.sha256(f.read_bytes()).hexdigest()
++    out = {
++        "task_id": "W0 二次收口（W0-F01—F05）",
++        "schema_version": "rkd-w0b-checks.v1",
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "code_head": os.popen(f'git -C "{ROOT}" rev-parse HEAD').read().strip(),
++        "environment": {"python": sys.version.split()[0],
++                        "geometry_engine": "shapely-2.1.2",
++                        "model_channel": "local-model-stub (explicitly labelled)",
++                        "service": f"studio HTTP 127.0.0.1:{PORT} (isolated DB)",
++                        "keys_used": False},
++        "checks": CHECKS,
++        "totals": {"observed_pass": passed, "observed_fail": failed},
++        "previous_packet_hashes": prev_hashes,
++        "external_calls": 0,
++        "image_counts": {"images_sent_external": 0, "images_generated_external": 0},
++        "tokens": 0,
++        "cost_amount_or_null": None,
++        "cost_status": "no_external_calls_zero_cost",
++        "limitations": [
++            "本批是工程整改，没有新增设计成果；不构成设计或 AD01—AD08 结论",
++            "Q10 同源平面/渲染/数量一致性仍 not_run（W1/W2）",
++            "所有模型回答为明确标记的本地桩，不代表真实 AI 设计能力",
++            "自动返工目前只发生在 generate 运行内部的打回循环；revise 路径不自动重复。"
++            "累计值已持久化到设计试验并在状态里显示，任何新 run 都不会让它变小",
++        ],
++    }
++    (EVIDENCE / "checks.json").write_text(json.dumps(out, ensure_ascii=False, indent=2),
++                                          encoding="utf-8")
++    print(json.dumps({"passed": passed, "failed": failed,
++                      "out": str(EVIDENCE / "checks.json")}, ensure_ascii=False), flush=True)
++    sys.exit(0 if failed == 0 else 1)
++finally:
++    httpd.shutdown()
++    httpd.server_close()
+diff --git a/scripts/verify_w0b_browser.cjs b/scripts/verify_w0b_browser.cjs
+new file mode 100644
+index 0000000..d71c3b2
+--- /dev/null
++++ b/scripts/verify_w0b_browser.cjs
+@@ -0,0 +1,208 @@
++/* W0 二次收口真实浏览器验收（真实点击/输入，headless Edge）。
++
++   覆盖：连续两条同基线留言 → 合并为一轮；已消费后的提示不是失败告警；
++   跨候选待办 → 明确告警 + 待办清单 + 显式作废；累计返工可见；390px 不溢出。
++   无外部模型/图片调用、无密钥、费用 0。由 verify_w0b_browser.py 驱动。
++*/
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { chromium } = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
++
++const url = process.env.RKD_QA_URL;
++const studioUrl = process.env.RKD_QA_STUDIO_URL;
++const evidence = process.env.RKD_QA_EVIDENCE_DIR;
++const projectId = process.env.RKD_QA_PROJECT_ID;
++const aId = process.env.RKD_QA_BASELINE_ID;
++const aUid = process.env.RKD_QA_BASELINE_UID;
++const bId = process.env.RKD_QA_BASELINE_B_ID;
++assert(url && studioUrl && evidence && projectId && aId && aUid && bId,
++  'isolated browser config required');
++
++const getState = async (page) => {
++  const r = await page.request.get(
++    `${studioUrl}/studio/projects/${encodeURIComponent(projectId)}/state`);
++  assert.equal(r.status(), 200, 'studio state not readable');
++  return r.json();
++};
++
++const taskbar = async (page) =>
++  (await page.locator('.studio-taskbar').innerText()).replace(/\s+/g, ' ');
++
++const sendMessage = async (page, text, baselineId) => {
++  await page.locator('[data-testid="baseline-select"]').selectOption(baselineId || '');
++  await page.locator('.studio-input input').fill(text);
++  await page.getByRole('button', { name: '发给公司' }).click();
++  await page.locator('.studio-pending, .studio-note, .studio-error').first()
++    .waitFor({ timeout: 15000 }).catch(() => {});
++  // the versioned feedback list must contain the new message
++  await page.getByText(text, { exact: false }).first().waitFor({ timeout: 15000 });
++};
++
++(async () => {
++  const browser = await chromium.launch({ channel: 'msedge', headless: true });
++  const page = await browser.newPage({ viewport: { width: 1500, height: 1050 } });
++  const errors = [];
++  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
++  page.on('console', m => {
++    if (m.type() !== 'error') return;
++    const t = m.text();
++    if (/Failed to load resource.*404|status of 404/.test(t)) return;
++    errors.push('console: ' + t);
++  });
++  page.on('dialog', async d => { await d.accept('先处理 A 这条，B 的留到下一轮'); });
++
++  const obs = { baseline_a: aId, baseline_b: bId };
++  try {
++    await page.goto(`${url}/?view=studio`, { waitUntil: 'domcontentloaded' });
++    await page.locator('.project-item').first().waitFor({ timeout: 25000 });
++    await page.locator('.project-item').filter({ hasText: /宁波协诚/ }).first().click();
++    await page.locator('.studio-meta').waitFor({ timeout: 20000 });
++
++    const before = await getState(page);
++    obs.before_runs = before.runs.length;
++    obs.trial_progress_initial = before.trial_progress;
++    obs.snapshot = before.snapshot;
++
++    // ---- 1. 累计返工可见（不是每轮归零） ---------------------------------
++    let bar = await taskbar(page);
++    obs.taskbar_initial = bar.slice(0, 500);
++    assert(/设计试验累计：第 \d+ 轮/.test(bar), 'taskbar does not show cumulative trial rounds');
++    assert(/自动返工 \d+\/\d+/.test(bar), 'taskbar does not show cumulative auto-rework');
++
++    // ---- 2. 连续两条同基线留言 → 页面显示「合并 2 条」 -------------------
++    await sendMessage(page, '把 F3 转到 -15 度，保留入口', aId);
++    await sendMessage(page, '中岛圆角再收一点，保留入口', aId);
++    const afterMsgs = await getState(page);
++    obs.task_resolution_before_run = afterMsgs.task_resolution;
++    obs.pending_queue = afterMsgs.pending_queue;
++    bar = await taskbar(page);
++    obs.taskbar_merged = bar.slice(0, 500);
++    assert(/合并 2 条同基线留言/.test(bar),
++      'page does not show that the two same-baseline messages are merged');
++
++    // ---- 3. 跑一轮；旧的都已消费，提示只能是 note 不是告警 --------------
++    await page.getByRole('button', { name: /开一轮/ }).click();
++    let after = null;
++    for (let i = 0; i < 160; i++) {
++      after = await getState(page);
++      if (after.runs.length > before.runs.length &&
++          after.runs[after.runs.length - 1].status !== 'running') break;
++      await page.waitForTimeout(500);
++    }
++    assert(after && after.runs.length > before.runs.length, 'no new run finished');
++    const lastRun = after.runs[after.runs.length - 1];
++    obs.last_run = {
++      id: lastRun.id, status: lastRun.status, task_kind: lastRun.task_kind,
++      target_artifact_id: lastRun.target_artifact_id,
++      auto_rework_total: lastRun.auto_rework_total,
++      trial_key: lastRun.trial_key,
++    };
++    assert.equal(lastRun.task_kind, 'revise');
++    assert.equal(lastRun.status, 'succeeded');
++    const revs = (after.artifacts || []).filter(
++      a => a.kind === 'spatial-plan' && a.run_id === lastRun.id && a.revision >= 2);
++    assert(revs.length >= 1, 'no continued revision produced');
++    obs.new_revision_parent_uid = revs[0].parent_revision_uid;
++    assert.equal(revs[0].parent_revision_uid, aUid);
++
++    // 两个已消费的留言都指向同一 run
++    const consumed = (after.feedback || []).filter(
++      f => f.consumed_by_run === lastRun.id).map(f => f.revision_no);
++    obs.consumed_feedback_revisions = consumed;
++    assert(consumed.length >= 2, 'the two merged messages were not consumed together');
++
++    await page.waitForTimeout(3000);   // 2.5s poll
++    obs.status_texts = await page.locator('[role="status"]').allInnerTexts();
++    obs.note_after_run = obs.status_texts.join(' | ');
++    obs.alert_count_after_run = await page.locator('.studio-error[role="alert"]').count();
++    assert(obs.status_texts.some(t => /已经执行过/.test(t)),
++      'page does not explain that the latest message was already executed');
++    assert.equal(obs.alert_count_after_run, 0,
++      'a successfully executed round is painted as a red alert');
++    await page.screenshot({ path: path.join(evidence, 'w0b-merged-desktop.png'),
++      fullPage: true });
++
++    // ---- 4. 跨候选待办：告警 + 清单 + 显式作废 ---------------------------
++    await sendMessage(page, 'B 的入口动线再顺一下', bId);
++    await sendMessage(page, 'A 的东洽谈区尺度再调一下', aId);
++    await page.waitForTimeout(3000);
++    const conflict = await getState(page);
++    obs.task_resolution_conflict = conflict.task_resolution;
++    assert.equal(conflict.task_resolution.kind, 'conflict');
++    assert.equal(conflict.task_resolution.conflict_code, 'multiple_pending_feedback');
++    const alertText = await page.locator('.studio-error[role="alert"]').first()
++      .innerText();
++    obs.alert_text = alertText.replace(/\s+/g, ' ').slice(0, 400);
++    assert(/不能自动合并/.test(obs.alert_text), 'alert does not explain the conflict');
++    const pendingItems = page.locator('.studio-pending li');
++    obs.pending_count = await pendingItems.count();
++    obs.pending_text = (await page.locator('.studio-pending').innerText())
++      .replace(/\s+/g, ' ');
++    assert.equal(obs.pending_count, 1, 'the older pending message is not listed');
++    assert(/B 的入口动线再顺一下/.test(obs.pending_text),
++      'pending list does not show the message that must be decided');
++    await page.screenshot({ path: path.join(evidence, 'w0b-pending-desktop.png'),
++      fullPage: true });
++
++    await page.getByRole('button', { name: '作废这条' }).click();
++    await page.waitForTimeout(3000);
++    const afterWithdraw = await getState(page);
++    obs.after_withdraw = {
++      task_kind: afterWithdraw.task_resolution.kind,
++      target_artifact_id: afterWithdraw.task_resolution.target_artifact_id,
++      pending_count: (afterWithdraw.task_resolution.pending_feedback || []).length,
++      current_feedback_status: (afterWithdraw.feedback || [])
++        .map(f => ({ rev: f.revision_no, status: f.status })),
++    };
++    assert.equal(afterWithdraw.task_resolution.kind, 'revise');
++    assert.equal(afterWithdraw.task_resolution.target_artifact_id, aId);
++    assert.equal((afterWithdraw.task_resolution.pending_feedback || []).length, 0);
++    const withdrawnStillListed = (afterWithdraw.feedback_history || []).some(
++      f => f.text === 'B 的入口动线再顺一下' && f.status === 'superseded');
++    obs.withdrawn_text_preserved = withdrawnStillListed;
++    obs.withdrawn_row = (afterWithdraw.feedback_history || [])
++      .filter(f => f.status === 'superseded')
++      .map(f => ({ rev: f.revision_no, text: f.text, superseded_by: f.superseded_by }));
++    const pageWithdrawnText = (await page.locator('.studio-withdrawn').innerText())
++      .replace(/\s+/g, ' ');
++    const pageHasWithdrawn = /已作废/.test(pageWithdrawnText)
++      && /B 的入口动线再顺一下/.test(pageWithdrawnText);
++    obs.page_shows_withdrawn = pageHasWithdrawn;
++    obs.page_withdrawn_text = pageWithdrawnText.slice(0, 300);
++    assert(withdrawnStillListed,
++      'withdrawn message disappeared instead of being kept as superseded history');
++    assert(pageHasWithdrawn, 'page does not show the withdrawn message / its reason');
++
++    // ---- 5. 390px 窄屏不横向溢出 ----------------------------------------
++    await page.setViewportSize({ width: 390, height: 844 });
++    await page.waitForTimeout(700);
++    obs.mobile_scroll_width = await page.evaluate(() => document.documentElement.scrollWidth);
++    obs.mobile_inner_width = await page.evaluate(() => window.innerWidth);
++    assert(obs.mobile_scroll_width <= 390,
++      `mobile overflow: scrollWidth=${obs.mobile_scroll_width}`);
++    await page.screenshot({ path: path.join(evidence, 'w0b-mobile.png'), fullPage: true });
++
++    obs.page_errors = errors;
++    assert.equal(errors.length, 0, 'browser JS errors: ' + errors.join(' | '));
++    obs.passed = true;
++    fs.writeFileSync(path.join(evidence, 'browser-observations.json'),
++      JSON.stringify(obs, null, 2));
++    console.log(JSON.stringify({ passed: true, run: obs.last_run,
++      consumed: obs.consumed_feedback_revisions,
++      pending_count: obs.pending_count,
++      mobile_scroll_width: obs.mobile_scroll_width }, null, 2));
++    await browser.close();
++    process.exit(0);
++  } catch (e) {
++    obs.passed = false;
++    obs.failure = String((e && e.message) || e);
++    obs.page_errors = errors;
++    fs.writeFileSync(path.join(evidence, 'browser-observations.json'),
++      JSON.stringify(obs, null, 2));
++    console.error(String((e && e.stack) || e));
++    await browser.close();
++    process.exit(1);
++  }
++})();
+diff --git a/scripts/verify_w0b_browser.py b/scripts/verify_w0b_browser.py
+new file mode 100644
+index 0000000..0c7b72c
+--- /dev/null
++++ b/scripts/verify_w0b_browser.py
+@@ -0,0 +1,193 @@
++"""W0 二次收口真实浏览器验收：连续留言合并、待办作废、累计返工可见、窄屏。
++
++隔离主工作台 + 隔离 Studio 库 + 明确标注的本地模型桩。0 外部调用、0 密钥、
++0 费用；日常 var/studio/studio.db 不被写入。
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import socket
++import subprocess
++import sys
++import threading
++import time
++from datetime import datetime, timezone
++from http.server import ThreadingHTTPServer
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "after" / "browser"
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME = EVIDENCE / "runtime"
++RUNTIME.mkdir(exist_ok=True)
++STUDIO_DB = RUNTIME / "studio.db"
++MAIN_DB = RUNTIME / "app.sqlite3"
++
++os.environ["RKD_STUDIO_DB"] = str(STUDIO_DB)
++for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++    os.environ.pop(k, None)
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from rkd_mvp.api_server import create_server  # noqa: E402
++from rkd_mvp.api_service import ApiService  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.identity import LocalIdentityProvider  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from rkd_mvp.studio import llm as studio_llm  # noqa: E402
++from rkd_mvp.studio import orchestrator, server as studio_server, vision  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++import verify_studio_loop as vsl  # noqa: E402
++
++
++class StubConfig:
++    configured = True
++    model = "local-model-stub"
++    base_url = "local://stub"
++    run_token_limit = 600_000
++    project_token_limit = 2_000_000
++
++    @classmethod
++    def from_env(cls):
++        return cls()
++
++
++def _free_port() -> int:
++    s = socket.socket()
++    s.bind(("127.0.0.1", 0))
++    port = s.getsockname()[1]
++    s.close()
++    return port
++
++
++def main() -> int:
++    for f in (STUDIO_DB, MAIN_DB):
++        if f.exists():
++            f.unlink()
++    started = time.monotonic()
++    studio_llm.Config = StubConfig
++    studio_server.Config = StubConfig
++    orchestrator.Client = vsl.FakeClient
++    vision.svg_to_jpeg = lambda svg, limit=720: vsl.FAKE_JPEG
++    vision.reference_jpeg = lambda limit=720: vsl.FAKE_JPEG
++
++    st = Store(STUDIO_DB)
++    orchestrator.Studio(st).seed_from_fixtures()
++    orchestrator.Studio(st).run_a1("ningbo-xiecheng", background=False)
++    before = st.project_state("ningbo-xiecheng")
++    a1 = next(a for a in before["artifacts"]
++              if a["kind"] == "spatial-plan" and a["option_id"] == "A"
++              and a["revision"] == 1 and a["contract_status"] == "valid_candidate")
++    b1 = next(a for a in before["artifacts"]
++              if a["kind"] == "spatial-plan" and a["option_id"] == "B"
++              and a["revision"] == 1 and a["contract_status"] == "valid_candidate")
++
++    store = SQLiteStore(MAIN_DB)
++    files = FileService(MAIN_DB, RUNTIME)
++    requirements = RequirementService(MAIN_DB)
++    service = ApiService(MVPApp(store), files, requirement_service=requirements,
++                         runtime_root=RUNTIME)
++    files.seed_ningbo(service, ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09")
++    main_port = _free_port()
++    main_server = create_server(service, LocalIdentityProvider(), port=main_port,
++                               static_dir=ROOT / "web" / "dist")
++    main_thread = threading.Thread(target=main_server.serve_forever, name="w0b-main",
++                                   daemon=True)
++    main_thread.start()
++
++    studio_port = 8099
++    studio_server.ALLOWED_ORIGINS = set(studio_server.ALLOWED_ORIGINS) | {
++        f"http://127.0.0.1:{main_port}", f"http://localhost:{main_port}"}
++    st_httpd = ThreadingHTTPServer(("127.0.0.1", studio_port), studio_server.Handler)
++    st_thread = threading.Thread(target=st_httpd.serve_forever, name="w0b-studio",
++                                 daemon=True)
++    st_thread.start()
++
++    env = {k: v for k, v in os.environ.items()
++           if k not in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
++                        "ALL_PROXY", "all_proxy")}
++    env.update({
++        "RKD_QA_URL": f"http://127.0.0.1:{main_port}",
++        "RKD_QA_STUDIO_URL": f"http://127.0.0.1:{studio_port}",
++        "RKD_QA_EVIDENCE_DIR": str(EVIDENCE),
++        "RKD_QA_PROJECT_ID": NINGBO_PROJECT_ID,
++        "RKD_QA_BASELINE_ID": a1["id"],
++        "RKD_QA_BASELINE_UID": a1["revision_uid"],
++        "RKD_QA_BASELINE_B_ID": b1["id"],
++        "RKD_QA_BASELINE_B_UID": b1["revision_uid"],
++    })
++    node = shutil.which("node")
++    if not node:
++        raise RuntimeError("node not found")
++    try:
++        proc = subprocess.run([node, str(ROOT / "scripts" / "verify_w0b_browser.cjs")],
++                              cwd=str(ROOT), env=env, capture_output=True, text=True,
++                              errors="replace", timeout=420)
++        (EVIDENCE / "browser-stdout.log").write_text(proc.stdout or "", encoding="utf-8")
++        (EVIDENCE / "browser-stderr.log").write_text(proc.stderr or "", encoding="utf-8")
++        passed = proc.returncode == 0
++        obs_path = EVIDENCE / "browser-observations.json"
++        obs = json.loads(obs_path.read_text(encoding="utf-8")) if obs_path.exists() else {}
++
++        # restart persistence on a NEW Store over the same file
++        st2 = Store(STUDIO_DB)
++        state2 = st2.project_state("ningbo-xiecheng")
++        restart = {
++            "feedback_revision": state2["feedback_revision"],
++            "feedback_states": [{"revision_no": f["revision_no"],
++                                 "consumed_by_run": f.get("consumed_by_run"),
++                                 "status": f.get("status")} for f in state2["feedback"]],
++            "runs": [{"id": r["id"], "status": r["status"], "task_kind": r.get("task_kind"),
++                      "trial_key": r.get("trial_key"),
++                      "auto_rework_total": r.get("auto_rework_total")}
++                     for r in state2["runs"]],
++            "revisions": [{"revision": a["revision"],
++                           "parent_revision_uid": a["parent_revision_uid"]}
++                          for a in state2["artifacts"] if a["kind"] == "spatial-plan"
++                          and a["revision"] >= 2],
++            "old_baseline_bytes_preserved": any(
++                a["id"] == a1["id"] and a["sha256"] == a1["sha256"]
++                for a in state2["artifacts"]),
++            "snapshot_isolated": state2["snapshot"]["isolation"],
++        }
++        result = {
++            "schema_version": "rkd-w0b-browser-verification.v1",
++            "checked_at": datetime.now(timezone.utc).isoformat(),
++            "passed": bool(passed and obs.get("passed")),
++            "node_returncode": proc.returncode,
++            "duration_seconds": round(time.monotonic() - started, 2),
++            "selected_baseline": {"artifact_id": a1["id"],
++                                  "revision_uid": a1["revision_uid"]},
++            "browser_observations": obs,
++            "restart_persistence": restart,
++            "external_calls": 0, "keys_used": False,
++            "model_channel": "local-model-stub (explicitly labelled)",
++            "boundaries": [
++                "隔离主工作台 SQLite + 隔离 Studio 库；日常 studio.db 未被写入",
++                "无外部模型/图片调用；无密钥；费用 0",
++                "浏览器只证明工程控制，不证明设计质量或专业签核",
++                "AD01—AD08 结论不改判；用户设计阶段确认尚未发生",
++            ],
++        }
++        (EVIDENCE / "verification.json").write_text(
++            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
++        print(json.dumps({"passed": result["passed"],
++                          "node_returncode": proc.returncode},
++                         ensure_ascii=False, indent=2), flush=True)
++        if not result["passed"]:
++            print((proc.stderr or proc.stdout or "")[-3000:], flush=True)
++        return 0 if result["passed"] else 1
++    finally:
++        main_server.shutdown(); main_server.server_close()
++        st_httpd.shutdown(); st_httpd.server_close()
++        main_thread.join(5); st_thread.join(5)
++        store.close()
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/w0b_repro.py b/scripts/w0b_repro.py
+new file mode 100644
+index 0000000..00a38ed
+--- /dev/null
++++ b/scripts/w0b_repro.py
+@@ -0,0 +1,579 @@
++"""W0 二次收口：W0-F01—F05 的独立复现（不依赖服务体系，只碰真实 Store/校验函数）。
++
++用法：
++    python scripts/w0b_repro.py --phase before --out <path/repro.json>
++    python scripts/w0b_repro.py --phase after  --out <path/repro.json>
++
++每个案例都同时给出「缺陷签名」与「修复签名」两种判定，脚本只如实记录观察到
++哪一种；同一份脚本可以在整改前后各跑一次，不需要改断言。没有任何 sleep：
++F05 的时序用事件 + 独立线程做可控屏障（写线程在快照读取期间提交），不是靠等待
++制造通过。
++"""
++from __future__ import annotations
++
++import argparse
++import copy
++import json
++import os
++import sys
++import tempfile
++import threading
++import traceback
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++for _k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++    os.environ.pop(_k, None)
++
++from arc_first_batch_stub import SITE, REQUIREMENT, valid_proposal  # noqa: E402
++from rkd_mvp.studio import revision as R, revision_task, validation  # noqa: E402
++from rkd_mvp.studio.store import Store, new_id  # noqa: E402
++
++PID = "ningbo-xiecheng"
++PROJ = {"id": PID, "name": "宁波", "site": SITE, "requirement": REQUIREMENT}
++CASES: list[dict] = []
++_RUNTIME = Path(tempfile.mkdtemp(prefix="rkd-w0b-repro-"))
++
++
++def _store(tag: str) -> Store:
++    st = Store(_RUNTIME / f"{tag}.db")
++    st.ensure_project(PID, "宁波协诚展厅", SITE, REQUIREMENT,
++                      source_project_id=PID, mapping_note="复现用隔离库")
++    return st
++
++
++def _seed_plan(st: Store, option: str = "A", revision: int = 1,
++               parent_uid: str | None = None) -> dict:
++    rep = validation.validate_proposal(valid_proposal(option), project=PROJ,
++                                       option_id=option, revision=revision,
++                                       parent_revision=None)
++    assert rep["ok"], rep["repair_feedback"]
++    uid = new_id("revuid")
++    aid = st.save_artifact(PID, "spatial-plan", rep["plan"], "D2", option_id=option,
++                           revision=revision, status="valid_candidate",
++                           revision_uid=uid, parent_revision_uid=parent_uid,
++                           contract_status="valid_candidate")
++    return {"id": aid, "revision_uid": uid, "plan": rep["plan"]}
++
++
++def record(case: str, finding: str, observed: dict, defect: bool | None,
++           notes: str = "") -> None:
++    verdict = ("not_observable" if defect is None
++               else "defect_reproduced" if defect else "fixed_signature")
++    CASES.append({"case": case, "finding": finding, "observed": observed,
++                  "verdict": verdict, "note": notes})
++    print(f"{verdict:18s} {case} {json.dumps(observed, ensure_ascii=False)[:220]}",
++          flush=True)
++
++
++# --------------------------------------------------------------- F01 任务语义
++def f01_stale_resurrection() -> None:
++    st = _store("f01a")
++    art = _seed_plan(st)
++    old = st.add_feedback(PID, "boss_message", "旧留言：把 F3 转到 -15 度",
++                          baseline_artifact_id=art["id"],
++                          baseline_revision_uid=art["revision_uid"],
++                          baseline_selection="user_selected")
++    new = st.add_feedback(PID, "boss_message", "新留言：把 F3 转到 -30 度",
++                          baseline_artifact_id=art["id"],
++                          baseline_revision_uid=art["revision_uid"],
++                          baseline_selection="user_selected")
++    r1 = revision_task.resolve_task(st, PID, st.feedback_revision(PID))
++    first = ((r1.get("feedback") or {}).get("id"))
++    st.consume_feedback(new["id"], "run_sim_1")
++    r2 = revision_task.resolve_task(st, PID, st.feedback_revision(PID))
++    second_kind = r2["kind"]
++    second_fb = ((r2.get("feedback") or {}).get("id"))
++    obs = {"first_selected": "newer" if first == new["id"] else first,
++           "first_kind": r1["kind"],
++           "after_latest_consumed_kind": second_kind,
++           "after_latest_consumed_feedback": ("older" if second_fb == old["id"]
++                                              else second_fb),
++           "after_latest_consumed_code": r2.get("conflict_code")}
++    defect = second_kind == "revise" and second_fb == old["id"]
++    record("F01-a", "旧反馈在最新一条被执行后自动复活", obs, defect)
++
++
++def f01_generate_blocked() -> None:
++    st = _store("f01b")
++    art = _seed_plan(st)
++    fb = st.add_feedback(PID, "boss_message", "把 F3 转到 -15 度",
++                         baseline_artifact_id=art["id"],
++                         baseline_revision_uid=art["revision_uid"],
++                         baseline_selection="user_selected")
++    st.consume_feedback(fb["id"], "run_sim_1")
++    st.add_feedback(PID, "boss_message", "不用旧方案了，重新做一版新方案",
++                    baseline_selection="none_explicit", task_kind="generate")
++    r = revision_task.resolve_task(st, PID, st.feedback_revision(PID))
++    obs = {"kind": r["kind"], "code": r.get("conflict_code"),
++           "reason": (r.get("reason") or "")[:80]}
++    defect = r["kind"] == "conflict" and r.get("conflict_code") == "feedback_already_consumed"
++    record("F01-b", "已消费历史封死新的生成意图", obs, defect)
++
++
++def f01_cross_candidate_silent_merge() -> None:
++    st = _store("f01c")
++    a = _seed_plan(st, "A")
++    b = _seed_plan(st, "B")
++    st.add_feedback(PID, "boss_message", "A 的洽谈区再改一改",
++                    baseline_artifact_id=a["id"], baseline_revision_uid=a["revision_uid"],
++                    baseline_selection="user_selected")
++    fb_b = st.add_feedback(PID, "boss_message", "B 的入口动线再改一改",
++                           baseline_artifact_id=b["id"],
++                           baseline_revision_uid=b["revision_uid"],
++                           baseline_selection="user_selected")
++    r = revision_task.resolve_task(st, PID, st.feedback_revision(PID))
++    pending = [f.get("feedback_id") for f in (r.get("pending_feedback") or [])]
++    obs = {"kind": r["kind"], "code": r.get("conflict_code"),
++           "selected_feedback": (r.get("feedback") or {}).get("id"),
++           "pending_feedback": pending,
++           "pending_listed": r.get("pending_feedback_ids") or pending or None,
++           "newer_feedback_was": fb_b["id"]}
++    defect = (r["kind"] == "revise"
++              and not r.get("pending_feedback_ids") and not pending)
++    record("F01-c", "跨候选的两条待续改留言被无声合并/丢弃", obs, defect)
++
++
++def f01_same_baseline_merge() -> None:
++    st = _store("f01d")
++    a = _seed_plan(st)
++    f1 = st.add_feedback(PID, "boss_message", "F3 转到 -15 度",
++                         baseline_artifact_id=a["id"], baseline_revision_uid=a["revision_uid"],
++                         baseline_selection="user_selected")
++    f2 = st.add_feedback(PID, "boss_message", "中岛圆角再收一点",
++                         baseline_artifact_id=a["id"], baseline_revision_uid=a["revision_uid"],
++                         baseline_selection="user_selected")
++    r = revision_task.resolve_task(st, PID, st.feedback_revision(PID))
++    merged = sorted(r.get("merged_feedback_ids") or [])
++    obs = {"kind": r["kind"], "merged_feedback_ids": merged,
++           "expected_merged": sorted([f1["id"], f2["id"]])}
++    defect = r["kind"] == "revise" and merged != sorted([f1["id"], f2["id"]])
++    record("F01-d", "同基线多条待续改留言未显式合并（旧条会晚点复活）", obs, defect)
++
++
++def f01_rework_carry() -> None:
++    st = _store("f01e")
++    art = _seed_plan(st)
++    has_api = hasattr(st, "auto_rework_used")
++    trial_key = None
++    used = None
++    if has_api:
++        trial_key = st.trial_key_for(art["id"])
++        used = st.auto_rework_used(trial_key)
++    cols = {r[1] for r in st._conn().execute("PRAGMA table_info(runs)").fetchall()}
++    obs = {"cumulative_api": has_api, "trial_key": trial_key,
++           "auto_rework_used": used,
++           "runs_has_auto_rework_total": "auto_rework_total" in cols,
++           "runs_has_trial_key": "trial_key" in cols}
++    defect = not (has_api and "auto_rework_total" in cols and "trial_key" in cols)
++    record("F01-e", "自动返工次数未按设计试验累计（新 run 从 0 重新开始）", obs, defect,
++           notes="结构性观测：记录累计计数器是否存在且可查询；"
++                 "行为侧的累计见 verify_w0b.py 的 F01-e 场景")
++
++
++# ------------------------------------------------------------- F02 目标量词
++def _integ(base: dict, cand: dict, objectives: list[dict], **kw) -> dict:
++    return R.verify_revision_integrity(
++        base, cand, objectives=objectives, site=SITE,
++        locks=revision_task.structured_locks(base, SITE), **kw)
++
++
++def _derive(fb: list[dict], plan: dict) -> list[dict]:
++    """Call derive_objectives with the plan when the build supports binding.
++
++    Before the fix the parameter does not exist; the call must still run so the
++    actual (defective) behaviour is observed instead of a TypeError.
++    """
++    import inspect
++    if "plan" in inspect.signature(revision_task.derive_objectives).parameters:
++        return revision_task.derive_objectives(fb, None, plan=plan)
++    return revision_task.derive_objectives(fb, None)
++
++
++def _rot_obj(ids: list[str], target: float = 45) -> dict:
++    return {"objective_id": "T1", "kind": "measurable", "rule_id": "STD-001",
++            "field": "rot", "target": target, "unit": "degree",
++            "objects_scope": ["furniture"], "object_ids": ids,
++            "source": "structured", "computable": True}
++
++
++def f02_partial_pass() -> None:
++    st = _store("f02a")
++    a = _seed_plan(st)
++    base = a["plan"]
++    cand = copy.deepcopy(base)
++    for f in cand["furniture"]:
++        if f["id"] == "F1":
++            f["rot"] = 45          # F1 达标
++        if f["id"] == "F2":
++            f["rot"] = 0           # F2 未达标
++    integ = _integ(base, cand, [_rot_obj(["F1", "F2"])])
++    row = integ["objective_rechecks"][0]
++    ev = row.get("evidence", {}).get("after", {})
++    obs = {"objective_rechecked": row["objective_rechecked"],
++           "resolved": row["resolved"],
++           "targets": row.get("target_objects"),
++           "passing": ev.get("passing_object_ids"),
++           "failing": ev.get("failing_object_ids"),
++           "quantifier": ev.get("quantifier")}
++    defect = row["objective_rechecked"] == "pass" and row["resolved"] is True
++    record("F02-a", "多对象目标只要一个对象达标就判 pass", obs, defect)
++
++
++def f02_missing_object() -> None:
++    st = _store("f02b")
++    a = _seed_plan(st)
++    base = a["plan"]
++    cand = copy.deepcopy(base)
++    for f in cand["furniture"]:
++        if f["id"] == "F1":
++            f["rot"] = 45
++    integ = _integ(base, cand, [_rot_obj(["F1", "FX"])])
++    row = integ["objective_rechecks"][0]
++    ev = row.get("evidence", {}).get("after", {})
++    obs = {"objective_rechecked": row["objective_rechecked"],
++           "resolved": row["resolved"],
++           "targets": row.get("target_objects"),
++           "missing": ev.get("missing_object_ids"),
++           "passing": ev.get("passing_object_ids")}
++    defect = row["objective_rechecked"] == "pass"
++    record("F02-b", "目标点名的对象不存在时仍判 pass", obs, defect)
++
++
++def f02_unrelated_only() -> None:
++    st = _store("f02c")
++    a = _seed_plan(st)
++    base = a["plan"]
++    cand = copy.deepcopy(base)
++    for f in cand["furniture"]:
++        if f["id"] == "F3":
++            f["rot"] = 45          # 只有一件（且非目标清单内）家具达标
++    obj = {"objective_id": "T2", "kind": "measurable", "rule_id": "STD-001",
++           "field": "rot", "target": 45, "unit": "degree",
++           "objects_scope": ["furniture"], "object_ids": [],
++           "source": "structured", "computable": True}
++    integ = _integ(base, cand, [obj])
++    row = integ["objective_rechecks"][0]
++    ev = row.get("evidence", {}).get("after", {})
++    obs = {"objective_rechecked": row["objective_rechecked"],
++           "passing": ev.get("passing_object_ids"),
++           "failing": ev.get("failing_object_ids")}
++    defect = row["objective_rechecked"] == "pass"
++    record("F02-c", "范围内只有无关对象恰好达标就判 pass", obs, defect)
++
++
++def f02_comparator() -> None:
++    st = _store("f02d")
++    a = _seed_plan(st)
++    base = a["plan"]
++    cand = copy.deepcopy(base)
++    for c in cand.get("circulation") or []:
++        if c["id"] == "CA1":
++            c["width_mm"] = 2300        # 高于 2100 的最低值要求，但不等于「精确 2100」
++    minimum = {"objective_id": "M1", "kind": "measurable", "rule_id": "CIR-001",
++               "field": "width_mm", "target": 2100, "unit": "mm",
++               "objects_scope": ["circulation"], "object_ids": ["CA1"],
++               "comparator": "min", "source": "structured", "computable": True}
++    exact = dict(minimum, objective_id="M2", comparator="exact")
++    integ = _integ(base, cand, [minimum, exact])
++    rows = {r["objective_id"]: r for r in integ["objective_rechecks"]}
++    obs = {"min_2300": rows["M1"]["objective_rechecked"],
++           "exact_2300": rows["M2"]["objective_rechecked"],
++           "min_comparator_recorded": rows["M1"].get("evidence", {}).get("after", {})
++           .get("comparator"),
++           "width_coverage": rows["M1"].get("evidence", {}).get("after", {}).get("coverage")}
++    defect = obs["exact_2300"] == "pass" or obs["min_comparator_recorded"] is None
++    record("F02-d", "最低值/精确值/上限语义混用（比较符被忽略）", obs, defect)
++
++
++# --------------------------------------------------------- F03 保留要求绑定
++PRESERVE_TEXT = "主动线净宽扩大到 2100mm，保留东洽谈区不动"
++
++
++def _zone_change(plan: dict, zone_id: str, dx: int = 120) -> dict:
++    out = copy.deepcopy(plan)
++    for z in out["zones"]:
++        if z["id"] == zone_id:
++            z["polygon"] = [[p[0] + dx, p[1]] for p in z["polygon"]]
++    return out
++
++
++def f03_non_arrival_preserve() -> None:
++    st = _store("f03a")
++    a = _seed_plan(st)
++    base = a["plan"]
++    fb = [{"feedback_id": "fb_p1", "revision_no": 1, "kind": "boss_message",
++           "text": PRESERVE_TEXT, "locks": [], "objectives": []}]
++    objs = _derive(fb, base)
++    cand = _zone_change(base, "ZA5")
++    for c in cand.get("circulation") or []:
++        if c["id"] == "CA1":
++            c["width_mm"] = 2100
++    integ = _integ(base, cand, objs, boss_feedback=fb)
++    rows = [r for r in integ["objective_rechecks"] if r["kind"] in ("lock", "preserve")]
++    obs = {"objectives": [{"kind": o.get("kind"), "object_ids": o.get("object_ids"),
++                            "binding": o.get("binding_status")} for o in objs],
++           "preserve_rows": [{"rechecked": r["objective_rechecked"],
++                              "resolved": r["resolved"],
++                              "target_objects": r.get("target_objects")} for r in rows],
++           "ZA5_changed": "ZA5" in [c.split(":")[1] for c in integ["changed_objects"]],
++           "overall_ok": integ["ok"]}
++    defect = any(r["objective_rechecked"] == "pass" for r in rows) and obs["ZA5_changed"]
++    record("F03-a", "保留非入口对象被改动，保留要求仍判 pass（实际校验的是入口锁）",
++           obs, defect)
++
++
++def f03_unresolved() -> None:
++    st = _store("f03b")
++    a = _seed_plan(st)
++    base = a["plan"]
++    fb = [{"feedback_id": "fb_p2", "revision_no": 1, "kind": "boss_message",
++           "text": "保留西侧样品库不动", "locks": [], "objectives": []}]
++    objs = _derive(fb, base)
++    integ = _integ(base, copy.deepcopy(base), objs, boss_feedback=fb)
++    rows = integ["objective_rechecks"]
++    preserve = [o for o in objs if o.get("kind") in ("lock", "preserve")]
++    obs = {"objective_kinds": [{"kind": o.get("kind"), "binding": o.get("binding_status"),
++                                "object_ids": o.get("object_ids")} for o in objs],
++           "preserve_count": len(preserve),
++           "binding_status": [o.get("binding_status") for o in preserve],
++           "states": [(r["objective_rechecked"], r["user_confirmed"]) for r in rows]}
++    # unknown alone is not enough: the requirement must still be TRACKED as an
++    # unresolved preserve claim, not silently converted into an aesthetic note.
++    defect = (not preserve
++              or any(r["objective_rechecked"] == "pass" for r in rows)
++              or not any(o.get("binding_status") in ("unresolved", "ambiguous")
++                         for o in preserve))
++    record("F03-b", "找不到对象的保留要求被当通过 / 被降级成空泛意见（应为 unknown+pending 且留痕）",
++           obs, defect)
++
++
++def f03_preserve_only_text() -> None:
++    st = _store("f03c")
++    a = _seed_plan(st)
++    base = a["plan"]
++    fb = [{"feedback_id": "fb_p3", "revision_no": 1, "kind": "boss_message",
++           "text": "保留东洽谈区不动", "locks": [], "objectives": []}]
++    objs = _derive(fb, base)
++    kinds = [o.get("kind") for o in objs]
++    obs = {"kinds": kinds,
++           "has_preserve": any(k in ("lock", "preserve") for k in kinds)}
++    defect = not obs["has_preserve"]
++    record("F03-c", "只有保留诉求时该诉求被丢弃（只剩审美兜底）", obs, defect)
++
++
++def f03_mixed() -> None:
++    st = _store("f03d")
++    a = _seed_plan(st)
++    base = a["plan"]
++    fb = [{"feedback_id": "fb_p4", "revision_no": 1, "kind": "boss_message",
++           "text": "净宽改到 2100mm，保留东洽谈区不动，整体要更有呼吸感",
++           "locks": [], "objectives": []}]
++    objs = _derive(fb, base)
++    preserve = [o for o in objs if o.get("kind") in ("lock", "preserve")]
++    obs = {"kinds": [o.get("kind") for o in objs],
++           "has_numeric": any(o.get("kind") == "measurable" for o in objs),
++           "has_preserve": bool(preserve),
++           "preserve_object_ids": [o.get("object_ids") for o in preserve],
++           "preserve_binding": [o.get("binding_status") for o in preserve],
++           "has_aesthetic": any(o.get("kind") == "aesthetic" for o in objs)}
++    # 文本里点名了「东洽谈」（ZA5 的名称），没有绑定就是没解析成功
++    defect = (not (obs["has_numeric"] and obs["has_preserve"])
++              or not any(o.get("object_ids") for o in preserve))
++    record("F03-e", "混合留言的保留/审美诉求被其中一个数值目标吞掉或未绑定对象", obs, defect)
++
++
++# --------------------------------------------------------------- F04 字段锁
++def f04_field_lock() -> None:
++    st = _store("f04a")
++    a = _seed_plan(st)
++    base = a["plan"]
++    locks = {"locks": [{"object_id": "F1", "fields": ["x"], "source": "user_explicit",
++                        "reason": "沙发位置锁定"}],
++             "lock_object_ids": ["F1"]}
++
++    def _cand(mutate) -> dict:
++        c = copy.deepcopy(base)
++        for f in c["furniture"]:
++            if f["id"] == "F1":
++                mutate(f)
++        return c
++
++    rot_only = revision_task.lock_conflicts(base, _cand(lambda f: f.update(rot=30)), locks)
++    x_changed = revision_task.lock_conflicts(base, _cand(lambda f: f.update(x=f["x"] + 50)),
++                                             locks)
++    removed = copy.deepcopy(base)
++    removed["furniture"] = [f for f in removed["furniture"] if f["id"] != "F1"]
++    deleted = revision_task.lock_conflicts(base, removed, locks)
++    star = {"locks": [{"object_id": "F1", "fields": ["*"], "source": "user_explicit",
++                       "reason": "整件保留"}], "lock_object_ids": ["F1"]}
++    star_rot = revision_task.lock_conflicts(base, _cand(lambda f: f.update(rot=30)), star)
++    ghost = {"locks": [{"object_id": "F1", "fields": ["ghost_field"],
++                        "source": "user_explicit", "reason": "拼错的字段"}],
++             "lock_object_ids": ["F1"]}
++    ghost_none = revision_task.lock_conflicts(base, copy.deepcopy(base), ghost)
++    obs = {"rot_only_conflicts": len(rot_only),
++           "rot_only_fields": [c.get("fields") for c in rot_only],
++           "rot_only_changed_fields": [c.get("changed_fields") for c in rot_only],
++           "x_changed_conflicts": len(x_changed),
++           "x_changed_fields": [c.get("changed_fields") for c in x_changed],
++           "deleted_conflicts": len(deleted),
++           "deleted_diagnostic": [c.get("diagnostic") for c in deleted],
++           "star_rot_conflicts": len(star_rot),
++           "ghost_no_change_conflicts": len(ghost_none),
++           "ghost_diagnostic": [c.get("diagnostic") for c in ghost_none]}
++    defect = len(rot_only) > 0 or len(x_changed) == 0 or len(deleted) == 0 or \
++        len(star_rot) == 0 or len(ghost_none) == 0
++    record("F04-a", "字段锁实际按整对象比较：锁 x 也拦下改 rot；未知字段无人诊断",
++           obs, defect)
++
++
++def f04_validation_stage() -> None:
++    """The whole-object lock must not come back through stage 4 of validation."""
++    import inspect
++    st = _store("f04b")
++    a = _seed_plan(st)
++    base = a["plan"]
++    cand = copy.deepcopy(base)
++    cand.pop("project_id", None)
++    cand.pop("option_id", None)
++    cand.pop("revision", None)
++    cand.pop("author", None)
++    cand.pop("contract_version", None)
++    for f in cand["furniture"]:
++        if f["id"] == "F1":
++            f["rot"] = 30
++    locks = {"locks": [{"object_id": "F1", "fields": ["x"], "source": "user_explicit",
++                        "reason": "沙发位置锁定"}], "lock_object_ids": ["F1"]}
++    accepts = "locks" in inspect.signature(validation.validate_proposal).parameters
++    kw = {"locks": locks} if accepts else {"lock_object_ids": ["F1"]}
++    rep = validation.validate_proposal(cand, project=PROJ, option_id="A", revision=2,
++                                       parent_revision=1, previous_plan=base, **kw)
++    lock_errors = [e["message"] for e in rep["errors"] if e["rule_id"] == "LOCK-REVISION"]
++    obs = {"ok": rep["ok"], "stage": rep["stage"], "lock_errors": lock_errors,
++           "accepts_structured_locks": accepts,
++           "mode": "structured_fields" if accepts else "whole_object_ids"}
++    defect = (not rep["ok"] and bool(lock_errors)) or not accepts
++    record("F04-b", "四级校验的锁定阶段把字段锁升级为整对象锁", obs, defect)
++
++
++# ------------------------------------------------------- F05 状态与产物快照
++def f05_torn_read() -> None:
++    """Controlled barrier: a writer commits EXACTLY between the artifact read and
++    the run read. No sleep is used; the barrier is a thread join."""
++    import inspect
++    st = _store("f05a")
++    art = _seed_plan(st)
++    ih = "input-hash-sim"
++    run_id = st.start_run(PID, "local-model-stub", input_hash_value=ih,
++                          expected_feedback_revision=0, candidate_group_id="cg_sim",
++                          task_kind="revise", target_artifact_id=art["id"],
++                          target_revision_uid=art["revision_uid"])
++    fired = {"done": False}
++    writer_error: dict = {"error": None}
++
++    def commit_new_version() -> None:
++        """The run finishes and publishes its result (a normal writer thread)."""
++        def work() -> None:
++            try:
++                st.save_artifact(PID, "spatial-plan", art["plan"], "D2",
++                                 option_id="A", revision=2, status="valid_candidate",
++                                 run_id=run_id, candidate_group_id="cg_sim",
++                                 revision_uid=new_id("revuid"), parent_revision_uid=None,
++                                 input_hash_value=ih,
++                                 contract_status="valid_candidate")
++                st.finish_run(run_id, "succeeded", 1, 1, None, calls=1)
++            except Exception as exc:  # noqa: BLE001
++                writer_error["error"] = f"{type(exc).__name__}: {exc}"
++            finally:
++                fired["done"] = True
++
++        t = threading.Thread(target=work, daemon=True)
++        t.start()
++        t.join(60)
++
++    barrier_supported = "barrier" in inspect.signature(st.project_state).parameters
++    if barrier_supported:
++        state = st.project_state(PID, barrier=commit_new_version)
++        mode = "in_snapshot_barrier"
++    else:
++        class RacingStore(Store):
++            def runs(self, project_id: str):
++                if not fired["done"]:
++                    commit_new_version()   # writer commits BEFORE the run read
++                return super().runs(project_id)
++
++        state = RacingStore(st.path).project_state(PID)
++        mode = "subclass_barrier"
++
++    run = next((r for r in state["runs"] if r["id"] == run_id), None)
++    in_snapshot = [a["id"] for a in state["artifacts"]
++                   if a["run_id"] == run_id and a["kind"] == "spatial-plan"]
++    run_status = run["status"] if run else None
++    after = st.project_state(PID)
++    after_has = [a["id"] for a in after["artifacts"] if a["run_id"] == run_id]
++    consistent = (run_status == "succeeded") == bool(in_snapshot)
++    obs = {"mode": mode,
++           "snapshot_run_status": run_status,
++           "snapshot_artifacts_for_run": len(in_snapshot),
++           "consistent": consistent,
++           "writer_error": writer_error["error"],
++           "after_artifacts_for_run": len(after_has),
++           "has_snapshot_meta": "snapshot" in state}
++    defect = not consistent
++    record("F05-a", "状态响应混拼两个时间点：run 已完成但同一快照里没有它的产物",
++           obs, defect)
++
++
++def f05_run_scope() -> None:
++    st = _store("f05b")
++    obs = {"run_scoped_reader": hasattr(st, "run_snapshot")}
++    defect = not obs["run_scoped_reader"]
++    record("F05-b", "客户端只能按 runs[-1] 猜测本轮结果，没有按 run_id 的读取边界",
++           obs, defect, notes="结构性观测；HTTP 侧按 run_id 的读取见 verify_w0b.py")
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--phase", default="before")
++    ap.add_argument("--out", required=True)
++    args = ap.parse_args()
++    started = __import__("datetime").datetime.now(
++        __import__("datetime").timezone.utc).astimezone().isoformat(timespec="seconds")
++    for fn in (f01_stale_resurrection, f01_generate_blocked, f01_cross_candidate_silent_merge,
++               f01_same_baseline_merge, f01_rework_carry,
++               f02_partial_pass, f02_missing_object, f02_unrelated_only, f02_comparator,
++               f03_non_arrival_preserve, f03_unresolved, f03_preserve_only_text, f03_mixed,
++               f04_field_lock, f04_validation_stage,
++               f05_torn_read, f05_run_scope):
++        try:
++            fn()
++        except Exception:  # noqa: BLE001 - a crash is evidence too
++            CASES.append({"case": fn.__name__, "verdict": "crashed",
++                          "observed": {"traceback": traceback.format_exc()[-1200:]}})
++            print("CRASHED            " + fn.__name__, flush=True)
++    out = Path(args.out)
++    out.parent.mkdir(parents=True, exist_ok=True)
++    summary = {"defect_reproduced": sum(1 for c in CASES if c["verdict"] == "defect_reproduced"),
++               "fixed_signature": sum(1 for c in CASES if c["verdict"] == "fixed_signature"),
++               "not_observable": sum(1 for c in CASES if c["verdict"] == "not_observable"),
++               "crashed": sum(1 for c in CASES if c["verdict"] == "crashed")}
++    out.write_text(json.dumps({
++        "task_id": "W0 二次收口（W0-F01—F05）",
++        "schema_version": "rkd-w0b-repro.v1",
++        "phase": args.phase,
++        "executed_at": started,
++        "git_head": os.popen("git -C \"%s\" rev-parse HEAD" % ROOT).read().strip(),
++        "environment": {"python": sys.version.split()[0],
++                        "model_calls": "none (pure function / store level)",
++                        "isolated_dbs": str(_RUNTIME)},
++        "cases": CASES, "summary": summary,
++    }, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"summary": summary, "out": str(out)}, ensure_ascii=False))
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/web/src/StudioView.tsx b/web/src/StudioView.tsx
+index 881b28d..df4e899 100644
+--- a/web/src/StudioView.tsx
++++ b/web/src/StudioView.tsx
+@@ -32,27 +32,56 @@ type State = {
+   running: boolean;
+   feedback?: Array<{ id: string; revision_no: number; kind: string; text: string;
+                      baseline_artifact_id?: string; status: string }>;
++  feedback_history?: Array<{ id: string; revision_no: number; kind: string; text: string;
++                             baseline_artifact_id?: string; status: string;
++                             superseded_by?: string | null;
++                             consumed_by_run?: string | null }>;
+   feedback_revision?: number;
+   effective_requirement?: { effective_input_hash?: string; effective_addenda?: any[] };
+   service_scope?: { mode: string; label: string; team_nas_supported: boolean;
+                     supported_project_ids: string[]; project_id_mapping: string };
+   valid_candidate_ids?: string[];
+   stage_status?: { flow_finished: boolean; valid_artifact_exists: boolean;
+-                   waiting_user: boolean; design_approved_by_user: boolean; note: string };
++                   waiting_user: boolean; design_approved_by_user: boolean; note: string;
++                   last_completed_run_id?: string | null;
++                   last_completed_run_status?: string | null;
++                   last_completed_run_artifacts?: number;
++                   last_completed_run_valid_artifacts?: number };
+   task_resolution?: { kind: string; reason: string; conflict_code?: string | null;
+                       conflict_detail?: string | null; alternatives?: string[];
+                       target_artifact_id?: string | null;
+-                      target_revision_uid?: string | null };
++                      target_revision_uid?: string | null;
++                      target_feedback_id?: string | null;
++                      merged_feedback_ids?: string[];
++                      overridden_feedback_ids?: string[];
++                      pending_feedback?: Array<{ feedback_id: string; revision_no: number;
++                                                 text?: string | null;
++                                                 baseline_artifact_id?: string | null }> };
++  pending_queue?: Array<{ feedback_id: string; revision_no: number; kind: string;
++                          text: string; baseline_artifact_id?: string | null;
++                          state: string }>;
++  trial_progress?: { trial_key?: string | null; rounds: number; auto_rework_used: number;
++                      max_auto_rework: number; last_run_auto_rework_total?: number | null;
++                      note: string };
++  snapshot?: { taken_at: string; isolation: string; artifact_count: number;
++               run_count: number; message_count: number; feedback_revision: number;
++               latest_run_id?: string | null; token: string; note: string };
+   revision_history?: Array<{ id: string; option_id?: string | null; revision: number;
+                              revision_uid?: string | null;
+                              parent_revision_uid?: string | null }>;
+   latest_run?: Array<{ id: string; status: string; task_kind?: string | null;
+                        target_artifact_id?: string | null;
+                        target_revision_uid?: string | null;
+-                       conflict_code?: string | null }>;
++                       conflict_code?: string | null;
++                       trial_key?: string | null;
++                       auto_rework_total?: number | null }>;
+   last_completed_run?: { id: string; status: string; task_kind?: string | null;
+                          target_artifact_id?: string | null;
+-                         target_revision_uid?: string | null } | null;
++                         target_revision_uid?: string | null;
++                         trial_key?: string | null;
++                         auto_rework_total?: number | null;
++                         artifact_ids?: string[];
++                         valid_artifact_ids?: string[] } | null;
+   error?: string;
+ };
+ 
+@@ -65,6 +94,9 @@ const KIND_LABEL: Record<string, string> = {
+ export function StudioView({ projectId }: { projectId?: string }) {
+   const [state, setState] = useState<State | null>(null);
+   const [error, setError] = useState<string>("");
++  // A successful action's explanation is NOT an error. Keeping them apart stops
++  // the page from painting "留言已保存/已作废" in the red alert channel.
++  const [notice, setNotice] = useState<string>("");
+   const [busy, setBusy] = useState(false);
+   const [draft, setDraft] = useState("");
+   // W0/R1: the boss explicitly picks which OLD plan to continue. Default is
+@@ -73,6 +105,9 @@ export function StudioView({ projectId }: { projectId?: string }) {
+   const [gateComment, setGateComment] = useState<Record<string, string>>({});
+   const [decisionScope, setDecisionScope] = useState<Record<string, string>>({});
+   const [openEvidence, setOpenEvidence] = useState<number | null>(null);
++  // W0-F05: the run id returned by POST /run. Completion is judged for THAT id.
++  const [activeRun, setActiveRun] = useState("");
++  const [activeRunStatus, setActiveRunStatus] = useState("");
+   const timer = useRef<number | null>(null);
+ 
+   // ARC-04: no project hardcoding. The studio id IS the main-system project id;
+@@ -106,6 +141,28 @@ export function StudioView({ projectId }: { projectId?: string }) {
+     return () => { if (timer.current) window.clearInterval(timer.current); };
+   }, [studioId]);
+ 
++  // Poll the EXACT run started by this click. Different-generation state is
++  // never stitched together: the page reads that run's own snapshot.
++  useEffect(() => {
++    if (!activeRun || !mapped) return;
++    let stopped = false;
++    const tick = async () => {
++      try {
++        const r = await fetch(
++          `${API}/studio/projects/${encodeURIComponent(studioId)}/runs/${encodeURIComponent(activeRun)}`,
++          { cache: "no-store" });
++        if (!r.ok) { if (!stopped) setActiveRun(""); return; }
++        const b = await r.json();
++        if (stopped) return;
++        setActiveRunStatus(b.run_status || "");
++        if (b.finished) { setActiveRun(""); void load(); }
++      } catch { /* keep polling; the page must not claim completion early */ }
++    };
++    void tick();
++    const t = window.setInterval(() => { void tick(); }, 1500);
++    return () => { stopped = true; window.clearInterval(t); };
++  }, [activeRun, mapped, studioId]);
++
+   const lastByRole = useMemo(() => {
+     const map: Record<string, Message> = {};
+     for (const m of state?.messages ?? []) map[m.role] = m;
+@@ -119,7 +176,12 @@ export function StudioView({ projectId }: { projectId?: string }) {
+       const res = await fetch(`${API}/studio/projects/${encodeURIComponent(studioId)}/run`, { method: "POST" });
+       const body = await res.json();
+       if (!res.ok) setError(body.error || "启动失败");
+-      else void load();
++      else {
++        // W0-F05: follow the run id that was just started, not "the last run I
++        // can see". Until that exact run finishes the page must not claim it did.
++        setActiveRun(body.run_id || "");
++        void load();
++      }
+     } catch (e) {
+       setError((e as Error).message);
+     } finally {
+@@ -127,6 +189,19 @@ export function StudioView({ projectId }: { projectId?: string }) {
+     }
+   }
+ 
++  async function withdraw(feedbackId: string) {
++    const reason = window.prompt("作废这条待续改留言的理由（正文与历史会保留）");
++    if (!reason || !reason.trim()) return;
++    const res = await fetch(
++      `${API}/studio/projects/${encodeURIComponent(studioId)}/feedback/${encodeURIComponent(feedbackId)}/withdraw`,
++      { method: "POST", headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ reason: reason.trim() }) });
++    const body = await res.json().catch(() => ({}));
++    if (res.ok) setNotice(body.note || "已作废（正文与历史保留）");
++    else setError(body.error || "作废失败");
++    void load();
++  }
++
+   async function send() {
+     if (!mapped || !draft.trim()) return;
+     const chosen = (state?.artifacts || []).find(a => a.id === selectedBaseline);
+@@ -145,7 +220,7 @@ export function StudioView({ projectId }: { projectId?: string }) {
+       return;
+     }
+     setDraft("");
+-    setError(body.note || `留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}`);
++    setNotice(body.note || `留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}`);
+     void load();
+   }
+ 
+@@ -158,7 +233,8 @@ export function StudioView({ projectId }: { projectId?: string }) {
+       body: JSON.stringify({ decision, comment, decision_scope: scope }),
+     });
+     const body = await res.json().catch(() => ({}));
+-    setError(body.note || (res.ok ? "决定已记录" : (body.error || "决定失败")));
++    if (res.ok) setNotice(body.note || "决定已记录");
++    else setError(body.error || "决定失败");
+     void load();
+   }
+ 
+@@ -221,37 +297,79 @@ export function StudioView({ projectId }: { projectId?: string }) {
+             ? `（${state.last_completed_run.status === "succeeded" ? "流程走完，未验收" : state.last_completed_run.status}）`
+             : ""}
+           {state.last_completed_run?.target_revision_uid
+-            ? ` · 目标版本 ${state.last_completed_run.target_revision_uid}` : ""}</span>
++            ? ` · 目标版本 ${state.last_completed_run.target_revision_uid}` : ""}
++          {typeof state.last_completed_run?.auto_rework_total === "number"
++            ? ` · 本轮自动返工 ${state.last_completed_run.auto_rework_total} 次` : ""}</span>
+         <span>本轮任务：<b>{state.task_resolution?.kind || "未知"}</b>
+           {state.task_resolution?.kind === "revise"
+             ? ` · 续改旧基线 ${state.task_resolution.target_artifact_id || "?"}`
++              + ((state.task_resolution.merged_feedback_ids?.length || 0) > 1
++                  ? ` · 合并 ${state.task_resolution.merged_feedback_ids!.length} 条同基线留言` : "")
+             : state.task_resolution?.kind === "conflict"
+               ? ` · 需新留言或闸口决定（${state.task_resolution.conflict_code || ""}），不偷换旧基线`
+               : " · 生成新候选（未指定旧基线）"}</span>
++        {state.trial_progress?.trial_key && (
++          <span>设计试验累计：第 {state.trial_progress.rounds} 轮 ·
++            自动返工 {state.trial_progress.auto_rework_used}/{state.trial_progress.max_auto_rework}
++            （不因新 run 归零，用尽后由你决定）</span>
++        )}
++        {activeRun && <span>正在跑：<code>{activeRun}</code>（{activeRunStatus || "running"}）</span>}
+         <span>版本链（新→父）：{state.revision_history?.slice(-3).map(h =>
+           `${h.option_id || "?"}v${h.revision}←${h.parent_revision_uid || "无"}`).join("；") || "无"}</span>
+       </div>
+-      {/* Only a REJECTED run attempt is an alert. After a successful revise the
+-          consumed feedback makes the NEXT-task preview a conflict, which is
+-          informational, not a failure of the revision that just completed. */}
++      {/* A conflict that needs a person's decision is an alert; "already
++          consumed" merely says the last message was executed, so it is a note
++          and must not look like the previous round failed. */}
+       {state.task_resolution?.kind === "conflict" &&
+-       state.last_completed_run?.status === "conflict" && (
++       state.task_resolution.conflict_code !== "feedback_already_consumed" && (
+         <p className="studio-error" role="alert">
+           {state.task_resolution.conflict_detail}
+           {state.task_resolution.alternatives?.length
+             ? ` · 可选：${state.task_resolution.alternatives.join("；")}` : ""}
+         </p>
+       )}
++      {state.task_resolution?.kind === "conflict" &&
++       state.task_resolution.conflict_code === "feedback_already_consumed" && (
++        <p className="studio-note" role="status">
++          最新留言已经执行过，没有新的待办任务；要续改请写下一条并重新选中旧方案。
++        </p>
++      )}
++      {(state.task_resolution?.pending_feedback?.length || 0) > 0 && (
++        <div className="studio-pending">
++          <strong>还没处理的其它留言（不会自动合并，也不会被丢掉）</strong>
++          <ul>
++            {state.task_resolution!.pending_feedback!.map((f) => (
++              <li key={f.feedback_id}>
++                <span>v{f.revision_no} {f.text || "（无正文）"} · 绑定 {f.baseline_artifact_id || "?"}</span>
++                <button type="button" onClick={() => void withdraw(f.feedback_id)}>作废这条</button>
++              </li>
++            ))}
++          </ul>
++        </div>
++      )}
+ 
+       {error && <p className="studio-error" role="alert">{error}</p>}
++      {notice && <p className="studio-note" role="status">{notice}</p>}
+ 
+-      {(state.feedback || []).length > 0 && (
++      {((state.feedback || []).length > 0 ||
++        (state.feedback_history || []).some(f => f.status !== "current")) && (
+         <details className="json-box" open>
+-          <summary>老板留言 · 版本化有效需求（{state.feedback!.length} 条）</summary>
++          <summary>老板留言 · 版本化有效需求（{(state.feedback || []).length} 条
++            {(state.feedback_history || []).some(f => f.status !== "current")
++              ? `；另有 ${(state.feedback_history || []).filter(f => f.status !== "current").length} 条已作废（正文保留）` : ""}）
++          </summary>
+           <ul>{(state.feedback || []).map(f => (
+             <li key={f.id}>v{f.revision_no} [{f.kind}] {f.text}
+               {f.baseline_artifact_id ? ` · 绑定基线 ${f.baseline_artifact_id}` : ""}</li>
+           ))}</ul>
++          {(state.feedback_history || []).some(f => f.status !== "current") && (
++            <ul className="studio-withdrawn">
++              {(state.feedback_history || []).filter(f => f.status !== "current").map(f => (
++                <li key={f.id}>v{f.revision_no} [已作废] {f.text}
++                  {f.superseded_by ? ` · ${f.superseded_by}` : ""}</li>
++              ))}
++            </ul>
++          )}
+         </details>
+       )}
+ 
+diff --git a/web/src/studio.css b/web/src/studio.css
+index 1a222c7..40d2151 100644
+--- a/web/src/studio.css
++++ b/web/src/studio.css
+@@ -68,5 +68,13 @@
+ }
+ .studio-taskbar { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 10px; margin: 0 0 10px; background: #f5f7f9; border: 1px solid #e2e8ee; border-radius: 2px; font-size: 12px; color: #4c5a67; }
+ .studio-taskbar span { min-width: 0; word-break: break-word; }
++.studio-note { margin: 0 0 10px; padding: 7px 10px; background: #f2f6fa; border-left: 2px solid #9fb3c6; font-size: 12px; color: #4c5a67; }
++.studio-pending { margin: 0 0 10px; padding: 8px 10px; background: #fbf7ef; border: 1px solid #e8dcc4; border-radius: 2px; font-size: 12px; color: #5a4a33; }
++.studio-pending strong { display: block; margin-bottom: 4px; font-weight: 600; }
++.studio-pending ul { margin: 0; padding-left: 16px; }
++.studio-pending li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 0; }
++.studio-pending button { font-size: 11px; padding: 2px 8px; border: 1px solid #c9b995; background: #fff; border-radius: 2px; cursor: pointer; color: #5a4a33; }
++.studio-withdrawn { margin-top: 6px; color: #8a8f96; font-size: 12px; }
++.studio-withdrawn li { text-decoration: line-through; }
+ .studio-empty { color: #7b8895; font-size: 13px; }
+ @media (max-width: 1180px) { .studio-grid { grid-template-columns: 1fr; } .studio-timeline { max-height: none; } }

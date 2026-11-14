@@ -195,6 +195,7 @@ def toolbox_is_other(name: Any) -> bool:
 def validate_proposal(raw: Any, *, project: dict, option_id: str, revision: int,
                       parent_revision: int | None, author: str = "D2",
                       lock_object_ids: list[str] | None = None,
+                      locks: dict | None = None,
                       previous_plan: dict | None = None) -> dict:
     """Validate a model proposal and return a full diagnostic report.
 
@@ -285,27 +286,37 @@ def validate_proposal(raw: Any, *, project: dict, option_id: str, revision: int,
         return _report(False, stage, errors, warnings, facts, checks, None, raw)
 
     # ---- stage 4: locks & revision integrity --------------------------------
+    # W0-F04: a field lock compares THAT FIELD only. Passing `lock_object_ids`
+    # still means "whole object", but it is expressed through the same field-aware
+    # comparator so validation can never silently escalate a field lock.
     lock_ids = set(lock_object_ids or [])
-    if previous_plan is not None and lock_ids:
-        before = {str(o.get("id")): json.dumps(o, ensure_ascii=False, sort_keys=True)
-                  for group in ("zones", "furniture", "circulation", "platforms")
-                  for o in (previous_plan.get(group) or []) if isinstance(o, dict)}
-        after = {str(o.get("id")): json.dumps(o, ensure_ascii=False, sort_keys=True)
-                 for group in ("zones", "furniture", "circulation", "platforms")
-                 for o in (proposal.get(group) or []) if isinstance(o, dict)}
-        changed_locks = sorted(k for k in lock_ids if before.get(k) != after.get(k))
-        facts["locked_objects_changed"] = changed_locks
-        if changed_locks:
-            for k in changed_locks:
-                errors.append({
-                    "stage": "locks", "rule_id": "LOCK-REVISION", "path": "/",
-                    "expected": "锁定对象在修订中保持不变或明确提出冲突",
-                    "actual_type": "lock_violation", "object_id": k,
-                    "message": f"锁定对象「{k}」在修订中被改动或删除",
-                    "hint": "恢复该对象的几何与 id；如确实无法保留，把冲突作为待决项交用户，不要静默解除锁定",
-                })
+    effective_locks = locks
+    if effective_locks is None and lock_ids:
+        effective_locks = {"locks": [{"object_id": str(oid), "fields": ["*"],
+                                      "source": "caller",
+                                      "reason": "锁定对象"} for oid in lock_ids]}
+    if previous_plan is not None and (effective_locks or {}).get("locks"):
+        from .revision_task import lock_conflicts as _lock_conflicts
+        hits = _lock_conflicts(previous_plan, proposal, effective_locks)
+        facts["locked_objects_changed"] = sorted({h["object_id"] for h in hits})
+        facts["lock_conflict_details"] = [
+            {"object_id": h["object_id"], "fields": h.get("fields"),
+             "changed_fields": h.get("changed_fields"),
+             "diagnostic": h.get("diagnostic"), "message": h.get("message")}
+            for h in hits]
+        for h in hits:
+            errors.append({
+                "stage": "locks", "rule_id": "LOCK-REVISION", "path": "/",
+                "expected": "锁定对象/字段在修订中保持不变或明确提出冲突",
+                "actual_type": "lock_violation", "object_id": h["object_id"],
+                "message": h.get("message") or f"锁定对象「{h['object_id']}」在修订中被改动或删除",
+                "hint": "恢复该对象的被锁字段；如确实无法保留，把冲突作为待决项交用户，"
+                        "不要静默解除锁定",
+            })
     checks["locks"] = "passed" if not any(e["stage"] == "locks" for e in errors) else "failed"
-    facts["locked_object_ids"] = sorted(lock_ids)
+    facts["locked_object_ids"] = sorted(lock_ids or
+                                        {lk["object_id"] for lk in
+                                         (effective_locks or {}).get("locks") or []})
     if errors:
         stage = "locks"
         return _report(False, stage, errors, warnings, facts, checks, None, raw)

@@ -1,0 +1,142 @@
+{
+  "baseline_a": "art_92401d7a79",
+  "baseline_b": "art_5a734ffe7c",
+  "before_runs": 1,
+  "trial_progress_initial": {
+    "trial_key": "ningbo-xiecheng|candgroup_79dc2a6933",
+    "rounds": 1,
+    "auto_rework_used": 0,
+    "max_auto_rework": 2,
+    "last_run_auto_rework_total": 0,
+    "note": "自动返工按设计试验累计，不因新 run 归零；用尽后下一轮由老板决定"
+  },
+  "snapshot": {
+    "taken_at": "2026-11-14T13:24:00+08:00",
+    "isolation": "single read transaction：messages/artifacts/reviews/gates/runs/feedback 同属一个快照",
+    "artifact_count": 7,
+    "run_count": 1,
+    "message_count": 14,
+    "feedback_revision": 0,
+    "latest_run_id": "run_c181b0cc9d",
+    "token": "c6e01959176bd27a",
+    "note": "客户端应据此识别同一代状态；判断某轮结果请按 run_id 读取"
+  },
+  "taskbar_initial": "上一轮：generate（流程走完，未验收） · 本轮自动返工 0 次 本轮任务：generate · 生成新候选（未指定旧基线） 设计试验累计：第 1 轮 · 自动返工 0/2（不因新 run 归零，用尽后由你决定） 版本链（新→父）：Av1←无；Av2←revuid_c3a96672d3；Bv1←无",
+  "task_resolution_before_run": {
+    "kind": "revise",
+    "reason": "按最新留言 fb_a35048bf7a 指定的旧基线 art_92401d7a79 (revision_uid=revuid_c3a96672d3) 续改，不重新生成 A/B；同一基线的 v1、v2 一并作为本轮约束（显式合并，合并后一次性消费，不会晚点复活）",
+    "conflict_code": null,
+    "conflict_detail": null,
+    "alternatives": null,
+    "target_artifact_id": "art_92401d7a79",
+    "target_revision_uid": "revuid_c3a96672d3",
+    "target_feedback_id": "fb_a35048bf7a",
+    "merged_feedback_ids": [
+      "fb_4180f72a00",
+      "fb_a35048bf7a"
+    ],
+    "overridden_feedback_ids": [],
+    "pending_feedback": [],
+    "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜；同基线多条留言显式合并，跨基线必须由人决定"
+  },
+  "pending_queue": [
+    {
+      "feedback_id": "fb_4180f72a00",
+      "revision_no": 1,
+      "kind": "boss_message",
+      "text": "把 F3 转到 -15 度，保留入口",
+      "baseline_artifact_id": "art_92401d7a79",
+      "state": "pending"
+    },
+    {
+      "feedback_id": "fb_a35048bf7a",
+      "revision_no": 2,
+      "kind": "boss_message",
+      "text": "中岛圆角再收一点，保留入口",
+      "baseline_artifact_id": "art_92401d7a79",
+      "state": "pending"
+    }
+  ],
+  "taskbar_merged": "上一轮：generate（流程走完，未验收） · 本轮自动返工 0 次 本轮任务：revise · 续改旧基线 art_92401d7a79 · 合并 2 条同基线留言 设计试验累计：第 1 轮 · 自动返工 0/2（不因新 run 归零，用尽后由你决定） 版本链（新→父）：Av1←无；Av2←revuid_c3a96672d3；Bv1←无",
+  "last_run": {
+    "id": "run_3fbc554556",
+    "status": "succeeded",
+    "task_kind": "revise",
+    "target_artifact_id": "art_92401d7a79",
+    "auto_rework_total": 0,
+    "trial_key": "ningbo-xiecheng|candgroup_79dc2a6933"
+  },
+  "new_revision_parent_uid": "revuid_c3a96672d3",
+  "consumed_feedback_revisions": [
+    1,
+    2
+  ],
+  "status_texts": [
+    "项目数据已从本地存储加载",
+    "最新留言已经执行过，没有新的待办任务；要续改请写下一条并重新选中旧方案。",
+    "留言已绑定你选中的旧方案；下一轮是续改（revise），加载该旧稿完整基线，不重新生成 A/B"
+  ],
+  "note_after_run": "项目数据已从本地存储加载 | 最新留言已经执行过，没有新的待办任务；要续改请写下一条并重新选中旧方案。 | 留言已绑定你选中的旧方案；下一轮是续改（revise），加载该旧稿完整基线，不重新生成 A/B",
+  "alert_count_after_run": 0,
+  "task_resolution_conflict": {
+    "kind": "conflict",
+    "reason": "旧基线不适用：明确冲突，不偷换、不自动重新生成 A/B",
+    "conflict_code": "multiple_pending_feedback",
+    "conflict_detail": "有多条待续改留言指向不同旧基线，不能自动合并，也不能丢下更早那条：fb_9f9c8f15cb(v3→art_5a734ffe7c)；fb_45f0d57637(v4→art_92401d7a79)",
+    "alternatives": [
+      "先用最早那条开一轮，再处理后面的",
+      "或作废不需要的那条（POST /studio/projects/<pid>/feedback/<fid>/withdraw），作废记录会保留",
+      "待决：fb_9f9c8f15cb v3「B 的入口动线再顺一下」"
+    ],
+    "target_artifact_id": null,
+    "target_revision_uid": null,
+    "target_feedback_id": null,
+    "merged_feedback_ids": [],
+    "overridden_feedback_ids": [],
+    "pending_feedback": [
+      {
+        "feedback_id": "fb_9f9c8f15cb",
+        "revision_no": 3,
+        "text": "B 的入口动线再顺一下",
+        "baseline_artifact_id": "art_5a734ffe7c"
+      }
+    ],
+    "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜；同基线多条留言显式合并，跨基线必须由人决定"
+  },
+  "alert_text": "有多条待续改留言指向不同旧基线，不能自动合并，也不能丢下更早那条：fb_9f9c8f15cb(v3→art_5a734ffe7c)；fb_45f0d57637(v4→art_92401d7a79) · 可选：先用最早那条开一轮，再处理后面的；或作废不需要的那条（POST /studio/projects/<pid>/feedback/<fid>/withdraw），作废记录会保留；待决：fb_9f9c8f15cb v3「B 的入口动线再顺一下」",
+  "pending_count": 1,
+  "pending_text": "还没处理的其它留言（不会自动合并，也不会被丢掉） v3 B 的入口动线再顺一下 · 绑定 art_5a734ffe7c 作废这条",
+  "after_withdraw": {
+    "task_kind": "revise",
+    "target_artifact_id": "art_92401d7a79",
+    "pending_count": 0,
+    "current_feedback_status": [
+      {
+        "rev": 1,
+        "status": "current"
+      },
+      {
+        "rev": 2,
+        "status": "current"
+      },
+      {
+        "rev": 4,
+        "status": "current"
+      }
+    ]
+  },
+  "withdrawn_text_preserved": true,
+  "withdrawn_row": [
+    {
+      "rev": 3,
+      "text": "B 的入口动线再顺一下",
+      "superseded_by": "boss_decision: 先处理 A 这条，B 的留到下一轮"
+    }
+  ],
+  "page_shows_withdrawn": true,
+  "page_withdrawn_text": "v3 [已作废] B 的入口动线再顺一下 · boss_decision: 先处理 A 这条，B 的留到下一轮",
+  "mobile_scroll_width": 390,
+  "mobile_inner_width": 390,
+  "page_errors": [],
+  "passed": true
+}

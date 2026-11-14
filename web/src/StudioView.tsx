@@ -32,27 +32,56 @@ type State = {
   running: boolean;
   feedback?: Array<{ id: string; revision_no: number; kind: string; text: string;
                      baseline_artifact_id?: string; status: string }>;
+  feedback_history?: Array<{ id: string; revision_no: number; kind: string; text: string;
+                             baseline_artifact_id?: string; status: string;
+                             superseded_by?: string | null;
+                             consumed_by_run?: string | null }>;
   feedback_revision?: number;
   effective_requirement?: { effective_input_hash?: string; effective_addenda?: any[] };
   service_scope?: { mode: string; label: string; team_nas_supported: boolean;
                     supported_project_ids: string[]; project_id_mapping: string };
   valid_candidate_ids?: string[];
   stage_status?: { flow_finished: boolean; valid_artifact_exists: boolean;
-                   waiting_user: boolean; design_approved_by_user: boolean; note: string };
+                   waiting_user: boolean; design_approved_by_user: boolean; note: string;
+                   last_completed_run_id?: string | null;
+                   last_completed_run_status?: string | null;
+                   last_completed_run_artifacts?: number;
+                   last_completed_run_valid_artifacts?: number };
   task_resolution?: { kind: string; reason: string; conflict_code?: string | null;
                       conflict_detail?: string | null; alternatives?: string[];
                       target_artifact_id?: string | null;
-                      target_revision_uid?: string | null };
+                      target_revision_uid?: string | null;
+                      target_feedback_id?: string | null;
+                      merged_feedback_ids?: string[];
+                      overridden_feedback_ids?: string[];
+                      pending_feedback?: Array<{ feedback_id: string; revision_no: number;
+                                                 text?: string | null;
+                                                 baseline_artifact_id?: string | null }> };
+  pending_queue?: Array<{ feedback_id: string; revision_no: number; kind: string;
+                          text: string; baseline_artifact_id?: string | null;
+                          state: string }>;
+  trial_progress?: { trial_key?: string | null; rounds: number; auto_rework_used: number;
+                      max_auto_rework: number; last_run_auto_rework_total?: number | null;
+                      note: string };
+  snapshot?: { taken_at: string; isolation: string; artifact_count: number;
+               run_count: number; message_count: number; feedback_revision: number;
+               latest_run_id?: string | null; token: string; note: string };
   revision_history?: Array<{ id: string; option_id?: string | null; revision: number;
                              revision_uid?: string | null;
                              parent_revision_uid?: string | null }>;
   latest_run?: Array<{ id: string; status: string; task_kind?: string | null;
                        target_artifact_id?: string | null;
                        target_revision_uid?: string | null;
-                       conflict_code?: string | null }>;
+                       conflict_code?: string | null;
+                       trial_key?: string | null;
+                       auto_rework_total?: number | null }>;
   last_completed_run?: { id: string; status: string; task_kind?: string | null;
                          target_artifact_id?: string | null;
-                         target_revision_uid?: string | null } | null;
+                         target_revision_uid?: string | null;
+                         trial_key?: string | null;
+                         auto_rework_total?: number | null;
+                         artifact_ids?: string[];
+                         valid_artifact_ids?: string[] } | null;
   error?: string;
 };
 
@@ -65,6 +94,9 @@ const KIND_LABEL: Record<string, string> = {
 export function StudioView({ projectId }: { projectId?: string }) {
   const [state, setState] = useState<State | null>(null);
   const [error, setError] = useState<string>("");
+  // A successful action's explanation is NOT an error. Keeping them apart stops
+  // the page from painting "留言已保存/已作废" in the red alert channel.
+  const [notice, setNotice] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   // W0/R1: the boss explicitly picks which OLD plan to continue. Default is
@@ -73,6 +105,9 @@ export function StudioView({ projectId }: { projectId?: string }) {
   const [gateComment, setGateComment] = useState<Record<string, string>>({});
   const [decisionScope, setDecisionScope] = useState<Record<string, string>>({});
   const [openEvidence, setOpenEvidence] = useState<number | null>(null);
+  // W0-F05: the run id returned by POST /run. Completion is judged for THAT id.
+  const [activeRun, setActiveRun] = useState("");
+  const [activeRunStatus, setActiveRunStatus] = useState("");
   const timer = useRef<number | null>(null);
 
   // ARC-04: no project hardcoding. The studio id IS the main-system project id;
@@ -106,6 +141,28 @@ export function StudioView({ projectId }: { projectId?: string }) {
     return () => { if (timer.current) window.clearInterval(timer.current); };
   }, [studioId]);
 
+  // Poll the EXACT run started by this click. Different-generation state is
+  // never stitched together: the page reads that run's own snapshot.
+  useEffect(() => {
+    if (!activeRun || !mapped) return;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const r = await fetch(
+          `${API}/studio/projects/${encodeURIComponent(studioId)}/runs/${encodeURIComponent(activeRun)}`,
+          { cache: "no-store" });
+        if (!r.ok) { if (!stopped) setActiveRun(""); return; }
+        const b = await r.json();
+        if (stopped) return;
+        setActiveRunStatus(b.run_status || "");
+        if (b.finished) { setActiveRun(""); void load(); }
+      } catch { /* keep polling; the page must not claim completion early */ }
+    };
+    void tick();
+    const t = window.setInterval(() => { void tick(); }, 1500);
+    return () => { stopped = true; window.clearInterval(t); };
+  }, [activeRun, mapped, studioId]);
+
   const lastByRole = useMemo(() => {
     const map: Record<string, Message> = {};
     for (const m of state?.messages ?? []) map[m.role] = m;
@@ -119,12 +176,30 @@ export function StudioView({ projectId }: { projectId?: string }) {
       const res = await fetch(`${API}/studio/projects/${encodeURIComponent(studioId)}/run`, { method: "POST" });
       const body = await res.json();
       if (!res.ok) setError(body.error || "启动失败");
-      else void load();
+      else {
+        // W0-F05: follow the run id that was just started, not "the last run I
+        // can see". Until that exact run finishes the page must not claim it did.
+        setActiveRun(body.run_id || "");
+        void load();
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function withdraw(feedbackId: string) {
+    const reason = window.prompt("作废这条待续改留言的理由（正文与历史会保留）");
+    if (!reason || !reason.trim()) return;
+    const res = await fetch(
+      `${API}/studio/projects/${encodeURIComponent(studioId)}/feedback/${encodeURIComponent(feedbackId)}/withdraw`,
+      { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }) });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) setNotice(body.note || "已作废（正文与历史保留）");
+    else setError(body.error || "作废失败");
+    void load();
   }
 
   async function send() {
@@ -145,7 +220,7 @@ export function StudioView({ projectId }: { projectId?: string }) {
       return;
     }
     setDraft("");
-    setError(body.note || `留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}`);
+    setNotice(body.note || `留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}`);
     void load();
   }
 
@@ -158,7 +233,8 @@ export function StudioView({ projectId }: { projectId?: string }) {
       body: JSON.stringify({ decision, comment, decision_scope: scope }),
     });
     const body = await res.json().catch(() => ({}));
-    setError(body.note || (res.ok ? "决定已记录" : (body.error || "决定失败")));
+    if (res.ok) setNotice(body.note || "决定已记录");
+    else setError(body.error || "决定失败");
     void load();
   }
 
@@ -221,37 +297,79 @@ export function StudioView({ projectId }: { projectId?: string }) {
             ? `（${state.last_completed_run.status === "succeeded" ? "流程走完，未验收" : state.last_completed_run.status}）`
             : ""}
           {state.last_completed_run?.target_revision_uid
-            ? ` · 目标版本 ${state.last_completed_run.target_revision_uid}` : ""}</span>
+            ? ` · 目标版本 ${state.last_completed_run.target_revision_uid}` : ""}
+          {typeof state.last_completed_run?.auto_rework_total === "number"
+            ? ` · 本轮自动返工 ${state.last_completed_run.auto_rework_total} 次` : ""}</span>
         <span>本轮任务：<b>{state.task_resolution?.kind || "未知"}</b>
           {state.task_resolution?.kind === "revise"
             ? ` · 续改旧基线 ${state.task_resolution.target_artifact_id || "?"}`
+              + ((state.task_resolution.merged_feedback_ids?.length || 0) > 1
+                  ? ` · 合并 ${state.task_resolution.merged_feedback_ids!.length} 条同基线留言` : "")
             : state.task_resolution?.kind === "conflict"
               ? ` · 需新留言或闸口决定（${state.task_resolution.conflict_code || ""}），不偷换旧基线`
               : " · 生成新候选（未指定旧基线）"}</span>
+        {state.trial_progress?.trial_key && (
+          <span>设计试验累计：第 {state.trial_progress.rounds} 轮 ·
+            自动返工 {state.trial_progress.auto_rework_used}/{state.trial_progress.max_auto_rework}
+            （不因新 run 归零，用尽后由你决定）</span>
+        )}
+        {activeRun && <span>正在跑：<code>{activeRun}</code>（{activeRunStatus || "running"}）</span>}
         <span>版本链（新→父）：{state.revision_history?.slice(-3).map(h =>
           `${h.option_id || "?"}v${h.revision}←${h.parent_revision_uid || "无"}`).join("；") || "无"}</span>
       </div>
-      {/* Only a REJECTED run attempt is an alert. After a successful revise the
-          consumed feedback makes the NEXT-task preview a conflict, which is
-          informational, not a failure of the revision that just completed. */}
+      {/* A conflict that needs a person's decision is an alert; "already
+          consumed" merely says the last message was executed, so it is a note
+          and must not look like the previous round failed. */}
       {state.task_resolution?.kind === "conflict" &&
-       state.last_completed_run?.status === "conflict" && (
+       state.task_resolution.conflict_code !== "feedback_already_consumed" && (
         <p className="studio-error" role="alert">
           {state.task_resolution.conflict_detail}
           {state.task_resolution.alternatives?.length
             ? ` · 可选：${state.task_resolution.alternatives.join("；")}` : ""}
         </p>
       )}
+      {state.task_resolution?.kind === "conflict" &&
+       state.task_resolution.conflict_code === "feedback_already_consumed" && (
+        <p className="studio-note" role="status">
+          最新留言已经执行过，没有新的待办任务；要续改请写下一条并重新选中旧方案。
+        </p>
+      )}
+      {(state.task_resolution?.pending_feedback?.length || 0) > 0 && (
+        <div className="studio-pending">
+          <strong>还没处理的其它留言（不会自动合并，也不会被丢掉）</strong>
+          <ul>
+            {state.task_resolution!.pending_feedback!.map((f) => (
+              <li key={f.feedback_id}>
+                <span>v{f.revision_no} {f.text || "（无正文）"} · 绑定 {f.baseline_artifact_id || "?"}</span>
+                <button type="button" onClick={() => void withdraw(f.feedback_id)}>作废这条</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {error && <p className="studio-error" role="alert">{error}</p>}
+      {notice && <p className="studio-note" role="status">{notice}</p>}
 
-      {(state.feedback || []).length > 0 && (
+      {((state.feedback || []).length > 0 ||
+        (state.feedback_history || []).some(f => f.status !== "current")) && (
         <details className="json-box" open>
-          <summary>老板留言 · 版本化有效需求（{state.feedback!.length} 条）</summary>
+          <summary>老板留言 · 版本化有效需求（{(state.feedback || []).length} 条
+            {(state.feedback_history || []).some(f => f.status !== "current")
+              ? `；另有 ${(state.feedback_history || []).filter(f => f.status !== "current").length} 条已作废（正文保留）` : ""}）
+          </summary>
           <ul>{(state.feedback || []).map(f => (
             <li key={f.id}>v{f.revision_no} [{f.kind}] {f.text}
               {f.baseline_artifact_id ? ` · 绑定基线 ${f.baseline_artifact_id}` : ""}</li>
           ))}</ul>
+          {(state.feedback_history || []).some(f => f.status !== "current") && (
+            <ul className="studio-withdrawn">
+              {(state.feedback_history || []).filter(f => f.status !== "current").map(f => (
+                <li key={f.id}>v{f.revision_no} [已作废] {f.text}
+                  {f.superseded_by ? ` · ${f.superseded_by}` : ""}</li>
+              ))}
+            </ul>
+          )}
         </details>
       )}
 

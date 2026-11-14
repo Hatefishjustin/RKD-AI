@@ -175,32 +175,25 @@ def _qc_text(q: dict) -> str:
     return f"blocker {q['blocker']} / major {q['major']} / 面积差 {q['area_gap_sqm']}㎡"
 
 
-def _locked_ids(plan: dict, feedback_text: str = "") -> list[str]:
-    """Objects locked by default (arrival/entrance, main route, display focus).
+def _resolved_text_locks(plan: dict, feedback_rows: list[dict]) -> list[dict]:
+    """"保留 X 不动" becomes a structured lock ONLY where the binding is
+    unambiguous. An unresolved claim stays an `unknown` objective (see
+    revision_task) instead of silently locking something else (W0-F03).
 
-    Stair / bathroom / windows are additionally protected by geometry keep-out
-    checks; here we protect design objects the boss told us to keep.
+    The arrival zone is locked by `structured_locks(program:role_arrival)`; the
+    route itself is NOT locked wholesale because review issues legitimately ask
+    for width/path changes (CIR-004 protects the entrance condition instead).
     """
-    ids: set[str] = set()
-    for z in (plan.get("zones") or []):
-        if isinstance(z, dict) and z.get("role") == "arrival":
-            ids.add(str(z.get("id")))
-    # The route itself is NOT locked wholesale: review issues legitimately ask
-    # for width/path changes. The entrance condition is protected by the CIR-004
-    # geometry check instead (route must still reach the entrance band).
-    for f in (plan.get("furniture") or []):
-        if isinstance(f, dict) and any(k in str(f.get("id", "")).lower()
-                                       for k in ("focal", "hero", "display", "entry")):
-            ids.add(str(f.get("id")))
-    # "保留 X" in a boss message locks the named object id when it exists
-    if "保留" in feedback_text:
-        known = {str(o.get("id")) for g in ("zones", "furniture", "circulation", "platforms")
-                 for o in (plan.get(g) or []) if isinstance(o, dict)}
-        for token in feedback_text.replace("，", " ").replace("、", " ").split():
-            t = token.strip("。；;,. ")
-            if t in known:
-                ids.add(t)
-    return sorted(ids)
+    out: list[dict] = []
+    for fb in feedback_rows or []:
+        for b in revision_task.resolve_preserve_bindings(str(fb.get("text") or ""), plan):
+            if b["status"] != "resolved":
+                continue
+            for oid in b["object_ids"]:
+                out.append({"object_id": oid, "fields": ["*"],
+                            "reason": f"留言「{b['clause']}」要求保留"
+                                      f"（绑定方式 {b['match']}）"})
+    return out
 
 
 class Studio:
@@ -351,17 +344,26 @@ class Studio:
         kind = resolution["kind"]
         target_art = resolution.get("baseline") or {}
         target_fb = resolution.get("feedback") or {}
+        # A revise consumes EVERY merged message of this baseline, so an older
+        # same-baseline message cannot come back later (W0-F01).
+        merged_fb = resolution.get("merged_feedback") or (
+            [target_fb] if target_fb else [])
 
         prior = sum((r["tokens_in"] or 0) + (r["tokens_out"] or 0)
                     for r in st.runs(project_id) if r["status"] != "running")
         client = Client(project_tokens=prior)
+        # Cumulative auto-rework of THIS design trial (never reset by a new run).
+        trial_key = (st.trial_key_for(target_art["id"]) if target_art.get("id")
+                     else f"{project_id}|generate|{group_id}")
+        carried_rework = st.auto_rework_used(trial_key)
         run_id = st.start_run(
             project_id, client.config.model, input_hash_value=ih,
             expected_feedback_revision=expected, candidate_group_id=group_id,
             task_kind=kind, target_artifact_id=target_art.get("id"),
             target_revision_uid=target_art.get("revision_uid"),
             target_feedback_id=target_fb.get("id"),
-            conflict_code=resolution.get("conflict_code"))
+            conflict_code=resolution.get("conflict_code"),
+            trial_key=trial_key, auto_rework_total=carried_rework)
 
         if kind == revision_task.TASK_CONFLICT:
             detail = (resolution.get("conflict_detail") or "") + "；可选：" + \
@@ -389,7 +391,7 @@ class Studio:
         if kind == revision_task.TASK_REVISE:
             # CAS: one feedback row drives exactly one revise run. This blocks
             # "split into a new run" as a way around the 2-round rework limit.
-            if not st.consume_feedback(target_fb["id"], run_id):
+            if not all(st.consume_feedback(f["id"], run_id) for f in merged_fb):
                 st.finish_run(run_id, "conflict", 0, 0,
                               "反馈已被其他 run 消费", calls=0,
                               cost_amount=None, cost_status="unknown_no_price_table")
@@ -403,7 +405,9 @@ class Studio:
 
         def work() -> None:
             status, error = "succeeded", None
-            stats = {"images_sent": 0, "images_generated": 0, "calls": 0}
+            stats = {"images_sent": 0, "images_generated": 0, "calls": 0,
+                     # cumulative for the whole design trial, not just this run
+                     "auto_rework_total": carried_rework}
             try:
                 if kind == revision_task.TASK_REVISE:
                     self._revise_from_baseline(project, client, run_id, group_id,
@@ -459,7 +463,10 @@ class Studio:
                               images_sent=stats["images_sent"],
                               images_generated=stats["images_generated"],
                               cost_amount=None,
-                              cost_status="unknown_no_price_table")
+                              cost_status="unknown_no_price_table",
+                              auto_rework_total=stats.get("auto_rework_total",
+                                                          carried_rework),
+                              trial_key=stats.get("trial_key"))
                 with self._lock:
                     self._running.discard(project_id)
 
@@ -547,17 +554,22 @@ class Studio:
         base_rev = int(base.get("revision") or 1)
         base_sha = art.get("sha256")
 
-        locks = revision_task.structured_locks(base, site, fb.get("locks"))
+        locks = revision_task.structured_locks(
+            base, site,
+            [lk for f in (resolution.get("merged_feedback") or [fb])
+             for lk in (f.get("locks") or [])]
+            + _resolved_text_locks(base, resolution.get("merged_feedback") or [fb]))
         lock_ids = locks["lock_object_ids"]
+        fb_rows = resolution.get("merged_feedback") or [fb]
         boss_feedback = [{
-            "feedback_id": fb["id"], "revision_no": fb["revision_no"],
-            "kind": fb["kind"], "text": fb["text"],
-            "baseline_artifact_id": fb.get("baseline_artifact_id"),
-            "baseline_revision_uid": fb.get("baseline_revision_uid"),
-            "baseline_selection": fb.get("baseline_selection"),
-            "locks": fb.get("locks") or [], "objectives": fb.get("objectives") or [],
-        }]
-        objectives = revision_task.derive_objectives([dict(fb)])
+            "feedback_id": f["id"], "revision_no": f["revision_no"],
+            "kind": f["kind"], "text": f["text"],
+            "baseline_artifact_id": f.get("baseline_artifact_id"),
+            "baseline_revision_uid": f.get("baseline_revision_uid"),
+            "baseline_selection": f.get("baseline_selection"),
+            "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
+        } for f in fb_rows]
+        objectives = revision_task.derive_objectives([dict(f) for f in fb_rows], plan=base)
         rev_hash = revision_mod.revision_input_hash(
             base, [], boss_feedback, base_aid, base_uid)
         task_id = st.create_task(pid, "D2", f"续改旧基线 {base_aid} v{base_rev}",
@@ -603,13 +615,13 @@ class Studio:
         else:
             integrity = revision_mod.verify_revision_integrity(
                 base, candidate, responses=data.get("responses") or [],
-                issues=None, lock_object_ids=lock_ids,
+                issues=None, locks=locks,
                 boss_feedback=boss_feedback, objectives=objectives,
-                site=site, catalog=catalog, locks=locks)
+                site=site, catalog=catalog)
             report = validation.validate_proposal(
                 candidate, project=project, option_id=option_id,
                 revision=base_rev + 1, parent_revision=base_rev,
-                lock_object_ids=lock_ids, previous_plan=base)
+                locks=locks, previous_plan=base)
             if not report["ok"]:
                 problem = f"续改稿契约无效（{report['stage']}）：{report['repair_feedback'][:400]}"
             elif not integrity["ok"]:
@@ -678,15 +690,24 @@ class Studio:
                        {"accepted_revision": True, "task_kind": "revise",
                         "baseline_artifact_id": base_aid,
                         "baseline_revision_uid": base_uid,
+                        "merged_feedback_ids": [f["id"] for f in fb_rows],
                         "changed_objects": len(changed)})
+        pending_rows = [r for r in integrity["objective_rechecks"]
+                        if r.get("user_confirmed") == "pending"]
         st.add_message(
             pid, "D2", "note",
             f"旧基线续改完成：加载 {base_aid}（revision_uid={base_uid}, v{base_rev}）"
             f"的完整对象事实，未重新生成 A/B；新版本 v{base_rev + 1} 的 "
             f"parent_revision_uid={base_uid}，改动 {len(changed)} 个对象"
             f"（{'、'.join(changed[:6]) or '无'}）。"
-            f"确定性目标复核：{integrity['objective_recheck_summary']}。"
-            "无关对象与锁定条件保持原状；是否成立仍由老板对具体图面决定。",
+            + (f"本轮合并了同基线的 {len(fb_rows)} 条留言"
+               f"（{'、'.join('v' + str(f['revision_no']) for f in fb_rows)}）。"
+               if len(fb_rows) > 1 else "")
+            + f"确定性目标复核：{integrity['objective_recheck_summary']}。"
+            + (f"还有 {len(pending_rows)} 条目标未验证/等用户确认"
+               f"（{', '.join(str(r['objective_id']) for r in pending_rows[:4])}）。"
+               if pending_rows else "")
+            + "无关对象与锁定条件保持原状；是否成立仍由老板对具体图面决定。",
             task_id=task_id,
             evidence=[{"type": "artifact", "id": aid, "revision": base_rev + 1,
                        "revision_uid": uid, "parent_revision_uid": base_uid},
@@ -701,10 +722,17 @@ class Studio:
             f"用户选中的旧基线：{base_aid} / revision_uid={base_uid} / v{base_rev}。\n"
             f"新版本：{aid} / revision_uid={uid} / v{base_rev + 1}，"
             f"parent_revision_uid 指向用户选中的旧版。\n"
-            f"对象 diff {len(changed)} 项；无关对象保留；旧版字节仍可下载。\n"
+            f"本轮留言：{len(fb_rows)} 条"
+            + (f"（{'、'.join('v' + str(f['revision_no']) for f in fb_rows)}，"
+               "同基线合并后一次性消费）" if len(fb_rows) > 1 else "")
+            + f"；对象 diff {len(changed)} 项；无关对象保留；旧版字节仍可下载。\n"
             f"确定性目标复核：{integrity['objective_recheck_summary']}；"
-            "可计算目标由对应规则复算，审美/未实现项写 unknown 并等用户确认。\n"
-            "流程跑完不等于方案通过，是否成立由你决定。")
+            "可计算目标按目标对象集合与比较符复算（默认 all，部分达标不算解决），"
+            "审美/未实现项写 unknown 并等用户确认。\n"
+            + (f"未验证/待你确认：{len(pending_rows)} 项"
+               f"（{', '.join(str(r['objective_id']) for r in pending_rows[:5])}）——"
+               "程序没有把它们算成通过。\n" if pending_rows else "")
+            + "流程跑完不等于方案通过，是否成立由你决定。")
         self._gate(pid, "旧方案续改完成：请决定是否继续", gate_detail,
                    baseline_artifact_id=aid, baseline_revision_uid=uid)
 
@@ -861,6 +889,9 @@ class Studio:
                            "revision_uid": uid, "check_report_id": check_id,
                            "contract_status": "valid_candidate"}])
         st.update_task(task_d2, "done")
+        # Attribute this run's auto-rework to the DESIGN TRIAL (the A/B pair),
+        # not to the run/group it happened to start with (W0-F01).
+        stats["trial_key"] = st.trial_key_for(options["A"]["id"])
 
         # 4. R reviews — full object facts + explicit baseline ids + issue ids
         task_r = st.create_task(pid, "R", "评审两个候选", run_id=run_id)
@@ -977,8 +1008,16 @@ class Studio:
         changed: list[str] = []
         accepted_any = False
         stop_reason = ""
-        feedback_text = "；".join(f["text"] for f in boss_feedback)
-        lock_ids = _locked_ids(base_plan, feedback_text)
+        # W0-F01: the auto-rework budget belongs to the design trial, so a new
+        # run cannot reset it. W0-F03/F04: locks are structured (object+fields);
+        # an unbound "keep X" claim stays an unknown objective, never a free pass.
+        carried_rework = int(stats.get("auto_rework_total") or 0)
+        remaining_rework = max(0, MAX_AUTO_REWORK - carried_rework)
+        locks = revision_task.structured_locks(
+            base_plan, site,
+            [lk for f in st.feedback(pid) for lk in (f.get("locks") or [])]
+            + _resolved_text_locks(base_plan, st.feedback(pid)))
+        lock_ids = locks["lock_object_ids"]
         revision_hash = revision_mod.revision_input_hash(
             base_plan, issues, boss_feedback, base_aid, base_uid)
 
@@ -1059,17 +1098,16 @@ class Studio:
                 integrity = revision_mod.verify_revision_integrity(
                     current_plan, candidate, responses=responses if attempt == 1 else None,
                     issues=issues if attempt == 1 else None,
-                    lock_object_ids=lock_ids,
+                    locks=locks,
                     boss_feedback=boss_feedback if attempt == 1 else None,
                     objectives=revision_task.derive_objectives(
                         boss_feedback if attempt == 1 else [],
-                        issues if attempt == 1 else None),
-                    site=site, catalog={c["catalog_id"]: c for c in toolbox.CATALOG},
-                    locks=revision_task.structured_locks(current_plan, site))
+                        issues if attempt == 1 else None, plan=current_plan),
+                    site=site, catalog={c["catalog_id"]: c for c in toolbox.CATALOG})
                 report = validation.validate_proposal(
                     candidate, project=project, option_id=target,
                     revision=attempt + 1, parent_revision=current_rev,
-                    lock_object_ids=lock_ids, previous_plan=current_plan)
+                    locks=locks, previous_plan=current_plan)
                 if attempt == 1 and not responses:
                     problem = "没有逐条回应评审意见"
                 elif not report["ok"]:
@@ -1162,14 +1200,20 @@ class Studio:
                                  "contract_report": report,
                                  "integrity": integrity,
                                  "patch_errors": patch_errors})
-                if rework_count >= MAX_AUTO_REWORK:
+                # Cumulative guard: this trial may already have spent part (or all)
+                # of the auto-rework budget in an earlier run. A new run must not
+                # reset it (W0-F01).
+                if rework_count >= MAX_AUTO_REWORK or rework_count >= remaining_rework:
                     break
                 rework_count += 1
+                stats["auto_rework_total"] = carried_rework + rework_count
                 detail = (
                     f"数字/契约校验判定这一稿不能用：{problem}。"
                     f"当前基准 v{best_rev} {_qc_text(best_qc)}。\n"
-                    f"按公司规矩自动打回第 {rework_count} 轮（最多 {MAX_AUTO_REWORK} 轮，"
-                    "之后第 3 轮必须由老板决定）。只修这些问题，不要重做整个方案。")
+                    f"按公司规矩自动打回第 {rework_count} 轮"
+                    f"（本设计试验累计自动返工 {carried_rework + rework_count}/"
+                    f"{MAX_AUTO_REWORK} 轮；用尽后第 3 轮必须由老板决定）。"
+                    "只修这些问题，不要重做整个方案。")
                 st.add_message(
                     pid, "P", "rework", detail, task_id=task_rev,
                     evidence=[{"type": "qc", "reference_revision": best_rev,
@@ -1177,7 +1221,10 @@ class Studio:
                                "reference": _qc_text(best_qc),
                                "reason": problem},
                               {"type": "rule", "id": "AUTO-REWORK-01",
-                               "rule": "修订变差或无效自动打回，最多 2 轮，第 3 轮交老板"}])
+                               "rule": "修订变差或无效自动打回，最多 2 轮，第 3 轮交老板",
+                               "carried_before_this_run": carried_rework,
+                               "this_run": rework_count}])
+        stats["auto_rework_total"] = carried_rework + rework_count
         # ARC-04: no valid revision -> task is NOT simply "done".
         st.update_task(task_rev, "no_valid_revision" if not accepted_any else "done",
                        {"accepted_revision": accepted_any, "rework_count": rework_count,
@@ -1199,17 +1246,19 @@ class Studio:
                           else "当前版本没有比基准更差，但仍不等于设计合格。")
                        + "程序只量几何与面积，不替老板判断好不好看。")
         rework_text = "；".join(f"v{r['rev']} {r['qc']}" for r in rework_log)
+        spent = carried_rework + rework_count
         gate_title = (
             f"自动打回已用尽 {MAX_AUTO_REWORK} 轮仍无有效修订：请决定第 3 轮怎么做"
             if not accepted_any
             else f"自动打回已用尽 {MAX_AUTO_REWORK} 轮，方案仍变差：请决定第 3 轮怎么做"
-            if rework_count >= MAX_AUTO_REWORK and still_worse
+            if spent >= MAX_AUTO_REWORK and still_worse
             else "本轮成果仍有硬伤：请决定是否继续打回" if b1
             else "选一个方向继续（A1 回路到此）")
         gate_detail = (
             f"总监建议：{review.get('verdict')}，倾向选择 {target}（{review.get('why') or ''}）。\n"
             f"本轮实数：2 个有效候选、{len(issues)} 条评审意见、{len(responses)} 条逐条回应、"
-            f"老板留言 {len(boss_feedback)} 条、自动打回 {rework_count} 次"
+            f"老板留言 {len(boss_feedback)} 条、自动打回 {spent} 次"
+            f"（本设计试验累计；本轮 {rework_count} 次，此前已用 {carried_rework} 次）"
             + (f"（{rework_text}）" if rework_text else "")
             + f"；被接受的修订版：{'v' + str(current_rev) if accepted_any else '无'}，"
             f"相对 v1 改动 {len(changed)} 个对象。\n"

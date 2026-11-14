@@ -113,6 +113,20 @@ class Handler(BaseHTTPRequestHandler):
                     "hint": "本机只开放已显式映射的试验项目；不会回退显示或写入宁波项目结果",
                     "service_scope": SERVICE_SCOPE})
             return self._json(200, _state(pid))
+        m = re.fullmatch(r"/studio/projects/([^/]+)/runs/([^/]+)", path)
+        if m:
+            # W0-F05: wait on the EXACT run id, in one snapshot, instead of
+            # guessing that `runs[-1]` is the run you just started.
+            pid = self._known_project(m.group(1))
+            if not pid:
+                return self._json(404, {"error": f"项目 {m.group(1)} 未接入本机 Studio 实验服务",
+                                        "service_scope": SERVICE_SCOPE})
+            snap = studio().store.run_snapshot(pid, m.group(2))
+            if not snap:
+                return self._json(404, {"error": "run not found", "run_id": m.group(2)})
+            cfg = Config.from_env()
+            snap["channel"] = {"configured": cfg.configured, "model": cfg.model}
+            return self._json(200, snap)
         m = re.fullmatch(r"/studio/artifacts/([^/]+)/svg", path)
         if m:
             for a in studio().store.artifacts(_project_of_artifact(m.group(1))):
@@ -222,6 +236,28 @@ class Handler(BaseHTTPRequestHandler):
                          if task_kind == "revise" else
                          "未指定旧基线：留言进入有效需求，本轮按 generate 处理；"
                          "如需续改请在页面选中具体方案")})
+        m = re.fullmatch(r"/studio/projects/([^/]+)/feedback/([^/]+)/withdraw", path)
+        if m:
+            # Explicit retire of a pending message. This is the deliberate
+            # alternative to silently dropping / silently merging it (W0-F01).
+            pid = self._known_project(m.group(1))
+            if not pid:
+                return self._json(404, {"error": f"项目 {m.group(1)} 未接入本机 Studio 实验服务",
+                                        "service_scope": SERVICE_SCOPE})
+            reason = (body.get("reason") or "").strip()
+            if not reason:
+                return self._json(400, {"error": "作废留言必须写理由：记录会保留在历史里"})
+            st = studio().store
+            result = st.withdraw_feedback(pid, m.group(2), reason)
+            if not result.get("applied"):
+                return self._json(409, {"error": "这条留言不能作废",
+                                        "detail": result.get("reason"),
+                                        "note": "已消费/已作废/不存在的留言不会被改写"})
+            st.add_message(pid, "BOSS", "decision",
+                           f"作废待续改留言 {m.group(2)}：{reason}",
+                           evidence=[{"type": "feedback_withdrawn", **result}])
+            return self._json(200, {"ok": True, **result,
+                                    "note": "留言正文与历史保留，只是不再作为待办任务"})
         m = re.fullmatch(r"/studio/gates/([^/]+)/decide", path)
         if m:
             gid = m.group(1)
@@ -329,14 +365,28 @@ def _state(project_id: str) -> dict:
     state["running"] = project_id in studio()._running
     state["valid_candidate_ids"] = [a["id"] for a in arts
                                     if a.get("display_group") == "valid"]
+    arts_by_run: dict[str, list[dict]] = {}
+    for a in state["artifacts"]:
+        if a.get("run_id"):
+            arts_by_run.setdefault(a["run_id"], []).append(a)
+    done = [r for r in state["runs"] if r["status"] != "running"]
+    last_done = done[-1] if done else None
+    last_done_valid = [a for a in arts_by_run.get(last_done["id"], [])
+                       if a.get("display_group") == "valid"] if last_done else []
+    # W0-F05: the completed status carries the artifacts of THAT run from the
+    # same snapshot, so a page can never show "succeeded" over a stale list.
     state["stage_status"] = {
-        "flow_finished": any(r["status"] in ("succeeded", "incomplete", "failed",
-                                             "budget_stopped", "model_failed", "superseded")
-                             for r in state["runs"]),
+        "flow_finished": bool(done),
         "valid_artifact_exists": bool(state["valid_candidate_ids"]),
         "waiting_user": any(g["status"] == "waiting" for g in state["gates"]),
         "design_approved_by_user": False,
-        "note": "流程跑完 / 成果有效 / 等待用户 / 设计认可分别表达；设计认可只能由用户给出",
+        "last_completed_run_id": (last_done["id"] if last_done else None),
+        "last_completed_run_status": (last_done["status"] if last_done else None),
+        "last_completed_run_artifacts": len(arts_by_run.get(last_done["id"], []))
+                                        if last_done else 0,
+        "last_completed_run_valid_artifacts": len(last_done_valid),
+        "note": "流程跑完 / 成果有效 / 等待用户 / 设计认可分别表达；"
+                "完成状态与其产物来自同一快照；设计认可只能由用户给出",
     }
     # W0/R1: make the task and the exact parent version visible in the page.
     res = revision_task.resolve_task(st, project_id, state["feedback_revision"])
@@ -348,7 +398,30 @@ def _state(project_id: str) -> dict:
         "target_artifact_id": (res.get("baseline") or {}).get("id"),
         "target_revision_uid": (res.get("baseline") or {}).get("revision_uid"),
         "target_feedback_id": (res.get("feedback") or {}).get("id"),
-        "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜",
+        "merged_feedback_ids": res.get("merged_feedback_ids") or [],
+        "overridden_feedback_ids": res.get("overridden_feedback_ids") or [],
+        "pending_feedback": res.get("pending_feedback") or [],
+        "note": "generate / revise / conflict 分开；续改绑定反馈指定的旧基线，不按最新文件猜；"
+                "同基线多条留言显式合并，跨基线必须由人决定",
+    }
+    # Everything still waiting for a person: unconsumed revise messages and
+    # objectives the program could not verify. Nothing is dropped silently.
+    state["pending_queue"] = [
+        {"feedback_id": f["id"], "revision_no": f["revision_no"], "kind": f["kind"],
+         "text": f["text"], "baseline_artifact_id": f.get("baseline_artifact_id"),
+         "state": ("consumed" if f.get("consumed_by_run") else "pending")}
+        for f in state["feedback"] if f.get("baseline_artifact_id")]
+    trial_key = (st.trial_key_for(res["baseline"]["id"])
+                 if (res.get("baseline") or {}).get("id") else
+                 (last_done.get("trial_key") if last_done else None))
+    state["trial_progress"] = {
+        "trial_key": trial_key,
+        "rounds": st.trial_rounds(trial_key),
+        "auto_rework_used": st.auto_rework_used(trial_key),
+        "max_auto_rework": 2,
+        "last_run_auto_rework_total": (last_done.get("auto_rework_total")
+                                       if last_done else None),
+        "note": "自动返工按设计试验累计，不因新 run 归零；用尽后下一轮由老板决定",
     }
     plans = [a for a in state["artifacts"] if a["kind"] == "spatial-plan"]
     state["revision_history"] = [
@@ -360,14 +433,18 @@ def _state(project_id: str) -> dict:
         {"id": r["id"], "status": r["status"], "task_kind": r.get("task_kind"),
          "target_artifact_id": r.get("target_artifact_id"),
          "target_revision_uid": r.get("target_revision_uid"),
+         "trial_key": r.get("trial_key"),
+         "auto_rework_total": r.get("auto_rework_total"),
          "conflict_code": r.get("conflict_code")} for r in state["runs"][-3:]]
-    done = [r for r in state["runs"] if r["status"] != "running"]
-    last_done = done[-1] if done else None
     state["last_completed_run"] = (
         {"id": last_done["id"], "status": last_done["status"],
          "task_kind": last_done.get("task_kind"),
          "target_artifact_id": last_done.get("target_artifact_id"),
-         "target_revision_uid": last_done.get("target_revision_uid")}
+         "target_revision_uid": last_done.get("target_revision_uid"),
+         "trial_key": last_done.get("trial_key"),
+         "auto_rework_total": last_done.get("auto_rework_total"),
+         "artifact_ids": [a["id"] for a in arts_by_run.get(last_done["id"], [])],
+         "valid_artifact_ids": [a["id"] for a in last_done_valid]}
         if last_done else None)
     return state
 

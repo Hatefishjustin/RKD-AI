@@ -1,0 +1,151 @@
+{
+  "stale_feedback_resurrection": {
+    "first": "newer",
+    "after_latest_consumed": "older",
+    "kind": "revise"
+  },
+  "new_generate_blocked": {
+    "kind": "conflict",
+    "code": "feedback_already_consumed"
+  },
+  "two_targets_only_one_met": {
+    "objective_id": null,
+    "kind": "measurable",
+    "rule_id": "STD-001",
+    "field": "rot",
+    "target": 45,
+    "unit": null,
+    "source": null,
+    "issue_id": null,
+    "feedback_id": null,
+    "input_included": true,
+    "object_changed": true,
+    "linked_objects": [
+      "F1"
+    ],
+    "objective_rechecked": "pass",
+    "user_confirmed": "not_applicable",
+    "resolved": true,
+    "note": "目标值由对应规则复算；达到目标且对象确有变化",
+    "evidence": {
+      "before": {
+        "rule_id": "STD-001",
+        "target": 45,
+        "measured": {
+          "F1": 0,
+          "F2": 0
+        },
+        "passing_object_ids": [],
+        "rechecked": "fail"
+      },
+      "after": {
+        "rule_id": "STD-001",
+        "target": 45,
+        "measured": {
+          "F1": 45,
+          "F2": 0
+        },
+        "passing_object_ids": [
+          "F1"
+        ],
+        "rechecked": "pass"
+      }
+    }
+  },
+  "unlocked_rotation_rejected": [
+    {
+      "object_id": "F1",
+      "fields": [
+        "x"
+      ],
+      "source": "user_explicit",
+      "reason": "老板明确指定的保留对象/字段",
+      "base_sha256_prefix": "7724feea7988",
+      "candidate_sha256_prefix": "b17101b60ba9",
+      "alternative": "恢复该对象被锁定的字段；若确实无法同时满足，把冲突作为待决项交用户决定，程序不自行解除锁定"
+    }
+  ],
+  "unbound_preserve_claim": {
+    "objective_id": "FB1-L",
+    "kind": "lock",
+    "rule_id": "LOCK-REVISION",
+    "field": "locked_objects",
+    "target": null,
+    "unit": "n/a",
+    "source": "text_heuristic",
+    "issue_id": null,
+    "feedback_id": "f",
+    "input_included": true,
+    "object_changed": false,
+    "linked_objects": [],
+    "objective_rechecked": "pass",
+    "user_confirmed": "not_applicable",
+    "resolved": true,
+    "note": "锁定对象未变",
+    "evidence": {
+      "locked_objects": [
+        "ZA1"
+      ],
+      "conflicts": []
+    }
+  },
+  "rerun_actual_runs": [
+    {
+      "id": "run_8547adb7b6",
+      "status": "succeeded",
+      "task_kind": "generate"
+    },
+    {
+      "id": "run_a18bd99b49",
+      "status": "succeeded",
+      "task_kind": "revise"
+    },
+    {
+      "id": "run_9b7d17d927",
+      "status": "conflict",
+      "task_kind": "conflict"
+    },
+    {
+      "id": "run_986de421f2",
+      "status": "incomplete",
+      "task_kind": "revise"
+    }
+  ],
+  "rerun_actual_plans": [
+    {
+      "id": "art_d7c3a44653",
+      "run_id": "run_8547adb7b6",
+      "revision": 1,
+      "parent_revision_uid": null,
+      "status": "valid_candidate"
+    },
+    {
+      "id": "art_6c7d1fe284",
+      "run_id": "run_8547adb7b6",
+      "revision": 1,
+      "parent_revision_uid": null,
+      "status": "valid_candidate"
+    },
+    {
+      "id": "art_5669a3ab6d",
+      "run_id": "run_8547adb7b6",
+      "revision": 2,
+      "parent_revision_uid": "revuid_7f2637a49b",
+      "status": "valid_candidate"
+    },
+    {
+      "id": "art_27c869bd9e",
+      "run_id": "run_a18bd99b49",
+      "revision": 2,
+      "parent_revision_uid": "revuid_7f2637a49b",
+      "status": "superseded"
+    },
+    {
+      "id": "art_a1507320f3",
+      "run_id": null,
+      "revision": 1,
+      "parent_revision_uid": null,
+      "status": "valid_candidate"
+    }
+  ]
+}

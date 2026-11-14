@@ -182,7 +182,9 @@ CREATE TABLE IF NOT EXISTS runs (
   target_artifact_id TEXT,
   target_revision_uid TEXT,
   target_feedback_id TEXT,
-  conflict_code TEXT
+  conflict_code TEXT,
+  trial_key TEXT,
+  auto_rework_total INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_msg_project ON messages(project_id, id);
 CREATE INDEX IF NOT EXISTS idx_art_project ON artifacts(project_id, created_at);
@@ -209,6 +211,9 @@ _MIGRATIONS: dict[str, dict[str, str]] = {
         "task_kind": "TEXT", "target_artifact_id": "TEXT",
         "target_revision_uid": "TEXT", "target_feedback_id": "TEXT",
         "conflict_code": "TEXT",
+        # W0-F01: cumulative auto-rework per design trial — a new run must not
+        # reset the 2-round budget.
+        "trial_key": "TEXT", "auto_rework_total": "INTEGER DEFAULT 0",
     },
     # W0/R1: additive only. Old feedback rows keep their original bytes; an
     # unconsumed row without an explicit baseline is a historical generate input.
@@ -240,6 +245,12 @@ class Store:
         with self._conn() as c:
             c.executescript(_SCHEMA)
             self._migrate(c)
+            # WAL lets a status read keep ONE consistent snapshot while a run is
+            # committing artifacts (W0-F05) without blocking that writer.
+            try:
+                c.execute("PRAGMA journal_mode=WAL")
+            except sqlite3.Error:
+                pass  # read-only / network path: fall back to the default journal
 
     def _migrate(self, c: sqlite3.Connection) -> None:
         for table, cols in _MIGRATIONS.items():
@@ -405,6 +416,29 @@ class Store:
                             "WHERE id=? AND consumed_by_run IS NULL",
                             (run_id, feedback_id))
             return cur.rowcount > 0
+
+    def withdraw_feedback(self, project_id: str, feedback_id: str, reason: str,
+                          *, by_run: str = "boss_decision") -> dict:
+        """Explicitly retire a pending message. History is kept, never deleted.
+
+        This is the deliberate alternative to silently dropping or silently
+        merging an older pending request (W0-F01).
+        """
+        with self._lock, self._conn() as c:
+            row = c.execute("SELECT * FROM feedback WHERE id=? AND project_id=?",
+                            (feedback_id, project_id)).fetchone()
+            if not row:
+                return {"applied": False, "reason": "feedback_not_found"}
+            if row["consumed_by_run"]:
+                return {"applied": False, "reason": "already_consumed",
+                        "consumed_by_run": row["consumed_by_run"]}
+            if row["status"] != "current":
+                return {"applied": False, "reason": f"already_{row['status']}"}
+            c.execute("UPDATE feedback SET status='superseded', superseded_by=? WHERE id=?",
+                      (f"{by_run}: {reason}", feedback_id))
+            return {"applied": True, "reason": "superseded",
+                    "feedback_id": feedback_id, "superseded_by": f"{by_run}: {reason}",
+                    "text_preserved": row["text"]}
 
     def effective_requirement(self, project_id: str) -> dict:
         """Original requirement + all current feedback, as the real design input."""
@@ -657,18 +691,64 @@ class Store:
                   task_kind: str | None = None, target_artifact_id: str | None = None,
                   target_revision_uid: str | None = None,
                   target_feedback_id: str | None = None,
-                  conflict_code: str | None = None) -> str:
+                  conflict_code: str | None = None,
+                  trial_key: str | None = None,
+                  auto_rework_total: int = 0) -> str:
         rid = new_id("run")
         with self._lock, self._conn() as c:
             c.execute("INSERT INTO runs(id,project_id,status,started_at,model,input_hash,"
                       "expected_feedback_revision,candidate_group_id,task_kind,"
                       "target_artifact_id,target_revision_uid,target_feedback_id,"
-                      "conflict_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                      "conflict_code,trial_key,auto_rework_total) "
+                      "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (rid, project_id, "running", now(), model, input_hash_value,
                        expected_feedback_revision, candidate_group_id, task_kind,
                        target_artifact_id, target_revision_uid, target_feedback_id,
-                       conflict_code))
+                       conflict_code, trial_key, int(auto_rework_total or 0)))
         return rid
+
+    # ------------------------------------------------- design-trial accounting
+    def trial_key_for(self, artifact_id: str) -> str | None:
+        """Stable key for one design experiment: project + root candidate group.
+
+        Walking the parent chain means a later revise round belongs to the SAME
+        trial, so its auto-rework budget is NOT reset by a new run (W0-F01).
+        The A/B pair shares a candidate group, so both options are one trial.
+        """
+        art = self.artifact_by_id(artifact_id)
+        if not art:
+            return None
+        project_id = art.get("project_id") or ""
+        uid = art.get("revision_uid")
+        root_uid = uid
+        root_group = art.get("candidate_group_id")
+        seen: set[str] = set()
+        while uid and uid not in seen:
+            seen.add(uid)
+            row = self.artifact_by_revision_uid(uid)
+            if not row:
+                break
+            root_uid = uid
+            root_group = row.get("candidate_group_id") or root_group
+            uid = row.get("parent_revision_uid")
+        return f"{project_id}|{root_group or root_uid}"
+
+    def auto_rework_used(self, trial_key: str | None) -> int:
+        """Cumulative automatic rework rounds already spent on this trial."""
+        if not trial_key:
+            return 0
+        with self._conn() as c:
+            row = c.execute("SELECT MAX(auto_rework_total) AS m FROM runs WHERE trial_key=?",
+                            (trial_key,)).fetchone()
+        return int(row["m"] or 0)
+
+    def trial_rounds(self, trial_key: str | None) -> int:
+        if not trial_key:
+            return 0
+        with self._conn() as c:
+            row = c.execute("SELECT COUNT(*) AS n FROM runs WHERE trial_key=? "
+                            "AND status != 'running'", (trial_key,)).fetchone()
+        return int(row["n"] or 0)
 
     def request_cancel(self, run_id: str) -> None:
         with self._lock, self._conn() as c:
@@ -685,14 +765,19 @@ class Store:
     def finish_run(self, run_id: str, status: str, tokens_in: int, tokens_out: int,
                    error: str | None = None, *, calls: int | None = None,
                    images_sent: int | None = None, images_generated: int | None = None,
-                   cost_amount: float | None = None, cost_status: str | None = None) -> None:
+                   cost_amount: float | None = None, cost_status: str | None = None,
+                   auto_rework_total: int | None = None,
+                   trial_key: str | None = None) -> None:
         with self._lock, self._conn() as c:
             c.execute("UPDATE runs SET status=?,ended_at=?,tokens_in=?,tokens_out=?,error=?,"
                       "calls=COALESCE(?,calls),images_sent=COALESCE(?,images_sent),"
                       "images_generated=COALESCE(?,images_generated),"
-                      "cost_amount=?,cost_status=? WHERE id=?",
+                      "cost_amount=?,cost_status=?,"
+                      "auto_rework_total=COALESCE(?,auto_rework_total),"
+                      "trial_key=COALESCE(?,trial_key) WHERE id=?",
                       (status, now(), tokens_in, tokens_out, error, calls, images_sent,
-                       images_generated, cost_amount, cost_status, run_id))
+                       images_generated, cost_amount, cost_status, auto_rework_total,
+                       trial_key, run_id))
 
     def runs(self, project_id: str) -> list[dict]:
         with self._conn() as c:
@@ -701,21 +786,157 @@ class Store:
         return [dict(r) for r in rows]
 
     # ------------------------------------------------------------------- state
-    def project_state(self, project_id: str) -> dict[str, Any]:
-        project = self.get_project(project_id)
-        if not project:
-            raise KeyError(project_id)
-        msgs = self.messages(project_id)
-        arts = self.artifacts(project_id)
-        revs = self.reviews(project_id)
-        gates = self.gates(project_id)
-        runs = self.runs(project_id)
-        usage = {"tokens_in": sum(r["tokens_in"] or 0 for r in runs),
-                 "tokens_out": sum(r["tokens_out"] or 0 for r in runs)}
-        usage["tokens_total"] = usage["tokens_in"] + usage["tokens_out"]
+    # W0-F05: messages, artifacts, runs, gates and feedback are read inside ONE
+    # transaction. Five independent connections could mix two points in time
+    # (a finished run whose artifact had not been read yet), which made the page
+    # show "succeeded" next to a stale artifact list.
+    def project_state(self, project_id: str, *, barrier=None) -> dict[str, Any]:
+        with self._conn() as c:
+            c.execute("BEGIN")
+            try:
+                row = c.execute("SELECT * FROM projects WHERE id=?", (project_id,)).fetchone()
+                if not row:
+                    raise KeyError(project_id)
+                project = {"id": row["id"], "name": row["name"],
+                           "site": json.loads(row["site_json"]),
+                           "requirement": json.loads(row["requirement_json"]),
+                           "golden_ref": row["golden_ref"], "created_at": row["created_at"],
+                           "source_project_id": row["source_project_id"],
+                           "mapping_note": row["mapping_note"],
+                           "seeded_at": row["seeded_at"]}
+                msgs = self._messages_on(c, project_id)
+                arts = self._artifacts_on(c, project_id)
+                if barrier is not None:
+                    barrier()   # verification seam: a writer commits exactly here
+                revs = self._reviews_on(c, project_id)
+                gates = self._gates_on(c, project_id)
+                runs = self._runs_on(c, project_id)
+                fbs = self._feedback_on(c, project_id)
+                fbs_all = self._feedback_on(c, project_id, current_only=False)
+                checks = self._checks_on(c, project_id)
+                usage = {"tokens_in": sum(r["tokens_in"] or 0 for r in runs),
+                         "tokens_out": sum(r["tokens_out"] or 0 for r in runs)}
+                usage["tokens_total"] = usage["tokens_in"] + usage["tokens_out"]
+                req = dict(project["requirement"])
+                req["effective_addenda"] = [
+                    {"feedback_id": f["id"], "revision_no": f["revision_no"],
+                     "kind": f["kind"], "text": f["text"],
+                     "baseline_artifact_id": f["baseline_artifact_id"],
+                     "baseline_revision_uid": f["baseline_revision_uid"],
+                     "baseline_selection": f.get("baseline_selection"),
+                     "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
+                     "consumed_by_run": f.get("consumed_by_run")}
+                    for f in fbs]
+                req["effective_input_hash"] = input_hash(req["text"], req["must_have"],
+                                                          req["effective_addenda"])
+                fb_rev = max([int(f["revision_no"]) for f in fbs], default=0)
+            finally:
+                c.execute("COMMIT")
+        token = input_hash([project_id, len(arts), len(runs), len(msgs), fb_rev,
+                            runs[-1]["id"] if runs else None,
+                            arts[-1]["id"] if arts else None,
+                            msgs[-1]["id"] if msgs else 0])
         return {"project": project, "messages": msgs, "artifacts": arts, "reviews": revs,
                 "gates": gates, "runs": runs, "usage": usage,
-                "feedback": self.feedback(project_id),
-                "feedback_revision": self.feedback_revision(project_id),
-                "effective_requirement": self.effective_requirement(project_id),
-                "check_reports": self.check_reports(project_id)}
+                "feedback": fbs, "feedback_history": fbs_all,
+                "feedback_revision": fb_rev,
+                "effective_requirement": req, "check_reports": checks,
+                "snapshot": {
+                    "taken_at": now(),
+                    "isolation": "single read transaction：messages/artifacts/reviews/"
+                                 "gates/runs/feedback 同属一个快照",
+                    "artifact_count": len(arts), "run_count": len(runs),
+                    "message_count": len(msgs), "feedback_revision": fb_rev,
+                    "latest_run_id": runs[-1]["id"] if runs else None,
+                    "token": token[:16],
+                    "note": "客户端应据此识别同一代状态；判断某轮结果请按 run_id 读取"}}
+
+    def run_snapshot(self, project_id: str, run_id: str) -> dict[str, Any] | None:
+        """One run + the artifacts committed by EXACTLY that run, one snapshot.
+
+        The page/verifier must wait on the run_id returned by POST /run instead
+        of assuming `runs[-1]` is this run (W0-F05).
+        """
+        with self._conn() as c:
+            c.execute("BEGIN")
+            try:
+                row = c.execute("SELECT * FROM runs WHERE id=? AND project_id=?",
+                                (run_id, project_id)).fetchone()
+                if not row:
+                    return None
+                run = dict(row)
+                arts = [a for a in self._artifacts_on(c, project_id) if a["run_id"] == run_id]
+            finally:
+                c.execute("COMMIT")
+        return {"run": run, "artifacts": arts,
+                "run_status": run["status"],
+                "finished": run["status"] != "running",
+                "artifact_count": len(arts),
+                "valid_artifacts": [a["id"] for a in arts
+                                    if a.get("contract_status") == "valid_candidate"
+                                    and a["status"] not in ("superseded", "invalid_raw")],
+                "note": "按 run_id 读取同一快照；running 时结果尚不完整，不要当成已完成"}
+
+    # ---- connection-scoped readers (used only inside a state transaction) ----
+    def _messages_on(self, c: sqlite3.Connection, project_id: str,
+                     limit: int = 400) -> list[dict]:
+        rows = c.execute("SELECT * FROM messages WHERE project_id=? ORDER BY id LIMIT ?",
+                         (project_id, limit)).fetchall()
+        return [{"id": r["id"], "task_id": r["task_id"], "role": r["role"], "kind": r["kind"],
+                 "body": r["body"], "evidence": json.loads(r["evidence_json"] or "[]"),
+                 "tokens_in": r["tokens_in"], "tokens_out": r["tokens_out"],
+                 "model": r["model"], "created_at": r["created_at"]} for r in rows]
+
+    def _artifacts_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
+        rows = c.execute("SELECT * FROM artifacts WHERE project_id=? "
+                         "ORDER BY created_at, id", (project_id,)).fetchall()
+        keys = ("id", "kind", "option_id", "revision", "parent_revision", "author", "sha256",
+                "status", "created_at", "run_id", "candidate_group_id", "revision_uid",
+                "parent_revision_uid", "input_hash", "check_report_id", "contract_status")
+        out = []
+        for r in rows:
+            item = {k: r[k] for k in keys}
+            item["diagnostics"] = (json.loads(r["diagnostics_json"])
+                                   if r["diagnostics_json"] else None)
+            item["payload"] = json.loads(r["payload_json"])
+            out.append(item)
+        return out
+
+    def _reviews_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
+        rows = c.execute("SELECT * FROM reviews WHERE project_id=? ORDER BY created_at",
+                         (project_id,)).fetchall()
+        return [{"id": r["id"], "artifact_id": r["artifact_id"], "reviewer": r["reviewer"],
+                 "verdict": r["verdict"], "summary": r["summary"],
+                 "issues": json.loads(r["issues_json"] or "[]"), "created_at": r["created_at"]}
+                for r in rows]
+
+    def _gates_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
+        rows = c.execute("SELECT * FROM gates WHERE project_id=? ORDER BY created_at",
+                         (project_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def _runs_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
+        rows = c.execute("SELECT * FROM runs WHERE project_id=? ORDER BY started_at",
+                         (project_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def _feedback_on(self, c: sqlite3.Connection, project_id: str,
+                     current_only: bool = True) -> list[dict]:
+        q = "SELECT * FROM feedback WHERE project_id=?"
+        if current_only:
+            q += " AND status='current'"
+        rows = c.execute(q + " ORDER BY revision_no", (project_id,)).fetchall()
+        out = []
+        for r in rows:
+            item = dict(r)
+            item["locks"] = json.loads(item.pop("locks_json") or "[]")
+            item["objectives"] = json.loads(item.pop("objectives_json") or "[]")
+            out.append(item)
+        return out
+
+    def _checks_on(self, c: sqlite3.Connection, project_id: str) -> list[dict]:
+        rows = c.execute("SELECT * FROM check_reports WHERE project_id=? ORDER BY created_at",
+                         (project_id,)).fetchall()
+        return [{"id": r["id"], "artifact_id": r["artifact_id"], "run_id": r["run_id"],
+                 "sha256": r["sha256"], "created_at": r["created_at"],
+                 "report": json.loads(r["report_json"])} for r in rows]

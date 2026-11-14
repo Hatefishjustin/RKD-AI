@@ -1,0 +1,292 @@
+{
+  "task_id": "W0 二次收口（W0-F01—F05）",
+  "schema_version": "rkd-w0b-repro.v1",
+  "phase": "before",
+  "executed_at": "2026-11-14T12:54:07+08:00",
+  "git_head": "0524d3d87525eb1e05001d10574148e8b22f10bd",
+  "environment": {
+    "python": "3.12.14",
+    "model_calls": "none (pure function / store level)",
+    "isolated_dbs": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\rkd-w0b-repro-tj66y24k"
+  },
+  "cases": [
+    {
+      "case": "F01-a",
+      "finding": "旧反馈在最新一条被执行后自动复活",
+      "observed": {
+        "first_selected": "newer",
+        "first_kind": "revise",
+        "after_latest_consumed_kind": "revise",
+        "after_latest_consumed_feedback": "older",
+        "after_latest_consumed_code": null
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F01-b",
+      "finding": "已消费历史封死新的生成意图",
+      "observed": {
+        "kind": "conflict",
+        "code": "feedback_already_consumed",
+        "reason": "旧基线不适用：明确冲突，不偷换、不自动重新生成 A/B"
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F01-c",
+      "finding": "跨候选的两条待续改留言被无声合并/丢弃",
+      "observed": {
+        "kind": "revise",
+        "code": null,
+        "selected_feedback": "fb_a02a47b599",
+        "pending_listed": null,
+        "newer_feedback_was": "fb_a02a47b599"
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F01-d",
+      "finding": "同基线多条待续改留言未显式合并（旧条会晚点复活）",
+      "observed": {
+        "kind": "revise",
+        "merged_feedback_ids": [],
+        "expected_merged": [
+          "fb_98051fcc09",
+          "fb_c4bec30173"
+        ]
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F01-e",
+      "finding": "自动返工次数未按设计试验累计（新 run 从 0 重新开始）",
+      "observed": {
+        "cumulative_api": false,
+        "trial_key": null,
+        "auto_rework_used": null,
+        "runs_has_auto_rework_total": false,
+        "runs_has_trial_key": false
+      },
+      "verdict": "defect_reproduced",
+      "note": "结构性观测：记录累计计数器是否存在且可查询；行为侧的累计见 verify_w0b.py 的 F01-e 场景"
+    },
+    {
+      "case": "F02-a",
+      "finding": "多对象目标只要一个对象达标就判 pass",
+      "observed": {
+        "objective_rechecked": "pass",
+        "resolved": true,
+        "targets": null,
+        "passing": [
+          "F1"
+        ],
+        "failing": null,
+        "quantifier": null
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F02-b",
+      "finding": "目标点名的对象不存在时仍判 pass",
+      "observed": {
+        "objective_rechecked": "pass",
+        "resolved": true,
+        "targets": null,
+        "missing": null,
+        "passing": [
+          "F1"
+        ]
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F02-c",
+      "finding": "范围内只有无关对象恰好达标就判 pass",
+      "observed": {
+        "objective_rechecked": "pass",
+        "passing": [
+          "F3"
+        ],
+        "failing": null
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F02-d",
+      "finding": "最低值/精确值/上限语义混用（比较符被忽略）",
+      "observed": {
+        "min_2300": "pass",
+        "exact_2300": "pass",
+        "min_comparator_recorded": null,
+        "width_coverage": null
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F03-a",
+      "finding": "保留非入口对象被改动，保留要求仍判 pass（实际校验的是入口锁）",
+      "observed": {
+        "objectives": [
+          {
+            "kind": "measurable",
+            "object_ids": [],
+            "binding": null
+          },
+          {
+            "kind": "lock",
+            "object_ids": [],
+            "binding": null
+          }
+        ],
+        "preserve_rows": [
+          {
+            "rechecked": "pass",
+            "resolved": true,
+            "target_objects": null
+          }
+        ],
+        "ZA5_changed": true,
+        "overall_ok": true
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F03-b",
+      "finding": "找不到对象的保留要求被当通过 / 被降级成空泛意见（应为 unknown+pending 且留痕）",
+      "observed": {
+        "objective_kinds": [
+          {
+            "kind": "aesthetic",
+            "binding": null,
+            "object_ids": []
+          }
+        ],
+        "preserve_count": 0,
+        "binding_status": [],
+        "states": [
+          [
+            "unknown",
+            "pending"
+          ]
+        ]
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F03-c",
+      "finding": "只有保留诉求时该诉求被丢弃（只剩审美兜底）",
+      "observed": {
+        "kinds": [
+          "aesthetic"
+        ],
+        "has_preserve": false
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F03-e",
+      "finding": "混合留言的保留/审美诉求被其中一个数值目标吞掉或未绑定对象",
+      "observed": {
+        "kinds": [
+          "measurable",
+          "lock"
+        ],
+        "has_numeric": true,
+        "has_preserve": true,
+        "preserve_object_ids": [
+          []
+        ],
+        "preserve_binding": [
+          null
+        ],
+        "has_aesthetic": false
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F04-a",
+      "finding": "字段锁实际按整对象比较：锁 x 也拦下改 rot；未知字段无人诊断",
+      "observed": {
+        "rot_only_conflicts": 1,
+        "rot_only_fields": [
+          [
+            "x"
+          ]
+        ],
+        "rot_only_changed_fields": [
+          null
+        ],
+        "x_changed_conflicts": 1,
+        "x_changed_fields": [
+          null
+        ],
+        "deleted_conflicts": 1,
+        "deleted_diagnostic": [
+          null
+        ],
+        "star_rot_conflicts": 1,
+        "ghost_no_change_conflicts": 0,
+        "ghost_diagnostic": []
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F04-b",
+      "finding": "四级校验的锁定阶段把字段锁升级为整对象锁",
+      "observed": {
+        "ok": false,
+        "stage": "locks",
+        "lock_errors": [
+          "锁定对象「F1」在修订中被改动或删除"
+        ],
+        "accepts_structured_locks": false,
+        "mode": "whole_object_ids"
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F05-a",
+      "finding": "状态响应混拼两个时间点：run 已完成但同一快照里没有它的产物",
+      "observed": {
+        "mode": "subclass_barrier",
+        "snapshot_run_status": "succeeded",
+        "snapshot_artifacts_for_run": 0,
+        "consistent": false,
+        "writer_error": null,
+        "after_artifacts_for_run": 1,
+        "has_snapshot_meta": false
+      },
+      "verdict": "defect_reproduced",
+      "note": ""
+    },
+    {
+      "case": "F05-b",
+      "finding": "客户端只能按 runs[-1] 猜测本轮结果，没有按 run_id 的读取边界",
+      "observed": {
+        "run_scoped_reader": false
+      },
+      "verdict": "defect_reproduced",
+      "note": "结构性观测；HTTP 侧按 run_id 的读取见 verify_w0b.py"
+    }
+  ],
+  "summary": {
+    "defect_reproduced": 17,
+    "fixed_signature": 0,
+    "not_observable": 0,
+    "crashed": 0
+  }
+}

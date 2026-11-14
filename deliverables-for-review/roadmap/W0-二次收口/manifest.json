@@ -1,0 +1,193 @@
+{
+  "task_id": "W0 二次收口（W0-F01—F05）",
+  "schema_version": "rkd-review-packet.v1",
+  "built_at": "2026-11-14T13:27:10+08:00",
+  "code_baseline": {
+    "compare_base": "0524d3d87525eb1e05001d10574148e8b22f10bd",
+    "compare_base_subject": "docs: W0 复核包不再把易变文档 HEAD 写成权威基线",
+    "decision_base": "4ef7c724d90bf2e0d9263a26368bde81fb628fae",
+    "head_when_evidence_taken": "0524d3d87525eb1e05001d10574148e8b22f10bd",
+    "rebuild_command": "git diff 0524d3d -- mvp web scripts",
+    "patch_bytes": 197602
+  },
+  "timeline": [
+    {
+      "at": "2026-11-14T12:54:07+08:00",
+      "what": "整改前 17/17 defect_reproduced（before/repro.json）"
+    },
+    {
+      "at": "2026-11-14T13:17",
+      "what": "真实 HTTP 15/15 observed_pass（after/checks.json）"
+    },
+    {
+      "at": "2026-11-14T13:23",
+      "what": "全量单测 262 OK / 前端 tsc+build EXIT=0"
+    },
+    {
+      "at": "2026-11-14T13:24:16+08:00",
+      "what": "真实 Edge 浏览器 passed=true（browser/verification.json）"
+    },
+    {
+      "at": "2026-11-14T13:24:45+08:00",
+      "what": "整改后 17/17 fixed_signature（after/repro.json）"
+    },
+    {
+      "at": "2026-11-14T13:25",
+      "what": "首批 Q 回归 11 pass / 0 fail / 1 not_run"
+    },
+    {
+      "at": "2026-11-14T13:30",
+      "what": "复核包编制完成（本清单时刻）"
+    }
+  ],
+  "git_log": [
+    {
+      "commit": "0524d3d87525eb1e05001d10574148e8b22f10bd",
+      "committed_at": "2026-11-14 12:37:44 +0800",
+      "subject": "docs: W0 复核包不再把易变文档 HEAD 写成权威基线"
+    },
+    {
+      "commit": "622cca6aaf09954013996437f50f7c160c8d7321",
+      "committed_at": "2026-11-14 12:37:00 +0800",
+      "subject": "docs: W0 复核包定稿当前 HEAD 与完整时间轴"
+    },
+    {
+      "commit": "666f7d0cabef17464641786353fc2a4f8138e0a4",
+      "committed_at": "2026-11-14 12:35:53 +0800",
+      "subject": "docs: W0 复核包补提交号、标准补丁与文件清单"
+    }
+  ],
+  "packet_files": {
+    "after/arc-first-batch-regression-checks.json": {
+      "bytes": 44808,
+      "sha256": "ae909df54d74d00f49a50d63784f7177dedab9d70c69616dce944f523609a181"
+    },
+    "after/checks.json": {
+      "bytes": 16245,
+      "sha256": "eee6cbc9b63fe6683255b28a3ab580f9b9c931f819dfc8ce118755641ef9877d"
+    },
+    "after/q-checks.json": {
+      "bytes": 41893,
+      "sha256": "5c1c4f018c3aa1c808d9c4d45c7cdce04af3e321f85b377d5baa42c874810e00"
+    },
+    "after/repro.json": {
+      "bytes": 8711,
+      "sha256": "776a614b1aa6d59cb81ac4a75ee326023991ab61f1921a1f85a76ce5c05fdb84"
+    },
+    "before/repro.json": {
+      "bytes": 8148,
+      "sha256": "aaea65925ac4327702dc568d6473872aaa4ef1c5995fa8377e3819df9662a2bc"
+    },
+    "browser/browser-observations.json": {
+      "bytes": 6546,
+      "sha256": "aaf320233490a707854c843cfee4c30678b2bd5aeab9992a7bb53270e526f8af"
+    },
+    "browser/verification.json": {
+      "bytes": 8998,
+      "sha256": "2f22d1bf4ef2c7f654f5e0981e50e0779989dd7d9251e997c2cc98a98452d6f4"
+    },
+    "browser/w0b-merged-desktop.png": {
+      "bytes": 187742,
+      "sha256": "002db424058f267d635b207b60bb090003a6eb2c9be3551ef96247e6c8d76629"
+    },
+    "browser/w0b-mobile.png": {
+      "bytes": 464890,
+      "sha256": "50bbdf294d8339a42b5d754160e55c525ce54261fde51ecbf0fe8250887e6e67"
+    },
+    "browser/w0b-pending-desktop.png": {
+      "bytes": 212550,
+      "sha256": "3aa6842582beae03ad974943ebabb9cc1615bc85d1ccd7115a5c387a75840ccd"
+    },
+    "changes.patch": {
+      "bytes": 197602,
+      "sha256": "9e68f413a492a01d2ad3f16b25499ec027e3bc2b33de60762cc3e78130e6882a"
+    },
+    "code-diff.md": {
+      "bytes": 9980,
+      "sha256": "8bc830625b72102b72e8a8c74de30416c918ed78e09ffa7979e86b6ef34fbee3"
+    },
+    "positive-negative-cases.md": {
+      "bytes": 10266,
+      "sha256": "fbe39402a49a9a14d0f9dc122835aa35cf2506ea70e070c5395b3c446c450778"
+    },
+    "review-packet.md": {
+      "bytes": 18034,
+      "sha256": "b7135c26e5c162b7058bf23c7c7172931db43d6dc0ca20cbfff2be3fa6926596"
+    },
+    "runtime/frontend-build.log": {
+      "bytes": 895,
+      "sha256": "753ab1374007bb054f52695a2b148018366809460688bf484d3668ee7f810374"
+    },
+    "runtime/frontend-tsc.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runtime/full-unittest.log": {
+      "bytes": 383,
+      "sha256": "cdcde104f8ae0a577cd7b6f3b6d6396a0e31861efc16b2d31cae682024083a89"
+    },
+    "runtime/verify_w0-rerun-checks.json": {
+      "bytes": 9102,
+      "sha256": "360d3ba01bd29b3eb7c204553d89f31dcf0af449b4bca6dfcefb736597c48184"
+    }
+  },
+  "source_files": {
+    "mvp/rkd_mvp/studio/revision_task.py": {
+      "bytes": 41044,
+      "sha256": "9acb437155ebf47f3eee01e348b5db9e3a4342c4705a03a1d884adad7d95f114"
+    },
+    "mvp/rkd_mvp/studio/revision.py": {
+      "bytes": 22397,
+      "sha256": "7eddf7e41e2c80dcd5ec34af0a84ae9e0098f98034610a6e65b25baa3c968917"
+    },
+    "mvp/rkd_mvp/studio/orchestrator.py": {
+      "bytes": 79584,
+      "sha256": "7d4d2334d3d0d68c49c98636c747bdd59db1cf1c004e3bb7c81c98eaf98a8281"
+    },
+    "mvp/rkd_mvp/studio/server.py": {
+      "bytes": 25286,
+      "sha256": "e0950c72e26d9d5b298d66900140f72db1c4c9920705ce15d037a2e6e8624b1b"
+    },
+    "mvp/rkd_mvp/studio/store.py": {
+      "bytes": 47895,
+      "sha256": "a6e88fc0c7888cdc1f7fb942187263d42aac893f256aa0a94e7074a4d0a5a344"
+    },
+    "mvp/rkd_mvp/studio/validation.py": {
+      "bytes": 21503,
+      "sha256": "1875b38f1cbfd30892cbd0c799af48946e56efd13822bfbb5ee40418b8e9fe56"
+    },
+    "web/src/StudioView.tsx": {
+      "bytes": 32795,
+      "sha256": "f88ca492c98aadc59dd8e268ac76ea35f487c1aea581f1e1ddc9fff6248a3a3f"
+    },
+    "web/src/studio.css": {
+      "bytes": 6865,
+      "sha256": "b92426e9802443406c0bc33897a9dfab2de8ae426f66af8763e33aca021d5b3b"
+    },
+    "scripts/w0b_repro.py": {
+      "bytes": 28644,
+      "sha256": "2b8c260a123e2d96e6c7ccb30dff07561db27ffff48c3eefb55ab1af8b3039cf"
+    },
+    "scripts/verify_w0b.py": {
+      "bytes": 33576,
+      "sha256": "153cbbe8db35bd8a492e420b5ca56e0ffc4c3711f3525eed5b337d58050c2a56"
+    },
+    "scripts/verify_w0b_browser.py": {
+      "bytes": 8513,
+      "sha256": "19403bb3bf4658bc28dd103863c46658b069b18b03ecad901a4ad5fc3daffa4a"
+    },
+    "scripts/verify_w0b_browser.cjs": {
+      "bytes": 10725,
+      "sha256": "86d73dbd19f32e9ecefea45dfeab40f08a9f36769b9f5c569d8a3b34ecffc0b8"
+    }
+  },
+  "external_calls": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "keys_used": false,
+  "adjudication": {
+    "AD01-AD08": "未改判",
+    "design_stage": "未确认",
+    "w0_release": "未宣布，等架构师复核"
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "task_id": "W0 收口（R1/R2/R3）",
+  "schema_version": "rkd-w0-checks.v1",
+  "baseline": "957cf775e1d835cf25bbdf196de4e7f3f51280fa",
+  "executed_at": "2026-11-14T12:43:23+08:00",
+  "environment": {
+    "python": "3.12.14",
+    "geometry_engine": "shapely-2.1.2",
+    "jsonschema": "4.25.1",
+    "model_channel": "local-model-stub (explicitly labelled)",
+    "service": "studio HTTP 127.0.0.1:65409 (isolated DB)",
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "W0-R1-01",
+      "name": "真实服务入口：选中旧方案反馈→revise→parent_revision_uid 指向用户选中旧版",
+      "result": "observed_fail",
+      "evidence": {
+        "generate_http": "generate",
+        "post_feedback_http": 201,
+        "feedback_baseline_selection": "user_selected",
+        "feedback_baseline_artifact_id": "art_d7c3a44653",
+        "run_http_status": 202,
+        "run_task_kind": "revise",
+        "run_target_artifact_id": "art_d7c3a44653",
+        "run_target_revision_uid": "revuid_7f2637a49b",
+        "selected_baseline_revision_uid": "revuid_7f2637a49b",
+        "new_revision_parent_revision_uid": null,
+        "fresh_A_B_in_revise_run": 0,
+        "unrelated_objects_changed": [],
+        "old_baseline_bytes_still_present": true,
+        "run_status": "succeeded",
+        "run_task_kind_in_store": "revise"
+      }
+    },
+    {
+      "id": "W0-R1-02",
+      "name": "R1 负例：跨候选/跨项目/旧反馈/并发新反馈/失败稿/晚到结果均明确拒绝",
+      "result": "observed_pass",
+      "evidence": {
+        "cross_candidate_uid_mismatch": {
+          "status": 409,
+          "body": {
+            "error": "旧基线冲突：版本 uid 与产物不一致",
+            "conflict_code": "baseline_uid_mismatch",
+            "requested_uid": "revuid_c4d5c3fe92",
+            "actual_uid": "revuid_7f2637a49b"
+          }
+        },
+        "cross_project_baseline": {
+          "status": 409,
+          "body": {
+            "error": "旧基线冲突：该产物属于另一个项目",
+            "conflict_code": "cross_project_baseline",
+            "artifact_project_id": "w0-other-project"
+          }
+        },
+        "baseline_not_found": {
+          "status": 409,
+          "body": {
+            "error": "旧基线冲突：指定的产物不存在",
+            "conflict_code": "baseline_not_found",
+            "alternatives": [
+              "在页面重新选择一份存在的有效候选",
+              "不要回退到最新文件"
+            ]
+          }
+        },
+        "baseline_invalid": {
+          "status": 409,
+          "body": {
+            "error": "旧基线冲突：该产物不是有效候选",
+            "conflict_code": "baseline_invalid",
+            "artifact_status": "invalid_raw",
+            "contract_status": "invalid_raw"
+          }
+        },
+        "old_feedback_replay": {
+          "status": 409,
+          "body": {
+            "error": "反馈 fb_76e7537c28（v1）已由 run run_a18bd99b49 消费；不得用新 run 重放同一反馈绕过最多 2 轮自动返工",
+            "conflict_code": "feedback_already_consumed",
+            "alternatives": [
+              "请给一条新的老板留言并明确选择要续改的旧方案",
+              "或由老板在闸口决定第 3 轮怎么做",
+              "程序不会把这条旧反馈再当成一次新的续改任务"
+            ],
+            "task_kind": "conflict",
+            "note": "本轮没有生成任何候选；旧基线不被偷换"
+          }
+        },
+        "concurrent_new_feedback": {
+          "kind": "conflict",
+          "code": "concurrent_new_feedback"
+        },
+        "late_result_bytes_preserved": {
+          "bytes_identical": true,
+          "superseded": [
+            "art_27c869bd9e",
+            "art_3e790b357e"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W0-R2-01",
+      "name": "R2 负例：改了目标对象但未修窄通道 → REV-OBJECTIVE 拒绝，不记已解决",
+      "result": "observed_pass",
+      "evidence": {
+        "declared_width_after": 2000,
+        "changed_objects": [
+          "circulation:CA1"
+        ],
+        "objective_rechecked": "fail",
+        "verified": false,
+        "resolved": false,
+        "errors": [
+          "REV-OBJECTIVE",
+          "REV-OBJECTIVE"
+        ],
+        "recheck_evidence": {
+          "rule_id": "CIR-001",
+          "target": 2100.0,
+          "measured": {
+            "CA1": {
+              "declared_width_mm": 2000,
+              "measured_clear_width_mm": 6000.0,
+              "circulation_issues": []
+            }
+          },
+          "passing_object_ids": [],
+          "engine": "shapely-2.1.2",
+          "rechecked": "fail"
+        }
+      }
+    },
+    {
+      "id": "W0-R2-02",
+      "name": "R2 正例：净宽由几何规则实测达标才记 pass（不是只看对象 diff）",
+      "result": "observed_pass",
+      "evidence": {
+        "objective_rechecked": "pass",
+        "verified": true,
+        "resolved": true,
+        "summary": {
+          "pass": 3,
+          "fail": 0,
+          "unknown": 0,
+          "not_applicable": 0,
+          "user_confirmed_pending": 0
+        }
+      }
+    },
+    {
+      "id": "W0-R2-03",
+      "name": "R2 正例：审美/未实现目标写 unknown + user_confirmed=pending，四态分离",
+      "result": "observed_pass",
+      "evidence": {
+        "objective_states": [
+          "unknown",
+          "unknown"
+        ],
+        "user_confirmed": [
+          "pending",
+          "pending"
+        ],
+        "boss_objective_rechecked": "unknown",
+        "boss_resolved": null,
+        "boss_user_confirmed": "pending",
+        "issue_states_present": [
+          "input_included",
+          "object_changed",
+          "objective_rechecked",
+          "user_confirmed"
+        ],
+        "linked_changes": [],
+        "in_revision_input": true,
+        "summary": {
+          "pass": 0,
+          "fail": 0,
+          "unknown": 2,
+          "not_applicable": 0,
+          "user_confirmed_pending": 2
+        }
+      }
+    },
+    {
+      "id": "W0-R2-04",
+      "name": "R2 服务级负例：伪修复经真实 /run 被拦，不生成新候选、不宣称成功",
+      "result": "observed_pass",
+      "evidence": {
+        "post_status": 201,
+        "run_status": 202,
+        "baseline_used": "art_d7c3a44653",
+        "baseline_revision_uid": "revuid_7f2637a49b",
+        "task_kind": "revise",
+        "final_run_status": "incomplete",
+        "raw_invalid_artifacts": 1,
+        "rev_objective_in_diagnostics": true,
+        "no_valid_revision_in_this_run": true
+      }
+    },
+    {
+      "id": "W0-R3-01",
+      "name": "R3：历史证据字节不变、独立勘误含时间轴与三份 schema 映射；Q10 仍 not_run",
+      "result": "observed_pass",
+      "evidence": {
+        "packet_sha256": "8ac87bd723818054f71c1b00adbab43a7777370e7ce8da87458e9791c046ca21",
+        "adaptation_note_sha256": "cc451e8bd6c0e078da5732db6d963cf318d1229433e5b439a2aec3d62e95d451",
+        "erratum_exists": true,
+        "erratum_has_time_axis": true,
+        "erratum_has_three_schemas": true,
+        "q10_not_run": true,
+        "ad_conclusions_unchanged": true
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 6,
+    "observed_fail": 1,
+    "not_run": 1
+  },
+  "artifact_refs": [
+    "var/evidence/roadmap/W0-收口/before/reproduction.json",
+    "var/evidence/roadmap/W0-收口/after/reproduction.json",
+    "deliverables-for-review/roadmap/W0-收口/evidence-provenance-erratum.md"
+  ],
+  "external_calls": 0,
+  "image_counts": {
+    "images_sent_external": 0,
+    "images_generated_external": 0
+  },
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "limitations": [
+    "本批是工程修复，没有新增设计成果",
+    "Q10 同源平面/渲染/数量一致性仍 not_run（W1/W2）",
+    "AD01—AD08 结论不改判，设计阶段结论只能由用户给出",
+    "所有模型回答为明确标记的本地桩，不代表真实 AI 设计能力"
+  ]
+}
