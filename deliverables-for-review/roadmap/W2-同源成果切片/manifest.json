@@ -7,9 +7,10 @@
     "compare_base_subject": "W2 入口边界",
     "head_when_evidence_taken": "bfd0753d516623bdb11d10d6fb60e75ba40d109f",
     "rebuild_command": "git diff bfd0753 -- mvp contracts web scripts",
-    "patch_bytes": 123740,
+    "patch_bytes": 123765,
     "migrations_added": 0,
-    "tables_added": 0
+    "tables_added": 0,
+    "batch_commit": "40049fd"
   },
   "generator_versions": {
     "generator": "rkd-spatial-outputs.v1",
@@ -64,8 +65,8 @@
       "sha256": "1bf21b88fc38fdfcd630c140865ca91a9976541c439828865a4a09b0fcb4699b"
     },
     "changes.patch": {
-      "bytes": 123740,
-      "sha256": "5a4607af474efb16c38776714e39eb9f1405611ed30e6e125aefb504cba4f270"
+      "bytes": 123765,
+      "sha256": "0c53e6a25428589c14907418f85b922b427753ffb579fc6680c96375d24a5339"
     },
     "checks.json": {
       "bytes": 4917,
@@ -74,6 +75,10 @@
     "code-diff.md": {
       "bytes": 3944,
       "sha256": "a32c53978f1a5706e3e624a1ad1be4259d8e3f91dbf11464bce6ac686af28bd7"
+    },
+    "commit-reference.md": {
+      "bytes": 1604,
+      "sha256": "f8960f0e88cdf27b1b776a5e6a5be36a06653edbfb56ac592282af7b7738b9b0"
     },
     "index.html": {
       "bytes": 3298,
@@ -162,8 +167,8 @@
       "sha256": "b7a80436d025447685c3a82606db7b7ad463350767c966ef10773b5d0d14c34e"
     },
     "mvp/rkd_mvp/ai_spatial_output_service.py": {
-      "bytes": 19500,
-      "sha256": "4086b2ac71a3a103b62bdea8645ee84001ecbc0b7baace51ef294a17da9d5966"
+      "bytes": 19525,
+      "sha256": "208cf8585522463478f712db07d02d5f00cfd3e3933dd1778d534f97552a76e0"
     },
     "mvp/rkd_mvp/api_service.py": {
       "bytes": 46530,

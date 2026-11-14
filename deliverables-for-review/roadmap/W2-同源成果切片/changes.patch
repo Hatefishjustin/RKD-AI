@@ -19,7 +19,7 @@ index 29498ad..fd44068 100644
            "items": {
 diff --git a/mvp/rkd_mvp/ai_spatial_output_service.py b/mvp/rkd_mvp/ai_spatial_output_service.py
 new file mode 100644
-index 0000000..26c0e53
+index 0000000..806a680
 --- /dev/null
 +++ b/mvp/rkd_mvp/ai_spatial_output_service.py
 @@ -0,0 +1,334 @@
@@ -96,7 +96,7 @@ index 0000000..26c0e53
 +           if k not in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
 +                        "ALL_PROXY", "all_proxy")}
 +    proc = subprocess.run(cmd, capture_output=True, text=True, errors="replace",
-+                          timeout=1200, env=env)
++                          timeout=1200, env=env, cwd=str(out_png.parent))
 +    if proc.returncode != 0 or not out_png.exists():
 +        raise AISpatialOutputError(500, "RENDER_FAILED",
 +                                   f"Blender 渲染失败：{(proc.stderr or proc.stdout)[-400:]}")
