@@ -4,7 +4,9 @@
 上游依据：`deliverables-for-review/roadmap/W1-architect-review/architect-review.md`
 （W1 已有主系统正式导入/精确多边形/对账/页面，22 项 HTTP 已独立通过；但**暂不放行 W1 进入 W2**，
 版本身份与父链仍按导入顺序推断）。
-比较基线（base）：`080f63e`（W1 首版复核包补记 HEAD）；本批业务提交见 `commit-reference.md`。
+比较基线（base）：`080f63e`（W1 首版复核包补记 HEAD）；
+本批业务实现提交：`b40b4fad7fe6d1a34702b5b49cd7928fc9c8a7de`（`b40b4fa`，2026-11-14 21:20:48 +08:00）。
+**证据全部在提交前采集**，所以 JSON 里的 `code_head` 是 `080f63e`；时间轴见 `commit-reference.md`。
 复核命令：`git diff 080f63e -- mvp contracts scripts`（补丁 `changes.patch`）。
 性质：**限定整改 + 回归**。不重做适配器、不启动 W2、不改 AD。
 

@@ -10,7 +10,10 @@
     "rebuild_command": "git diff 080f63e -- mvp contracts scripts web",
     "patch_bytes": 67892,
     "migrations_added": 0,
-    "tables_added": 0
+    "tables_added": 0,
+    "batch_commit": "b40b4fad7fe6d1a34702b5b49cd7928fc9c8a7de",
+    "batch_commit_at": "2026-11-14 21:20:48 +0800",
+    "evidence_head_note": "证据在提交前采集，故 JSON 的 code_head=080f63e；本批代码见 batch_commit"
   },
   "lineage_contract": {
     "candidate_identity": "studio:{main_project}:{studio_project}:root:{root_revision_uid}",
@@ -92,6 +95,10 @@
       "bytes": 4451,
       "sha256": "7878b3fe6b87a28d6a91c70f796e9a66c3d195a2214498c5c4ec7a19e1bc0cc7"
     },
+    "commit-reference.md": {
+      "bytes": 2379,
+      "sha256": "4e76269f32f9c26eb70e7ccbaffa66254191cf035ded8721abd786c3587f5ccb"
+    },
     "lineage-checks.json": {
       "bytes": 7912,
       "sha256": "b055e416ef3df262004812b849893753dffebd1ea0211df94027be3ddce001a0"
@@ -105,8 +112,8 @@
       "sha256": "ab1d66e01ed00b585c89c7e5223d90af9bc8d0a5800e5020c4f27b5130c020ac"
     },
     "review-packet.md": {
-      "bytes": 11776,
-      "sha256": "073b7c01d1f2addf64a47c6aed9a7fa4228e443f9361f157f3aefbecfd187089"
+      "bytes": 12133,
+      "sha256": "351cd8cc2dfa138c31d8ab3e8e12b79c6bf2f2565c68e5f275177cd8a05c26e4"
     },
     "runtime/focused-unittest.log": {
       "bytes": 103,
