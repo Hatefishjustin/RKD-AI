@@ -1,12 +1,21 @@
 {
   "schema_version": "rkd-roadmap-manifest.v1",
   "batch": "W0-收口",
-  "generated_at": "2026-11-14T12:35:45+08:00",
+  "generated_at": "2026-11-14T12:37:00+08:00",
+  "time_axis": {
+    "compiled_date": "2026-11-14（北京时间）",
+    "before_reproduction_executed_at": "2026-11-14T11:53:38+08:00",
+    "after_reproduction_executed_at": "见 after/reproduction.json 的 checked_at",
+    "browser_checked_at": "见 browser/verification.json 的 checked_at",
+    "primary_code_committed_at": "2026-11-14T12:34:27+08:00",
+    "supplement_committed_at": "2026-11-14T12:35:53+08:00",
+    "note": "编制/执行/提交分别标时间与代码基线，不混用日期；历史证据字节未回写"
+  },
   "source_baseline": "957cf775e1d835cf25bbdf196de4e7f3f51280fa",
-  "head_commit": "4ef7c724d90bf2e0d9263a26368bde81fb628fae",
-  "head_subject": "W0 收口：R1 反馈旧基线续改、R2 确定性目标复核、R3 证据时间与契约映射勘误",
-  "committed_at": "2026-11-14T12:34:27+08:00",
-  "supplement_commit_note": "补录提交仅追加 manifest.json / changes.patch / commit-reference.md 与文档提交号，无业务代码改动",
+  "primary_code_commit": "4ef7c724d90bf2e0d9263a26368bde81fb628fae",
+  "head_commit": "666f7d0cabef17464641786353fc2a4f8138e0a4",
+  "head_subject": "docs: W0 复核包补提交号、标准补丁与文件清单",
+  "head_note": "补录提交仅含复核包清单/补丁/提交号，无业务代码改动",
   "model_versions": {
     "design_model": "local-model-stub (explicitly labelled; NOT a real AI design result)",
     "material_spec": "not_applicable_no_material_artifacts",
@@ -158,15 +167,15 @@
     },
     {
       "path": "code-diff.md",
-      "bytes": 5143,
-      "sha256": "7856a757f3762e3bf3c9f4658a5d769e192125d3a54426df8748f330340bbd25",
+      "bytes": 5212,
+      "sha256": "df9e8a043b59c1c89662ee41d6e83fa030618f234fe5fcb9ddcdb43f7a932b68",
       "role": "review_document",
       "origin": "written_by_w0"
     },
     {
       "path": "commit-reference.md",
-      "bytes": 2040,
-      "sha256": "a11e7a40269742e7bbfc880f6778345ea07ce712625a9a19c172f06c6fa4afae",
+      "bytes": 2369,
+      "sha256": "6fa4e1cafd40507c2b160dd920cef0ae9ddc45b468f7c1fc6ae7bb2605e91012",
       "role": "review_document",
       "origin": "written_by_w0"
     },
@@ -186,8 +195,8 @@
     },
     {
       "path": "review-packet.md",
-      "bytes": 14758,
-      "sha256": "192ae2a3eddab71f1c096c93b85db498f2779b3658c19d36a054cfabcca8407c",
+      "bytes": 14863,
+      "sha256": "4a309fad1c9693964c2c0c18ddac1117a0bb0ad0d268a425b3e57a2f74188cff",
       "role": "review_document",
       "origin": "written_by_w0"
     }
@@ -197,15 +206,13 @@
       "path": "deliverables-for-review/arc-first-batch/review-packet.md",
       "bytes": 17814,
       "sha256": "8ac87bd723818054f71c1b00adbab43a7777370e7ce8da87458e9791c046ca21",
-      "status": "unchanged_by_w0",
-      "note": "历史证据字节未回写，见勘误记录"
+      "status": "unchanged_by_w0"
     },
     {
       "path": "deliverables-for-review/arc-first-batch/ARC-05-adaptation-note.md",
       "bytes": 6193,
       "sha256": "cc451e8bd6c0e078da5732db6d963cf318d1229433e5b439a2aec3d62e95d451",
-      "status": "unchanged_by_w0",
-      "note": "历史证据字节未回写，见勘误记录"
+      "status": "unchanged_by_w0"
     }
   ],
   "source_originals": {

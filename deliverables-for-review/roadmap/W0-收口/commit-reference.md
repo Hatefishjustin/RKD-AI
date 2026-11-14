@@ -4,10 +4,13 @@
 - 本批**主体提交**：`4ef7c724d90bf2e0d9263a26368bde81fb628fae`（`4ef7c72`）
   `W0 收口：R1 反馈旧基线续改、R2 确定性目标复核、R3 证据时间与契约映射勘误`
   （35 files changed；包含全部业务代码、验证脚本、复核包主体文档、证据副本与浏览器截图）
-- 本批**补录提交**：`docs: W0 复核包补提交号、标准补丁与文件清单`
+- 本批**补录提交**：`666f7d0cabef17464641786353fc2a4f8138e0a4`（`666f7d0`，
+  2026-11-14T12:35:53+08:00）`docs: W0 复核包补提交号、标准补丁与文件清单`
   —— 仅追加本文件、`changes.patch`、`manifest.json`，并把 `4ef7c72` 写进
   `review-packet.md` / `code-diff.md` 的表头；**不含任何业务代码改动**。
-  复核时用 `git log -3` 可同时看到两个提交。
+- 复核包定稿后的**当前 HEAD**：`666f7d0cabef17464641786353fc2a4f8138e0a4`。
+  `manifest.json` 的 `head_commit` 用这个完整 hash，`primary_code_commit` 记业务代码主体提交
+  `4ef7c724d90bf2e0d9263a26368bde81fb628fae`。复核时用 `git log -3` 可同时看到两个提交。
 
 复核差异命令：
 
