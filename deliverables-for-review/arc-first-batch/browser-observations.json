@@ -1,0 +1,87 @@
+{
+  "project_items": [
+    "另另一个项目（未接入 Studio）本地项目",
+    "宁宁波协诚集团展厅室内装修工程本地项目"
+  ],
+  "meta_text": "主系统项目映射：project_ningbo_xiecheng_2026本机设计公司实验服务（独立 var/studio/studio.db）未接入团队/NAS有效需求 v0状态：流程跑完 ·有有效成果 ·等待用户 · 设计认可：否（只能由用户给出）",
+  "valid_heading": "成果 · 有效候选（3）",
+  "history_group_exists": true,
+  "feedback_summary": "老板留言 · 版本化有效需求（1 条）",
+  "project_mapping": [
+    {
+      "id": "ningbo-xiecheng",
+      "name": "宁波协诚集团样品展厅",
+      "source_project_id": "project_ningbo_xiecheng_2026",
+      "mapping_note": "Studio 实验库内部 id 与主系统 /api/v1/projects 的 project_id 不同；此字段是唯一显式映射，不得按名称推断。未映射项目一律拒绝，不回退显示宁波结果。"
+    }
+  ],
+  "studio_project_id": "ningbo-xiecheng",
+  "main_system_id_resolves": true,
+  "feedback_revision_after_post": 1,
+  "feedback_items": [
+    {
+      "revision_no": 1,
+      "text": "调整洽谈区、保留入口",
+      "kind": "boss_message",
+      "baseline_artifact_id": "art_414c88a399"
+    }
+  ],
+  "baseline_artifact_id": "art_082d25a80e",
+  "run_statuses": [
+    "succeeded",
+    "succeeded"
+  ],
+  "runs_total": 2,
+  "latest_run": {
+    "status": "succeeded",
+    "expected_feedback_revision": 1,
+    "input_hash": "c10959b28667d021f48895105b765e6e60fdc5c5ce71007777148d07382420e3",
+    "calls": 9,
+    "images_sent": 3,
+    "cost_status": "unknown_no_price_table"
+  },
+  "revision_messages": [
+    "已逐条回应 5 条意见，接受 4 条（逐项复核 4/4 条有对象 diff 支撑）；老板留言 0 条已进入修订输入；v2 blocker 0 / major 0 / 面积差 0.0㎡，相对上一版改动 4 个对象：ceiling.coves:CV1、ceiling.fixtures:L1、circulation:CA1、furniture:F3。",
+    "已逐条回应 5 条意见，接受 4 条（逐项复核 4/4 条有对象 diff 支撑）；老板留言 1 条已进入修订输入；v2 blocker 0 / major 0 / 面积差 0.0㎡，相对上一版改动 4 个对象：ceiling.coves:CV1、ceiling.fixtures:L1、circulation:CA1、furniture:F3。"
+  ],
+  "issue_resolution_count": 10,
+  "object_diff_count": 8,
+  "boss_feedback_in_revision": true,
+  "other_project_text": "项目 arc-other-project 未接入本机 Studio 实验服务",
+  "other_project_no_ningbo_leak": true,
+  "other_project_http_status": 404,
+  "gate_baseline": {
+    "artifact_id": "art_414c88a399",
+    "revision_uid": "revuid_178c39b603"
+  },
+  "gate_first": {
+    "ok": true,
+    "applied": true,
+    "reason": "decided",
+    "revision_id": "gdec_ae23d3860d",
+    "decision_scope": "allow_continue",
+    "baseline_artifact_id": "art_414c88a399",
+    "baseline_revision_uid": "revuid_178c39b603",
+    "note": "闸口决定已记录；允许继续试验/认可设计方向均不等于设计通过"
+  },
+  "gate_replay": {
+    "ok": true,
+    "applied": false,
+    "reason": "already_decided_correction_recorded",
+    "revision_id": "gdec_bc7ff9d14f",
+    "decision_scope": "direction_approval",
+    "baseline_artifact_id": "art_414c88a399",
+    "baseline_revision_uid": "revuid_178c39b603",
+    "note": "原决定已存在：本次作为新决定记录追加，未覆盖旧决定"
+  },
+  "gate_after_replay": {
+    "decision": "approve",
+    "comment": "允许继续试验，不等于设计通过",
+    "decision_scope": "allow_continue"
+  },
+  "reload_keeps_feedback": true,
+  "reload_keeps_valid_group": true,
+  "mobile_scroll_width": 390,
+  "page_errors": [],
+  "passed": true
+}

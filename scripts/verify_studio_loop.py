@@ -1,215 +1,154 @@
-"""Plumbing test for the A1 loop: canned model answers, real store, real flow.
+"""Plumbing test for the A1 loop: LOCAL MODEL STUB, real store, real flow.
 
-This proves the machinery (tasks, discussion, artifacts, review, revision, gate)
-works end to end WITHOUT pretending to be a real model run. Real runs are done
-through the studio service with a live channel.
+This proves the ENGINEERING machinery (contract enforcement, geometry,
+tasks, discussion, artifacts, review, whitelisted patch revision, gate,
+version chain, feedback) works end to end WITHOUT pretending to be a real
+model run. Every model answer here comes from arc_first_batch_stub.py and is
+explicitly labelled as a local stub. 0 external calls, 0 keys, 0 cost.
+
+The previous version of this test used hand-rolled plans that violated the
+contract (469 sqm outer frame used as area table total, missing roles,
+furniture without catalog lookup). After ARC-01 those plans are correctly
+REJECTED, so the stub was replaced with contract-compliant data. Validation
+was NOT relaxed to make this pass.
 """
 from __future__ import annotations
 
 import json
+import os
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "mvp"))
+sys.path.insert(0, str(ROOT / "scripts"))
 
-from rkd_mvp.studio import orchestrator  # noqa: E402
+from arc_first_batch_stub import (  # noqa: E402
+    SITE, valid_proposal, review_issues, revision_payload, as_json,
+)
+from rkd_mvp.studio import orchestrator, vision  # noqa: E402
 from rkd_mvp.studio.llm import Usage  # noqa: E402
 from rkd_mvp.studio.store import Store  # noqa: E402
 
-W, H = 26170, 17920
-
-# Plumbing-only stand-in: this test must not depend on a local headless browser
-# or Pillow. Real visual reviews run inside the service process with real
-# rasters (see docs/evidence/a1-studio-vision-review.png).
 FAKE_JPEG = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00" + b"\x00" * 32 + b"\xff\xd9"
 
 
-def plan(option: str, revision: int = 1) -> dict:
-    zones = [
-        ("Z1", "序厅", "arrival", [[0, 8600], [5400, 8600], [5400, 13500], [0, 13500]]),
-        ("Z2", "中央中岛", "island", [[9000, 6200], [16000, 6200], [16000, 11000], [9000, 11000]]),
-        ("Z3", "北光廊", "gallery", [[5400, 13300], [21800, 13300], [21800, 17700], [5400, 17700]]),
-        ("Z4", "南场景", "scene", [[5400, 1800], [20400, 1800], [20400, 5200], [5400, 5200]]),
-        ("Z5", "东洽谈", "meeting", [[19400, 7600], [26100, 7600], [26100, 13300], [19400, 13300]]),
-        ("Z6", "水吧", "service", [[2400, 1800], [5400, 1800], [5400, 6100], [2400, 6100]]),
-    ]
-    zs = []
-    for zid, name, role, poly in zones:
-        area = abs(sum(poly[i][0] * poly[(i + 1) % 4][1] - poly[(i + 1) % 4][0] * poly[i][1]
-                       for i in range(4))) / 2 / 1e6
-        zs.append({"id": zid, "name": name, "role": role, "polygon": poly, "area_sqm": round(area, 1)})
-    total = sum(z["area_sqm"] for z in zs)
-    data = {
-        "contract_version": "rkd-spatial-plan.v1",
-        "project_id": "ningbo-xiecheng",
-        "option_id": option,
-        "revision": revision,
-        "parent_revision": 1 if revision > 1 else None,
-        "author": "D2",
-        "strategy": {
-            "name": "环岛漫游" if option == "A" else "一轴到底",
-            "narrative": "进门先被弧形木墙引到中央，再绕着中岛走一圈看完，最后在南侧坐下。",
-            "tradeoffs": ["主展台居中，四周都能看", "环游占掉约 55 ㎡ 通道面积"],
-            "non_orthogonal": ["中岛三级圆角 R1560/1360/1180", "入口弧形品牌墙 R4660"],
-        },
-        "zones": zs,
-        "circulation": [{"id": "C1", "width_mm": 2000,
-                         "path": [[1800, 11000], [8000, 11000], [17500, 11000], [17500, 6000], [8000, 5200]]}],
-        "platforms": [{"id": "P1", "name": "中央圆角中岛", "kind": "rounded",
-                       "corner_radius_mm": 1180, "height_mm": 720,
-                       "polygon": [[9000, 6200], [16000, 6200], [16000, 11000], [9000, 11000]]}],
-        "ceiling": {"strategy": "环形灯槽洗台面，北光廊轨道射灯洗翼墙",
-                    "coves": [{"id": "CV1", "band_mm": 200, "kelvin": 3000,
-                               "polygon": [[8400, 5600], [16600, 5600], [16600, 11600], [8400, 11600]]}],
-                    "fixtures": [{"id": "L1", "type": "spot", "x": 10250, "y": 7700, "kelvin": 3000},
-                                 {"id": "L2", "type": "spot", "x": 14750, "y": 7700, "kelvin": 3000},
-                                 {"id": "L3", "type": "downlight", "x": 13000, "y": 14500, "kelvin": 3000}]},
-        "furniture": [{"id": "F1", "catalog_id": "sofa-3p", "x": 8400, "y": 4050, "rot": 0},
-                      {"id": "F2", "catalog_id": "dining-table", "x": 14400, "y": 3300, "rot": 0},
-                      {"id": "F3", "catalog_id": "display-wing", "x": 9500, "y": 16350, "rot": -12}],
-        "area_table": [{"name": z["name"], "area_sqm": z["area_sqm"]} for z in zs]
-                      + [{"name": "通道及其他", "area_sqm": round(469.0 - total, 1)}],
-        "open_questions": ["协诚的产品清单缺失，展品只能做示意"],
-        "standards_cited": ["STD-001", "STD-003", "STD-005"],
-    }
-    # A revision must change real objects, not merely claim to have changed them.
-    if revision > 1:
-        data["ceiling"]["fixtures"].append(
-            {"id": "L4", "type": "spot", "x": 11800, "y": 14500, "kelvin": 3000})
-        data["circulation"][0]["width_mm"] = 2100
-    if revision == 2:
-        # Deliberately worse area reconciliation: exercises the auto rework path.
-        data["area_table"] = [{"name": "全部（错误示例）", "area_sqm": 800.0}]
-    return data
-
-
 class FakeClient:
+    """Explicitly-labelled LOCAL MODEL STUB. No network, no key, no cost."""
+
     def __init__(self, *args, **kwargs) -> None:
         self.usage = Usage()
-        self.config = type("C", (), {"model": "fake-model", "run_token_limit": 600_000,
+        self.config = type("C", (), {"model": "local-model-stub", "run_token_limit": 600_000,
                                      "project_token_limit": 2_000_000, "configured": True})()
 
     def chat(self, messages, tools=None, temperature=0.6, max_tokens=3000, json_only=False):
         system = messages[0]["content"]
         last = messages[-1]["content"]
         self.usage.add(1200, 400)
-        if "这是第" in last and "自动打回" in last:
-            text = json.dumps(plan("A", 3), ensure_ascii=False)
-        elif "项目经理" in system:
-            text = "这一轮先做三件事：定任务书、出两个拓扑不同的空间候选、总监评审后改一版。交付物是两份候选和一份修订；做完等老板选。"
+        if "项目经理" in system:
+            text = "这一轮先核实设计输入与已知缺口，出两个拓扑不同的空间候选，评审后改一版。交付物是两份候选和一份修订；做完等老板选。"
         elif "需求分析" in system:
-            text = json.dumps({"goal": "做一个能带客户看样品、也能坐下来谈的展厅",
-                               "must_have": ["品牌第一眼", "产品序列", "重点展台"],
-                               "site_facts": ["26.17×17.92m，层高 3m", "楼梯与卫生间保留"],
-                               "budget": "60 万含税",
-                               "inferences": ["推断：需要一条 2m 净宽的环游动线"],
-                               "open_questions": ["协诚产品清单缺失"]}, ensure_ascii=False)
+            text = as_json({"goal": "做一个能带客户看样品、也能坐下来谈的展厅",
+                            "must_have": ["品牌第一眼", "产品序列", "重点展台"],
+                            "site_facts": ["26.17×17.92m，层高 3m", "楼梯与卫生间保留"],
+                            "budget": "60 万含税",
+                            "inferences": ["推断：需要一条 2m 净宽的环游动线"],
+                            "open_questions": ["协诚产品清单缺失"]})
         elif "空间规划" in system and "还没开始排平面" in last:
             text = "问你两件事：这个项目你想让人记住什么？天花和重点照明你打算怎么做，我好留空。"
         elif "概念与材质" in system and "刚刚问你" in last:
-            text = "记忆点放在中央那一圈光，人绕着走。天花做环形灯槽压住中岛，北墙只用轨道洗墙，别做满吊顶。"
-        elif '"responses"' in last:
-            revised = plan("A", 2)
-            text = json.dumps({
-                "responses": [
-                    {"issue_id": "I1", "action": "accept", "change": "南侧加 1.2m 过渡带", "reason": ""},
-                    {"issue_id": "I2", "action": "accept", "change": "北光廊补到 7 个射灯", "reason": ""},
-                    {"issue_id": "I3", "action": "reject", "change": "", "reason": "B 不在本轮深化范围"},
-                    {"issue_id": "I4", "action": "accept", "change": "品牌墙改 R4660 弧墙", "reason": ""},
-                    {"issue_id": "I5", "action": "accept", "change": "面积表拆出楼梯与卫生间", "reason": ""},
-                ],
-                "plan": revised,
-            }, ensure_ascii=False)
-        elif "空间规划" in system and "候选 B" in last:
-            text = json.dumps(plan("B"), ensure_ascii=False)
-        elif "空间规划" in system and "候选 A" in last:
-            text = json.dumps(plan("A"), ensure_ascii=False)
+            text = "记忆点放在中央那一圈光，人绕着走。天花做环形灯槽压住中岛，北墙只用轨道洗墙。"
         elif "设计总监" in system:
-            text = json.dumps({
-                "verdict": "revise",
-                "summary": "两个方案都能用，但 A 的环游半径过大，B 的一轴到底让北光廊变成死胡同。",
-                "issues": [
-                    {"issue_id": "I1", "candidate": "A", "severity": "blocker", "objects": ["C1"],
-                     "rule_id": "CIR-001", "evidence": "环游净宽 2000mm 但从南侧绕回缺少收口",
-                     "suggest": "在南场景与环游之间加 1200mm 的过渡带"},
-                    {"issue_id": "I2", "candidate": "A", "severity": "major", "objects": ["Z3"],
-                     "rule_id": "STD-005", "evidence": "北光廊只有 3 个灯位，2/3 长度没有照明",
-                     "suggest": "按 3m 间距补轨道射灯"},
-                    {"issue_id": "I3", "candidate": "B", "severity": "major", "objects": ["Z5"],
-                     "rule_id": "STD-004", "evidence": "东洽谈区没有对应的视线与采光",
-                     "suggest": "洽谈区靠东窗布置"},
-                    {"issue_id": "I4", "candidate": "A", "severity": "minor", "objects": ["F3"],
-                     "rule_id": "STD-001", "evidence": "只有一处斜置，另一处非直角靠中岛支撑",
-                     "suggest": "入口品牌墙做成弧墙"},
-                    {"issue_id": "I5", "candidate": "A", "severity": "blocker", "objects": ["Z4"],
-                     "rule_id": "STD-003", "evidence": "面积表把差额全塞给通道，没有说明",
-                     "suggest": "拆出楼梯与卫生间占用面积"},
-                ],
-                "better": "A",
-                "why": "A 的环游更符合带客户看展的节奏，只要把北侧照明补齐。",
-            }, ensure_ascii=False)
-        elif "逐条回应" in last:
-            revised = plan("A", 2)
-            text = json.dumps({
-                "responses": [
-                    {"issue_id": "I1", "action": "accept", "change": "南侧加 1.2m 过渡带", "reason": ""},
-                    {"issue_id": "I2", "action": "accept", "change": "北光廊补到 7 个射灯", "reason": ""},
-                    {"issue_id": "I3", "action": "reject", "change": "", "reason": "B 不在本轮深化范围"},
-                    {"issue_id": "I4", "action": "accept", "change": "品牌墙改 R4660 弧墙", "reason": ""},
-                    {"issue_id": "I5", "action": "accept", "change": "面积表拆出楼梯与卫生间", "reason": ""},
-                ],
-                "plan": revised,
-            }, ensure_ascii=False)
+            text = as_json({"verdict": "revise",
+                            "summary": "A 的环游半径偏大，B 的一轴到底让北端洽谈变成死角；两案都要补照明与收口。",
+                            "issues": review_issues(),
+                            "better": "A", "why": "A 更符合带客户看展的节奏，只要补齐北侧照明与斜线关系。"})
+        # Revision prompts are checked BEFORE option prompts: they also mention
+        # "候选 A" as the revision target, so a loose match would return a fresh
+        # option instead of the patch and lose the per-issue responses.
+        elif "白名单 patch" in last or "逐条回应" in last or "自动打回" in last:
+            text = as_json(revision_payload())
+        elif "空间规划" in system and "请产出候选 B" in last:
+            text = as_json(valid_proposal("B"))
+        elif "空间规划" in system and "请产出候选 A" in last:
+            text = as_json(valid_proposal("A"))
         else:
             text = "收到。"
-        return {"content": text, "tool_calls": [], "usage": {"in": 1200, "out": 400},
+        return {"content": text, "tool_calls": [],
+                "usage": {"in": 1200, "out": 400, "known": True,
+                          "cost_status": "unknown_no_price_table"},
                 "model": self.config.model}
 
     def chat_vision(self, messages, images, temperature=0.4, max_tokens=1000, json_only=False):
         self.usage.add(1500, 300)
-        return {"content": json.dumps({
-            "summary": "（假模型）两张草案都偏方块感，天花的表达弱于案例参照。",
+        return {"content": as_json({
+            "summary": "（本地桩）草案只画了分区与家具，未画天花与灯具；不据图面推断数据缺失。",
             "observations": [{"target": "A", "observation": "矩形分区", "gap": "缺圆弧",
                               "suggest": "入口做弧墙"}],
-            "limits": "假模型不真的看图，仅验证管线"}, ensure_ascii=False),
-            "usage": {"in": 1500, "out": 300}, "model": "fake-model",
-            "image_count": len(images)}
+            "limits": "本地桩不真的看图，仅验证管线"}),
+            "usage": {"in": 1500, "out": 300, "known": True,
+                      "cost_status": "unknown_no_price_table"},
+            "model": "local-model-stub", "image_count": len(images)}
 
 
 def main() -> int:
-    tmp = Path(tempfile.mkdtemp(prefix="studio-test-"))
-    store = Store(tmp / "studio.db")
+    scratch = ROOT / "var" / "evidence" / "architecture-handoff" / "first-batch" / "after" / "scratch"
+    scratch.mkdir(parents=True, exist_ok=True)
+    store = Store(scratch / f"studio-loop-{os.getpid()}.db")
     studio = orchestrator.Studio(store)
     studio.seed_from_fixtures()
+    # boss feedback must enter the revision input (Q07)
+    store.add_feedback("ningbo-xiecheng", "boss_message", "调整洽谈区、保留入口")
     orchestrator.Client = FakeClient  # type: ignore[assignment]
-    orchestrator.vision.svg_to_jpeg = lambda svg, limit=720: FAKE_JPEG  # type: ignore[assignment]
-    orchestrator.vision.reference_jpeg = lambda limit=720: FAKE_JPEG  # type: ignore[assignment]
+    vision.svg_to_jpeg = lambda svg, limit=720: FAKE_JPEG  # type: ignore[assignment]
+    vision.reference_jpeg = lambda limit=720: FAKE_JPEG  # type: ignore[assignment]
     studio.run_a1("ningbo-xiecheng", background=False)
 
     state = store.project_state("ningbo-xiecheng")
     msgs = [m for m in state["messages"] if m["kind"] != "tool"]
     kinds = {m["kind"] for m in msgs}
     plans = [a for a in state["artifacts"] if a["kind"] == "spatial-plan"]
+    raw = [a for a in state["artifacts"] if a["kind"] == "spatial-plan-raw"]
     sketches = [a for a in state["artifacts"] if a["kind"] == "plan-sketch"]
+    valid = [a for a in plans if a["contract_status"] == "valid_candidate"
+             and a["status"] == "valid_candidate"]
     checks = {
         "有任务拆解": "task" in kinds,
         "有讨论": "discussion" in kinds,
-        "有两个候选": len({p["option_id"] for p in plans if p["revision"] == 1}) == 2,
-        "有修订版": any(p["revision"] >= 2 for p in plans),
+        "两个候选均为有效候选": len({p["option_id"] for p in valid if p["revision"] == 1}) == 2,
+        "有修订版": any(p["revision"] >= 2 for p in valid),
         "有缩略图": len(sketches) >= 3,
         "有评审": bool(state["reviews"]) and len(state["reviews"][0]["issues"]) >= 5,
         "有逐条回应": any("逐条回应" in m["body"] for m in msgs),
-        "有闸口": any(g["status"] == "waiting" for g in state["gates"]),
-        "有自动打回": "rework" in kinds,
+        "有闸口且绑定基线": any(g["status"] == "waiting" and g.get("baseline_artifact_id")
+                                for g in state["gates"]),
         "有看图自评": "visual-review" in kinds,
-        "有重做版本": any(p["revision"] >= 3 for p in plans),
         "总监没说通过": all("通过" not in (r["verdict"] or "") for r in state["reviews"]),
+        "老板留言进入版本化反馈": state["feedback_revision"] >= 1
+                                and any("调整洽谈区" in f["text"] for f in state["feedback"]),
+        "修订读取基线ID与对象diff": any("revision_uid" in json.dumps(m["evidence"], ensure_ascii=False)
+                                        for m in msgs),
+        "有检查报告关联": all(p["check_report_id"] for p in valid)
+                          and len(state["check_reports"]) >= 3,
+        "无效原始稿未冒充有效候选": all(a["status"] == "invalid_raw" for a in raw),
+        # Real check: no artifact / run / gate anywhere claims approval or a
+        # design pass. A `succeeded` run only means the flow finished.
+        "阶段状态未自称设计通过": (
+            all(a["status"] not in ("approved", "published", "design_passed")
+                and a["contract_status"] not in ("approved", "design_passed")
+                for a in state["artifacts"])
+            and all(r["status"] in ("succeeded", "incomplete", "failed", "budget_stopped",
+                                    "model_failed", "superseded", "running")
+                    for r in state["runs"])
+            and all("设计通过" not in (g.get("decision") or "") for g in state["gates"])
+        ),
     }
     for k, v in checks.items():
         print(("PASS " if v else "FAIL ") + k)
     print(json.dumps({"messages": len(msgs), "artifacts": len(state["artifacts"]),
+                      "valid_candidates": len(valid), "raw_invalid": len(raw),
+                      "check_reports": len(state["check_reports"]),
+                      "runs": [r["status"] for r in state["runs"]],
                       "tokens": state["usage"]["tokens_total"]}, ensure_ascii=False))
     return 0 if all(checks.values()) else 1
 

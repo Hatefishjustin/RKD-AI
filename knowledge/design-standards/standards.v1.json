@@ -1,67 +1,167 @@
 {
-  "contract_version": "rkd-design-standards.v1",
-  "updated_at": "2026-11-10",
-  "note": "老板逐条反馈沉淀成的可校验规则。每条必须有 id、出处、可校验方式；评审必须引用 id，生成必须在 standards_cited 里列出用到的条目。",
+  "contract_version": "rkd-design-standards.v2",
+  "updated_at": "2026-11-12",
+  "schema_note": "ARC-06 修正：每条规则把『用户原话 / 项目适用范围 / 派生启发式 / 专业规范依据 / 程序实际覆盖』分开。数值阈值（2 处非直角、60% 天花覆盖、3 个概念、469㎡）一律标为 derived_heuristic，不作为设计通过判据；程序无法验证的项标 unsupported/unknown，不推断专业合规。旧字段 id/title/rule/source/applies_to/severity 保留以兼容既有评审引用。",
+  "fields": {
+    "source": "用户原话或来源标题的原文引用，仅表示说过什么，不等于量化数值要求",
+    "scope": "本条适用于哪个项目/阶段/对象；不得从单个项目外推为普遍规范",
+    "derived_heuristic": "由执行 AI 派生的工作阈值：{value, basis, is_user_explicit_number, is_professional_standard, is_pass_criterion, note}",
+    "professional_basis": "可引用的专业规范/法规依据；没有经确认依据时为 null 并写明缺口",
+    "program_coverage": "程序当前真正检查到什么：{status: checked|partial|unsupported|unknown, checks: [...], not_checked: [...]}",
+    "checkable": "旧字段，保留为可读摘要；不再视为自动通过的判据"
+  },
   "rules": [
     {
       "id": "STD-001",
       "title": "禁止堆叠方块",
-      "rule": "分区与体块不能用若干直角矩形色块排列表达；必须有圆角、弧形、斜置、收边等设计动作，且非直角元素不少于 2 处。",
+      "rule": "分区与体块不能用若干直角矩形色块排列表达；应有圆角、弧形、斜置、收边等设计动作。设计价值由用户判断。",
       "source": "老板 2026-11-10「我之前批评过堆叠方块，请注意」",
+      "scope": "宁波协诚样品展厅 · 概念与空间候选阶段 · 分区/展台/造型对象",
+      "derived_heuristic": {
+        "value": "非直角对象 >= 2 处",
+        "basis": "执行 AI 为让『禁止堆叠方块』可观察而派生的计数阈值，来自方案A第3版的做法，不是用户说出的数字",
+        "is_user_explicit_number": false,
+        "is_professional_standard": false,
+        "is_pass_criterion": false,
+        "note": "程序只核对声明与几何对象是否对应，报 major 提醒；不得据此判设计通过或不通过"
+      },
+      "professional_basis": null,
+      "professional_basis_gap": "未取得经确认的规范条文；不得把经验做法包装成普遍专业规范",
+      "program_coverage": {
+        "status": "partial",
+        "checks": ["strategy.non_orthogonal 声明数 vs 多边形非直角边/圆角展台等真实几何对象数"],
+        "not_checked": ["设计感", "比例与收边质量", "材质变化", "用户观感"]
+      },
       "applies_to": ["D2", "D3", "R"],
-      "severity": "blocker",
-      "checkable": "non_orthogonal_count >= 2"
+      "severity": "major",
+      "checkable": "non_orthogonal_claim_geometry_correspondence (启发式，不作判据)"
     },
     {
       "id": "STD-002",
       "title": "图元必须可命名",
-      "rule": "图上每个图元都要有名称或图例编号；说明不了的黑线、空白色块一律删除。",
+      "rule": "图上每个图元都要有名称或图例编号；说明不了的黑线、空白色块应删除或标注。",
       "source": "老板 2026-11-10「说明不了的黑线删除」「每一个图元都要有名称」",
+      "scope": "宁波协诚样品展厅 · 制图表达阶段",
+      "derived_heuristic": null,
+      "professional_basis": null,
+      "professional_basis_gap": "制图表达约定，未声称对应具体国标条文",
+      "program_coverage": {
+        "status": "partial",
+        "checks": ["zones[].name 非空", "对象 id 唯一"],
+        "not_checked": ["SVG 内每一条线/色块是否都有图例编号", "文字避让与可读性"]
+      },
       "applies_to": ["D2", "D4", "R"],
       "severity": "major",
-      "checkable": "unnamed_element_count == 0"
+      "checkable": "unnamed_element_count == 0 (制图器尚未覆盖全部图元)"
     },
     {
       "id": "STD-003",
       "title": "面积必须对得上",
-      "rule": "各分区面积之和必须等于场地可布置面积；对不上就补「通道及其他」，不许把差额藏起来。",
+      "rule": "面积表合计必须对齐程序复算的『可布置范围』（场地外框减去保留楼梯/卫生间），差额按功能区/通道/未分配分类显式列出，不许把差额藏起来。",
       "source": "老板 2026-11-10「面积表补一行通道及其他，使各行加起来等于 469㎡」",
+      "scope": "宁波协诚样品展厅 · 本版底图 26.17×17.92m；469㎡ 是该场地外框面积，不是普遍数值要求",
+      "derived_heuristic": {
+        "value": "面积表合计 ≈ 可布置范围（容差 max(0.75㎡, 1%)）",
+        "basis": "由场地外框与保留条件几何复算得到的口径；469㎡ 原话是该具体项目的外框数，不能等同所有计价面积",
+        "is_user_explicit_number": false,
+        "is_professional_standard": false,
+        "is_pass_criterion": false,
+        "note": "容差属程序数值设定；面积对账是几何事实检查，不是设计质量或计价合规结论"
+      },
+      "professional_basis": null,
+      "professional_basis_gap": "建筑面积/计价面积口径须按当地规范与合同由专业人员核定，程序未核验",
+      "program_coverage": {
+        "status": "checked",
+        "checks": ["shapely 复算分区并集面积", "保留面积扣除", "未分配面积显式输出", "面积表合计对账"],
+        "not_checked": ["计价面积口径", "公摊与墙体面积", "现场实测"]
+      },
       "applies_to": ["D2", "R"],
       "severity": "blocker",
-      "checkable": "abs(sum(area_sqm) - usable_area) <= 1%"
+      "checkable": "area_table_sum == design_scope_sqm (程序几何口径)"
     },
     {
       "id": "STD-004",
       "title": "成果要覆盖每个功能区",
       "rule": "效果图不能只拍同一个主体；每个功能区至少有一张能看懂的画面对应，相机位置必须能在平面图上找到。",
       "source": "老板 2026-11-10「所有图都一样：同一个视角看同一个中岛」",
+      "scope": "阶段2/3 成果表达 · 效果图与相机",
+      "derived_heuristic": null,
+      "professional_basis": null,
+      "professional_basis_gap": "客户交付深度约定，非规范条文",
+      "program_coverage": {
+        "status": "unsupported",
+        "checks": [],
+        "not_checked": ["相机覆盖", "视角差异", "效果图张数", "平面图上相机标注"],
+        "note": "首批不生成效果图，不得宣称已检查"
+      },
       "applies_to": ["D3", "D4", "R"],
       "severity": "major",
-      "checkable": "covered_zone_count == zone_count"
+      "checkable": "covered_zone_count == zone_count (未覆盖，unsupported)"
     },
     {
       "id": "STD-005",
       "title": "天花不是空白",
-      "rule": "顶面必须有设计：吊顶造型、灯槽、灯具点位要成体系，不能交一块空白天花板。天花与灯光由概念角色负责，出图角色只负责落数据。",
+      "rule": "顶面必须有设计：吊顶造型、灯槽、灯具点位要成体系；由概念角色负责，出图角色只落数据。",
       "source": "老板 2026-11-10「天花和灯光要有明确负责人」「顶面图必须体现这部分设计，不能是空白天花」",
+      "scope": "宁波协诚样品展厅 · 概念与天花数据",
+      "derived_heuristic": {
+        "value": "天花覆盖率 >= 0.6",
+        "basis": "执行 AI 先前从方案A推得的 60% 数字，来源标题里没有这个数值，也没有专业规范依据",
+        "is_user_explicit_number": false,
+        "is_professional_standard": false,
+        "is_pass_criterion": false,
+        "note": "已删除覆盖率判据；程序只检查 ceiling 数据里是否存在灯槽/灯具，不用比率判通过"
+      },
+      "professional_basis": null,
+      "professional_basis_gap": "照度/色温/应急照明须按适用标准与电气专业核定，本系统未计算照度，不编造数值",
+      "program_coverage": {
+        "status": "partial",
+        "checks": ["ceiling.coves / ceiling.fixtures 数据是否存在"],
+        "not_checked": ["照度计算", "灯具配光与间距", "天花覆盖率", "草案缩略图未绘制天花（表达缺口，不等于数据缺失）"]
+      },
       "applies_to": ["D3", "D4", "R"],
-      "severity": "blocker",
-      "checkable": "ceiling_coverage_ratio >= 0.6"
+      "severity": "major",
+      "checkable": "ceiling_has_coves_or_fixtures (数据检查，不是覆盖率)"
     },
     {
       "id": "STD-006",
       "title": "概念先发散再收敛",
-      "rule": "概念阶段至少 3 个方向明显不同的候选，每个写清叙事与取舍；由总监评审后选择或合并，不许第一个想法直接进深化。",
+      "rule": "概念阶段应给出方向明显不同的候选并写清叙事与取舍，由总监评审后选择或合并。",
       "source": "老板 2026-11-10「概念阶段先发散，出 3 个方向明显不同的概念」",
+      "scope": "A2 概念发散阶段（本批未授权进入）",
+      "derived_heuristic": {
+        "value": "概念候选 >= 3 且两两差异 >= 2",
+        "basis": "原话提到 3 个方向，但『两两差异>=2』是执行 AI 派生的量化口径，未获确认",
+        "is_user_explicit_number": true,
+        "is_professional_standard": false,
+        "is_pass_criterion": false,
+        "note": "A2 未授权；本批不把双候选冒称 3 概念，也不因此判失败"
+      },
+      "professional_basis": null,
+      "professional_basis_gap": "无需专业规范；属工作方式约定",
+      "program_coverage": {
+        "status": "partial",
+        "checks": ["双候选结构签名实质差异（Q06）"],
+        "not_checked": ["3 个概念发散", "自由协作"]
+      },
       "applies_to": ["D3", "R"],
       "severity": "major",
-      "checkable": "concept_option_count >= 3 and pairwise_difference >= 2"
+      "checkable": "pairwise_structural_difference (仅双候选，A2 未启用)"
     },
     {
       "id": "STD-007",
       "title": "动手前先讨论",
-      "rule": "空间规划与概念设计在动手前必须有一次讨论，讨论记录进入项目档案；没有讨论记录的方案不予评审。",
+      "rule": "空间规划与概念设计在动手前必须有一次讨论，讨论记录进入项目档案。",
       "source": "老板 2026-11-10「D2 和 D3 动手前先讨论一次，讨论记录要留下」",
+      "scope": "A1 回路 · 每次候选生成前",
+      "derived_heuristic": null,
+      "professional_basis": null,
+      "professional_basis_gap": "流程约定，非专业规范",
+      "program_coverage": {
+        "status": "checked",
+        "checks": ["discussion 消息落库", "任务记录"],
+        "not_checked": ["讨论质量"]
+      },
       "applies_to": ["D2", "D3", "P"],
       "severity": "major",
       "checkable": "discussion_message_count >= 2"
@@ -69,8 +169,17 @@
     {
       "id": "STD-008",
       "title": "评审要具体到对象",
-      "rule": "评审意见必须带问题对象、严重度、依据和建议改法；空泛评价（「感觉不好」）不算意见，设计师必须逐条回应。",
+      "rule": "评审意见必须带问题对象、严重度、依据和建议改法；空泛评价不算意见，设计师必须逐条回应。",
       "source": "老板 2026-11-10「每条有没有依据」「评审意见有没有真的改到方案里」",
+      "scope": "A1 回路 · 评审与修订",
+      "derived_heuristic": null,
+      "professional_basis": null,
+      "professional_basis_gap": "流程约定，非专业规范",
+      "program_coverage": {
+        "status": "checked",
+        "checks": ["每条 issue 是否有 objects", "逐条 response 是否存在", "accept 的 issue 是否在其点名对象上产生 diff", "reject 是否有理由"],
+        "not_checked": ["意见本身的专业正确性"]
+      },
       "applies_to": ["R", "D2", "D3", "D4"],
       "severity": "blocker",
       "checkable": "every_issue_has_object_and_evidence"
@@ -80,15 +189,34 @@
       "title": "展品要能认出来",
       "rule": "展品必须对应真实产品或明确标注为示意样品；资料不足时标注来源缺口，不许用抽象几何体冒充产品。",
       "source": "老板 2026-11-10「现在像桶…确认不了就标示意展品」",
+      "scope": "阶段2/3 效果图与展品表达",
+      "derived_heuristic": null,
+      "professional_basis": null,
+      "professional_basis_gap": "无产品清单，未做展品核对",
+      "program_coverage": {
+        "status": "unsupported",
+        "checks": [],
+        "not_checked": ["展品-产品对应", "示意样品标注", "首批发图"],
+        "note": "首批不生成效果图"
+      },
       "applies_to": ["D3", "D4", "R"],
       "severity": "major",
-      "checkable": "product_has_source_or_label"
+      "checkable": "product_has_source_or_label (unsupported)"
     },
     {
       "id": "STD-010",
       "title": "闸口只能由老板放行",
       "rule": "任何 Agent（含总监）不得宣布方案通过；总监只能给出建议，最终批准必须由老板在网页上点击。",
       "source": "老板 2026-11-10「闸口:总监只能建议，最终由我点头」",
+      "scope": "全部阶段 · 责任边界（永久规则）",
+      "derived_heuristic": null,
+      "professional_basis": null,
+      "professional_basis_gap": "用户授权与责任边界，非专业规范",
+      "program_coverage": {
+        "status": "checked",
+        "checks": ["模型提案禁止 approved/adopt_pointer/status/decision 字段", "闸口绑定具体成果基线", "决定记录 append-only", "允许继续试验/认可设计方向均标记不等于设计通过", "design_approved_by_user 恒 false"],
+        "not_checked": ["真实专业签核"]
+      },
       "applies_to": ["P", "R", "D4"],
       "severity": "blocker",
       "checkable": "gate_decision_by == boss"

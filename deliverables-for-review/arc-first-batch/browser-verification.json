@@ -1,0 +1,45 @@
+{
+  "schema_version": "rkd-arc-browser-verification.v1",
+  "checked_at": "2026-11-12T15:47:39.778763+00:00",
+  "main_url": "http://127.0.0.1:63139",
+  "studio_url": "http://127.0.0.1:8099",
+  "passed": true,
+  "node_returncode": 0,
+  "duration_seconds": 10.99,
+  "restart_persistence": {
+    "feedback_revision": 2,
+    "artifacts": 15,
+    "gates": 1,
+    "decided_gates": 1,
+    "check_reports": 6,
+    "valid_candidates": 6,
+    "legacy_artifact_preserved": true
+  },
+  "external_calls": 0,
+  "keys_used": false,
+  "model_channel": "local-model-stub (explicitly labelled)",
+  "image_counts": {
+    "images_sent_external": 0,
+    "images_generated_local": 0,
+    "stub_placeholder_images_in_loop": "A1 看图自评步骤向本地模型桩传入 3 张占位字节；未调用任何外部图像/模型通道",
+    "note": "runs.images_sent 是本轮传给本地桩的占位张数，不等于外发图片数"
+  },
+  "boundaries": [
+    "isolated SQLite main workbench + isolated Studio DB; daily studio.db untouched",
+    "no external model/image calls; no key; cost 0",
+    "browser evidence supports engineering control, NOT design or professional sign-off",
+    "AD01—AD08 unchanged; user design-stage confirmation has NOT happened"
+  ],
+  "evidence_files": [
+    "arc-failure.png",
+    "arc-feedback-desktop.png",
+    "arc-mobile.png",
+    "arc-other-project.png",
+    "arc-reload-desktop.png",
+    "arc-revision-desktop.png",
+    "browser-observations.json",
+    "browser-stderr.log",
+    "browser-stdout.log",
+    "verification.json"
+  ]
+}

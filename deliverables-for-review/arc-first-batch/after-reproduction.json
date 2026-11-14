@@ -1,0 +1,430 @@
+{
+  "phase": "after",
+  "generated_at": "2026-11-12T23:48:30+08:00",
+  "baseline_commit": "d6501a9b5b963b0a11a9e148b32eda269f18414b",
+  "python": "3.12.14",
+  "external_model_calls": 0,
+  "arc01_contract": {
+    "stored_latest_plans": [
+      {
+        "artifact_id": "art_1e215e22ec",
+        "option_id": "B",
+        "schema_error_count": 66,
+        "first_errors": [
+          {
+            "json_path": "/strategy/non_orthogonal/0",
+            "validator": "type",
+            "message": "{'action': '两端圆弧收边', 'id': 'NA-01', 'object': '重点展台外轮廓'} is not of type 'string'"
+          },
+          {
+            "json_path": "/strategy/non_orthogonal/1",
+            "validator": "type",
+            "message": "{'action': '斜切端头', 'id': 'NA-02', 'object': '产品序列导向端头'} is not of type 'string'"
+          },
+          {
+            "json_path": "/zones/0",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/1",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/2",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/3",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/4",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/5",
+            "validator": "required",
+            "message": "'role' is a required property"
+          }
+        ],
+        "plan_is_valid": [
+          false,
+          "structure 阶段 66 条契约问题：/strategy/non_orthogonal/0 {'action': '两端圆弧收边', 'id': 'NA-01', 'object': '重点展台外轮廓'} is not of type 'string'"
+        ]
+      },
+      {
+        "artifact_id": "art_c841786e45",
+        "option_id": "A",
+        "schema_error_count": 66,
+        "first_errors": [
+          {
+            "json_path": "/strategy/non_orthogonal/0",
+            "validator": "type",
+            "message": "{'name': '中心重点展台弧角轮廓', 'points_mm': [[10800, 8200], [13200, 8200], [14000, 9000], [14000, 10400], [13200, 11200], [10800, 11200], [10000, 10400], [10000, 9000]]"
+          },
+          {
+            "json_path": "/strategy/non_orthogonal/1",
+            "validator": "type",
+            "message": "{'name': '生活场景斜向收边', 'points_mm': [[14800, 11100], [20000, 11100], [20500, 11600], [20500, 15800], [14800, 15800]], 'type': 'diagonal'} is not of type 'string'"
+          },
+          {
+            "json_path": "/zones/0",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/1",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/2",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/3",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/4",
+            "validator": "required",
+            "message": "'role' is a required property"
+          },
+          {
+            "json_path": "/zones/5",
+            "validator": "required",
+            "message": "'role' is a required property"
+          }
+        ],
+        "plan_is_valid": [
+          false,
+          "structure 阶段 66 条契约问题：/strategy/non_orthogonal/0 {'name': '中心重点展台弧角轮廓', 'points_mm': [[10800, 8200], [13200, 8200], [14000, 9000], [14000, 10400], [13200, 11200], [10800, 11200], [10000, 10400], [10000, 9000]], 'type': 'rounded-corner'} is not of type 'string'"
+        ]
+      }
+    ],
+    "minimal_gate_probes": {
+      "zone_missing_role": {
+        "schema_errors": 1,
+        "plan_is_valid": [
+          false,
+          "structure 阶段 1 条契约问题：/zones/0 'role' is a required property"
+        ]
+      },
+      "area_table_wrong_type": {
+        "schema_errors": 1,
+        "plan_is_valid": [
+          false,
+          "structure 阶段 1 条契约问题：/area_table/0/area_sqm 'one' is not of type 'number'"
+        ]
+      },
+      "furniture_invalid_catalog_ref": {
+        "schema_errors": 0,
+        "plan_is_valid": [
+          false,
+          "semantics 阶段 1 条契约问题：/furniture/0/catalog_id 家具引用了不存在的目录条目「not-in-catalog-xyz」"
+        ],
+        "semantic_reference_checked": false
+      },
+      "model_claims_approval_and_adoption": {
+        "schema_errors": 1,
+        "plan_is_valid": [
+          false,
+          "structure 阶段 2 条契约问题：/adopt_pointer 模型擅自写入决定字段「adopt_pointer」"
+        ],
+        "model_owns_approval_field": true
+      }
+    },
+    "site_used": {
+      "width_mm": 26170,
+      "height_mm": 17920
+    }
+  },
+  "arc02_geometry": {
+    "100sqm_3sqm_zones": {
+      "input": "100㎡ 场地 / 3 个各 1㎡ 分区 / 面积表 3㎡ / 动线不连接分区",
+      "check_ok": false,
+      "blocker_count": 2,
+      "issue_ids": [
+        "AREA-002",
+        "AREA-001",
+        "CIR-002",
+        "STD-001"
+      ],
+      "metrics": {
+        "geometry_engine": "shapely-2.1.2",
+        "site_area_sqm": 100.0,
+        "reserved_area_sqm": 0.0,
+        "design_scope_sqm": 100.0,
+        "zone_count": 3,
+        "zone_area_sum_sqm": 3.0,
+        "unallocated_sqm": 97.0,
+        "non_orthogonal_geometry_objects": [
+          "CV1"
+        ],
+        "area_table_sum_sqm": 3.0,
+        "area_table_functional_declared_sqm": 3.0,
+        "area_table_other_declared_sqm": 0.0,
+        "computed_unallocated_sqm": 97.0,
+        "area_reconciliation_basis": "design_scope_sqm",
+        "area_reconciliation_tolerance_sqm": 1.0,
+        "area_reconciliation_gap_sqm": 97.0,
+        "unallocated_declaration_gap_sqm": 97.0,
+        "layout_complete": false,
+        "furniture_count": 0,
+        "non_orthogonal_claim_count": 2,
+        "non_orthogonal_geometry_count": 1,
+        "cove_count": 1,
+        "light_fixture_count": 0,
+        "preserved_object_ids": []
+      },
+      "unallocated_sqm_reported": true
+    },
+    "disjoint_triangles_bbox_overlap": {
+      "input": "A=[(0,0),(4000,0),(0,4000)] B=[(4000,4000),(4000,500),(500,4000)]",
+      "shapely_actual_intersection_area_mm2": 0.0,
+      "shapely_intersects": false,
+      "check_issue_ids": [
+        "AREA-001",
+        "AREA-003",
+        "STD-005"
+      ],
+      "GEO_004_reported": false
+    },
+    "area_table_completed_then_contradiction": {
+      "input": "面积表补『通道及其他』凑 469㎡，轮廓只统计功能区 25㎡",
+      "issue_ids": [
+        "LOCK-001",
+        "AREA-002",
+        "AREA-001",
+        "CIR-003",
+        "CIR-003",
+        "CIR-004",
+        "STD-001",
+        "STD-005"
+      ],
+      "hints": [
+        "保留楼梯/卫生间不得被分区覆盖；请在设计范围外表达",
+        "面积表合计应对齐可布置范围 430.2㎡；功能区 25.0㎡ 之外的 405.2㎡ 用一行显式列出并说明用途",
+        "探索阶段允许未分配，但必须在面积表单列一行写明真实数值与用途；不允许隐藏后标记为完整布局",
+        "绕开保留楼梯/卫生间，或明确设置门斗连接",
+        "按几何拓宽通路或移开障碍；仅调 width_mm 自报值无效",
+        "让主动线起点落在入口门斗/入口带内",
+        "每条声明绑定具体分区/展台/灯槽 id，并在 polygon 或 corner_radius 中体现；该阈值是启发式，不作设计通过判据",
+        "先检查 ceiling.coves / ceiling.fixtures 数据；草案缩略图未绘制天花，不能仅凭图面推断数据存在与否。天花覆盖率 60% 属未确认启发式，不作判据"
+      ],
+      "metrics": {
+        "geometry_engine": "shapely-2.1.2",
+        "site_area_sqm": 468.966,
+        "reserved_area_sqm": 38.799,
+        "design_scope_sqm": 430.167,
+        "zone_count": 1,
+        "zone_area_sum_sqm": 25.0,
+        "unallocated_sqm": 405.167,
+        "non_orthogonal_geometry_objects": [],
+        "area_table_sum_sqm": 469.0,
+        "area_table_functional_declared_sqm": 25.0,
+        "area_table_other_declared_sqm": 444.0,
+        "computed_unallocated_sqm": 405.167,
+        "area_reconciliation_basis": "design_scope_sqm",
+        "area_reconciliation_tolerance_sqm": 4.302,
+        "area_reconciliation_gap_sqm": 38.833,
+        "unallocated_declaration_gap_sqm": 38.833,
+        "layout_complete": false,
+        "measured_clear_width_mm::C1": 0.0,
+        "furniture_count": 0,
+        "non_orthogonal_claim_count": 2,
+        "non_orthogonal_geometry_count": 0,
+        "cove_count": 0,
+        "light_fixture_count": 0,
+        "preserved_object_ids": []
+      }
+    },
+    "non_orthogonal_text_only": {
+      "input": "2 条非直角文字声明，所有分区均为轴对齐矩形",
+      "metrics_non_orthogonal_count": null,
+      "STD_001_reported": true,
+      "geometry_correspondence_checked": false
+    }
+  },
+  "arc03_context": {
+    "truncation_sites": [],
+    "plan_json_chars": 4416,
+    "tail_object_char_position": 4175,
+    "limits": {
+      "4000": {
+        "tail_object_reachable": false
+      },
+      "3500": {
+        "tail_object_reachable": false
+      },
+      "3000": {
+        "tail_object_reachable": false
+      }
+    },
+    "review_context_uses": "ctx + 候选 A json[:4000] + 候选 B json[:4000]",
+    "revision_context_uses": "ctx + 原候选 json[:4000]；打回稿 json[:3500]；issues json[:3000]",
+    "baseline_id_in_downstream_prompt": true
+  },
+  "arc04_feedback_project_version": {
+    "frontend_project_hardcode": {
+      "line": 62,
+      "expression": "projectId ?? \"\"",
+      "both_branches_ningbo": false
+    },
+    "boss_message": {
+      "tables": [
+        "projects",
+        "tasks",
+        "messages",
+        "sqlite_sequence",
+        "artifacts",
+        "reviews",
+        "gates",
+        "gate_revisions",
+        "feedback",
+        "check_reports",
+        "runs"
+      ],
+      "has_feedback_table": true,
+      "message_count": 1,
+      "requirement_after": "原始需求",
+      "became_versioned_feedback": false
+    },
+    "seed_overwrites_existing_facts": {
+      "seeded_ids": [
+        "ningbo-xiecheng"
+      ],
+      "name_after_seed": "自定义名称",
+      "requirement_text_after_seed": "老板后来改过的需求",
+      "site_width_after_seed": 1
+    },
+    "gate_replay": {
+      "first_decision": "approve",
+      "first_comment": "第一次决定",
+      "decided_at_first": "2026-11-12T23:48:30+08:00",
+      "after_replay_decision": "approve",
+      "after_replay_comment": "第一次决定",
+      "decided_at_after": "2026-11-12T23:48:30+08:00",
+      "replay_overwrote_decision": false
+    },
+    "gate_columns": [
+      "id",
+      "project_id",
+      "title",
+      "detail",
+      "status",
+      "decision",
+      "comment",
+      "created_at",
+      "decided_at",
+      "baseline_artifact_id",
+      "baseline_revision_uid",
+      "decision_scope"
+    ],
+    "artifact_columns": [
+      "id",
+      "project_id",
+      "task_id",
+      "kind",
+      "option_id",
+      "revision",
+      "parent_revision",
+      "author",
+      "payload_json",
+      "sha256",
+      "status",
+      "created_at",
+      "run_id",
+      "candidate_group_id",
+      "revision_uid",
+      "parent_revision_uid",
+      "input_hash",
+      "check_report_id",
+      "contract_status",
+      "diagnostics_json"
+    ],
+    "run_columns": [
+      "id",
+      "project_id",
+      "status",
+      "started_at",
+      "ended_at",
+      "tokens_in",
+      "tokens_out",
+      "model",
+      "error",
+      "input_hash",
+      "expected_feedback_revision",
+      "candidate_group_id",
+      "cancel_requested",
+      "calls",
+      "images_sent",
+      "images_generated",
+      "cost_amount",
+      "cost_status"
+    ],
+    "messages_endpoint": {
+      "writes_only_timeline_message": true,
+      "has_feedback_write": true,
+      "has_expected_version": false
+    },
+    "run_a1_signature": "(self, project_id: 'str', background: 'bool' = True, expected_feedback_revision: 'int | None' = None) -> 'dict'"
+  },
+  "arc06_rules_and_cost": {
+    "rules_with_numeric_thresholds": [
+      {
+        "id": "STD-002",
+        "title": "图元必须可命名",
+        "source": "老板 2026-11-10「说明不了的黑线删除」「每一个图元都要有名称」",
+        "checkable": "unnamed_element_count == 0 (制图器尚未覆盖全部图元)",
+        "severity": "major",
+        "has_project_scope": true,
+        "has_heuristic_marking": true,
+        "has_professional_basis": true,
+        "has_program_coverage": true,
+        "numeric_not_pass_criterion": true
+      },
+      {
+        "id": "STD-006",
+        "title": "概念先发散再收敛",
+        "source": "老板 2026-11-10「概念阶段先发散，出 3 个方向明显不同的概念」",
+        "checkable": "pairwise_structural_difference (仅双候选，A2 未启用)",
+        "severity": "major",
+        "has_project_scope": true,
+        "has_heuristic_marking": true,
+        "has_professional_basis": true,
+        "has_program_coverage": true,
+        "numeric_not_pass_criterion": true
+      },
+      {
+        "id": "STD-007",
+        "title": "动手前先讨论",
+        "source": "老板 2026-11-10「D2 和 D3 动手前先讨论一次，讨论记录要留下」",
+        "checkable": "discussion_message_count >= 2",
+        "severity": "major",
+        "has_project_scope": true,
+        "has_heuristic_marking": true,
+        "has_professional_basis": true,
+        "has_program_coverage": true,
+        "numeric_not_pass_criterion": true
+      }
+    ],
+    "note": "未区分用户原话 / 项目适用范围 / 派生启发式 / 专业规范依据 / 程序实际覆盖",
+    "llm_budget": {
+      "guard_only_max_tokens": false,
+      "usage_missing_defaults_zero": false,
+      "has_pending_reconciliation": true,
+      "downgrade_on_any_response_format_error": false,
+      "downgrade_only_on_unsupported": true,
+      "input_and_output_reserved": true,
+      "usage_missing_is_unknown": true
+    }
+  }
+}

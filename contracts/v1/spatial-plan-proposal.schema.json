@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rkd.local/contracts/v1/spatial-plan-proposal.schema.json",
+  "title": "Spatial plan MODEL PROPOSAL (studio agent hand-off, identity-free)",
+  "description": "模型只提交设计提案：不得决定 project_id / option_id / revision / author / contract_version 等身份字段，也不得写入 approved / adopt_pointer / status / decision 等批准或采用指针。这些由程序在校验通过后按版本链注入，形成 spatial-plan-draft.v1 完整交接文档。单位 mm，面积 ㎡。本契约与原 draft 契约同为 additionalProperties:false，未放宽任何必填项。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["strategy", "zones", "circulation", "furniture", "area_table", "open_questions"],
+  "properties": {
+    "strategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "narrative", "tradeoffs", "non_orthogonal"],
+      "properties": {
+        "name": { "type": "string", "minLength": 2 },
+        "narrative": { "type": "string", "minLength": 20 },
+        "tradeoffs": { "type": "array", "minItems": 2, "items": { "type": "string" } },
+        "non_orthogonal": { "type": "array", "minItems": 2, "items": { "type": "string" } }
+      }
+    },
+    "zones": {
+      "type": "array", "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "role", "polygon", "area_sqm"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 2 },
+          "role": { "type": "string", "enum": ["arrival", "gallery", "island", "scene", "meeting", "service", "circulation", "support"] },
+          "polygon": { "type": "array", "minItems": 3, "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 } },
+          "area_sqm": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "circulation": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "width_mm", "path"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "width_mm": { "type": "number", "minimum": 900 },
+          "path": { "type": "array", "minItems": 2, "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 } }
+        }
+      }
+    },
+    "platforms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "polygon", "height_mm"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string" },
+          "kind": { "type": "string", "enum": ["rounded", "polygon", "stepped"] },
+          "corner_radius_mm": { "type": "number", "minimum": 0 },
+          "polygon": { "type": "array", "minItems": 3, "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 } },
+          "height_mm": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "ceiling": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strategy": { "type": "string" },
+        "coves": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "polygon"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "polygon": { "type": "array", "minItems": 3, "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 } },
+              "band_mm": { "type": "number" },
+              "kelvin": { "type": "number" }
+            }
+          }
+        },
+        "fixtures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "type", "x", "y"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "type": { "type": "string", "enum": ["downlight", "spot", "linear", "pendant", "wallwasher"] },
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "kelvin": { "type": "number" },
+              "aim": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "furniture": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "catalog_id", "x", "y"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "catalog_id": { "type": "string", "minLength": 1 },
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "rot": { "type": "number" },
+          "w_mm": { "type": "number" },
+          "d_mm": { "type": "number" }
+        }
+      }
+    },
+    "area_table": {
+      "type": "array", "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "area_sqm"],
+        "properties": {
+          "name": { "type": "string" },
+          "area_sqm": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "open_questions": { "type": "array", "items": { "type": "string" } },
+    "standards_cited": { "type": "array", "items": { "type": "string" } }
+  }
+}

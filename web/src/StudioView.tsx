@@ -20,13 +20,24 @@ type Run = {
   tokens_in: number; tokens_out: number; error?: string | null;
 };
 type State = {
-  project: { id: string; name: string; site: any; requirement: any };
+  project: { id: string; name: string; site: any; requirement: any;
+             source_project_id?: string; mapping_note?: string };
   messages: Message[]; artifacts: Artifact[]; gates: Gate[]; runs: Run[];
   reviews: Array<{ id: string; verdict: string; summary: string; issues: any[] }>;
   usage: { tokens_in: number; tokens_out: number; tokens_total: number };
   roster: Role[];
   channel: { configured: boolean; model: string; run_limit: number; project_limit: number };
   running: boolean;
+  feedback?: Array<{ id: string; revision_no: number; kind: string; text: string;
+                     baseline_artifact_id?: string; status: string }>;
+  feedback_revision?: number;
+  effective_requirement?: { effective_input_hash?: string; effective_addenda?: any[] };
+  service_scope?: { mode: string; label: string; team_nas_supported: boolean;
+                    supported_project_ids: string[]; project_id_mapping: string };
+  valid_candidate_ids?: string[];
+  stage_status?: { flow_finished: boolean; valid_artifact_exists: boolean;
+                   waiting_user: boolean; design_approved_by_user: boolean; note: string };
+  error?: string;
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -41,18 +52,31 @@ export function StudioView({ projectId }: { projectId?: string }) {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   const [gateComment, setGateComment] = useState<Record<string, string>>({});
+  const [decisionScope, setDecisionScope] = useState<Record<string, string>>({});
   const [openEvidence, setOpenEvidence] = useState<number | null>(null);
   const timer = useRef<number | null>(null);
 
-  const studioId = projectId === "ningbo-xiecheng" ? "ningbo-xiecheng" : "ningbo-xiecheng";
+  // ARC-04: no project hardcoding. The studio id IS the main-system project id;
+  // a project that is not explicitly mapped shows a limitation notice, never
+  // another project's (Ningbo) data.
+  const studioId = projectId ?? "";
+  const mapped = !!projectId;
 
   async function load() {
+    if (!mapped) { setState(null); return; }
     try {
-      const res = await fetch(`${API}/studio/projects/${studioId}/state`, { cache: "no-store" });
-      if (!res.ok) throw new Error(`状态读取失败 ${res.status}`);
+      const res = await fetch(`${API}/studio/projects/${encodeURIComponent(studioId)}/state`,
+        { cache: "no-store" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setState(null);
+        setError(body.error || `状态读取失败 ${res.status}`);
+        return;
+      }
       setState(await res.json());
       setError("");
     } catch (e) {
+      setState(null);
       setError((e as Error).message + "（Studio 服务未启动？运行 python -m rkd_mvp.studio.server）");
     }
   }
@@ -70,9 +94,10 @@ export function StudioView({ projectId }: { projectId?: string }) {
   }, [state]);
 
   async function run() {
+    if (!mapped) return;
     setBusy(true);
     try {
-      const res = await fetch(`${API}/studio/projects/${studioId}/run`, { method: "POST" });
+      const res = await fetch(`${API}/studio/projects/${encodeURIComponent(studioId)}/run`, { method: "POST" });
       const body = await res.json();
       if (!res.ok) setError(body.error || "启动失败");
       else void load();
@@ -84,27 +109,38 @@ export function StudioView({ projectId }: { projectId?: string }) {
   }
 
   async function send() {
-    if (!draft.trim()) return;
-    await fetch(`${API}/studio/projects/${studioId}/messages`, {
+    if (!mapped || !draft.trim()) return;
+    const res = await fetch(`${API}/studio/projects/${encodeURIComponent(studioId)}/messages`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: draft.trim() }),
     });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) { setError(body.error || "留言未保存"); return; }
     setDraft("");
+    setError(`留言已写入版本化有效需求 v${body.feedback?.revision_no ?? "?"}；下一轮修订将读取该输入`);
     void load();
   }
 
   async function decide(gate: Gate, decision: "approve" | "reject") {
     const comment = gateComment[gate.id] || "";
     if (decision === "reject" && !comment.trim()) { setError("驳回必须写理由"); return; }
-    await fetch(`${API}/studio/gates/${gate.id}/decide`, {
+    const scope = decisionScope[gate.id] || "allow_continue";
+    const res = await fetch(`${API}/studio/gates/${gate.id}/decide`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision, comment }),
+      body: JSON.stringify({ decision, comment, decision_scope: scope }),
     });
+    const body = await res.json().catch(() => ({}));
+    setError(body.note || (res.ok ? "决定已记录" : (body.error || "决定失败")));
     void load();
   }
 
-  if (!state) {
-    return <section className="studio"><p className="studio-empty">{error || "正在连接设计公司…"}</p></section>;
+  if (!mapped || !state) {
+    return <section className="studio">
+      <p className="studio-empty">
+        {!mapped ? "当前项目未接入本机设计公司实验服务，不显示其他项目（含宁波）的结果。"
+                 : (error || "正在连接设计公司…")}
+      </p>
+    </section>;
   }
 
   const waitingGate = state.gates.find((g) => g.status === "waiting");
@@ -139,7 +175,28 @@ export function StudioView({ projectId }: { projectId?: string }) {
         </div>
       </header>
 
+      <div className="studio-meta">
+        <span>主系统项目映射：<code>{state.project.source_project_id || state.project.id}</code></span>
+        <span>{state.service_scope?.label || "本机实验服务"}</span>
+        <span>{state.service_scope?.team_nas_supported ? "团队/NAS 已支持" : "未接入团队/NAS"}</span>
+        <span>有效需求 v{state.feedback_revision ?? 0}</span>
+        <span>状态：{state.stage_status?.flow_finished ? "流程跑完" : "未跑完"} ·
+          {state.stage_status?.valid_artifact_exists ? "有有效成果" : "无有效成果"} ·
+          {state.stage_status?.waiting_user ? "等待用户" : "无需等待"} ·
+          设计认可：{state.stage_status?.design_approved_by_user ? "是" : "否（只能由用户给出）"}</span>
+      </div>
+
       {error && <p className="studio-error" role="alert">{error}</p>}
+
+      {(state.feedback || []).length > 0 && (
+        <details className="json-box" open>
+          <summary>老板留言 · 版本化有效需求（{state.feedback!.length} 条）</summary>
+          <ul>{(state.feedback || []).map(f => (
+            <li key={f.id}>v{f.revision_no} [{f.kind}] {f.text}
+              {f.baseline_artifact_id ? ` · 绑定基线 ${f.baseline_artifact_id}` : ""}</li>
+          ))}</ul>
+        </details>
+      )}
 
       <div className="studio-grid">
         <aside className="studio-roster">
@@ -165,9 +222,17 @@ export function StudioView({ projectId }: { projectId?: string }) {
             <div className="gate-card">
               <strong>等你决定：{waitingGate.title}</strong>
               <pre>{waitingGate.detail}</pre>
-              <textarea placeholder="驳回必须写理由（会进规范库候选）"
+              <textarea placeholder="驳回必须写理由（会进入版本化反馈）"
                 value={gateComment[waitingGate.id] || ""}
                 onChange={(e) => setGateComment((c) => ({ ...c, [waitingGate.id]: e.target.value }))} />
+              <label className="gate-scope">
+                决定语义：
+                <select value={decisionScope[waitingGate.id] || "allow_continue"}
+                  onChange={(e) => setDecisionScope((c) => ({ ...c, [waitingGate.id]: e.target.value }))}>
+                  <option value="allow_continue">允许继续试验（不等于设计通过）</option>
+                  <option value="direction_approval">认可设计方向（不等于设计通过）</option>
+                </select>
+              </label>
               <div className="gate-actions">
                 <button onClick={() => void decide(waitingGate, "approve")}>批准</button>
                 <button className="ghost" onClick={() => void decide(waitingGate, "reject")}>驳回</button>
@@ -226,8 +291,8 @@ export function StudioView({ projectId }: { projectId?: string }) {
         </div>
 
         <aside className="studio-artifacts">
-          <h3>成果</h3>
-          {sketches.map((s) => {
+          <h3>成果 · 有效候选（{state.valid_candidate_ids?.length ?? 0}）</h3>
+          {sketches.filter((s) => (s as any).display_group === "valid").map((s) => {
             const plan = plans.find((p) => p.option_id === s.option_id && p.revision === s.revision);
             return (
               <figure key={s.id}>
@@ -235,21 +300,36 @@ export function StudioView({ projectId }: { projectId?: string }) {
                 <figcaption>
                   候选 {s.option_id} · v{s.revision}
                   {plan?.payload?.strategy?.name ? ` · ${plan.payload.strategy.name}` : ""}
+                  <br /><small>基线 {plan?.id} · 校验 {(plan as any)?.contract_status}</small>
                 </figcaption>
               </figure>
             );
           })}
-          {plans.length > 0 && (
+          {plans.filter((p) => (p as any).display_group === "valid").length > 0 && (
             <details className="json-box">
-              <summary>候选数据（版本化 JSON）</summary>
-              {plans.map((p) => (
+              <summary>有效候选数据（版本化 JSON）</summary>
+              {plans.filter((p) => (p as any).display_group === "valid").map((p) => (
                 <div key={p.id}>
                   <strong>候选 {p.option_id} v{p.revision}</strong>
-                  <pre>{JSON.stringify(p.payload, null, 1).slice(0, 1800)}</pre>
+                  <pre>{JSON.stringify(p.payload, null, 1)}</pre>
                 </div>
               ))}
             </details>
           )}
+          <details className="json-box">
+            <summary>历史 / 失效 / 未校验产物（保留，不删除，不等于有效候选）</summary>
+            <ul>
+              {state.artifacts.filter((a) => (a as any).display_group !== "valid").map((a) => (
+                <li key={a.id}>
+                  <code>{a.id}</code> · {a.kind} · v{a.revision} · {a.status} ·
+                  {(a as any).contract_status}
+                  {(a as any).diagnostics?.repair_feedback
+                    ? <div><small>{(a as any).diagnostics.repair_feedback.slice(0, 300)}</small></div>
+                    : null}
+                </li>
+              ))}
+            </ul>
+          </details>
           {state.reviews.map((r) => (
             <details className="json-box" key={r.id}>
               <summary>评审 · {r.verdict}</summary>

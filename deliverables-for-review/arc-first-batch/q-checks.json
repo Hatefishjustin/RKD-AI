@@ -1,0 +1,1023 @@
+{
+  "checks": [
+    {
+      "id": "Q01",
+      "name": "契约有效才进入有效候选；缺role/错类型/无效引用/批准字段被定位；历史保留",
+      "result": "observed_pass",
+      "evidence": {
+        "negative_cases": {
+          "missing_role": {
+            "rejected": true,
+            "stage": "structure",
+            "error_count": 1,
+            "rules": [
+              "CONTRACT-STRUCT"
+            ],
+            "has_actionable_feedback": true
+          },
+          "wrong_type": {
+            "rejected": true,
+            "stage": "structure",
+            "error_count": 1,
+            "rules": [
+              "CONTRACT-STRUCT"
+            ],
+            "has_actionable_feedback": true
+          },
+          "invalid_catalog_ref": {
+            "rejected": true,
+            "stage": "semantics",
+            "error_count": 1,
+            "rules": [
+              "REF-CATALOG"
+            ],
+            "has_actionable_feedback": true
+          },
+          "model_claims_approval": {
+            "rejected": true,
+            "stage": "structure",
+            "error_count": 2,
+            "rules": [
+              "IDENTITY-BOUNDARY",
+              "IDENTITY-BOUNDARY"
+            ],
+            "has_actionable_feedback": true
+          },
+          "duplicate_object_id": {
+            "rejected": true,
+            "stage": "semantics",
+            "error_count": 1,
+            "rules": [
+              "REF-DUP"
+            ],
+            "has_actionable_feedback": true
+          },
+          "unknown_standard": {
+            "rejected": true,
+            "stage": "semantics",
+            "error_count": 1,
+            "rules": [
+              "REF-STANDARD"
+            ],
+            "has_actionable_feedback": true
+          },
+          "unmatched_area_row": {
+            "rejected": true,
+            "stage": "semantics",
+            "error_count": 1,
+            "rules": [
+              "REF-AREA-ROW"
+            ],
+            "has_actionable_feedback": true
+          }
+        },
+        "positive_passed": true,
+        "four_stages": [
+          "structure",
+          "semantics",
+          "geometry",
+          "locks"
+        ],
+        "draft_schema_checked_after_assembly": "passed",
+        "history_retained": true,
+        "valid_candidates": 1,
+        "invalid_raw_retained": 7,
+        "diagnostics_have_field_path": true,
+        "artifact_id": "art_1ffb772198"
+      },
+      "note": ""
+    },
+    {
+      "id": "Q02",
+      "name": "面积唯一口径：100㎡/3㎡ 显式指出 97㎡ 未分配；完整布局对账；补通道不再自相矛盾",
+      "result": "observed_pass",
+      "evidence": {
+        "100sqm_3sqm": {
+          "design_scope_sqm": 100.0,
+          "zone_area_sum_sqm": 3.0,
+          "unallocated_sqm": 97.0,
+          "layout_complete": false,
+          "area_rules": [
+            "AREA-002",
+            "AREA-001"
+          ],
+          "explicit_97sqm_unallocated": true,
+          "ok": false
+        },
+        "complete_layout": {
+          "site_area_sqm": 468.966,
+          "reserved_area_sqm": 38.799,
+          "design_scope_sqm": 430.167,
+          "area_table_sum_sqm": 430.167,
+          "reconciliation_gap_sqm": 0.0,
+          "layout_complete": true,
+          "area_rules": []
+        },
+        "single_basis": "design_scope_sqm",
+        "no_self_contradictory_hint": true,
+        "outer_frame_not_equated_to_billable": true
+      },
+      "note": ""
+    },
+    {
+      "id": "Q03",
+      "name": "实际几何：分离三角形不报相交；真实交集/自交/越界/零面积正确拒绝",
+      "result": "observed_pass",
+      "evidence": {
+        "disjoint_triangles": {
+          "shapely_actual_intersection_mm2": 0.0,
+          "shapely_intersects": false,
+          "rules": [
+            "AREA-001",
+            "AREA-003",
+            "STD-005"
+          ],
+          "GEO_004_reported": false
+        },
+        "geometry_blocker_cases": {
+          "real_intersection": {
+            "ok": false,
+            "rules": [
+              "GEO-004",
+              "AREA-001",
+              "AREA-003",
+              "STD-005"
+            ]
+          },
+          "self_crossing": {
+            "ok": false,
+            "rules": [
+              "GEO-010",
+              "AREA-001",
+              "STD-005"
+            ]
+          },
+          "out_of_bounds": {
+            "ok": false,
+            "rules": [
+              "GEO-003",
+              "AREA-001",
+              "AREA-003",
+              "STD-005"
+            ]
+          },
+          "zero_area": {
+            "ok": false,
+            "rules": [
+              "GEO-010",
+              "AREA-001",
+              "STD-005"
+            ]
+          }
+        },
+        "rejected": {
+          "real_intersection": true,
+          "self_crossing": true,
+          "out_of_bounds": true,
+          "zero_area": true
+        },
+        "engine": "shapely-2.1.2"
+      },
+      "note": ""
+    },
+    {
+      "id": "Q04",
+      "name": "通行与锁定：断路/障碍/瓶颈/入口不可达/保留卫生间/目录引用均有定位",
+      "result": "observed_pass",
+      "evidence": {
+        "broken_route": {
+          "rules": [
+            "CIR-004",
+            "CIR-002"
+          ],
+          "ok": false
+        },
+        "obstacle_crossing": {
+          "rules": [
+            "CIR-003",
+            "CIR-003"
+          ],
+          "ok": false
+        },
+        "reserved_bathroom_changed": {
+          "rules": [
+            "LOCK-001",
+            "AREA-001"
+          ],
+          "ok": false
+        },
+        "furniture_rotated_footprint_in_keepout": {
+          "rules": [
+            "LOCK-001"
+          ],
+          "ok": false
+        },
+        "unknown_catalog_rejected": {
+          "rules": [
+            "FUR-001"
+          ],
+          "ok": false
+        },
+        "measured_bottleneck": {
+          "rules": [
+            "CIR-003",
+            "CIR-003"
+          ],
+          "ok": false,
+          "measured_mm": {
+            "measured_clear_width_mm::CA1": 0.0
+          }
+        },
+        "checks_coverage": {
+          "columns": "unsupported",
+          "doors_windows_geometry": "unsupported",
+          "ceiling_expression": "data_only",
+          "reserved_area_accounting": "checked",
+          "circulation_paths": "checked",
+          "entry_band": "checked",
+          "furniture_catalog": "checked",
+          "non_orthogonal_claims": "checked",
+          "preserved_objects_in_model": "unsupported",
+          "stair_bath_keepout_geometry": "checked",
+          "door_window_lock_geometry": "unsupported",
+          "fire_egress_accessibility": "unsupported",
+          "note": "程序只检查已表达的几何与锁定；门/窗/柱网/消防疏散/无障碍未在契约中建模，一律 unsupported，不视为通过，也不推断设计或专业合规"
+        }
+      },
+      "note": ""
+    },
+    {
+      "id": "Q05",
+      "name": "完整交接：超旧截断长度的末尾对象可被评审/修订读取；基线ID与issue_id明确",
+      "result": "observed_pass",
+      "evidence": {
+        "plan_json_chars": 4706,
+        "old_limits": [
+          4000,
+          3500,
+          3000
+        ],
+        "truncation_sites_in_orchestrator": [],
+        "tail_object_in_full_summary": true,
+        "revision_prompt_uses_full_summary": true,
+        "review_prompt_uses_full_facts": true,
+        "baseline_id_in_prompt": true,
+        "issue_ids_in_prompt": true
+      },
+      "note": ""
+    },
+    {
+      "id": "Q06",
+      "name": "多方案实质不同：换名/换色/顺序/无意义位移不算新拓扑",
+      "result": "observed_pass",
+      "evidence": {
+        "rename_only": {
+          "substantive": false,
+          "reason": "结构签名相同：仅换名/配色/顺序或无意义位移不算新拓扑"
+        },
+        "reorder_only": {
+          "substantive": false
+        },
+        "trivial_shift_only": {
+          "substantive": false
+        },
+        "real_different_topology": {
+          "substantive": true,
+          "zone_topology_changed": true,
+          "circulation_changed": true
+        }
+      },
+      "note": ""
+    },
+    {
+      "id": "Q07",
+      "name": "页面反馈进入版本化有效需求，形成绑定原基线的新修订和真实对象 diff",
+      "result": "observed_pass",
+      "evidence": {
+        "feedback_id": "fb_b01693522b",
+        "feedback_revision": 1,
+        "effective_addenda": [
+          {
+            "feedback_id": "fb_b01693522b",
+            "revision_no": 1,
+            "kind": "boss_message",
+            "text": "调整洽谈区、保留入口",
+            "baseline_artifact_id": "art_base",
+            "baseline_revision_uid": "revuid_base"
+          }
+        ],
+        "effective_input_hash": "8e2078e9ebb8f9782a20c1c624189897e088c9b142266519086c58152f5550c4",
+        "feedback_in_ctx": true,
+        "baseline_bound": true,
+        "object_diff": [
+          "ceiling.coves:CV1",
+          "ceiling.fixtures:L1",
+          "circulation:CA1",
+          "furniture:F3"
+        ],
+        "object_retention_ratio": 1.0,
+        "unrelated_objects_preserved": true,
+        "revision_contract_ok": true,
+        "patch_audit": {
+          "operations": [
+            {
+              "op": "update",
+              "group": "circulation",
+              "id": "CA1",
+              "reason": ""
+            },
+            {
+              "op": "update",
+              "group": "furniture",
+              "id": "F3",
+              "reason": ""
+            },
+            {
+              "op": "update",
+              "group": "ceiling.fixtures",
+              "id": "L1",
+              "reason": ""
+            },
+            {
+              "op": "update",
+              "group": "ceiling.coves",
+              "id": "CV1",
+              "reason": ""
+            }
+          ],
+          "rejected_operations": [],
+          "errors": 0
+        }
+      },
+      "note": ""
+    },
+    {
+      "id": "Q08",
+      "name": "意见逐项对应、拒绝有理由、删除/锁定/身份负例被拒、返工上限仍为2",
+      "result": "observed_pass",
+      "evidence": {
+        "accepted_total": 4,
+        "accepted_verified": 4,
+        "issue_resolutions": [
+          {
+            "issue_id": "I1",
+            "action": "accept",
+            "verified": true,
+            "linked_objects": [
+              "CA1"
+            ],
+            "recheck": "对象 diff 复核",
+            "change": "把主动线净宽调到 2100mm 并复核瓶颈"
+          },
+          {
+            "issue_id": "I2",
+            "action": "accept",
+            "verified": true,
+            "linked_objects": [
+              "F3"
+            ],
+            "recheck": "对象 diff 复核",
+            "change": "把展墙翼旋到 -15° 形成连续斜线"
+          },
+          {
+            "issue_id": "I3",
+            "action": "reject",
+            "verified": true,
+            "reason": "B 不在本轮深化范围，保留为可比较候选"
+          },
+          {
+            "issue_id": "I4",
+            "action": "accept",
+            "verified": true,
+            "linked_objects": [
+              "L1"
+            ],
+            "recheck": "对象 diff 复核",
+            "change": "把 L1 色温统一到 3000K"
+          },
+          {
+            "issue_id": "I5",
+            "action": "accept",
+            "verified": true,
+            "linked_objects": [
+              "CV1"
+            ],
+            "recheck": "对象 diff 复核",
+            "change": "把 CV1 色温统一到 3000K"
+          }
+        ],
+        "reject_has_reason": true,
+        "negative_accept_without_linked_diff": {
+          "ok": false,
+          "rules": [
+            "REV-UNRELATED",
+            "REV-ISSUE",
+            "REV-ISSUE",
+            "REV-ISSUE",
+            "REV-ISSUE"
+          ]
+        },
+        "negative_delete_without_reason": [
+          "PATCH-004"
+        ],
+        "negative_lock_changed": [
+          "LOCK-REVISION",
+          "REV-UNRELATED",
+          "REV-ISSUE",
+          "REV-ISSUE",
+          "REV-ISSUE",
+          "REV-ISSUE"
+        ],
+        "negative_identity_patch": [
+          "PATCH-006"
+        ],
+        "max_auto_rework": 2,
+        "rework_not_split_into_new_runs": true
+      },
+      "note": ""
+    },
+    {
+      "id": "Q09",
+      "name": "项目/版本/闸口隔离：切项目不显示宁波、晚到结果失效、决定重放不覆盖",
+      "result": "observed_pass",
+      "evidence": {
+        "gate_first_decision": {
+          "applied": true,
+          "decision": "approve",
+          "comment": "第一次决定"
+        },
+        "gate_replay": {
+          "applied": false,
+          "reason": "already_decided_correction_recorded",
+          "decision_after": "approve",
+          "comment_after": "第一次决定",
+          "decided_at_after": "2026-11-14T11:21:18+08:00"
+        },
+        "decision_records": [
+          {
+            "decision": "approve",
+            "comment": "第一次决定"
+          },
+          {
+            "decision": "reject",
+            "comment": "重放覆盖尝试"
+          }
+        ],
+        "gate_baseline": {
+          "artifact_id": "art_A1",
+          "revision_uid": "revuid_A1"
+        },
+        "late_result": {
+          "feedback_changed": true,
+          "cancel_requested": true,
+          "artifacts_invalidated": 1,
+          "artifact_status_after": [
+            "superseded"
+          ],
+          "bytes_retained": true
+        },
+        "unknown_project_rejected": true,
+        "frontend_no_hardcode": true,
+        "frontend_maps_id": true
+      },
+      "note": ""
+    },
+    {
+      "id": "Q10",
+      "name": "同源成果真实可用（后续适配批）",
+      "result": "not_run",
+      "evidence": {
+        "result": "not_run",
+        "reason": "ARC-05 纵向适配（同源平面 + 一张人眼效果图、文件哈希对账、旧成果失效）属于第 5 节第二批，本批只交字段映射与归属说明，未实现也未验证",
+        "partial_in_first_batch": {
+          "artifact_sha256": true,
+          "check_report_id": true,
+          "run_id": true,
+          "input_hash": true,
+          "revision_uid": true,
+          "candidate_group_id": true,
+          "note": "本批已把这些关联字段落到 Studio 产物，但没有跨平面/渲染/数量做同源一致性验证"
+        },
+        "adaptation_note": "deliverables-for-review/arc-first-batch/ARC-05-adaptation-note.md"
+      },
+      "note": "首批范围外，不冒充已验证"
+    },
+    {
+      "id": "Q11",
+      "name": "重启保留反馈/任务/闸口/检查报告；种子不重写项目事实、不重复事实",
+      "result": "observed_pass",
+      "evidence": {
+        "before": {
+          "name": "自定义名称（不应被覆盖）",
+          "requirement": "老板后来改过的需求",
+          "feedback": 1,
+          "task": "task_78446740bf",
+          "gate": "gate_349e36e0e8",
+          "check_report": "chk_1f3cc59145"
+        },
+        "after_restart": {
+          "name": "自定义名称（不应被覆盖）",
+          "requirement": "老板后来改过的需求",
+          "feedback_revision": 1,
+          "tasks": "n/a",
+          "gates": 1,
+          "check_reports": 1,
+          "artifacts": 1,
+          "messages": 0
+        },
+        "seed_did_not_rewrite_facts": true,
+        "feedback_not_duplicated": true,
+        "state_persisted": true
+      },
+      "note": ""
+    },
+    {
+      "id": "Q12",
+      "name": "工程完成不自动设计通过；来源明确；未确认不生成下一阶段交付；AD 不改判",
+      "result": "observed_pass",
+      "evidence": {
+        "run_statuses": [
+          "succeeded"
+        ],
+        "run_status_meaning": "succeeded 只表示流程跑完，不等于设计通过",
+        "artifact_statuses": [
+          "draft",
+          "valid_candidate"
+        ],
+        "contract_statuses": [
+          "unvalidated",
+          "valid_candidate"
+        ],
+        "no_design_pass_claim": true,
+        "gate_waiting": true,
+        "gate_decision_is_not_design_pass": true,
+        "design_approved_by_user": false,
+        "source_label": "local-model-stub（明确标记的本地模型桩，非真实 AI、非人工方案）",
+        "no_next_stage_deliverables": true,
+        "ad01_ad08_unchanged": "AD01—AD08 由用户给结论，本批不自行改判",
+        "external_calls": 0
+      },
+      "note": ""
+    }
+  ],
+  "cases": [
+    {
+      "name": "Q01 契约负例 7 项",
+      "kind": "negative",
+      "detail": {
+        "missing_role": {
+          "rejected": true,
+          "stage": "structure",
+          "error_count": 1,
+          "rules": [
+            "CONTRACT-STRUCT"
+          ],
+          "has_actionable_feedback": true
+        },
+        "wrong_type": {
+          "rejected": true,
+          "stage": "structure",
+          "error_count": 1,
+          "rules": [
+            "CONTRACT-STRUCT"
+          ],
+          "has_actionable_feedback": true
+        },
+        "invalid_catalog_ref": {
+          "rejected": true,
+          "stage": "semantics",
+          "error_count": 1,
+          "rules": [
+            "REF-CATALOG"
+          ],
+          "has_actionable_feedback": true
+        },
+        "model_claims_approval": {
+          "rejected": true,
+          "stage": "structure",
+          "error_count": 2,
+          "rules": [
+            "IDENTITY-BOUNDARY",
+            "IDENTITY-BOUNDARY"
+          ],
+          "has_actionable_feedback": true
+        },
+        "duplicate_object_id": {
+          "rejected": true,
+          "stage": "semantics",
+          "error_count": 1,
+          "rules": [
+            "REF-DUP"
+          ],
+          "has_actionable_feedback": true
+        },
+        "unknown_standard": {
+          "rejected": true,
+          "stage": "semantics",
+          "error_count": 1,
+          "rules": [
+            "REF-STANDARD"
+          ],
+          "has_actionable_feedback": true
+        },
+        "unmatched_area_row": {
+          "rejected": true,
+          "stage": "semantics",
+          "error_count": 1,
+          "rules": [
+            "REF-AREA-ROW"
+          ],
+          "has_actionable_feedback": true
+        }
+      }
+    },
+    {
+      "name": "Q01 契约正例",
+      "kind": "positive",
+      "detail": {
+        "ok": true,
+        "stages": {
+          "identity_boundary": "passed",
+          "structure_schema": "passed",
+          "structure_error_count": 0,
+          "semantic_references": "passed",
+          "semantic_error_count": 0,
+          "geometry": {
+            "columns": "unsupported",
+            "doors_windows_geometry": "unsupported",
+            "ceiling_expression": "data_only",
+            "reserved_area_accounting": "checked",
+            "circulation_paths": "checked",
+            "entry_band": "checked",
+            "furniture_catalog": "checked",
+            "non_orthogonal_claims": "checked",
+            "preserved_objects_in_model": "unsupported",
+            "stair_bath_keepout_geometry": "checked",
+            "door_window_lock_geometry": "unsupported",
+            "fire_egress_accessibility": "unsupported",
+            "note": "程序只检查已表达的几何与锁定；门/窗/柱网/消防疏散/无障碍未在契约中建模，一律 unsupported，不视为通过，也不推断设计或专业合规"
+          },
+          "geometry_blocker_count": 0,
+          "locks": "passed",
+          "draft_schema_after_assembly": "passed"
+        }
+      }
+    },
+    {
+      "name": "Q02 100㎡/3㎡ 负例",
+      "kind": "negative",
+      "detail": {
+        "design_scope_sqm": 100.0,
+        "zone_area_sum_sqm": 3.0,
+        "unallocated_sqm": 97.0,
+        "layout_complete": false,
+        "area_rules": [
+          "AREA-002",
+          "AREA-001"
+        ],
+        "explicit_97sqm_unallocated": true,
+        "ok": false
+      }
+    },
+    {
+      "name": "Q02 完整布局对账正例",
+      "kind": "positive",
+      "detail": {
+        "site_area_sqm": 468.966,
+        "reserved_area_sqm": 38.799,
+        "design_scope_sqm": 430.167,
+        "area_table_sum_sqm": 430.167,
+        "reconciliation_gap_sqm": 0.0,
+        "layout_complete": true,
+        "area_rules": []
+      }
+    },
+    {
+      "name": "Q03 分离三角形正例",
+      "kind": "positive",
+      "detail": {
+        "shapely_actual_intersection_mm2": 0.0,
+        "shapely_intersects": false,
+        "rules": [
+          "AREA-001",
+          "AREA-003",
+          "STD-005"
+        ],
+        "GEO_004_reported": false
+      }
+    },
+    {
+      "name": "Q03 四类几何负例",
+      "kind": "negative",
+      "detail": {
+        "real_intersection": {
+          "ok": false,
+          "rules": [
+            "GEO-004",
+            "AREA-001",
+            "AREA-003",
+            "STD-005"
+          ]
+        },
+        "self_crossing": {
+          "ok": false,
+          "rules": [
+            "GEO-010",
+            "AREA-001",
+            "STD-005"
+          ]
+        },
+        "out_of_bounds": {
+          "ok": false,
+          "rules": [
+            "GEO-003",
+            "AREA-001",
+            "AREA-003",
+            "STD-005"
+          ]
+        },
+        "zero_area": {
+          "ok": false,
+          "rules": [
+            "GEO-010",
+            "AREA-001",
+            "STD-005"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Q04 broken_route",
+      "kind": "negative",
+      "detail": {
+        "rules": [
+          "CIR-004",
+          "CIR-002"
+        ],
+        "ok": false
+      }
+    },
+    {
+      "name": "Q04 obstacle_crossing",
+      "kind": "negative",
+      "detail": {
+        "rules": [
+          "CIR-003",
+          "CIR-003"
+        ],
+        "ok": false
+      }
+    },
+    {
+      "name": "Q04 reserved_bathroom_changed",
+      "kind": "negative",
+      "detail": {
+        "rules": [
+          "LOCK-001",
+          "AREA-001"
+        ],
+        "ok": false
+      }
+    },
+    {
+      "name": "Q04 furniture_rotated_footprint_in_keepout",
+      "kind": "negative",
+      "detail": {
+        "rules": [
+          "LOCK-001"
+        ],
+        "ok": false
+      }
+    },
+    {
+      "name": "Q04 unknown_catalog_rejected",
+      "kind": "negative",
+      "detail": {
+        "rules": [
+          "FUR-001"
+        ],
+        "ok": false
+      }
+    },
+    {
+      "name": "Q04 measured_bottleneck",
+      "kind": "negative",
+      "detail": {
+        "rules": [
+          "CIR-003",
+          "CIR-003"
+        ],
+        "ok": false,
+        "measured_mm": {
+          "measured_clear_width_mm::CA1": 0.0
+        }
+      }
+    },
+    {
+      "name": "Q05 长方案末尾对象可达",
+      "kind": "positive",
+      "detail": {
+        "chars": 4706,
+        "tail_reachable": true,
+        "truncations": []
+      }
+    },
+    {
+      "name": "Q06 同质候选负例",
+      "kind": "negative",
+      "detail": {
+        "rename_only": {
+          "substantive": false,
+          "reason": "结构签名相同：仅换名/配色/顺序或无意义位移不算新拓扑"
+        },
+        "reorder_only": {
+          "substantive": false
+        },
+        "trivial_shift_only": {
+          "substantive": false
+        }
+      }
+    },
+    {
+      "name": "Q06 真实不同拓扑正例",
+      "kind": "positive",
+      "detail": {
+        "substantive": true,
+        "zone_topology_changed": true,
+        "circulation_changed": true
+      }
+    },
+    {
+      "name": "Q07 反馈→修订正例",
+      "kind": "positive",
+      "detail": {
+        "feedback_id": "fb_b01693522b",
+        "feedback_revision": 1,
+        "effective_addenda": [
+          {
+            "feedback_id": "fb_b01693522b",
+            "revision_no": 1,
+            "kind": "boss_message",
+            "text": "调整洽谈区、保留入口",
+            "baseline_artifact_id": "art_base",
+            "baseline_revision_uid": "revuid_base"
+          }
+        ],
+        "effective_input_hash": "8e2078e9ebb8f9782a20c1c624189897e088c9b142266519086c58152f5550c4",
+        "feedback_in_ctx": true,
+        "baseline_bound": true,
+        "object_diff": [
+          "ceiling.coves:CV1",
+          "ceiling.fixtures:L1",
+          "circulation:CA1",
+          "furniture:F3"
+        ],
+        "object_retention_ratio": 1.0,
+        "unrelated_objects_preserved": true,
+        "revision_contract_ok": true,
+        "patch_audit": {
+          "operations": [
+            {
+              "op": "update",
+              "group": "circulation",
+              "id": "CA1",
+              "reason": ""
+            },
+            {
+              "op": "update",
+              "group": "furniture",
+              "id": "F3",
+              "reason": ""
+            },
+            {
+              "op": "update",
+              "group": "ceiling.fixtures",
+              "id": "L1",
+              "reason": ""
+            },
+            {
+              "op": "update",
+              "group": "ceiling.coves",
+              "id": "CV1",
+              "reason": ""
+            }
+          ],
+          "rejected_operations": [],
+          "errors": 0
+        }
+      }
+    },
+    {
+      "name": "Q08 无对象diff/无理由删除/锁定改动/身份patch负例",
+      "kind": "negative",
+      "detail": {
+        "accept_without_diff": {
+          "ok": false,
+          "rules": [
+            "REV-UNRELATED",
+            "REV-ISSUE",
+            "REV-ISSUE",
+            "REV-ISSUE",
+            "REV-ISSUE"
+          ]
+        },
+        "delete_without_reason": [
+          "PATCH-004"
+        ],
+        "lock_changed": [
+          "LOCK-REVISION",
+          "REV-UNRELATED",
+          "REV-ISSUE",
+          "REV-ISSUE",
+          "REV-ISSUE",
+          "REV-ISSUE"
+        ],
+        "identity_patch": [
+          "PATCH-006"
+        ]
+      }
+    },
+    {
+      "name": "Q09 闸口重放负例",
+      "kind": "negative",
+      "detail": {
+        "applied": false,
+        "reason": "already_decided_correction_recorded",
+        "decision_after": "approve",
+        "comment_after": "第一次决定",
+        "decided_at_after": "2026-11-14T11:21:18+08:00"
+      }
+    },
+    {
+      "name": "Q09 晚到结果失效负例",
+      "kind": "negative",
+      "detail": {
+        "feedback_changed": true,
+        "cancel_requested": true,
+        "artifacts_invalidated": 1,
+        "artifact_status_after": [
+          "superseded"
+        ],
+        "bytes_retained": true
+      }
+    },
+    {
+      "name": "Q11 重启与种子幂等正例",
+      "kind": "positive",
+      "detail": {
+        "before": {
+          "name": "自定义名称（不应被覆盖）",
+          "requirement": "老板后来改过的需求",
+          "feedback": 1,
+          "task": "task_78446740bf",
+          "gate": "gate_349e36e0e8",
+          "check_report": "chk_1f3cc59145"
+        },
+        "after_restart": {
+          "name": "自定义名称（不应被覆盖）",
+          "requirement": "老板后来改过的需求",
+          "feedback_revision": 1,
+          "tasks": "n/a",
+          "gates": 1,
+          "check_reports": 1,
+          "artifacts": 1,
+          "messages": 0
+        },
+        "seed_did_not_rewrite_facts": true,
+        "feedback_not_duplicated": true,
+        "state_persisted": true
+      }
+    },
+    {
+      "name": "Q12 流程跑完不等于设计通过",
+      "kind": "positive",
+      "detail": {
+        "run_statuses": [
+          "succeeded"
+        ],
+        "run_status_meaning": "succeeded 只表示流程跑完，不等于设计通过",
+        "artifact_statuses": [
+          "draft",
+          "valid_candidate"
+        ],
+        "contract_statuses": [
+          "unvalidated",
+          "valid_candidate"
+        ],
+        "no_design_pass_claim": true,
+        "gate_waiting": true,
+        "gate_decision_is_not_design_pass": true,
+        "design_approved_by_user": false,
+        "source_label": "local-model-stub（明确标记的本地模型桩，非真实 AI、非人工方案）",
+        "no_next_stage_deliverables": true,
+        "ad01_ad08_unchanged": "AD01—AD08 由用户给结论，本批不自行改判",
+        "external_calls": 0
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 11,
+    "observed_fail": 0,
+    "not_run": 1
+  }
+}

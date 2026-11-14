@@ -1,5 +1,7 @@
 {
   "project_id": "ningbo-xiecheng",
+  "source_project_id": "project_ningbo_xiecheng_2026",
+  "id_mapping_note": "Studio 实验库内部 id 与主系统 /api/v1/projects 的 project_id 不同；此字段是唯一显式映射，不得按名称推断。未映射项目一律拒绝，不回退显示宁波结果。",
   "name": "宁波协诚集团样品展厅",
   "client": "宁波协诚集团",
   "fixture_note": "A1 回路用的第一个真实项目。site 来自阶段1底图（DXF + A3 图纸），requirement 是老板原话整理，不含任何方案坐标。",
