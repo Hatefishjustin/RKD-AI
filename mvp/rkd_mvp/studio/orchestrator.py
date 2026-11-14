@@ -54,6 +54,18 @@ class SupersededRun(RuntimeError):
     """A newer boss input (or explicit cancel) arrived; this run's result is stale."""
 
 
+class ContradictoryFeedback(RuntimeError):
+    """Merged feedback asks for two mutually exclusive values on one target.
+
+    The run is marked `conflict` and stops before any model call: rework rounds
+    must not be used to "converge" on an impossible requirement (TEXT-01).
+    """
+
+    def __init__(self, conflicts: list[dict]) -> None:
+        self.conflicts = conflicts
+        super().__init__("；".join(c.get("detail", "") for c in conflicts))
+
+
 def _unwrap(value: Any) -> Any:
     if isinstance(value, dict) and len(value) == 1:
         key = next(iter(value))
@@ -429,6 +441,20 @@ class Studio:
                                evidence=[{"type": "superseded", "run_id": run_id,
                                           "expected_feedback_revision": expected,
                                           "current_feedback_revision": st.feedback_revision(project_id)}])
+            except ContradictoryFeedback as exc:
+                # TEXT-01: two impossible requirements on one target stop here.
+                status, error = "conflict", str(exc)
+                detail = ("这两条留言对同一个目标给了不能同时成立的数值，程序没有开跑、"
+                          "也没有用返工去硬凑：\n"
+                          + "\n".join(f"- {c['detail']}（来自留言 "
+                                      f"{[r.get('feedback_id') for r in c['requirements']]}）"
+                                      for c in exc.conflicts)
+                          + "\n请明确以哪条为准，或给一个替代值；旧版本与两条留言都保留。")
+                st.add_message(project_id, "P", "gate", detail,
+                               evidence=[{"type": "text_conflict",
+                                          "run_id": run_id,
+                                          "conflicts": exc.conflicts}])
+                self._gate(project_id, "矛盾要求：请明确以哪条为准", detail)
             except IncompleteArtifact as exc:
                 status, error = "incomplete", str(exc)
                 detail = (f"本轮没有交出可用成果：{exc}。按老板的规矩不算通过，"
@@ -570,6 +596,12 @@ class Studio:
             "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
         } for f in fb_rows]
         objectives = revision_task.derive_objectives([dict(f) for f in fb_rows], plan=base)
+        # TEXT-01: contradictory numeric requirements (same target, impossible to
+        # satisfy together) stop the run before any model call. Rework rounds are
+        # not a way to "negotiate" a logical contradiction.
+        conflicts = revision_task.text_conflicts(objectives)
+        if conflicts:
+            raise ContradictoryFeedback(conflicts)
         rev_hash = revision_mod.revision_input_hash(
             base, [], boss_feedback, base_aid, base_uid)
         task_id = st.create_task(pid, "D2", f"续改旧基线 {base_aid} v{base_rev}",

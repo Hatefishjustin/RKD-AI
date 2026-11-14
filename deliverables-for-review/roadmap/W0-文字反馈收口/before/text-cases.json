@@ -1,0 +1,245 @@
+{
+  "task_id": "W0 文字反馈收口（TEXT-01）",
+  "schema_version": "rkd-text-feedback-cases.v1",
+  "phase": "before",
+  "executed_at": "2026-11-14T17:46:55+08:00",
+  "git_head": "5571e4ec82753539793e0ae7ecb046bf1c336a73",
+  "environment": {
+    "python": "3.12.14",
+    "model_calls": "none (pure functions)",
+    "fixture": "arc_first_batch_stub.valid_proposal('A')"
+  },
+  "cases": [
+    {
+      "case": "T01-a",
+      "finding": "点名 F3 却被扩大成整类家具；「其他家具不动」未绑定",
+      "observed": {
+        "measurable_object_ids": [
+          []
+        ],
+        "measurable_scope": [
+          [
+            "furniture"
+          ]
+        ],
+        "preserve_binding": [
+          [
+            "unresolved",
+            "none",
+            []
+          ]
+        ],
+        "recheck_targets": [
+          [
+            "F1",
+            "F2",
+            "F3"
+          ]
+        ],
+        "recheck_states": [
+          "fail"
+        ]
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T01-b",
+      "finding": "误改「其他家具」应被保留要求拦下，而不是只靠模型自觉",
+      "observed": {
+        "locked_ids": [
+          []
+        ],
+        "conflict_object_ids": [],
+        "conflict_diagnostics": []
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T02",
+      "finding": "点名两个对象时只改一个不能算达标",
+      "observed": {
+        "object_ids": [],
+        "quantifier": [],
+        "states_when_only_F3_changed": [
+          "unknown"
+        ]
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T03",
+      "finding": "明确说「都/所有」时才允许整组范围",
+      "observed": {
+        "scope": [],
+        "object_ids": [],
+        "quantifier": []
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T04",
+      "finding": "点名不存在的对象不能退回整类；应按对象缺失处理",
+      "observed": {
+        "object_ids": [
+          []
+        ],
+        "scope": [
+          [
+            "furniture"
+          ]
+        ],
+        "binding": [
+          [
+            null,
+            null
+          ]
+        ],
+        "states": [
+          "fail"
+        ],
+        "missing": [
+          []
+        ]
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T05",
+      "finding": "同名对象歧义应报候选，不能随便挑一个绑定",
+      "observed": {
+        "binding": [
+          [
+            "ambiguous",
+            "multiple_object_names",
+            []
+          ]
+        ],
+        "candidates": [
+          [
+            "F1",
+            "F2"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T06",
+      "finding": "「不超过」被当成默认下限（min）",
+      "observed": {
+        "comparator": [
+          "min"
+        ],
+        "target": [
+          2400.0
+        ],
+        "source_text": [
+          null
+        ]
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T07",
+      "finding": "「至少」→min、「恰好」→exact 未区分",
+      "observed": {
+        "min": [
+          "min"
+        ],
+        "exact": []
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T08",
+      "finding": "上限与下限在执行时方向相反（不是只改标签）",
+      "observed": {
+        "max": [
+          [
+            "exact",
+            "fail"
+          ]
+        ],
+        "min": [
+          [
+            "exact",
+            "fail"
+          ]
+        ]
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T09",
+      "finding": "同一句两个同类数值只取第一个",
+      "observed": {
+        "measurable": [],
+        "pending_reason": [
+          null
+        ],
+        "pending_ids": [
+          "FB1-A"
+        ]
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T10",
+      "finding": "数值目标把「更有设计感」吞掉，审美不 pending",
+      "observed": {
+        "kinds": [
+          "measurable"
+        ],
+        "states": [
+          [
+            "measurable",
+            "pass",
+            "not_applicable"
+          ]
+        ]
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T11",
+      "finding": "数值+保留+审美三类诉求必须同时存在",
+      "observed": {
+        "kinds": [
+          "measurable",
+          "preserve"
+        ],
+        "preserve": [
+          [
+            "resolved",
+            [
+              "ZA5"
+            ]
+          ]
+        ],
+        "pending": []
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T12",
+      "finding": "同基线矛盾要求（min 2400 + max 2100）没有显式冲突入口",
+      "observed": {
+        "capability": "absent"
+      },
+      "verdict": "defect_reproduced"
+    },
+    {
+      "case": "T13",
+      "finding": "两条同向要求（都加严）不该被误报成矛盾",
+      "observed": {
+        "capability": "absent"
+      },
+      "verdict": "not_observable"
+    }
+  ],
+  "summary": {
+    "defect_reproduced": 12,
+    "fixed_signature": 1,
+    "not_observable": 1
+  }
+}

@@ -23,8 +23,20 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "after"
-RUNTIME = ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "runtime"
+
+
+def _arg(flag: str, default: Path) -> Path:
+    """--out / --runtime keep a re-run from overwriting an earlier batch."""
+    for i, a in enumerate(sys.argv):
+        if a == flag and i + 1 < len(sys.argv):
+            return Path(sys.argv[i + 1]).resolve()
+        if a.startswith(flag + "="):
+            return Path(a.split("=", 1)[1]).resolve()
+    return default
+
+
+EVIDENCE = _arg("--out", ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "after")
+RUNTIME = _arg("--runtime", ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "runtime")
 EVIDENCE.mkdir(parents=True, exist_ok=True)
 RUNTIME.mkdir(parents=True, exist_ok=True)
 DB = RUNTIME / "w0b-verify.db"

@@ -72,7 +72,10 @@ _LOCK_FIELDS: dict[str, set[str]] = {
 
 _TEXT_RULES: list[tuple[re.Pattern, str]] = [
     (re.compile(r"净宽[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*mm", re.I), "CIR-001"),
-    (re.compile(r"旋[到转至为设]*\s*(-?\d+(?:\.\d+)?)\s*(?:°|度)", re.I), "STD-001"),
+    (re.compile(r"(?:旋转|旋到|旋至|转到|转至|转为|转成|转|调到|调至|调整到|"
+                r"设为|设成|设置成|改成|改为|改到)\s*(?:到|至|为|成)?\s*"
+                r"(?:恰好|正好|就是|约|等于|分别|各自)?\s*"
+                r"(-?\d+(?:\.\d+)?)\s*(?:°|度)", re.I), "STD-001"),
     (re.compile(r"色温[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*K", re.I), "STD-005"),
     (re.compile(r"面积[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*(?:㎡|平米|平方米)", re.I), "AREA-002"),
 ]
@@ -352,35 +355,292 @@ def lock_conflicts(base: dict, candidate: dict, locks: dict) -> list[dict]:
 
 
 # -------------------------------------------------------------- R2 objectives --
+# TEXT-01: one shared path from a natural-language clause to (objects, comparator,
+# target) or to an explicitly unresolved item. Rules that must hold:
+#   * An object named inside the clause binds the objective to THAT object; the
+#     whole furniture/zone group is used only when the message names no object at
+#     all (that is when the rule's own scope is the subject, e.g. "净宽").
+#   * "不超过 / 不大于 / 最多 / 以内" is max, "至少 / 不小于 / 以上" is min,
+#     "等于 / 恰好 / 正好" is exact. Anything else falls back to the rule default,
+#     and the comparator used is recorded with the source clause.
+#   * Several values for the same rule inside ONE clause are NOT resolved by
+#     taking the first one; they become an explicit unresolved item listing them.
+#   * Every clause that is not consumed by a measurable/preserve reading becomes
+#     an `unparsed` / `aesthetic` item with its own source text, so a numeric or
+#     keep-as-is reading never swallows the rest of a compound message.
+#   * Nothing here invents a value, an object or a comparator silently.
+
+_CMP_MAX = re.compile(r"不超过|不得超过|不能超过|不要超过|不大于|不高于|最多|以内|上限|≤|＜|<=|<(?![=])")
+_CMP_MIN = re.compile(r"至少|不少于|不小于|不低于|最少|起码|以上|下限|≥|＞|>=|>(?![=])")
+_CMP_EXACT = re.compile(r"等于|恰好|正好|就是|精确到|=|＝")
+_AESTHETIC_RE = re.compile(r"设计感|好看|高级|大气|舒服|舒适|氛围|质感|档次|记忆点|惊艳|通透|"
+                           r"温暖|开放|精致|格调|美感|呼吸感|层次|松弛|有趣|亮眼|耐看")
+_GROUP_NOUNS: tuple[tuple[str, str], ...] = (
+    ("家具", "furniture"), ("展台", "platforms"), ("分区", "zones"),
+    ("区域", "zones"), ("动线", "circulation"), ("通道", "circulation"),
+    ("灯槽", "ceiling.coves"), ("灯具", "ceiling.fixtures"),
+    ("射灯", "ceiling.fixtures"), ("筒灯", "ceiling.fixtures"),
+)
+_ALL_WORDS = re.compile(r"所有|全部|都|每件|每个|每处|各个|整体")
+_COMPLEMENT_RE = re.compile(r"其他|其余|其它")
+# anything that looks like one of our object ids (F1 / CA1 / ZA12 / L3)
+_OBJ_TOKEN = re.compile(r"(?<![A-Za-z0-9])([A-Z]{1,3}\d{1,4})(?![A-Za-z0-9])")
+_FILLER_RE = re.compile(r"^(?:同时|并且|并|然后|还有|另外|再|顺便|以及|和|且|，|。|;|；|\s)+$")
+
+
+def _comparator_from_clause(clause: str, rule_id: str) -> str:
+    """Explicit wording wins; otherwise the rule's own default, never silence."""
+    if _CMP_MAX.search(clause or ""):
+        return "max"
+    if _CMP_MIN.search(clause or ""):
+        return "min"
+    if _CMP_EXACT.search(clause or ""):
+        return "exact"
+    return _DEFAULT_COMPARATOR.get(str(rule_id), "exact")
+
+
+def _clause_binding(clause: str, index: dict) -> dict:
+    """Objects the clause itself names: real ids, object names, or id-shaped
+    tokens that do NOT exist (kept apart, because "F9" is not "all furniture")."""
+    ids = [oid for oid in index
+           if re.search(rf"(?<![A-Za-z0-9]){re.escape(oid)}(?![A-Za-z0-9])", clause)]
+    names = []
+    for oid, (_group, obj) in index.items():
+        name = str(obj.get("name") or "").strip()
+        if len(name) >= 2 and name in clause and oid not in ids:
+            names.append(oid)
+    unknown = [t for t in _OBJ_TOKEN.findall(clause)
+               if t not in index and t not in ids and t not in names]
+    return {"ids": ids, "names": names, "unknown_ids": unknown}
+
+
+def _group_of_clause(clause: str) -> str | None:
+    for noun, group in _GROUP_NOUNS:
+        if noun in clause:
+            return group
+    return None
+
+
+def text_named_objects(text: str, plan: dict | None = None) -> list[str]:
+    """Object ids named anywhere in the message (id or object name), in order."""
+    index = _index(plan or {})
+    out: list[str] = []
+    for clause in [c.strip() for c in _CLAUSE_SPLIT.split(text or "") if c.strip()]:
+        b = _clause_binding(clause, index)
+        for oid in list(b["ids"]) + list(b["names"]):
+            if oid not in out:
+                out.append(oid)
+    return out
+
+
+def _measurable_binding(binding: dict, prev_objects: list[str],
+                        message_named: list[str], caller_ids: list[str] | None,
+                        scope: tuple[str, ...], index: dict) -> tuple[list[str], dict]:
+    """(target ids, binding record). Empty ids + resolved means "use rule scope".
+
+    The rule's own group is used ONLY when nothing in that group was named. If
+    the message names objects of the SAME group somewhere else, the clause is
+    `unresolved` instead of being widened to the whole group (TEXT-01).
+    """
+    if caller_ids:
+        return list(caller_ids), {"binding_status": "resolved",
+                                  "binding_match": "caller_object_ids"}
+    ids = sorted(set(binding["ids"]) | set(binding["names"]))
+    if ids:
+        return ids, {"binding_status": "resolved",
+                     "binding_match": ("explicit_object_ids" if binding["ids"]
+                                       else "object_name_in_clause")}
+    if binding["unknown_ids"]:
+        # Named but absent: verified as missing (fail), never widened to the group.
+        return sorted(set(binding["unknown_ids"])), {
+            "binding_status": "unresolved", "binding_match": "object_id_not_found"}
+    if len(prev_objects) == 1:
+        return list(prev_objects), {"binding_status": "resolved",
+                                    "binding_match": "previous_clause_object"}
+    same_group = {oid for oid, (g, _o) in index.items() if g in scope}
+    if same_group & set(message_named):
+        return [], {"binding_status": "unresolved",
+                    "binding_match": "ambiguous_in_message"}
+    return [], {"binding_status": "resolved", "binding_match": "rule_group_scope"}
+
+
+def _preserve_object(rev, seq: int, binding: dict, feedback_id) -> dict:
+    resolved = binding["status"] == "resolved"
+    return {
+        "objective_id": f"FB{rev}-P{seq}", "kind": "preserve",
+        "rule_id": "LOCK-PRESERVE", "field": "preserved_objects",
+        "target": None, "unit": "n/a",
+        "objects_scope": [], "object_ids": list(binding["object_ids"]),
+        "binding_status": binding["status"], "binding_match": binding["match"],
+        "binding_candidates": binding["candidates"], "source_text": binding["clause"],
+        "source": "text_preserve", "feedback_id": feedback_id,
+        "computable": resolved,
+        "note": ("保留要求已绑定到具体对象，按对象全文复核"
+                 if resolved else
+                 "保留要求还没绑定到具体对象：未验证，等用户确认或补充对象；"
+                 "不用入口锁或别的锁代替"),
+    }
+
+
+_NUM_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def _numeric_values(clause: str) -> list[str]:
+    """Numbers in a clause with our object ids removed (F1 / CA2 are not values)."""
+    return _NUM_RE.findall(_OBJ_TOKEN.sub(" ", clause or ""))
+
+
+def _pending_object(rev, seq: int, clause: str, reason: str, feedback_id,
+                    object_ids: list[str] | None = None,
+                    detail: str = "") -> dict:
+    aesthetic = bool(_AESTHETIC_RE.search(clause))
+    return {
+        "objective_id": f"FB{rev}-U{seq}",
+        "kind": "aesthetic" if aesthetic else "unparsed",
+        "rule_id": "USER-JUDGEMENT" if aesthetic else "TEXT-UNPARSED",
+        "field": "user_judgement" if aesthetic else "unparsed_text",
+        "target": None, "unit": "n/a",
+        "objects_scope": [], "object_ids": list(object_ids or []),
+        "source": "text_aesthetic" if aesthetic else "text_unparsed",
+        "feedback_id": feedback_id, "source_text": clause,
+        "unparsed_reason": reason, "computable": False,
+        "note": (detail or (
+            "这条诉求没有可确定性解析的目标值/对象：写 unknown + pending，"
+            "只提供图面对比与模型意见，最终等用户确认；不用默认值自称已理解")),
+    }
+
+
+def parse_text_requirements(text: str, plan: dict | None = None, *,
+                            prefix: str = "FB?", source: str = "text_heuristic",
+                            object_ids: list[str] | None = None,
+                            issue_id: str | None = None,
+                            feedback_id: str | None = None) -> dict:
+    """Split a boss message into measurable / preserve / unresolved items.
+
+    `object_ids` is only for structured callers (review issues) that already own
+    an object set; the normal text entry point must leave it empty so the
+    sentence itself decides the scope.
+    """
+    index = _index(plan or {})
+    clauses = [c.strip() for c in _CLAUSE_SPLIT.split(text or "") if c.strip()]
+    bindings = [_clause_binding(c, index) for c in clauses]
+    message_named: list[str] = []
+    for b in bindings:
+        for oid in list(b["ids"]) + list(b["names"]):
+            if oid not in message_named:
+                message_named.append(oid)
+
+    measurable: list[dict] = []
+    preserve: list[dict] = []
+    pending: list[dict] = []
+    prev_clause_objects: list[str] = []
+
+    for i, clause in enumerate(clauses):
+        consumed = False
+        hits = []
+        for pattern, rule_id in _TEXT_RULES:
+            found = list(pattern.finditer(clause))
+            if found:
+                hits.append((rule_id, found))
+        values = _numeric_values(clause)
+        # "分别/各自" + more than one number cannot be mapped to objects without
+        # guessing which value belongs to which object: report, do not pick.
+        distribute = bool(re.search(r"分别|各自", clause)) and len(values) > 1
+        if distribute:
+            consumed = True
+            pending.append(_pending_object(
+                prefix.rstrip("-"), len(pending), clause,
+                "multiple_values_in_clause", feedback_id,
+                object_ids=sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"])),
+                detail=(f"同一句用「分别/各自」给了多个数值 {values}，没说明哪个对象对应哪个值；"
+                        "程序不替用户配对，也不只取第一个。请一条一句写清对象与目标值")))
+        elif hits:
+            consumed = True
+            ambiguous = [(rid, [m.group(1) for m in found])
+                         for rid, found in hits if len(found) > 1]
+            if len(hits) == 1 and len(values) > len(hits[0][1]):
+                # One target was read; the remaining numbers are NOT silently
+                # dropped — they are listed as unparsed for the user to restate.
+                matched_text = hits[0][1][0].group(0)
+                leftover = _numeric_values(clause.replace(matched_text, " ", 1))
+                if leftover:
+                    pending.append(_pending_object(
+                        prefix.rstrip("-"), len(pending), clause,
+                        "extra_values_not_parsed", feedback_id,
+                        detail=(f"这一句里除目标值外还有未解析的数值 {leftover}："
+                                "程序只按规则解析了可确定的那一项，其余不猜")))
+            if ambiguous:
+                pending.append(_pending_object(
+                    prefix.rstrip("-"), len(pending), clause,
+                    "multiple_values_in_clause", feedback_id,
+                    object_ids=sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"])),
+                    detail=("同一句里出现多个同类数值（"
+                            + "；".join(f"{rid}:{vals}" for rid, vals in ambiguous)
+                            + "），程序不替用户挑第一个；请拆成一条一句，"
+                              "或明确每个对象的目标值")))
+            else:
+                for rule_id, found in hits:
+                    m = found[0]
+                    field, unit, scope = _RULE_SCOPES[rule_id]
+                    try:
+                        target = float(m.group(1))
+                    except (TypeError, ValueError):
+                        continue
+                    target_ids, bind = _measurable_binding(
+                        bindings[i], prev_clause_objects, message_named, object_ids,
+                        scope, index)
+                    item = {
+                        "objective_id": f"{prefix}{len(measurable) + 1}",
+                        "kind": "measurable", "rule_id": rule_id,
+                        "field": field, "target": target, "unit": unit,
+                        "objects_scope": [] if target_ids else list(scope),
+                        "object_ids": target_ids,
+                        "comparator": _comparator_from_clause(clause, rule_id),
+                        "quantifier": "all",
+                        "source": source, "issue_id": issue_id,
+                        "feedback_id": feedback_id,
+                        "parsed_from": m.group(0)[:80], "source_text": clause,
+                        "object_source": ("declared_ids" if target_ids
+                                          else "group:" + ",".join(scope)),
+                        **bind,
+                    }
+                    missing = bind["binding_match"] == "object_id_not_found"
+                    # A named-but-absent object is rechecked (and reported as
+                    # missing); an ambiguous one is not verified at all.
+                    item["computable"] = bind["binding_status"] == "resolved" or missing
+                    if bind["binding_status"] != "resolved":
+                        item["note"] = ("点名的对象不在当前基线里，不能放宽成整类家具/分区；"
+                                        "按对象缺失处理（不算达标）" if missing else
+                                        "这句话没有把目标绑定到唯一对象，未验证；"
+                                        "等用户确认或补充对象，不默认扩大成整组")
+                    measurable.append(item)
+        if _PRESERVE_RE.search(clause):
+            consumed = True
+            preserve.append(_preserve_object(
+                prefix.rstrip("-"), len(preserve),
+                resolve_preserve_binding(clause, plan or {}, named=message_named),
+                feedback_id))
+        if not consumed and not _FILLER_RE.match(clause):
+            pending.append(_pending_object(
+                prefix.rstrip("-"), len(pending), clause,
+                "aesthetic" if _AESTHETIC_RE.search(clause) else "no_deterministic_rule",
+                feedback_id,
+                object_ids=sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"]))))
+        prev_clause_objects = sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"]))
+
+    return {"clauses": clauses, "message_named_objects": message_named,
+            "measurable": measurable, "preserve": preserve, "pending": pending}
+
+
 def derive_text_objectives(text: str, *, source: str = "text_heuristic",
                            prefix: str = "O", object_ids: list[str] | None = None,
                            issue_id: str | None = None,
-                           feedback_id: str | None = None) -> list[dict]:
-    """Restricted, auditable parsing of MEASURABLE targets from natural text.
-
-    Object identity is NEVER inferred from a Chinese object name: scope comes
-    from the rule_id, and an explicit object id is used only when supplied.
-    """
-    out: list[dict] = []
-    for pattern, rule_id in _TEXT_RULES:
-        m = pattern.search(text or "")
-        if not m:
-            continue
-        field, unit, scope = _RULE_SCOPES[rule_id]
-        try:
-            target = float(m.group(1))
-        except (TypeError, ValueError):
-            continue
-        out.append({"objective_id": f"{prefix}{len(out) + 1}", "kind": "measurable",
-                    "rule_id": rule_id, "field": field, "target": target, "unit": unit,
-                    "objects_scope": list(scope), "object_ids": list(object_ids or []),
-                    "comparator": _DEFAULT_COMPARATOR.get(rule_id, "exact"),
-                    "quantifier": "all",
-                    "source": source, "issue_id": issue_id,
-                    "feedback_id": feedback_id,
-                    "parsed_from": m.group(0)[:80],
-                    "computable": rule_id != "STD-004"})
-    return out
+                           feedback_id: str | None = None,
+                           plan: dict | None = None) -> list[dict]:
+    """Measurable targets only (structured callers keep their object ids)."""
+    return parse_text_requirements(
+        text, plan, prefix=prefix, source=source, object_ids=object_ids,
+        issue_id=issue_id, feedback_id=feedback_id)["measurable"]
 
 
 def preserve_clauses(text: str) -> list[str]:
@@ -389,36 +649,51 @@ def preserve_clauses(text: str) -> list[str]:
             if c.strip() and _PRESERVE_RE.search(c)]
 
 
-def resolve_preserve_binding(clause: str, plan: dict) -> dict:
+def resolve_preserve_binding(clause: str, plan: dict, named: list[str] | None = None) -> dict:
     """Bind one keep-as-is clause to concrete objects, or say why it cannot be.
 
     Matching is on the object's own id or its declared name inside the clause —
-    a traceable binding, not a keyword guess on the whole message. Ambiguity is
-    reported with the candidates instead of picking one.
+    a traceable binding, not a keyword guess on the whole message. `其他/其余`
+    plus a group noun binds to the complement of the objects named in the same
+    message (so "F3 转动，其他家具不动" locks F1/F2 instead of expanding F3's
+    target to the whole group). Ambiguity is reported with the candidates.
     """
     exact = [oid for oid, _ in _index(plan).items()
              if re.search(rf"(?<![A-Za-z0-9]){re.escape(oid)}(?![A-Za-z0-9])", clause)]
     if len(exact) == 1:
         return {"status": "resolved", "object_ids": exact, "candidates": exact,
                 "match": "explicit_object_id", "clause": clause}
-    named = []
+    named_hits = []
     for oid, (_group, obj) in _index(plan).items():
         name = str(obj.get("name") or "").strip()
         if len(name) >= 2 and name in clause:
-            named.append(oid)
-    named = sorted(set(named))
-    if len(named) == 1:
-        return {"status": "resolved", "object_ids": named, "candidates": named,
+            named_hits.append(oid)
+    named_hits = sorted(set(named_hits))
+    if len(named_hits) == 1:
+        return {"status": "resolved", "object_ids": named_hits, "candidates": named_hits,
                 "match": "object_name_in_clause", "clause": clause}
-    if len(named) > 1:
-        return {"status": "ambiguous", "object_ids": [], "candidates": named,
+    if len(named_hits) > 1:
+        return {"status": "ambiguous", "object_ids": [], "candidates": named_hits,
                 "match": "multiple_object_names", "clause": clause}
+    if _COMPLEMENT_RE.search(clause):
+        group = _group_of_clause(clause)
+        if group:
+            members = sorted(oid for oid, (g, _o) in _index(plan).items() if g == group)
+            keep = [oid for oid in members if oid not in set(named or [])]
+            if keep and named:
+                return {"status": "resolved", "object_ids": keep, "candidates": keep,
+                        "match": "complement_of_named_objects", "clause": clause,
+                        "excluded": sorted(set(named))}
+            return {"status": "unresolved", "object_ids": [], "candidates": members,
+                    "match": "complement_without_named_objects"
+                             if not named else "complement_empty", "clause": clause}
     return {"status": "unresolved", "object_ids": [], "candidates": [],
             "match": "none", "clause": clause}
 
 
-def resolve_preserve_bindings(text: str, plan: dict) -> list[dict]:
-    return [resolve_preserve_binding(c, plan) for c in preserve_clauses(text)]
+def resolve_preserve_bindings(text: str, plan: dict, named: list[str] | None = None) -> list[dict]:
+    named = text_named_objects(text, plan) if named is None else named
+    return [resolve_preserve_binding(c, plan, named) for c in preserve_clauses(text)]
 
 
 def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = None,
@@ -426,7 +701,8 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
     """Collect objectives from structured feedback, text, locks and review issues.
 
     `plan` is the baseline the requirements refer to. Without it a keep-as-is
-    requirement cannot be bound and is reported as unresolved (never as a pass).
+    requirement cannot be bound and is reported as unresolved (never as a pass),
+    and a named object cannot be recognised inside a sentence.
     """
     out: list[dict] = []
     for fb in (feedback_rows or []):
@@ -447,10 +723,11 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
                 produced.append(item)
         text = str(fb.get("text") or "")
         structured_rules = {o.get("rule_id") for o in structured}
-        heuristics = derive_text_objectives(
-            text, prefix=f"FB{rev}-", object_ids=None,
+        parsed = parse_text_requirements(
+            text, plan or {}, prefix=f"FB{rev}-",
             feedback_id=str(fb.get("id") or ""))
-        produced.extend(o for o in heuristics if o["rule_id"] not in structured_rules)
+        produced.extend(o for o in parsed["measurable"]
+                        if o["rule_id"] not in structured_rules)
         # Explicit structured locks: one objective per lock, so field granularity
         # stays visible and nothing is verified through "some other lock".
         for i, lk in enumerate(fb.get("locks") or []):
@@ -466,22 +743,11 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
                 "binding_status": "resolved",
                 "computable": True,
                 "note": str(lk.get("reason") or "老板明确指定的保留对象/字段")})
-        # Keep-as-is claims in the text must be TRACKED even next to a numeric
-        # target (mixed messages lose nothing), and only pass when bound.
-        for i, b in enumerate(resolve_preserve_bindings(text, plan or {})):
-            produced.append({
-                "objective_id": f"FB{rev}-P{i + 1}", "kind": "preserve",
-                "rule_id": "LOCK-PRESERVE", "field": "preserved_objects",
-                "target": None, "unit": "n/a",
-                "objects_scope": [], "object_ids": list(b["object_ids"]),
-                "binding_status": b["status"], "binding_match": b["match"],
-                "binding_candidates": b["candidates"], "source_text": b["clause"],
-                "source": "text_preserve", "feedback_id": fb.get("id"),
-                "computable": b["status"] == "resolved",
-                "note": ("保留要求已绑定到具体对象，按对象全文复核"
-                         if b["status"] == "resolved" else
-                         "保留要求还没绑定到具体对象：未验证，等用户确认或补充对象；"
-                         "不用入口锁或别的锁代替")})
+        produced.extend(parsed["preserve"])
+        # Unresolved / aesthetic clauses are ALWAYS tracked, not only when the
+        # message produced nothing: a numeric or keep-as-is reading must not
+        # swallow the rest of a compound message (TEXT-01).
+        produced.extend(parsed["pending"])
         if not produced:
             produced.append({"objective_id": f"FB{rev}-A",
                              "kind": "aesthetic", "rule_id": "USER-JUDGEMENT",
@@ -495,11 +761,21 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
     for i in (issues or []):
         if not isinstance(i, dict):
             continue
-        text = f"{i.get('suggest') or ''} {i.get('evidence') or ''}"
+        # A review issue's requirement lives in `suggest`; `evidence` describes
+        # the CURRENT state (e.g. "声明净宽 2000mm") and must not be read as a
+        # second conflicting target for the same object.
         objs = [str(x) for x in (i.get("objects") or [])]
-        found = derive_text_objectives(text, prefix=f"{i.get('issue_id', 'I')}-",
+        found = derive_text_objectives(str(i.get("suggest") or ""),
+                                       prefix=f"{i.get('issue_id', 'I')}-",
                                        source="review_issue", object_ids=objs,
-                                       issue_id=str(i.get("issue_id") or ""))
+                                       issue_id=str(i.get("issue_id") or ""),
+                                       plan=plan)
+        if not found:
+            found = derive_text_objectives(str(i.get("evidence") or ""),
+                                           prefix=f"{i.get('issue_id', 'I')}-",
+                                           source="review_issue", object_ids=objs,
+                                           issue_id=str(i.get("issue_id") or ""),
+                                           plan=plan)
         if found:
             out.extend(found)
         elif i.get("action") != "reject":
@@ -511,6 +787,72 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
                         "issue_id": str(i.get("issue_id") or ""),
                         "computable": False,
                         "note": "这条意见没有可计算目标；不可计算或尚未实现的复核写 unknown"})
+    return out
+
+
+def _compat(ca: str, cb: str, ta: float, tb: float) -> bool:
+    """Can two targets on the same field/objects both hold at once?"""
+    if ca == cb:
+        if ca == "exact":
+            return abs(ta - tb) <= _TOL
+        return True                      # min/min or max/max: the stricter one wins
+    pair = {ca: ta, cb: tb}
+    if "exact" in pair:
+        exact = pair["exact"]
+        other = pair["min"] if "min" in pair else pair["max"]
+        if "min" in pair:
+            return exact >= other - _TOL
+        return exact <= other + _TOL
+    if pair.get("min") is not None and pair.get("max") is not None:
+        return pair["min"] <= pair["max"] + _TOL
+    return True
+
+
+def text_conflicts(objectives: list[dict]) -> list[dict]:
+    """Explicit contradictions between measurable requirements on the same target.
+
+    Two different exact values, or min above max, cannot both be satisfied. The
+    program reports the contradiction and asks for a decision instead of running
+    rework rounds against an impossible objective set.
+    """
+    buckets: dict[tuple, list[dict]] = {}
+    for o in (objectives or []):
+        if o.get("kind") != "measurable" or not o.get("computable", True):
+            continue
+        if o.get("binding_status") not in (None, "resolved"):
+            continue
+        key = (o.get("rule_id"), o.get("field"),
+               tuple(sorted(str(x) for x in (o.get("object_ids") or []))),
+               tuple(sorted(str(x) for x in (o.get("objects_scope") or []))))
+        buckets.setdefault(key, []).append(o)
+    out: list[dict] = []
+    for key, rows in buckets.items():
+        for i in range(len(rows)):
+            for j in range(i + 1, len(rows)):
+                a, b = rows[i], rows[j]
+                try:
+                    ta, tb = float(a.get("target")), float(b.get("target"))
+                except (TypeError, ValueError):
+                    continue
+                ca = str(a.get("comparator") or "exact")
+                cb = str(b.get("comparator") or "exact")
+                if _compat(ca, cb, ta, tb):
+                    continue
+                out.append({
+                    "type": "contradictory_text_targets",
+                    "rule_id": key[0], "field": key[1],
+                    "target_objects": list(key[2]) or list(key[3]),
+                    "requirements": [
+                        {"objective_id": x.get("objective_id"),
+                         "comparator": x.get("comparator"), "target": x.get("target"),
+                         "unit": x.get("unit"), "feedback_id": x.get("feedback_id"),
+                         "source_text": x.get("source_text") or x.get("parsed_from"),
+                         "source": x.get("source")} for x in (a, b)],
+                    "detail": (f"同一目标（{key[0]}/{key[1]}）上要求 "
+                               f"{ca} {ta:g} 与 {cb} {tb:g}，两者不能同时成立"),
+                    "decision_needed": "这两条是同一基线上的矛盾要求：请明确哪条为准"
+                                       "或给出替代值；程序不会靠反复返工去'凑'一个矛盾条件",
+                })
     return out
 
 
@@ -675,6 +1017,10 @@ def recheck_objectives(objectives: list[dict], base: dict, candidate: dict, *,
             "user_confirmed": "pending",
             "resolved": None,
             "note": "",
+            # keep the clause the requirement came from: the page/evidence must
+            # be able to show WHICH sentence stayed unparsed (TEXT-01)
+            "source_text": obj.get("source_text"),
+            "unparsed_reason": obj.get("unparsed_reason"),
         }
         if obj.get("kind") in ("lock", "preserve"):
             item.update(_recheck_lock_objective(obj, base, candidate))

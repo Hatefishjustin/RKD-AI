@@ -1,0 +1,1779 @@
+diff --git a/mvp/rkd_mvp/studio/orchestrator.py b/mvp/rkd_mvp/studio/orchestrator.py
+index e6740ec..7dc9da9 100644
+--- a/mvp/rkd_mvp/studio/orchestrator.py
++++ b/mvp/rkd_mvp/studio/orchestrator.py
+@@ -54,6 +54,18 @@ class SupersededRun(RuntimeError):
+     """A newer boss input (or explicit cancel) arrived; this run's result is stale."""
+ 
+ 
++class ContradictoryFeedback(RuntimeError):
++    """Merged feedback asks for two mutually exclusive values on one target.
++
++    The run is marked `conflict` and stops before any model call: rework rounds
++    must not be used to "converge" on an impossible requirement (TEXT-01).
++    """
++
++    def __init__(self, conflicts: list[dict]) -> None:
++        self.conflicts = conflicts
++        super().__init__("；".join(c.get("detail", "") for c in conflicts))
++
++
+ def _unwrap(value: Any) -> Any:
+     if isinstance(value, dict) and len(value) == 1:
+         key = next(iter(value))
+@@ -429,6 +441,20 @@ class Studio:
+                                evidence=[{"type": "superseded", "run_id": run_id,
+                                           "expected_feedback_revision": expected,
+                                           "current_feedback_revision": st.feedback_revision(project_id)}])
++            except ContradictoryFeedback as exc:
++                # TEXT-01: two impossible requirements on one target stop here.
++                status, error = "conflict", str(exc)
++                detail = ("这两条留言对同一个目标给了不能同时成立的数值，程序没有开跑、"
++                          "也没有用返工去硬凑：\n"
++                          + "\n".join(f"- {c['detail']}（来自留言 "
++                                      f"{[r.get('feedback_id') for r in c['requirements']]}）"
++                                      for c in exc.conflicts)
++                          + "\n请明确以哪条为准，或给一个替代值；旧版本与两条留言都保留。")
++                st.add_message(project_id, "P", "gate", detail,
++                               evidence=[{"type": "text_conflict",
++                                          "run_id": run_id,
++                                          "conflicts": exc.conflicts}])
++                self._gate(project_id, "矛盾要求：请明确以哪条为准", detail)
+             except IncompleteArtifact as exc:
+                 status, error = "incomplete", str(exc)
+                 detail = (f"本轮没有交出可用成果：{exc}。按老板的规矩不算通过，"
+@@ -570,6 +596,12 @@ class Studio:
+             "locks": f.get("locks") or [], "objectives": f.get("objectives") or [],
+         } for f in fb_rows]
+         objectives = revision_task.derive_objectives([dict(f) for f in fb_rows], plan=base)
++        # TEXT-01: contradictory numeric requirements (same target, impossible to
++        # satisfy together) stop the run before any model call. Rework rounds are
++        # not a way to "negotiate" a logical contradiction.
++        conflicts = revision_task.text_conflicts(objectives)
++        if conflicts:
++            raise ContradictoryFeedback(conflicts)
+         rev_hash = revision_mod.revision_input_hash(
+             base, [], boss_feedback, base_aid, base_uid)
+         task_id = st.create_task(pid, "D2", f"续改旧基线 {base_aid} v{base_rev}",
+diff --git a/mvp/rkd_mvp/studio/revision_task.py b/mvp/rkd_mvp/studio/revision_task.py
+index 037e460..f28423b 100644
+--- a/mvp/rkd_mvp/studio/revision_task.py
++++ b/mvp/rkd_mvp/studio/revision_task.py
+@@ -72,7 +72,10 @@ _LOCK_FIELDS: dict[str, set[str]] = {
+ 
+ _TEXT_RULES: list[tuple[re.Pattern, str]] = [
+     (re.compile(r"净宽[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*mm", re.I), "CIR-001"),
+-    (re.compile(r"旋[到转至为设]*\s*(-?\d+(?:\.\d+)?)\s*(?:°|度)", re.I), "STD-001"),
++    (re.compile(r"(?:旋转|旋到|旋至|转到|转至|转为|转成|转|调到|调至|调整到|"
++                r"设为|设成|设置成|改成|改为|改到)\s*(?:到|至|为|成)?\s*"
++                r"(?:恰好|正好|就是|约|等于|分别|各自)?\s*"
++                r"(-?\d+(?:\.\d+)?)\s*(?:°|度)", re.I), "STD-001"),
+     (re.compile(r"色温[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*K", re.I), "STD-005"),
+     (re.compile(r"面积[^0-9\-]{0,14}(-?\d+(?:\.\d+)?)\s*(?:㎡|平米|平方米)", re.I), "AREA-002"),
+ ]
+@@ -352,35 +355,292 @@ def lock_conflicts(base: dict, candidate: dict, locks: dict) -> list[dict]:
+ 
+ 
+ # -------------------------------------------------------------- R2 objectives --
++# TEXT-01: one shared path from a natural-language clause to (objects, comparator,
++# target) or to an explicitly unresolved item. Rules that must hold:
++#   * An object named inside the clause binds the objective to THAT object; the
++#     whole furniture/zone group is used only when the message names no object at
++#     all (that is when the rule's own scope is the subject, e.g. "净宽").
++#   * "不超过 / 不大于 / 最多 / 以内" is max, "至少 / 不小于 / 以上" is min,
++#     "等于 / 恰好 / 正好" is exact. Anything else falls back to the rule default,
++#     and the comparator used is recorded with the source clause.
++#   * Several values for the same rule inside ONE clause are NOT resolved by
++#     taking the first one; they become an explicit unresolved item listing them.
++#   * Every clause that is not consumed by a measurable/preserve reading becomes
++#     an `unparsed` / `aesthetic` item with its own source text, so a numeric or
++#     keep-as-is reading never swallows the rest of a compound message.
++#   * Nothing here invents a value, an object or a comparator silently.
++
++_CMP_MAX = re.compile(r"不超过|不得超过|不能超过|不要超过|不大于|不高于|最多|以内|上限|≤|＜|<=|<(?![=])")
++_CMP_MIN = re.compile(r"至少|不少于|不小于|不低于|最少|起码|以上|下限|≥|＞|>=|>(?![=])")
++_CMP_EXACT = re.compile(r"等于|恰好|正好|就是|精确到|=|＝")
++_AESTHETIC_RE = re.compile(r"设计感|好看|高级|大气|舒服|舒适|氛围|质感|档次|记忆点|惊艳|通透|"
++                           r"温暖|开放|精致|格调|美感|呼吸感|层次|松弛|有趣|亮眼|耐看")
++_GROUP_NOUNS: tuple[tuple[str, str], ...] = (
++    ("家具", "furniture"), ("展台", "platforms"), ("分区", "zones"),
++    ("区域", "zones"), ("动线", "circulation"), ("通道", "circulation"),
++    ("灯槽", "ceiling.coves"), ("灯具", "ceiling.fixtures"),
++    ("射灯", "ceiling.fixtures"), ("筒灯", "ceiling.fixtures"),
++)
++_ALL_WORDS = re.compile(r"所有|全部|都|每件|每个|每处|各个|整体")
++_COMPLEMENT_RE = re.compile(r"其他|其余|其它")
++# anything that looks like one of our object ids (F1 / CA1 / ZA12 / L3)
++_OBJ_TOKEN = re.compile(r"(?<![A-Za-z0-9])([A-Z]{1,3}\d{1,4})(?![A-Za-z0-9])")
++_FILLER_RE = re.compile(r"^(?:同时|并且|并|然后|还有|另外|再|顺便|以及|和|且|，|。|;|；|\s)+$")
++
++
++def _comparator_from_clause(clause: str, rule_id: str) -> str:
++    """Explicit wording wins; otherwise the rule's own default, never silence."""
++    if _CMP_MAX.search(clause or ""):
++        return "max"
++    if _CMP_MIN.search(clause or ""):
++        return "min"
++    if _CMP_EXACT.search(clause or ""):
++        return "exact"
++    return _DEFAULT_COMPARATOR.get(str(rule_id), "exact")
++
++
++def _clause_binding(clause: str, index: dict) -> dict:
++    """Objects the clause itself names: real ids, object names, or id-shaped
++    tokens that do NOT exist (kept apart, because "F9" is not "all furniture")."""
++    ids = [oid for oid in index
++           if re.search(rf"(?<![A-Za-z0-9]){re.escape(oid)}(?![A-Za-z0-9])", clause)]
++    names = []
++    for oid, (_group, obj) in index.items():
++        name = str(obj.get("name") or "").strip()
++        if len(name) >= 2 and name in clause and oid not in ids:
++            names.append(oid)
++    unknown = [t for t in _OBJ_TOKEN.findall(clause)
++               if t not in index and t not in ids and t not in names]
++    return {"ids": ids, "names": names, "unknown_ids": unknown}
++
++
++def _group_of_clause(clause: str) -> str | None:
++    for noun, group in _GROUP_NOUNS:
++        if noun in clause:
++            return group
++    return None
++
++
++def text_named_objects(text: str, plan: dict | None = None) -> list[str]:
++    """Object ids named anywhere in the message (id or object name), in order."""
++    index = _index(plan or {})
++    out: list[str] = []
++    for clause in [c.strip() for c in _CLAUSE_SPLIT.split(text or "") if c.strip()]:
++        b = _clause_binding(clause, index)
++        for oid in list(b["ids"]) + list(b["names"]):
++            if oid not in out:
++                out.append(oid)
++    return out
++
++
++def _measurable_binding(binding: dict, prev_objects: list[str],
++                        message_named: list[str], caller_ids: list[str] | None,
++                        scope: tuple[str, ...], index: dict) -> tuple[list[str], dict]:
++    """(target ids, binding record). Empty ids + resolved means "use rule scope".
++
++    The rule's own group is used ONLY when nothing in that group was named. If
++    the message names objects of the SAME group somewhere else, the clause is
++    `unresolved` instead of being widened to the whole group (TEXT-01).
++    """
++    if caller_ids:
++        return list(caller_ids), {"binding_status": "resolved",
++                                  "binding_match": "caller_object_ids"}
++    ids = sorted(set(binding["ids"]) | set(binding["names"]))
++    if ids:
++        return ids, {"binding_status": "resolved",
++                     "binding_match": ("explicit_object_ids" if binding["ids"]
++                                       else "object_name_in_clause")}
++    if binding["unknown_ids"]:
++        # Named but absent: verified as missing (fail), never widened to the group.
++        return sorted(set(binding["unknown_ids"])), {
++            "binding_status": "unresolved", "binding_match": "object_id_not_found"}
++    if len(prev_objects) == 1:
++        return list(prev_objects), {"binding_status": "resolved",
++                                    "binding_match": "previous_clause_object"}
++    same_group = {oid for oid, (g, _o) in index.items() if g in scope}
++    if same_group & set(message_named):
++        return [], {"binding_status": "unresolved",
++                    "binding_match": "ambiguous_in_message"}
++    return [], {"binding_status": "resolved", "binding_match": "rule_group_scope"}
++
++
++def _preserve_object(rev, seq: int, binding: dict, feedback_id) -> dict:
++    resolved = binding["status"] == "resolved"
++    return {
++        "objective_id": f"FB{rev}-P{seq}", "kind": "preserve",
++        "rule_id": "LOCK-PRESERVE", "field": "preserved_objects",
++        "target": None, "unit": "n/a",
++        "objects_scope": [], "object_ids": list(binding["object_ids"]),
++        "binding_status": binding["status"], "binding_match": binding["match"],
++        "binding_candidates": binding["candidates"], "source_text": binding["clause"],
++        "source": "text_preserve", "feedback_id": feedback_id,
++        "computable": resolved,
++        "note": ("保留要求已绑定到具体对象，按对象全文复核"
++                 if resolved else
++                 "保留要求还没绑定到具体对象：未验证，等用户确认或补充对象；"
++                 "不用入口锁或别的锁代替"),
++    }
++
++
++_NUM_RE = re.compile(r"-?\d+(?:\.\d+)?")
++
++
++def _numeric_values(clause: str) -> list[str]:
++    """Numbers in a clause with our object ids removed (F1 / CA2 are not values)."""
++    return _NUM_RE.findall(_OBJ_TOKEN.sub(" ", clause or ""))
++
++
++def _pending_object(rev, seq: int, clause: str, reason: str, feedback_id,
++                    object_ids: list[str] | None = None,
++                    detail: str = "") -> dict:
++    aesthetic = bool(_AESTHETIC_RE.search(clause))
++    return {
++        "objective_id": f"FB{rev}-U{seq}",
++        "kind": "aesthetic" if aesthetic else "unparsed",
++        "rule_id": "USER-JUDGEMENT" if aesthetic else "TEXT-UNPARSED",
++        "field": "user_judgement" if aesthetic else "unparsed_text",
++        "target": None, "unit": "n/a",
++        "objects_scope": [], "object_ids": list(object_ids or []),
++        "source": "text_aesthetic" if aesthetic else "text_unparsed",
++        "feedback_id": feedback_id, "source_text": clause,
++        "unparsed_reason": reason, "computable": False,
++        "note": (detail or (
++            "这条诉求没有可确定性解析的目标值/对象：写 unknown + pending，"
++            "只提供图面对比与模型意见，最终等用户确认；不用默认值自称已理解")),
++    }
++
++
++def parse_text_requirements(text: str, plan: dict | None = None, *,
++                            prefix: str = "FB?", source: str = "text_heuristic",
++                            object_ids: list[str] | None = None,
++                            issue_id: str | None = None,
++                            feedback_id: str | None = None) -> dict:
++    """Split a boss message into measurable / preserve / unresolved items.
++
++    `object_ids` is only for structured callers (review issues) that already own
++    an object set; the normal text entry point must leave it empty so the
++    sentence itself decides the scope.
++    """
++    index = _index(plan or {})
++    clauses = [c.strip() for c in _CLAUSE_SPLIT.split(text or "") if c.strip()]
++    bindings = [_clause_binding(c, index) for c in clauses]
++    message_named: list[str] = []
++    for b in bindings:
++        for oid in list(b["ids"]) + list(b["names"]):
++            if oid not in message_named:
++                message_named.append(oid)
++
++    measurable: list[dict] = []
++    preserve: list[dict] = []
++    pending: list[dict] = []
++    prev_clause_objects: list[str] = []
++
++    for i, clause in enumerate(clauses):
++        consumed = False
++        hits = []
++        for pattern, rule_id in _TEXT_RULES:
++            found = list(pattern.finditer(clause))
++            if found:
++                hits.append((rule_id, found))
++        values = _numeric_values(clause)
++        # "分别/各自" + more than one number cannot be mapped to objects without
++        # guessing which value belongs to which object: report, do not pick.
++        distribute = bool(re.search(r"分别|各自", clause)) and len(values) > 1
++        if distribute:
++            consumed = True
++            pending.append(_pending_object(
++                prefix.rstrip("-"), len(pending), clause,
++                "multiple_values_in_clause", feedback_id,
++                object_ids=sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"])),
++                detail=(f"同一句用「分别/各自」给了多个数值 {values}，没说明哪个对象对应哪个值；"
++                        "程序不替用户配对，也不只取第一个。请一条一句写清对象与目标值")))
++        elif hits:
++            consumed = True
++            ambiguous = [(rid, [m.group(1) for m in found])
++                         for rid, found in hits if len(found) > 1]
++            if len(hits) == 1 and len(values) > len(hits[0][1]):
++                # One target was read; the remaining numbers are NOT silently
++                # dropped — they are listed as unparsed for the user to restate.
++                matched_text = hits[0][1][0].group(0)
++                leftover = _numeric_values(clause.replace(matched_text, " ", 1))
++                if leftover:
++                    pending.append(_pending_object(
++                        prefix.rstrip("-"), len(pending), clause,
++                        "extra_values_not_parsed", feedback_id,
++                        detail=(f"这一句里除目标值外还有未解析的数值 {leftover}："
++                                "程序只按规则解析了可确定的那一项，其余不猜")))
++            if ambiguous:
++                pending.append(_pending_object(
++                    prefix.rstrip("-"), len(pending), clause,
++                    "multiple_values_in_clause", feedback_id,
++                    object_ids=sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"])),
++                    detail=("同一句里出现多个同类数值（"
++                            + "；".join(f"{rid}:{vals}" for rid, vals in ambiguous)
++                            + "），程序不替用户挑第一个；请拆成一条一句，"
++                              "或明确每个对象的目标值")))
++            else:
++                for rule_id, found in hits:
++                    m = found[0]
++                    field, unit, scope = _RULE_SCOPES[rule_id]
++                    try:
++                        target = float(m.group(1))
++                    except (TypeError, ValueError):
++                        continue
++                    target_ids, bind = _measurable_binding(
++                        bindings[i], prev_clause_objects, message_named, object_ids,
++                        scope, index)
++                    item = {
++                        "objective_id": f"{prefix}{len(measurable) + 1}",
++                        "kind": "measurable", "rule_id": rule_id,
++                        "field": field, "target": target, "unit": unit,
++                        "objects_scope": [] if target_ids else list(scope),
++                        "object_ids": target_ids,
++                        "comparator": _comparator_from_clause(clause, rule_id),
++                        "quantifier": "all",
++                        "source": source, "issue_id": issue_id,
++                        "feedback_id": feedback_id,
++                        "parsed_from": m.group(0)[:80], "source_text": clause,
++                        "object_source": ("declared_ids" if target_ids
++                                          else "group:" + ",".join(scope)),
++                        **bind,
++                    }
++                    missing = bind["binding_match"] == "object_id_not_found"
++                    # A named-but-absent object is rechecked (and reported as
++                    # missing); an ambiguous one is not verified at all.
++                    item["computable"] = bind["binding_status"] == "resolved" or missing
++                    if bind["binding_status"] != "resolved":
++                        item["note"] = ("点名的对象不在当前基线里，不能放宽成整类家具/分区；"
++                                        "按对象缺失处理（不算达标）" if missing else
++                                        "这句话没有把目标绑定到唯一对象，未验证；"
++                                        "等用户确认或补充对象，不默认扩大成整组")
++                    measurable.append(item)
++        if _PRESERVE_RE.search(clause):
++            consumed = True
++            preserve.append(_preserve_object(
++                prefix.rstrip("-"), len(preserve),
++                resolve_preserve_binding(clause, plan or {}, named=message_named),
++                feedback_id))
++        if not consumed and not _FILLER_RE.match(clause):
++            pending.append(_pending_object(
++                prefix.rstrip("-"), len(pending), clause,
++                "aesthetic" if _AESTHETIC_RE.search(clause) else "no_deterministic_rule",
++                feedback_id,
++                object_ids=sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"]))))
++        prev_clause_objects = sorted(set(bindings[i]["ids"]) | set(bindings[i]["names"]))
++
++    return {"clauses": clauses, "message_named_objects": message_named,
++            "measurable": measurable, "preserve": preserve, "pending": pending}
++
++
+ def derive_text_objectives(text: str, *, source: str = "text_heuristic",
+                            prefix: str = "O", object_ids: list[str] | None = None,
+                            issue_id: str | None = None,
+-                           feedback_id: str | None = None) -> list[dict]:
+-    """Restricted, auditable parsing of MEASURABLE targets from natural text.
+-
+-    Object identity is NEVER inferred from a Chinese object name: scope comes
+-    from the rule_id, and an explicit object id is used only when supplied.
+-    """
+-    out: list[dict] = []
+-    for pattern, rule_id in _TEXT_RULES:
+-        m = pattern.search(text or "")
+-        if not m:
+-            continue
+-        field, unit, scope = _RULE_SCOPES[rule_id]
+-        try:
+-            target = float(m.group(1))
+-        except (TypeError, ValueError):
+-            continue
+-        out.append({"objective_id": f"{prefix}{len(out) + 1}", "kind": "measurable",
+-                    "rule_id": rule_id, "field": field, "target": target, "unit": unit,
+-                    "objects_scope": list(scope), "object_ids": list(object_ids or []),
+-                    "comparator": _DEFAULT_COMPARATOR.get(rule_id, "exact"),
+-                    "quantifier": "all",
+-                    "source": source, "issue_id": issue_id,
+-                    "feedback_id": feedback_id,
+-                    "parsed_from": m.group(0)[:80],
+-                    "computable": rule_id != "STD-004"})
+-    return out
++                           feedback_id: str | None = None,
++                           plan: dict | None = None) -> list[dict]:
++    """Measurable targets only (structured callers keep their object ids)."""
++    return parse_text_requirements(
++        text, plan, prefix=prefix, source=source, object_ids=object_ids,
++        issue_id=issue_id, feedback_id=feedback_id)["measurable"]
+ 
+ 
+ def preserve_clauses(text: str) -> list[str]:
+@@ -389,36 +649,51 @@ def preserve_clauses(text: str) -> list[str]:
+             if c.strip() and _PRESERVE_RE.search(c)]
+ 
+ 
+-def resolve_preserve_binding(clause: str, plan: dict) -> dict:
++def resolve_preserve_binding(clause: str, plan: dict, named: list[str] | None = None) -> dict:
+     """Bind one keep-as-is clause to concrete objects, or say why it cannot be.
+ 
+     Matching is on the object's own id or its declared name inside the clause —
+-    a traceable binding, not a keyword guess on the whole message. Ambiguity is
+-    reported with the candidates instead of picking one.
++    a traceable binding, not a keyword guess on the whole message. `其他/其余`
++    plus a group noun binds to the complement of the objects named in the same
++    message (so "F3 转动，其他家具不动" locks F1/F2 instead of expanding F3's
++    target to the whole group). Ambiguity is reported with the candidates.
+     """
+     exact = [oid for oid, _ in _index(plan).items()
+              if re.search(rf"(?<![A-Za-z0-9]){re.escape(oid)}(?![A-Za-z0-9])", clause)]
+     if len(exact) == 1:
+         return {"status": "resolved", "object_ids": exact, "candidates": exact,
+                 "match": "explicit_object_id", "clause": clause}
+-    named = []
++    named_hits = []
+     for oid, (_group, obj) in _index(plan).items():
+         name = str(obj.get("name") or "").strip()
+         if len(name) >= 2 and name in clause:
+-            named.append(oid)
+-    named = sorted(set(named))
+-    if len(named) == 1:
+-        return {"status": "resolved", "object_ids": named, "candidates": named,
++            named_hits.append(oid)
++    named_hits = sorted(set(named_hits))
++    if len(named_hits) == 1:
++        return {"status": "resolved", "object_ids": named_hits, "candidates": named_hits,
+                 "match": "object_name_in_clause", "clause": clause}
+-    if len(named) > 1:
+-        return {"status": "ambiguous", "object_ids": [], "candidates": named,
++    if len(named_hits) > 1:
++        return {"status": "ambiguous", "object_ids": [], "candidates": named_hits,
+                 "match": "multiple_object_names", "clause": clause}
++    if _COMPLEMENT_RE.search(clause):
++        group = _group_of_clause(clause)
++        if group:
++            members = sorted(oid for oid, (g, _o) in _index(plan).items() if g == group)
++            keep = [oid for oid in members if oid not in set(named or [])]
++            if keep and named:
++                return {"status": "resolved", "object_ids": keep, "candidates": keep,
++                        "match": "complement_of_named_objects", "clause": clause,
++                        "excluded": sorted(set(named))}
++            return {"status": "unresolved", "object_ids": [], "candidates": members,
++                    "match": "complement_without_named_objects"
++                             if not named else "complement_empty", "clause": clause}
+     return {"status": "unresolved", "object_ids": [], "candidates": [],
+             "match": "none", "clause": clause}
+ 
+ 
+-def resolve_preserve_bindings(text: str, plan: dict) -> list[dict]:
+-    return [resolve_preserve_binding(c, plan) for c in preserve_clauses(text)]
++def resolve_preserve_bindings(text: str, plan: dict, named: list[str] | None = None) -> list[dict]:
++    named = text_named_objects(text, plan) if named is None else named
++    return [resolve_preserve_binding(c, plan, named) for c in preserve_clauses(text)]
+ 
+ 
+ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = None,
+@@ -426,7 +701,8 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
+     """Collect objectives from structured feedback, text, locks and review issues.
+ 
+     `plan` is the baseline the requirements refer to. Without it a keep-as-is
+-    requirement cannot be bound and is reported as unresolved (never as a pass).
++    requirement cannot be bound and is reported as unresolved (never as a pass),
++    and a named object cannot be recognised inside a sentence.
+     """
+     out: list[dict] = []
+     for fb in (feedback_rows or []):
+@@ -447,10 +723,11 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
+                 produced.append(item)
+         text = str(fb.get("text") or "")
+         structured_rules = {o.get("rule_id") for o in structured}
+-        heuristics = derive_text_objectives(
+-            text, prefix=f"FB{rev}-", object_ids=None,
++        parsed = parse_text_requirements(
++            text, plan or {}, prefix=f"FB{rev}-",
+             feedback_id=str(fb.get("id") or ""))
+-        produced.extend(o for o in heuristics if o["rule_id"] not in structured_rules)
++        produced.extend(o for o in parsed["measurable"]
++                        if o["rule_id"] not in structured_rules)
+         # Explicit structured locks: one objective per lock, so field granularity
+         # stays visible and nothing is verified through "some other lock".
+         for i, lk in enumerate(fb.get("locks") or []):
+@@ -466,22 +743,11 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
+                 "binding_status": "resolved",
+                 "computable": True,
+                 "note": str(lk.get("reason") or "老板明确指定的保留对象/字段")})
+-        # Keep-as-is claims in the text must be TRACKED even next to a numeric
+-        # target (mixed messages lose nothing), and only pass when bound.
+-        for i, b in enumerate(resolve_preserve_bindings(text, plan or {})):
+-            produced.append({
+-                "objective_id": f"FB{rev}-P{i + 1}", "kind": "preserve",
+-                "rule_id": "LOCK-PRESERVE", "field": "preserved_objects",
+-                "target": None, "unit": "n/a",
+-                "objects_scope": [], "object_ids": list(b["object_ids"]),
+-                "binding_status": b["status"], "binding_match": b["match"],
+-                "binding_candidates": b["candidates"], "source_text": b["clause"],
+-                "source": "text_preserve", "feedback_id": fb.get("id"),
+-                "computable": b["status"] == "resolved",
+-                "note": ("保留要求已绑定到具体对象，按对象全文复核"
+-                         if b["status"] == "resolved" else
+-                         "保留要求还没绑定到具体对象：未验证，等用户确认或补充对象；"
+-                         "不用入口锁或别的锁代替")})
++        produced.extend(parsed["preserve"])
++        # Unresolved / aesthetic clauses are ALWAYS tracked, not only when the
++        # message produced nothing: a numeric or keep-as-is reading must not
++        # swallow the rest of a compound message (TEXT-01).
++        produced.extend(parsed["pending"])
+         if not produced:
+             produced.append({"objective_id": f"FB{rev}-A",
+                              "kind": "aesthetic", "rule_id": "USER-JUDGEMENT",
+@@ -495,11 +761,21 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
+     for i in (issues or []):
+         if not isinstance(i, dict):
+             continue
+-        text = f"{i.get('suggest') or ''} {i.get('evidence') or ''}"
++        # A review issue's requirement lives in `suggest`; `evidence` describes
++        # the CURRENT state (e.g. "声明净宽 2000mm") and must not be read as a
++        # second conflicting target for the same object.
+         objs = [str(x) for x in (i.get("objects") or [])]
+-        found = derive_text_objectives(text, prefix=f"{i.get('issue_id', 'I')}-",
++        found = derive_text_objectives(str(i.get("suggest") or ""),
++                                       prefix=f"{i.get('issue_id', 'I')}-",
+                                        source="review_issue", object_ids=objs,
+-                                       issue_id=str(i.get("issue_id") or ""))
++                                       issue_id=str(i.get("issue_id") or ""),
++                                       plan=plan)
++        if not found:
++            found = derive_text_objectives(str(i.get("evidence") or ""),
++                                           prefix=f"{i.get('issue_id', 'I')}-",
++                                           source="review_issue", object_ids=objs,
++                                           issue_id=str(i.get("issue_id") or ""),
++                                           plan=plan)
+         if found:
+             out.extend(found)
+         elif i.get("action") != "reject":
+@@ -514,6 +790,72 @@ def derive_objectives(feedback_rows: list[dict], issues: list[dict] | None = Non
+     return out
+ 
+ 
++def _compat(ca: str, cb: str, ta: float, tb: float) -> bool:
++    """Can two targets on the same field/objects both hold at once?"""
++    if ca == cb:
++        if ca == "exact":
++            return abs(ta - tb) <= _TOL
++        return True                      # min/min or max/max: the stricter one wins
++    pair = {ca: ta, cb: tb}
++    if "exact" in pair:
++        exact = pair["exact"]
++        other = pair["min"] if "min" in pair else pair["max"]
++        if "min" in pair:
++            return exact >= other - _TOL
++        return exact <= other + _TOL
++    if pair.get("min") is not None and pair.get("max") is not None:
++        return pair["min"] <= pair["max"] + _TOL
++    return True
++
++
++def text_conflicts(objectives: list[dict]) -> list[dict]:
++    """Explicit contradictions between measurable requirements on the same target.
++
++    Two different exact values, or min above max, cannot both be satisfied. The
++    program reports the contradiction and asks for a decision instead of running
++    rework rounds against an impossible objective set.
++    """
++    buckets: dict[tuple, list[dict]] = {}
++    for o in (objectives or []):
++        if o.get("kind") != "measurable" or not o.get("computable", True):
++            continue
++        if o.get("binding_status") not in (None, "resolved"):
++            continue
++        key = (o.get("rule_id"), o.get("field"),
++               tuple(sorted(str(x) for x in (o.get("object_ids") or []))),
++               tuple(sorted(str(x) for x in (o.get("objects_scope") or []))))
++        buckets.setdefault(key, []).append(o)
++    out: list[dict] = []
++    for key, rows in buckets.items():
++        for i in range(len(rows)):
++            for j in range(i + 1, len(rows)):
++                a, b = rows[i], rows[j]
++                try:
++                    ta, tb = float(a.get("target")), float(b.get("target"))
++                except (TypeError, ValueError):
++                    continue
++                ca = str(a.get("comparator") or "exact")
++                cb = str(b.get("comparator") or "exact")
++                if _compat(ca, cb, ta, tb):
++                    continue
++                out.append({
++                    "type": "contradictory_text_targets",
++                    "rule_id": key[0], "field": key[1],
++                    "target_objects": list(key[2]) or list(key[3]),
++                    "requirements": [
++                        {"objective_id": x.get("objective_id"),
++                         "comparator": x.get("comparator"), "target": x.get("target"),
++                         "unit": x.get("unit"), "feedback_id": x.get("feedback_id"),
++                         "source_text": x.get("source_text") or x.get("parsed_from"),
++                         "source": x.get("source")} for x in (a, b)],
++                    "detail": (f"同一目标（{key[0]}/{key[1]}）上要求 "
++                               f"{ca} {ta:g} 与 {cb} {tb:g}，两者不能同时成立"),
++                    "decision_needed": "这两条是同一基线上的矛盾要求：请明确哪条为准"
++                                       "或给出替代值；程序不会靠反复返工去'凑'一个矛盾条件",
++                })
++    return out
++
++
+ def _plan_objects(plan: dict, scope: list[str], object_ids: list[str]) -> list[tuple[str, dict]]:
+     ceiling = plan.get("ceiling") if isinstance(plan, dict) and \
+         isinstance(plan.get("ceiling"), dict) else {}
+@@ -675,6 +1017,10 @@ def recheck_objectives(objectives: list[dict], base: dict, candidate: dict, *,
+             "user_confirmed": "pending",
+             "resolved": None,
+             "note": "",
++            # keep the clause the requirement came from: the page/evidence must
++            # be able to show WHICH sentence stayed unparsed (TEXT-01)
++            "source_text": obj.get("source_text"),
++            "unparsed_reason": obj.get("unparsed_reason"),
+         }
+         if obj.get("kind") in ("lock", "preserve"):
+             item.update(_recheck_lock_objective(obj, base, candidate))
+diff --git a/scripts/text_feedback_cases.py b/scripts/text_feedback_cases.py
+new file mode 100644
+index 0000000..677a900
+--- /dev/null
++++ b/scripts/text_feedback_cases.py
+@@ -0,0 +1,350 @@
++"""TEXT-01 文字反馈解析：整改前/后的函数级签名（同一脚本可复跑两个版本）。
++
++只调用真实的 derive_objectives / recheck_objectives / text_conflicts 与现有有效
++夹具，不调模型、不起服务、不写库。判定签名：
++  defect_reproduced  旧实现确实把对象范围/比较符/未解析子句弄错
++  fixed_signature    新实现的行为签名正确
++  not_observable     该构建没有对应入口，无法观测
++  crashed            调用直接抛异常（不能算复现已完成）
++
++用法：python scripts/text_feedback_cases.py --phase before|after --out <path>
++"""
++from __future__ import annotations
++
++import copy
++import json
++import sys
++import traceback
++from datetime import datetime, timezone
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from arc_first_batch_stub import SITE, valid_proposal  # noqa: E402
++from rkd_mvp.studio import revision_task as rt, validation  # noqa: E402
++
++CASES: list[dict] = []
++
++
++def record(case: str, finding: str, observed: dict, fixed: bool,
++           verdict: str | None = None) -> None:
++    verdict = verdict or ("fixed_signature" if fixed else "defect_reproduced")
++    CASES.append({"case": case, "finding": finding, "observed": observed,
++                  "verdict": verdict})
++    print(f"{verdict:17s} {case} {json.dumps(observed, ensure_ascii=False)[:220]}",
++          flush=True)
++
++
++def base_plan() -> dict:
++    rep = validation.validate_proposal(
++        valid_proposal("A"), project={"id": "p", "site": SITE},
++        option_id="A", revision=1, parent_revision=None)
++    assert rep["ok"], rep["repair_feedback"][:500]
++    return rep["plan"]
++
++
++BASE = base_plan()
++
++
++def derive(text: str, plan: dict | None = None) -> list[dict]:
++    fb = [{"id": "fb_t", "feedback_id": "fb_t", "revision_no": 1,
++           "kind": "boss_message", "text": text, "locks": [], "objectives": []}]
++    return rt.derive_objectives(fb, None, plan=plan if plan is not None else BASE)
++
++
++def recheck(text: str, mutate) -> tuple[list[dict], dict, list[dict]]:
++    objs = derive(text)
++    cand = copy.deepcopy(BASE)
++    mutate(cand)
++    integ = rt.recheck_objectives(objs, BASE, cand, site=SITE)
++    return objs, cand, integ
++
++
++def _rot(cand: dict, oid: str, value: float) -> None:
++    for f in cand["furniture"]:
++        if f["id"] == oid:
++            f["rot"] = value
++
++
++# --------------------------------------------------------------- 1 对象范围
++def t01_named_object_not_widened() -> None:
++    text = "把 F3 旋转到 -30 度，其他家具不动"
++    objs = derive(text)
++    meas = [o for o in objs if o["kind"] == "measurable"]
++    pres = [o for o in objs if o["kind"] == "preserve"]
++    objs2, _cand, integ = recheck(text, lambda c: _rot(c, "F3", -30))
++    rows = [r for r in integ if r["kind"] == "measurable"]
++    obs = {
++        "measurable_object_ids": [o.get("object_ids") for o in meas],
++        "measurable_scope": [o.get("objects_scope") for o in meas],
++        "preserve_binding": [(o.get("binding_status"), o.get("binding_match"),
++                             o.get("object_ids")) for o in pres],
++        "recheck_targets": [r.get("target_objects") for r in rows],
++        "recheck_states": [r.get("objective_rechecked") for r in rows],
++    }
++    fixed = (len(meas) == 1 and meas[0]["object_ids"] == ["F3"]
++             and rows and rows[0]["target_objects"] == ["F3"]
++             and rows[0]["objective_rechecked"] == "pass"
++             and pres and all(o.get("binding_status") == "resolved"
++                              for o in pres)
++             and sorted(pres[0].get("object_ids") or []) == ["F1", "F2"])
++    record("T01-a", "点名 F3 却被扩大成整类家具；「其他家具不动」未绑定", obs, fixed)
++
++
++def t01b_unrelated_furniture_change_rejected() -> None:
++    text = "把 F3 旋转到 -30 度，其他家具不动"
++    objs = derive(text)
++    cand = copy.deepcopy(BASE)
++    _rot(cand, "F3", -30)
++    _rot(cand, "F1", 45)
++    pres = [o for o in objs if o["kind"] == "preserve"]
++    locks = {"locks": [{"object_id": oid, "fields": ["*"], "source": "text_preserve",
++                        "reason": "其他家具不动"}
++                       for o in pres for oid in (o.get("object_ids") or [])]}
++    conflicts = rt.lock_conflicts(BASE, cand, locks)
++    obs = {"locked_ids": [o.get("object_ids") for o in pres],
++           "conflict_object_ids": [c.get("object_id") for c in conflicts],
++           "conflict_diagnostics": [c.get("diagnostic") for c in conflicts]}
++    fixed = bool(pres and all(o.get("binding_status") == "resolved" for o in pres)
++                 and any(c.get("object_id") == "F1" for c in conflicts))
++    record("T01-b", "误改「其他家具」应被保留要求拦下，而不是只靠模型自觉", obs, fixed)
++
++
++def t02_two_named_objects() -> None:
++    text = "把 F1 和 F3 都转到 30 度"
++    objs = derive(text)
++    meas = [o for o in objs if o["kind"] == "measurable"]
++    _o, _c, integ = recheck(text, lambda c: _rot(c, "F3", 30))
++    states = [r.get("objective_rechecked") for r in integ]
++    obs = {"object_ids": [o.get("object_ids") for o in meas],
++           "quantifier": [o.get("quantifier") for o in meas],
++           "states_when_only_F3_changed": states}
++    fixed = (len(meas) == 1 and (meas[0].get("object_ids") or []) == ["F1", "F3"]
++             and "fail" in states)
++    record("T02", "点名两个对象时只改一个不能算达标", obs, fixed)
++
++
++def t03_explicit_all_is_allowed() -> None:
++    text = "把家具都转到 30 度"
++    objs = derive(text)
++    meas = [o for o in objs if o["kind"] == "measurable"]
++    obs = {"scope": [o.get("objects_scope") for o in meas],
++           "object_ids": [o.get("object_ids") for o in meas],
++           "quantifier": [o.get("quantifier") for o in meas]}
++    fixed = bool(meas and meas[0].get("objects_scope") == ["furniture"]
++                 and not meas[0].get("object_ids")
++                 and meas[0].get("quantifier") == "all")
++    record("T03", "明确说「都/所有」时才允许整组范围", obs, fixed)
++
++
++def t04_missing_object_not_widened() -> None:
++    text = "把 F9 旋转到 30 度"
++    objs = derive(text)
++    meas = [o for o in objs if o["kind"] == "measurable"]
++    _o, _c, integ = recheck(text, lambda c: _rot(c, "F3", 30))
++    obs = {"object_ids": [o.get("object_ids") for o in meas],
++           "scope": [o.get("objects_scope") for o in meas],
++           "binding": [(o.get("binding_status"), o.get("binding_match")) for o in meas],
++           "states": [r.get("objective_rechecked") for r in integ],
++           "missing": [r.get("evidence", {}).get("after", {}).get("missing_object_ids")
++                       for r in integ]}
++    fixed = bool(meas and meas[0].get("object_ids") == ["F9"]
++                 and not meas[0].get("objects_scope")
++                 and integ and integ[0]["objective_rechecked"] == "fail"
++                 and integ[0]["evidence"]["after"]["missing_object_ids"] == ["F9"])
++    record("T04", "点名不存在的对象不能退回整类；应按对象缺失处理", obs, fixed)
++
++
++def t05_same_name_ambiguity() -> None:
++    plan = copy.deepcopy(BASE)
++    for f in plan["furniture"]:
++        if f["id"] in ("F1", "F2"):
++            f["name"] = "洽谈桌"
++    text = "保留洽谈桌不动"
++    objs = derive(text, plan)
++    pres = [o for o in objs if o["kind"] == "preserve"]
++    obs = {"binding": [(o.get("binding_status"), o.get("binding_match"),
++                        o.get("object_ids")) for o in pres],
++           "candidates": [o.get("binding_candidates") for o in pres]}
++    fixed = bool(pres and pres[0].get("binding_status") == "ambiguous"
++                 and not pres[0].get("object_ids")
++                 and len(pres[0].get("binding_candidates") or []) == 2)
++    record("T05", "同名对象歧义应报候选，不能随便挑一个绑定", obs, fixed)
++
++
++# --------------------------------------------------------------- 2 比较符
++def t06_comparator_max() -> None:
++    text = "主动线净宽不超过 2400mm"
++    meas = [o for o in derive(text) if o["kind"] == "measurable"]
++    obs = {"comparator": [o.get("comparator") for o in meas],
++           "target": [o.get("target") for o in meas],
++           "source_text": [o.get("source_text") for o in meas]}
++    fixed = bool(meas and meas[0].get("comparator") == "max")
++    record("T06", "「不超过」被当成默认下限（min）", obs, fixed)
++
++
++def t07_comparator_min_and_exact() -> None:
++    lo = [o for o in derive("主动线净宽至少 2100mm") if o["kind"] == "measurable"]
++    eq = [o for o in derive("把 F1 旋转到恰好 30 度") if o["kind"] == "measurable"]
++    obs = {"min": [o.get("comparator") for o in lo],
++           "exact": [o.get("comparator") for o in eq]}
++    fixed = bool(lo and lo[0].get("comparator") == "min"
++                 and eq and eq[0].get("comparator") == "exact")
++    record("T07", "「至少」→min、「恰好」→exact 未区分", obs, fixed)
++
++
++def t08_comparator_reverse_negative() -> None:
++    """上限/下限被执行时方向必须相反：4000K 上限在 3500K 上通过，在下限上失败。"""
++    out = {}
++    for label, text in (("max", "L1 色温不超过 4000K"), ("min", "L1 色温不低于 4000K")):
++        objs = derive(text)
++        cand = copy.deepcopy(BASE)
++        for f in cand["ceiling"]["fixtures"]:
++            if f["id"] == "L1":
++                f["kelvin"] = 3500
++        rows = rt.recheck_objectives(objs, BASE, cand, site=SITE)
++        out[label] = [(o.get("comparator"), r.get("objective_rechecked"))
++                      for o, r in zip(objs, rows)]
++    fixed = (out["max"] and out["max"][0][0] == "max" and out["max"][0][1] == "pass"
++             and out["min"] and out["min"][0][0] == "min" and out["min"][0][1] == "fail")
++    record("T08", "上限与下限在执行时方向相反（不是只改标签）", out, fixed)
++
++
++def t09_multiple_values_one_clause() -> None:
++    text = "F1 和 F3 分别转到 30 和 -30 度"
++    objs = derive(text)
++    meas = [o for o in objs if o["kind"] == "measurable"]
++    pend = [o for o in objs if o["kind"] in ("aesthetic", "unparsed")]
++    obs = {"measurable": [o.get("target") for o in meas],
++           "pending_reason": [o.get("unparsed_reason") for o in pend],
++           "pending_ids": [o.get("objective_id") for o in pend]}
++    fixed = not meas and any(o.get("unparsed_reason") == "multiple_values_in_clause"
++                             for o in pend)
++    record("T09", "同一句两个同类数值只取第一个", obs, fixed)
++
++
++# --------------------------------------------------------- 3 未解析/审美
++def t10_numeric_plus_aesthetic() -> None:
++    text = "主动线净宽至少 2100mm，同时整体更有设计感"
++    objs = derive(text)
++    kinds = [o["kind"] for o in objs]
++    cand = copy.deepcopy(BASE)
++    for c in cand["circulation"]:
++        if c["id"] == "CA1":
++            c["width_mm"] = 2100
++    rows = rt.recheck_objectives(objs, BASE, cand, site=SITE)
++    flags = [(r["kind"], r["objective_rechecked"], r["user_confirmed"]) for r in rows]
++    obs = {"kinds": kinds, "states": flags}
++    fixed = ("aesthetic" in kinds and "measurable" in kinds
++             and any(k == "aesthetic" and s == "unknown" and u == "pending"
++                     for k, s, u in flags))
++    record("T10", "数值目标把「更有设计感」吞掉，审美不 pending", obs, fixed)
++
++
++def t11_numeric_preserve_aesthetic() -> None:
++    text = "主动线净宽扩大到 2100mm，保留东洽谈区不动，整体要更有呼吸感"
++    objs = derive(text)
++    kinds = sorted({o["kind"] for o in objs})
++    pres = [o for o in objs if o["kind"] == "preserve"]
++    obs = {"kinds": kinds,
++           "preserve": [(o.get("binding_status"), o.get("object_ids")) for o in pres],
++           "pending": [o.get("source_text") for o in objs
++                       if o["kind"] in ("aesthetic", "unparsed")]}
++    fixed = ({"measurable", "preserve", "aesthetic"} <= set(kinds)
++             and pres and pres[0].get("object_ids") == ["ZA5"])
++    record("T11", "数值+保留+审美三类诉求必须同时存在", obs, fixed)
++
++
++# --------------------------------------------------------------- 4 矛盾
++def t12_contradiction() -> None:
++    if not hasattr(rt, "text_conflicts"):
++        record("T12", "同基线矛盾要求（min 2400 + max 2100）没有显式冲突入口",
++               {"capability": "absent"}, False)
++        return
++    fbs = [{"id": "f1", "feedback_id": "f1", "revision_no": 1, "kind": "boss_message",
++            "text": "主动线净宽至少 2400mm", "locks": [], "objectives": []},
++           {"id": "f2", "feedback_id": "f2", "revision_no": 2, "kind": "boss_message",
++            "text": "主动线净宽不超过 2100mm", "locks": [], "objectives": []}]
++    objs = rt.derive_objectives([dict(f) for f in fbs], None, plan=BASE)
++    conflicts = rt.text_conflicts(objs)
++    obs = {"conflict_count": len(conflicts),
++           "detail": [c.get("detail") for c in conflicts],
++           "decision_needed": [c.get("decision_needed") for c in conflicts]}
++    fixed = bool(conflicts and conflicts[0]["type"] == "contradictory_text_targets")
++    record("T12", "同基线矛盾要求被一起交给返工硬凑，没有显式冲突", obs, fixed)
++
++
++def t13_non_conflicting_pair() -> None:
++    fbs = [{"id": "f1", "feedback_id": "f1", "revision_no": 1, "kind": "boss_message",
++            "text": "主动线净宽至少 2100mm", "locks": [], "objectives": []},
++           {"id": "f2", "feedback_id": "f2", "revision_no": 2, "kind": "boss_message",
++            "text": "主动线净宽至少 2400mm", "locks": [], "objectives": []}]
++    if not hasattr(rt, "text_conflicts"):
++        record("T13", "两条同向要求（都加严）不该被误报成矛盾",
++               {"capability": "absent"}, False, verdict="not_observable")
++        return
++    fbs = [{"id": "f1", "feedback_id": "f1", "revision_no": 1, "kind": "boss_message",
++            "text": "主动线净宽至少 2100mm", "locks": [], "objectives": []},
++           {"id": "f2", "feedback_id": "f2", "revision_no": 2, "kind": "boss_message",
++            "text": "主动线净宽至少 2400mm", "locks": [], "objectives": []}]
++    objs = rt.derive_objectives([dict(f) for f in fbs], None, plan=BASE)
++    conflicts = rt.text_conflicts(objs)
++    obs = {"conflict_count": len(conflicts)}
++    fixed = len(conflicts) == 0
++    record("T13", "两条同向要求（都加严）不该被误报成矛盾", obs, fixed)
++
++
++RUNNERS = [t01_named_object_not_widened, t01b_unrelated_furniture_change_rejected,
++           t02_two_named_objects, t03_explicit_all_is_allowed,
++           t04_missing_object_not_widened, t05_same_name_ambiguity,
++           t06_comparator_max, t07_comparator_min_and_exact,
++           t08_comparator_reverse_negative, t09_multiple_values_one_clause,
++           t10_numeric_plus_aesthetic, t11_numeric_preserve_aesthetic,
++           t12_contradiction, t13_non_conflicting_pair]
++
++
++def main() -> int:
++    phase = "before"
++    out = None
++    for i, a in enumerate(sys.argv):
++        if a == "--phase" and i + 1 < len(sys.argv):
++            phase = sys.argv[i + 1]
++        if a == "--out" and i + 1 < len(sys.argv):
++            out = Path(sys.argv[i + 1]).resolve()
++    if not out:
++        raise SystemExit("--out is required")
++    for fn in RUNNERS:
++        try:
++            fn()
++        except Exception:  # noqa: BLE001 - a crash is a result, never hidden
++            CASES.append({"case": fn.__name__, "finding": "调用直接抛异常",
++                          "observed": {"traceback": traceback.format_exc()[-800:]},
++                          "verdict": "crashed"})
++            print("crashed           " + fn.__name__, flush=True)
++    counts: dict[str, int] = {}
++    for c in CASES:
++        counts[c["verdict"]] = counts.get(c["verdict"], 0) + 1
++    out.parent.mkdir(parents=True, exist_ok=True)
++    out.write_text(json.dumps({
++        "task_id": "W0 文字反馈收口（TEXT-01）",
++        "schema_version": "rkd-text-feedback-cases.v1",
++        "phase": phase,
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "git_head": __import__("subprocess").run(
++            ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
++            capture_output=True, text=True).stdout.strip(),
++        "environment": {"python": sys.version.split()[0],
++                        "model_calls": "none (pure functions)",
++                        "fixture": "arc_first_batch_stub.valid_proposal('A')"},
++        "cases": CASES,
++        "summary": counts,
++    }, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"phase": phase, "summary": counts, "out": str(out)},
++                     ensure_ascii=False))
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify_text_browser.cjs b/scripts/verify_text_browser.cjs
+new file mode 100644
+index 0000000..0531066
+--- /dev/null
++++ b/scripts/verify_text_browser.cjs
+@@ -0,0 +1,156 @@
++/* W0 文字反馈收口 · 真实浏览器验收（headless Edge，真实点击/输入）。
++
++   只做一件事：用老板的**正常文字入口**发一条普通留言
++   「把 F3 旋转到 -30 度，其他家具不动」，点「开一轮」，确认：
++   - 页面把它当作旧基线续改（revise），不是重新生成 A/B；
++   - 新修订只改 F3，父版本等于用户选中的旧版；
++   - 页面上没有红色告警、没有 JS 错误；390px 不横向溢出。
++   验收脚本不注入 objectives/locks，结构化目标由服务端从文字解析。
++   0 外部调用、0 密钥、0 费用。由 verify_text_browser.py 驱动。
++*/
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { chromium } = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
++
++const url = process.env.RKD_QA_URL;
++const studioUrl = process.env.RKD_QA_STUDIO_URL;
++const evidence = process.env.RKD_QA_EVIDENCE_DIR;
++const projectId = process.env.RKD_QA_PROJECT_ID;
++const aId = process.env.RKD_QA_BASELINE_ID;
++const aUid = process.env.RKD_QA_BASELINE_UID;
++assert(url && studioUrl && evidence && projectId && aId && aUid,
++  'isolated browser config required');
++
++const TEXT = '把 F3 旋转到 -30 度，其他家具不动';
++
++const getState = async (page) => {
++  const r = await page.request.get(
++    `${studioUrl}/studio/projects/${encodeURIComponent(projectId)}/state`);
++  assert.equal(r.status(), 200, 'studio state not readable');
++  return r.json();
++};
++
++(async () => {
++  const browser = await chromium.launch({ channel: 'msedge', headless: true });
++  const page = await browser.newPage({ viewport: { width: 1500, height: 1050 } });
++  const errors = [];
++  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
++  page.on('console', m => {
++    if (m.type() !== 'error') return;
++    const t = m.text();
++    if (/Failed to load resource.*404|status of 404/.test(t)) return;
++    errors.push('console: ' + t);
++  });
++  page.on('dialog', async d => { await d.accept('按这条改，其他不动'); });
++
++  const obs = { text: TEXT, baseline_a: aId, baseline_uid: aUid };
++  try {
++    await page.goto(`${url}/?view=studio`, { waitUntil: 'domcontentloaded' });
++    await page.locator('.project-item').first().waitFor({ timeout: 25000 });
++    await page.locator('.project-item').filter({ hasText: /宁波协诚/ }).first().click();
++    await page.locator('.studio-meta').waitFor({ timeout: 20000 });
++
++    const before = await getState(page);
++    obs.before_runs = before.runs.length;
++
++    // ---- 正常文字入口：选旧方案 + 只输入文字 -----------------------------
++    await page.locator('[data-testid="baseline-select"]').selectOption(aId);
++    await page.locator('.studio-input input').fill(TEXT);
++    await page.getByRole('button', { name: '发给公司' }).click();
++    await page.getByText(TEXT, { exact: false }).first().waitFor({ timeout: 15000 });
++
++    const posted = await getState(page);
++    obs.task_resolution = {
++      kind: posted.task_resolution.kind,
++      target_artifact_id: posted.task_resolution.target_artifact_id,
++    };
++    assert.equal(posted.task_resolution.kind, 'revise',
++      'a normal text message on a selected baseline must be a revise, not a new generate');
++    assert.equal(posted.task_resolution.target_artifact_id, aId);
++
++    // ---- 开一轮 -----------------------------------------------------------
++    await page.getByRole('button', { name: /开一轮/ }).click();
++    let after = null;
++    for (let i = 0; i < 200; i++) {
++      after = await getState(page);
++      if (after.runs.length > before.runs.length &&
++          after.runs[after.runs.length - 1].status !== 'running') break;
++      await page.waitForTimeout(500);
++    }
++    assert(after && after.runs.length > before.runs.length, 'no new run finished');
++    const lastRun = after.runs[after.runs.length - 1];
++    obs.last_run = { id: lastRun.id, status: lastRun.status,
++      task_kind: lastRun.task_kind };
++    assert.equal(lastRun.task_kind, 'revise');
++    assert.equal(lastRun.status, 'succeeded');
++
++    const rev = (after.artifacts || []).find(
++      a => a.kind === 'spatial-plan' && a.run_id === lastRun.id && a.revision >= 2);
++    assert(rev, 'no continued revision produced');
++    obs.new_revision = { id: rev.id, revision: rev.revision,
++      parent_revision_uid: rev.parent_revision_uid };
++    assert.equal(rev.parent_revision_uid, aUid);
++
++    // 结构化目标来自服务端的文字解析，只认 F3
++    const integ = (rev.diagnostics || {}).integrity || {};
++    const rows = integ.objective_rechecks || [];
++    const meas = rows.filter(r => r.kind === 'measurable');
++    const pres = rows.filter(r => r.kind === 'preserve');
++    obs.objective_rechecks = rows.map(r => ({
++      kind: r.kind, rule_id: r.rule_id, target: r.target,
++      target_objects: r.target_objects, state: r.objective_rechecked,
++      user_confirmed: r.user_confirmed,
++    }));
++    obs.object_diff = (rev.diagnostics || {}).object_diff;
++    assert.equal(meas.length, 1, 'expected exactly one measurable objective');
++    assert.deepEqual(meas[0].target_objects, ['F3'],
++      'the named object F3 must be the only target, not the whole furniture group');
++    assert.equal(meas[0].objective_rechecked, 'pass');
++    assert.deepEqual(obs.object_diff, ['furniture:F3']);
++    assert(pres.length >= 1 && pres.every(r => r.objective_rechecked === 'pass'),
++      'the "other furniture unchanged" clause must be bound and verified');
++
++    // ---- 页面状态 ---------------------------------------------------------
++    await page.waitForTimeout(3000);
++    obs.status_texts = await page.locator('[role="status"]').allInnerTexts();
++    obs.alert_count = await page.locator('.studio-error[role="alert"]').count();
++    assert.equal(obs.alert_count, 0, 'a successful text-driven revision is painted as an alert');
++    const taskbar = (await page.locator('.studio-taskbar').innerText()).replace(/\s+/g, ' ');
++    obs.taskbar = taskbar.slice(0, 400);
++    assert(/旧基线|revise|续改|第 \d+ 版|v\d/i.test(taskbar),
++      'taskbar does not show the continued-revision task');
++    await page.screenshot({ path: path.join(evidence, 'text-f3-desktop.png'),
++      fullPage: true });
++
++    // ---- 390px ------------------------------------------------------------
++    await page.setViewportSize({ width: 390, height: 844 });
++    await page.waitForTimeout(700);
++    obs.mobile_scroll_width = await page.evaluate(() => document.documentElement.scrollWidth);
++    obs.mobile_inner_width = await page.evaluate(() => window.innerWidth);
++    assert(obs.mobile_scroll_width <= 390,
++      `mobile overflow: scrollWidth=${obs.mobile_scroll_width}`);
++    await page.screenshot({ path: path.join(evidence, 'text-f3-mobile.png'),
++      fullPage: true });
++
++    obs.page_errors = errors;
++    assert.equal(errors.length, 0, 'browser JS errors: ' + errors.join(' | '));
++    obs.passed = true;
++    fs.writeFileSync(path.join(evidence, 'browser-observations.json'),
++      JSON.stringify(obs, null, 2));
++    console.log(JSON.stringify({ passed: true, run: obs.last_run,
++      targets: meas[0].target_objects, diff: obs.object_diff }, null, 2));
++    await browser.close();
++    process.exit(0);
++  } catch (e) {
++    obs.passed = false;
++    obs.failure = String((e && e.message) || e);
++    obs.page_errors = errors;
++    fs.writeFileSync(path.join(evidence, 'browser-observations.json'),
++      JSON.stringify(obs, null, 2));
++    console.error(String((e && e.stack) || e));
++    await browser.close();
++    process.exit(1);
++  }
++})();
+diff --git a/scripts/verify_text_browser.py b/scripts/verify_text_browser.py
+new file mode 100644
+index 0000000..67d78a8
+--- /dev/null
++++ b/scripts/verify_text_browser.py
+@@ -0,0 +1,182 @@
++"""W0 文字反馈收口 · 真实浏览器验收驱动（隔离主工作台 + 隔离 Studio + Edge）。
++
++模型桩固定只改 F3.rot，与留言「把 F3 旋转到 -30 度，其他家具不动」一致；
++结构化目标/锁由服务端从文字解析，浏览器脚本不注入。0 外部调用、0 密钥、0 费用。
++
++用法：python scripts/verify_text_browser.py --out <dir>
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import socket
++import subprocess
++import sys
++import threading
++import time
++from datetime import datetime, timezone
++from http.server import ThreadingHTTPServer
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++
++
++def _arg(flag: str, default: Path) -> Path:
++    for i, a in enumerate(sys.argv):
++        if a == flag and i + 1 < len(sys.argv):
++            return Path(sys.argv[i + 1]).resolve()
++        if a.startswith(flag + "="):
++            return Path(a.split("=", 1)[1]).resolve()
++    return default
++
++
++EVIDENCE = _arg("--out", ROOT / "var/evidence/roadmap/W0-文字反馈收口/after/browser")
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME = EVIDENCE / "runtime"
++RUNTIME.mkdir(exist_ok=True)
++STUDIO_DB = RUNTIME / "studio.db"
++MAIN_DB = RUNTIME / "app.sqlite3"
++
++os.environ["RKD_STUDIO_DB"] = str(STUDIO_DB)
++for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++    os.environ.pop(k, None)
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from rkd_mvp.api_server import create_server  # noqa: E402
++from rkd_mvp.api_service import ApiService  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.identity import LocalIdentityProvider  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from rkd_mvp.studio import llm as studio_llm  # noqa: E402
++from rkd_mvp.studio import orchestrator, server as studio_server, vision  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++import verify_studio_loop as vsl  # noqa: E402
++
++
++class StubConfig:
++    configured = True
++    model = "local-model-stub"
++    base_url = "local://stub"
++    run_token_limit = 600_000
++    project_token_limit = 2_000_000
++
++    @classmethod
++    def from_env(cls):
++        return cls()
++
++
++def _free_port() -> int:
++    s = socket.socket()
++    s.bind(("127.0.0.1", 0))
++    port = s.getsockname()[1]
++    s.close()
++    return port
++
++
++def main() -> int:
++    for f in (STUDIO_DB, MAIN_DB):
++        if f.exists():
++            f.unlink()
++    started = time.monotonic()
++    studio_llm.Config = StubConfig
++    studio_server.Config = StubConfig
++    orchestrator.Client = vsl.FakeClient
++    vision.svg_to_jpeg = lambda svg, limit=720: vsl.FAKE_JPEG
++    vision.reference_jpeg = lambda limit=720: vsl.FAKE_JPEG
++
++    # 桩只转 F3：这就是模型对这一条留言的回应，验收脚本不替它写目标。
++    vsl.revision_payload = lambda: {
++        "responses": [], "patch": [{"op": "update", "group": "furniture", "id": "F3",
++                                    "fields": {"rot": -30}}]}
++
++    st = Store(STUDIO_DB)
++    orchestrator.Studio(st).seed_from_fixtures()
++    orchestrator.Studio(st).run_a1("ningbo-xiecheng", background=False)
++    before = st.project_state("ningbo-xiecheng")
++    a1 = next(a for a in before["artifacts"]
++              if a["kind"] == "spatial-plan" and a["option_id"] == "A"
++              and a["revision"] == 1 and a["contract_status"] == "valid_candidate")
++
++    store = SQLiteStore(MAIN_DB)
++    files = FileService(MAIN_DB, RUNTIME)
++    requirements = RequirementService(MAIN_DB)
++    service = ApiService(MVPApp(store), files, requirement_service=requirements,
++                         runtime_root=RUNTIME)
++    files.seed_ningbo(service, ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09")
++    main_port = _free_port()
++    main_server = create_server(service, LocalIdentityProvider(), port=main_port,
++                               static_dir=ROOT / "web" / "dist")
++    main_thread = threading.Thread(target=main_server.serve_forever,
++                                   name="text-main", daemon=True)
++    main_thread.start()
++
++    studio_port = 8099  # StudioView.tsx 里写死 8099（验收用同一端口）
++    studio_server.ALLOWED_ORIGINS = set(studio_server.ALLOWED_ORIGINS) | {
++        f"http://127.0.0.1:{main_port}", f"http://localhost:{main_port}"}
++    st_httpd = ThreadingHTTPServer(("127.0.0.1", studio_port), studio_server.Handler)
++    st_thread = threading.Thread(target=st_httpd.serve_forever, name="text-studio",
++                                 daemon=True)
++    st_thread.start()
++
++    env = {k: v for k, v in os.environ.items()
++           if k not in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
++                        "ALL_PROXY", "all_proxy")}
++    env.update({
++        "RKD_QA_URL": f"http://127.0.0.1:{main_port}",
++        "RKD_QA_STUDIO_URL": f"http://127.0.0.1:{studio_port}",
++        "RKD_QA_EVIDENCE_DIR": str(EVIDENCE),
++        "RKD_QA_PROJECT_ID": NINGBO_PROJECT_ID,
++        "RKD_QA_BASELINE_ID": a1["id"],
++        "RKD_QA_BASELINE_UID": a1["revision_uid"],
++    })
++    node = shutil.which("node")
++    if not node:
++        raise RuntimeError("node not found")
++    try:
++        proc = subprocess.run([node, str(ROOT / "scripts" / "verify_text_browser.cjs")],
++                              cwd=str(ROOT), env=env, capture_output=True, text=True,
++                              errors="replace", timeout=420)
++        (EVIDENCE / "browser-stdout.log").write_text(proc.stdout or "", encoding="utf-8")
++        (EVIDENCE / "browser-stderr.log").write_text(proc.stderr or "", encoding="utf-8")
++        obs_path = EVIDENCE / "browser-observations.json"
++        obs = json.loads(obs_path.read_text(encoding="utf-8")) if obs_path.exists() else {}
++        result = {
++            "schema_version": "rkd-text-browser-verification.v1",
++            "checked_at": datetime.now(timezone.utc).isoformat(),
++            "passed": bool(proc.returncode == 0 and obs.get("passed")),
++            "node_returncode": proc.returncode,
++            "duration_seconds": round(time.monotonic() - started, 2),
++            "selected_baseline": {"artifact_id": a1["id"],
++                                  "revision_uid": a1["revision_uid"]},
++            "entry_note": "页面只用正常文字入口提交（选旧方案 + 输入文字），未注入 objectives/locks",
++            "browser_observations": obs,
++            "external_calls": 0, "keys_used": False,
++            "model_channel": "local-model-stub (explicitly labelled)",
++            "boundaries": [
++                "隔离主工作台 SQLite + 隔离 Studio 库；日常 studio.db 未被写入",
++                "无外部模型/图片调用；无密钥；费用 0",
++                "浏览器只证明工程控制，不证明设计质量或专业签核",
++                "AD01—AD08 结论不改判；用户设计阶段确认尚未发生",
++            ],
++        }
++        (EVIDENCE / "verification.json").write_text(
++            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
++        print(json.dumps({"passed": result["passed"],
++                          "node_returncode": proc.returncode}, ensure_ascii=False))
++        if not result["passed"]:
++            print((proc.stderr or proc.stdout or "")[-3000:], flush=True)
++        return 0 if result["passed"] else 1
++    finally:
++        main_server.shutdown(); main_server.server_close()
++        st_httpd.shutdown(); st_httpd.server_close()
++        main_thread.join(5); st_thread.join(5)
++        store.close()
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify_text_http.py b/scripts/verify_text_http.py
+new file mode 100644
+index 0000000..b4b80ac
+--- /dev/null
++++ b/scripts/verify_text_http.py
+@@ -0,0 +1,395 @@
++"""TEXT-01 真实 HTTP 验收：普通文字留言 → /run，全程不手填 objectives/locks。
++
++隔离 Studio 库 + 真实 HTTP 服务 + 明确标注的本地模型桩（0 外部调用、0 密钥、
++0 费用）。所有留言都按老板的正常入口提交，只发送 text 与选定基线；
++结构化目标/锁一律由服务端从文字解析，验收脚本不替用户补。
++
++用法：
++  python scripts/verify_text_http.py --out <dir> --runtime <dir>
++"""
++from __future__ import annotations
++
++import copy
++import json
++import os
++import sys
++import time
++import urllib.error
++import urllib.request
++from datetime import datetime, timezone
++from http.server import ThreadingHTTPServer
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++
++
++def _arg(flag: str, default: Path) -> Path:
++    for i, a in enumerate(sys.argv):
++        if a == flag and i + 1 < len(sys.argv):
++            return Path(sys.argv[i + 1]).resolve()
++        if a.startswith(flag + "="):
++            return Path(a.split("=", 1)[1]).resolve()
++    return default
++
++
++EVIDENCE = _arg("--out", ROOT / "var/evidence/roadmap/W0-文字反馈收口/after/http")
++RUNTIME = _arg("--runtime", ROOT / "var/evidence/roadmap/W0-文字反馈收口/runtime")
++EVIDENCE.mkdir(parents=True, exist_ok=True)
++RUNTIME.mkdir(parents=True, exist_ok=True)
++DB = RUNTIME / "text-http.db"
++if DB.exists():
++    DB.unlink()
++os.environ["RKD_STUDIO_DB"] = str(DB)
++for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++    os.environ.pop(k, None)
++
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from rkd_mvp.studio import orchestrator, server as studio_server, vision  # noqa: E402
++from rkd_mvp.studio.store import Store  # noqa: E402
++import verify_studio_loop as vsl  # noqa: E402
++
++PID = "ningbo-xiecheng"
++PORT = 8123
++CHECKS: list[dict] = []
++
++
++class StubConfig:
++    configured = True
++    model = "local-model-stub"
++    base_url = "local://stub"
++    run_token_limit = 600_000
++    project_token_limit = 2_000_000
++
++    @classmethod
++    def from_env(cls):
++        return cls()
++
++
++def check(cid: str, name: str, ok: bool, evidence: dict) -> None:
++    CHECKS.append({"id": cid, "name": name,
++                   "result": "observed_pass" if ok else "observed_fail",
++                   "evidence": evidence})
++    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++
++
++def http(path: str, payload: dict | None = None) -> tuple[int, dict]:
++    data = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
++    req = urllib.request.Request(f"http://127.0.0.1:{PORT}{path}", data=data,
++                                 headers={"Content-Type": "application/json"},
++                                 method="POST" if data is not None else "GET")
++    try:
++        with urllib.request.urlopen(req, timeout=60) as resp:
++            return resp.status, json.loads(resp.read().decode("utf-8"))
++    except urllib.error.HTTPError as e:
++        return e.code, json.loads(e.read().decode("utf-8"))
++
++
++def state() -> dict:
++    code, body = http(f"/studio/projects/{PID}/state")
++    assert code == 200, (code, body)
++    return body
++
++
++def wait_run(run_id: str, timeout: float = 180.0) -> dict:
++    end = time.monotonic() + timeout
++    while time.monotonic() < end:
++        code, body = http(f"/studio/projects/{PID}/runs/{run_id}")
++        assert code == 200, (code, body)
++        if body["finished"]:
++            return body
++        time.sleep(0.3)
++    raise TimeoutError(run_id)
++
++
++def post_text(text: str, baseline: dict) -> tuple[int, dict]:
++    """The NORMAL user entry: text + selected baseline and nothing else."""
++    return http(f"/studio/projects/{PID}/messages",
++                {"text": text, "baseline_artifact_id": baseline["id"],
++                 "baseline_revision_uid": baseline["revision_uid"]})
++
++
++def run_once(text: str, baseline: dict,
++             patch: list[dict] | None) -> dict:
++    original = vsl.revision_payload
++    vsl.revision_payload = lambda: {"responses": [], "patch": patch or []}
++    try:
++        code, posted = post_text(text, baseline)
++        code2, started = http(f"/studio/projects/{PID}/run", {})
++        assert code2 == 202, (code2, started)
++        snap = wait_run(started["run_id"])
++    finally:
++        vsl.revision_payload = original
++    return {"post": code, "run": code2, "run_id": started["run_id"],
++            "snapshot": snap, "state": state()}
++
++
++def rechecks(snap: dict) -> list[dict]:
++    out: list[dict] = []
++    for a in snap["artifacts"]:
++        diag = a.get("diagnostics") or {}
++        integ = diag.get("integrity") or {}
++        out.extend(integ.get("objective_rechecks") or [])
++    return out
++
++
++def ran_diag(snap: dict) -> str:
++    return json.dumps([a.get("diagnostics") for a in snap["artifacts"]],
++                      ensure_ascii=False, default=str)
++
++
++def pick_baseline(st: dict) -> dict:
++    return next(a for a in st["artifacts"]
++                if a["kind"] == "spatial-plan" and a["option_id"] == "A"
++                and a["revision"] == 1 and a["contract_status"] == "valid_candidate")
++
++
++def main() -> int:
++    studio_server.Config = StubConfig
++    orchestrator.Client = vsl.FakeClient
++    vision.svg_to_jpeg = lambda svg, limit=720: vsl.FAKE_JPEG
++    vision.reference_jpeg = lambda limit=720: vsl.FAKE_JPEG
++
++    st = Store(DB)
++    orchestrator.Studio(st).seed_from_fixtures()
++    orchestrator.Studio(st).run_a1(PID, background=False)
++    a1 = pick_baseline(st.project_state(PID))
++
++    httpd = ThreadingHTTPServer(("127.0.0.1", PORT), studio_server.Handler)
++    import threading
++    t = threading.Thread(target=httpd.serve_forever, name="text-http", daemon=True)
++    t.start()
++    try:
++        # ---------------------------------------------------------------- 1 只改 F3
++        r = run_once("把 F3 旋转到 -30 度，其他家具不动", a1,
++                     [{"op": "update", "group": "furniture", "id": "F3",
++                       "fields": {"rot": -30}}])
++        snap = r["snapshot"]
++        rows = rechecks(snap)
++        meas = [x for x in rows if x.get("kind") == "measurable"]
++        pres = [x for x in rows if x.get("kind") == "preserve"]
++        diff = next((a.get("diagnostics", {}).get("object_diff") for a in snap["artifacts"]
++                     if a["kind"] == "spatial-plan"), [])
++        check("TEXT-01", "点名 F3 旋转：只改 F3 通过，目标对象是 F3 而不是整类家具",
++              bool(r["post"] == 201 and snap["run_status"] == "succeeded"
++                   and diff == ["furniture:F3"]
++                   and meas and meas[0].get("target_objects") == ["F3"]
++                   and meas[0].get("objective_rechecked") == "pass"),
++              {"post": r["post"], "run_status": snap["run_status"],
++               "object_diff": diff,
++               "targets": [x.get("target_objects") for x in meas],
++               "states": [x.get("objective_rechecked") for x in meas],
++               "preserve": [(x.get("objective_rechecked"), x.get("user_confirmed"))
++                            for x in pres]})
++
++        # ------------------------------------------- 2 同一句话，误改其他家具被拦
++        r = run_once("把 F3 旋转到 -30 度，其他家具不动", a1,
++                     [{"op": "update", "group": "furniture", "id": "F3",
++                       "fields": {"rot": -30}},
++                      {"op": "update", "group": "furniture", "id": "F1",
++                       "fields": {"rot": 45}}])
++        snap = r["snapshot"]
++        diag = ran_diag(snap)
++        check("TEXT-02", "同一句话：误改「其他家具」被保留要求拦下，不落有效修订",
++              bool(snap["run_status"] == "incomplete" and not snap["valid_artifacts"]
++                   and ("LOCK-PRESERVE" in diag or "LOCK-REVISION" in diag)
++                   and "F1" in diag),
++              {"run_status": snap["run_status"],
++               "valid_artifacts": len(snap["valid_artifacts"]),
++               "LOCK_in_diagnostics": "LOCK-" in diag})
++
++        # ------------------------------------------------- 3 两个对象只改一个
++        r = run_once("把 F1 和 F3 都转到 30 度", a1,
++                     [{"op": "update", "group": "furniture", "id": "F3",
++                       "fields": {"rot": 30}}])
++        snap = r["snapshot"]
++        rows = rechecks(snap)
++        meas = [x for x in rows if x.get("kind") == "measurable"]
++        check("TEXT-03", "点名 F1 和 F3：只改 F3 被判部分达标失败",
++              bool(snap["run_status"] == "incomplete" and not snap["valid_artifacts"]
++                   and meas and meas[0].get("objective_rechecked") == "fail"
++                   and (meas[0].get("target_objects") or []) == ["F1", "F3"]),
++              {"run_status": snap["run_status"],
++               "targets": [x.get("target_objects") for x in meas],
++               "states": [x.get("objective_rechecked") for x in meas],
++               "failing": [(x.get("evidence", {}).get("after", {}) or {})
++                           .get("failing_object_ids") for x in meas]})
++
++        # --------------------------------------------- 4 显式「所有/都」才整组
++        r = run_once("把家具都转到 30 度", a1,
++                     [{"op": "update", "group": "furniture", "id": "F3",
++                       "fields": {"rot": 30}}])
++        snap = r["snapshot"]
++        meas = [x for x in rechecks(snap) if x.get("kind") == "measurable"]
++        check("TEXT-04", "明确说「家具都」：整组是用户自己说的话，只改一个仍算失败",
++              bool(snap["run_status"] == "incomplete"
++                   and meas and (meas[0].get("target_objects") or []) == ["F1", "F2", "F3"]
++                   and meas[0].get("objective_rechecked") == "fail"),
++              {"run_status": snap["run_status"],
++               "targets": [x.get("target_objects") for x in meas],
++               "states": [x.get("objective_rechecked") for x in meas]})
++
++        # ------------------------------------------------ 5 点名不存在的对象
++        r = run_once("把 F9 旋转到 30 度", a1,
++                     [{"op": "update", "group": "furniture", "id": "F3",
++                       "fields": {"rot": 30}}])
++        snap = r["snapshot"]
++        meas = [x for x in rechecks(snap) if x.get("kind") == "measurable"]
++        miss = [(x.get("evidence", {}).get("after", {}) or {}).get("missing_object_ids")
++                for x in meas]
++        check("TEXT-05", "点名 F9（不存在）不退化成整类家具，按对象缺失判失败",
++              bool(snap["run_status"] == "incomplete" and meas
++                   and meas[0].get("objective_rechecked") == "fail"
++                   and miss == [["F9"]]),
++              {"run_status": snap["run_status"],
++               "targets": [x.get("target_objects") for x in meas],
++               "missing": miss,
++               "states": [x.get("objective_rechecked") for x in meas]})
++
++        # ------------------------------------------------------- 6 上限不进反
++        r = run_once("主动线净宽不超过 2400mm", a1,
++                     [{"op": "update", "group": "circulation", "id": "CA1",
++                       "fields": {"width_mm": 2600}}])
++        snap = r["snapshot"]
++        meas = [x for x in rechecks(snap) if x.get("kind") == "measurable"]
++        comparators = [(x.get("evidence", {}).get("after", {}) or {}).get("comparator")
++                       for x in meas]
++        check("TEXT-06", "「不超过」进入 max（没有反转成默认 min）；超上限判失败",
++              bool(snap["run_status"] == "incomplete" and comparators == ["max"]
++                   and meas[0].get("objective_rechecked") == "fail"),
++              {"run_status": snap["run_status"], "comparators": comparators,
++               "states": [x.get("objective_rechecked") for x in meas],
++               "measured": [(x.get("evidence", {}).get("after", {}) or {}).get("measured")
++                            for x in meas]})
++
++        # ------------------------------------------- 7 上限正例（色温，字段可测）
++        r = run_once("L1 色温不超过 4000K", a1,
++                     [{"op": "update", "group": "ceiling.fixtures", "id": "L1",
++                       "fields": {"kelvin": 3500}}])
++        snap = r["snapshot"]
++        meas = [x for x in rechecks(snap) if x.get("kind") == "measurable"]
++        comp = [(x.get("evidence", {}).get("after", {}) or {}).get("comparator")
++                for x in meas]
++        check("TEXT-07", "上限正例：3500K 满足「不超过 4000K」→ pass（方向没弄反）",
++              bool(snap["run_status"] == "succeeded" and comp == ["max"]
++                   and meas and meas[0].get("objective_rechecked") == "pass"),
++              {"run_status": snap["run_status"], "comparators": comp,
++               "states": [x.get("objective_rechecked") for x in meas]})
++
++        # ------------------------------------------- 8 同一数据的下限必须失败
++        r = run_once("L1 色温不低于 4000K", a1,
++                     [{"op": "update", "group": "ceiling.fixtures", "id": "L1",
++                       "fields": {"kelvin": 3600}}])
++        snap = r["snapshot"]
++        meas = [x for x in rechecks(snap) if x.get("kind") == "measurable"]
++        comp = [(x.get("evidence", {}).get("after", {}) or {}).get("comparator")
++                for x in meas]
++        check("TEXT-08", "下限负例：3600K 不满足「不低于 4000K」→ fail（与上限相反）",
++              bool(snap["run_status"] == "incomplete" and comp == ["min"]
++                   and meas and meas[0].get("objective_rechecked") == "fail"),
++              {"run_status": snap["run_status"], "comparators": comp,
++               "states": [x.get("objective_rechecked") for x in meas]})
++
++        # ------------------------------------------ 9 数值 + 保留 + 审美 三类共存
++        r = run_once("主动线净宽至少 2100mm，保留入口，整体更有设计感", a1,
++                     [{"op": "update", "group": "circulation", "id": "CA1",
++                       "fields": {"width_mm": 2100}}])
++        snap = r["snapshot"]
++        rows = rechecks(snap)
++        kinds = sorted({x.get("kind") for x in rows})
++        pending = [x.get("objective_id") for x in rows
++                   if x.get("user_confirmed") == "pending"]
++        check("TEXT-09", "数值+保留+审美三类都在；审美不因数值通过而被吞掉",
++              bool(snap["run_status"] == "succeeded"
++                   and {"measurable", "preserve", "aesthetic"} <= set(kinds)
++                   and pending),
++              {"run_status": snap["run_status"], "kinds": kinds,
++               "pending_objectives": pending,
++               "states": [(x.get("kind"), x.get("objective_rechecked"),
++                           x.get("user_confirmed")) for x in rows]})
++
++        # ------------------------------------------------- 10 两个数值同一句
++        r = run_once("F1 和 F3 分别转到 30 和 -30 度", a1,
++                     [{"op": "update", "group": "furniture", "id": "F1",
++                       "fields": {"rot": 30}},
++                      {"op": "update", "group": "furniture", "id": "F3",
++                       "fields": {"rot": -30}}])
++        snap = r["snapshot"]
++        rows = rechecks(snap)
++        pend = [(x.get("unparsed_reason"), x.get("source_text")) for x in rows
++                if x.get("kind") in ("aesthetic", "unparsed")]
++        verified = [x.get("objective_rechecked") for x in rows
++                    if x.get("kind") == "measurable"]
++        check("TEXT-10", "一句两个数值不取第一个：列为未解析待确认，不冒充已验证",
++              bool(any(p[0] == "multiple_values_in_clause" for p in pend)
++                   and not verified),
++              {"run_status": snap["run_status"], "pending": pend,
++               "measurable_states": verified})
++
++        # ------------------------------------------------- 11 同基线矛盾要求
++        code_a, _ = post_text("主动线净宽至少 2400mm", a1)
++        code_b, _ = post_text("主动线净宽不超过 2100mm", a1)
++        code2, started = http(f"/studio/projects/{PID}/run", {})
++        snap = wait_run(started["run_id"])
++        stt = state()
++        gate = [m for m in stt["messages"] if m["kind"] == "gate"]
++        gate_txt = json.dumps(gate[-1:], ensure_ascii=False)
++        check("TEXT-11", "同基线两条互相矛盾的数值要求：显式 conflict，不开跑、不返工硬凑",
++              bool(code_a == 201 and code_b == 201 and code2 == 202
++                   and snap["run_status"] == "conflict"
++                   and snap["artifact_count"] == 0
++                   and "min 2400" in gate_txt and "max 2100" in gate_txt),
++              {"post": [code_a, code_b], "run_status": snap["run_status"],
++               "artifacts": snap["artifact_count"],
++               "gate_has_both_requirements": ("min 2400" in gate_txt
++                                              and "max 2100" in gate_txt)})
++
++        # --------------------------------------- 12 单对象精确值正例（回归护栏）
++        r = run_once("把 F1 旋转到 45 度", a1,
++                     [{"op": "update", "group": "furniture", "id": "F1",
++                       "fields": {"rot": 45}}])
++        snap = r["snapshot"]
++        meas = [x for x in rechecks(snap) if x.get("kind") == "measurable"]
++        comp = [(x.get("evidence", {}).get("after", {}) or {}).get("comparator")
++                for x in meas]
++        diff = next((a.get("diagnostics", {}).get("object_diff") for a in snap["artifacts"]
++                     if a["kind"] == "spatial-plan"), [])
++        check("TEXT-12", "普通单对象精确值：仍然正常通过（新解析没有把正常输入弄坏）",
++              bool(snap["run_status"] == "succeeded" and comp == ["exact"]
++                   and diff == ["furniture:F1"]),
++              {"run_status": snap["run_status"], "comparators": comp,
++               "object_diff": diff})
++    finally:
++        httpd.shutdown()
++        httpd.server_close()
++        t.join(5)
++
++    failed = sum(1 for c in CHECKS if c["result"] != "observed_pass")
++    out = {
++        "task_id": "W0 文字反馈收口（TEXT-01 真实 HTTP）",
++        "schema_version": "rkd-text-http-checks.v1",
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "code_head": __import__("subprocess").run(
++            ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
++            capture_output=True, text=True).stdout.strip(),
++        "environment": {"python": sys.version.split()[0],
++                        "model_channel": "local-model-stub (explicitly labelled)",
++                        "service": f"studio HTTP 127.0.0.1:{PORT} (isolated DB)",
++                        "keys_used": False},
++        "entry_note": "所有留言都用正常入口 POST /messages（只给 text 与选定基线），"
++                      "没有在验收脚本里注入 objectives 或 locks",
++        "checks": CHECKS,
++        "totals": {"observed_pass": len(CHECKS) - failed, "observed_fail": failed},
++        "external_calls": 0, "tokens": 0, "cost_amount_or_null": None,
++        "cost_status": "no_external_calls_zero_cost",
++    }
++    (EVIDENCE / "checks.json").write_text(json.dumps(out, ensure_ascii=False, indent=2),
++                                          encoding="utf-8")
++    print(json.dumps({"passed": len(CHECKS) - failed, "failed": failed,
++                      "out": str(EVIDENCE / "checks.json")}, ensure_ascii=False))
++    return 0 if failed == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify_w0.py b/scripts/verify_w0.py
+index 6afc9ae..1e011cf 100644
+--- a/scripts/verify_w0.py
++++ b/scripts/verify_w0.py
+@@ -20,8 +20,20 @@ from http.server import ThreadingHTTPServer
+ from pathlib import Path
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+-EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "after"
+-RUNTIME = ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "runtime"
++
++
++def _arg(flag: str, default: Path) -> Path:
++    """--out / --runtime 避免重跑覆盖上一批历史证据。"""
++    for i, a in enumerate(sys.argv):
++        if a == flag and i + 1 < len(sys.argv):
++            return Path(sys.argv[i + 1]).resolve()
++        if a.startswith(flag + "="):
++            return Path(a.split("=", 1)[1]).resolve()
++    return default
++
++
++EVIDENCE = _arg("--out", ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "after")
++RUNTIME = _arg("--runtime", ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "runtime")
+ EVIDENCE.mkdir(parents=True, exist_ok=True)
+ RUNTIME.mkdir(parents=True, exist_ok=True)
+ os.environ["RKD_STUDIO_DB"] = str(RUNTIME / "w0-verify.db")
+diff --git a/scripts/verify_w0b.py b/scripts/verify_w0b.py
+index 25bbe9c..d25fe17 100644
+--- a/scripts/verify_w0b.py
++++ b/scripts/verify_w0b.py
+@@ -23,8 +23,20 @@ from http.server import ThreadingHTTPServer
+ from pathlib import Path
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+-EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "after"
+-RUNTIME = ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "runtime"
++
++
++def _arg(flag: str, default: Path) -> Path:
++    """--out / --runtime keep a re-run from overwriting an earlier batch."""
++    for i, a in enumerate(sys.argv):
++        if a == flag and i + 1 < len(sys.argv):
++            return Path(sys.argv[i + 1]).resolve()
++        if a.startswith(flag + "="):
++            return Path(a.split("=", 1)[1]).resolve()
++    return default
++
++
++EVIDENCE = _arg("--out", ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "after")
++RUNTIME = _arg("--runtime", ROOT / "var" / "evidence" / "roadmap" / "W0-二次收口" / "runtime")
+ EVIDENCE.mkdir(parents=True, exist_ok=True)
+ RUNTIME.mkdir(parents=True, exist_ok=True)
+ DB = RUNTIME / "w0b-verify.db"

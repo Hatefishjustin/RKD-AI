@@ -1,0 +1,318 @@
+{
+  "task_id": "W0 二次收口（W0-F01—F05）",
+  "schema_version": "rkd-w0b-repro.v1",
+  "phase": "after",
+  "executed_at": "2026-11-14T17:50:40+08:00",
+  "git_head": "5571e4ec82753539793e0ae7ecb046bf1c336a73",
+  "environment": {
+    "python": "3.12.14",
+    "model_calls": "none (pure function / store level)",
+    "isolated_dbs": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\rkd-w0b-repro-o1pd393l"
+  },
+  "cases": [
+    {
+      "case": "F01-a",
+      "finding": "旧反馈在最新一条被执行后自动复活",
+      "observed": {
+        "first_selected": "newer",
+        "first_kind": "revise",
+        "after_latest_consumed_kind": "conflict",
+        "after_latest_consumed_feedback": null,
+        "after_latest_consumed_code": "feedback_already_consumed"
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F01-b",
+      "finding": "已消费历史封死新的生成意图",
+      "observed": {
+        "kind": "generate",
+        "code": null,
+        "reason": "最新留言（v2）没有指定旧基线：按 generate 处理；留言内容仍进入有效需求"
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F01-c",
+      "finding": "跨候选的两条待续改留言被无声合并/丢弃",
+      "observed": {
+        "kind": "conflict",
+        "code": "multiple_pending_feedback",
+        "selected_feedback": null,
+        "pending_feedback": [
+          "fb_c7fbe8d332"
+        ],
+        "pending_listed": [
+          "fb_c7fbe8d332"
+        ],
+        "newer_feedback_was": "fb_2bcea5db55"
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F01-d",
+      "finding": "同基线多条待续改留言未显式合并（旧条会晚点复活）",
+      "observed": {
+        "kind": "revise",
+        "merged_feedback_ids": [
+          "fb_400741aafd",
+          "fb_fb2c415d6a"
+        ],
+        "expected_merged": [
+          "fb_400741aafd",
+          "fb_fb2c415d6a"
+        ]
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F01-e",
+      "finding": "自动返工次数未按设计试验累计（新 run 从 0 重新开始）",
+      "observed": {
+        "cumulative_api": true,
+        "trial_key": "ningbo-xiecheng|revuid_6e1e90154b",
+        "auto_rework_used": 0,
+        "runs_has_auto_rework_total": true,
+        "runs_has_trial_key": true
+      },
+      "verdict": "fixed_signature",
+      "note": "结构性观测：记录累计计数器是否存在且可查询；行为侧的累计见 verify_w0b.py 的 F01-e 场景"
+    },
+    {
+      "case": "F02-a",
+      "finding": "多对象目标只要一个对象达标就判 pass",
+      "observed": {
+        "objective_rechecked": "fail",
+        "resolved": false,
+        "targets": [
+          "F1",
+          "F2"
+        ],
+        "passing": [
+          "F1"
+        ],
+        "failing": [
+          "F2"
+        ],
+        "quantifier": "all"
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F02-b",
+      "finding": "目标点名的对象不存在时仍判 pass",
+      "observed": {
+        "objective_rechecked": "fail",
+        "resolved": false,
+        "targets": [
+          "F1",
+          "FX"
+        ],
+        "missing": [
+          "FX"
+        ],
+        "passing": [
+          "F1"
+        ]
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F02-c",
+      "finding": "范围内只有无关对象恰好达标就判 pass",
+      "observed": {
+        "objective_rechecked": "fail",
+        "passing": [
+          "F3"
+        ],
+        "failing": [
+          "F1",
+          "F2"
+        ]
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F02-d",
+      "finding": "最低值/精确值/上限语义混用（比较符被忽略）",
+      "observed": {
+        "min_2300": "pass",
+        "exact_2300": "fail",
+        "min_comparator_recorded": "min",
+        "width_coverage": "limited: declared width + keep-out/entrance geometry; 不覆盖门洞、家具遮挡与完整净宽合规"
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F03-a",
+      "finding": "保留非入口对象被改动，保留要求仍判 pass（实际校验的是入口锁）",
+      "observed": {
+        "objectives": [
+          {
+            "kind": "measurable",
+            "object_ids": [],
+            "binding": "resolved"
+          },
+          {
+            "kind": "preserve",
+            "object_ids": [
+              "ZA5"
+            ],
+            "binding": "resolved"
+          }
+        ],
+        "preserve_rows": [
+          {
+            "rechecked": "fail",
+            "resolved": false,
+            "target_objects": [
+              "ZA5"
+            ]
+          }
+        ],
+        "ZA5_changed": true,
+        "overall_ok": false
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F03-b",
+      "finding": "找不到对象的保留要求被当通过 / 被降级成空泛意见（应为 unknown+pending 且留痕）",
+      "observed": {
+        "objective_kinds": [
+          {
+            "kind": "preserve",
+            "binding": "unresolved",
+            "object_ids": []
+          }
+        ],
+        "preserve_count": 1,
+        "binding_status": [
+          "unresolved"
+        ],
+        "states": [
+          [
+            "unknown",
+            "pending"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F03-c",
+      "finding": "只有保留诉求时该诉求被丢弃（只剩审美兜底）",
+      "observed": {
+        "kinds": [
+          "preserve"
+        ],
+        "has_preserve": true
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F03-e",
+      "finding": "混合留言的保留/审美诉求被其中一个数值目标吞掉或未绑定对象",
+      "observed": {
+        "kinds": [
+          "measurable",
+          "preserve",
+          "aesthetic"
+        ],
+        "has_numeric": true,
+        "has_preserve": true,
+        "preserve_object_ids": [
+          [
+            "ZA5"
+          ]
+        ],
+        "preserve_binding": [
+          "resolved"
+        ],
+        "has_aesthetic": true
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F04-a",
+      "finding": "字段锁实际按整对象比较：锁 x 也拦下改 rot；未知字段无人诊断",
+      "observed": {
+        "rot_only_conflicts": 0,
+        "rot_only_fields": [],
+        "rot_only_changed_fields": [],
+        "x_changed_conflicts": 1,
+        "x_changed_fields": [
+          [
+            "x"
+          ]
+        ],
+        "deleted_conflicts": 1,
+        "deleted_diagnostic": [
+          "object_deleted"
+        ],
+        "star_rot_conflicts": 1,
+        "ghost_no_change_conflicts": 1,
+        "ghost_diagnostic": [
+          "unsupported_fields"
+        ]
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F04-b",
+      "finding": "四级校验的锁定阶段把字段锁升级为整对象锁",
+      "observed": {
+        "ok": true,
+        "stage": "passed",
+        "lock_errors": [],
+        "accepts_structured_locks": true,
+        "mode": "structured_fields"
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F05-a",
+      "finding": "状态响应混拼两个时间点：run 已完成但同一快照里没有它的产物",
+      "observed": {
+        "mode": "in_snapshot_barrier",
+        "snapshot_run_status": "running",
+        "snapshot_artifacts_for_run": 0,
+        "consistent": true,
+        "writer_error": null,
+        "after_artifacts_for_run": 1,
+        "has_snapshot_meta": true
+      },
+      "verdict": "fixed_signature",
+      "note": ""
+    },
+    {
+      "case": "F05-b",
+      "finding": "客户端只能按 runs[-1] 猜测本轮结果，没有按 run_id 的读取边界",
+      "observed": {
+        "run_scoped_reader": true
+      },
+      "verdict": "fixed_signature",
+      "note": "结构性观测；HTTP 侧按 run_id 的读取见 verify_w0b.py"
+    }
+  ],
+  "summary": {
+    "defect_reproduced": 0,
+    "fixed_signature": 17,
+    "not_observable": 0,
+    "crashed": 0
+  }
+}

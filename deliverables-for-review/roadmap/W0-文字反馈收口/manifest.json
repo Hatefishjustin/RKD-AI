@@ -1,0 +1,167 @@
+{
+  "task_id": "W0 文字反馈收口（TEXT-01）",
+  "schema_version": "rkd-review-packet.v1",
+  "built_at": "2026-11-14T17:58:10+08:00",
+  "code_baseline": {
+    "compare_base": "5571e4ec82753539793e0ae7ecb046bf1c336a73",
+    "compare_base_subject": "docs: W0 二次收口复核包补提交号与证据时间轴",
+    "head_when_evidence_taken": "5571e4ec82753539793e0ae7ecb046bf1c336a73",
+    "rebuild_command": "git diff 5571e4e -- mvp scripts",
+    "patch_bytes": 90309
+  },
+  "timeline": [
+    {
+      "at": "2026-11-14T17:36",
+      "what": "整改前代码树（worktree @5571e4e）：14 例函数级 → 12 defect / 1 fixed / 1 not_observable"
+    },
+    {
+      "at": "2026-11-14T17:44",
+      "what": "整改前 HTTP：1 pass / 11 fail"
+    },
+    {
+      "at": "2026-11-14T17:50",
+      "what": "整改后函数级 14/14 fixed_signature"
+    },
+    {
+      "at": "2026-11-14T17:52",
+      "what": "整改后 HTTP 12/12 observed_pass"
+    },
+    {
+      "at": "2026-11-14T17:53",
+      "what": "真实 Edge 浏览器 passed=true（正常文字入口）"
+    },
+    {
+      "at": "2026-11-14T17:51",
+      "what": "回归：17/17 复现签名、15/15 HTTP、7/7 W0 专项、Q 11 pass"
+    },
+    {
+      "at": "2026-11-14T17:58",
+      "what": "全量单测 262 OK（296.5s）"
+    },
+    {
+      "at": "2026-11-14T18:05",
+      "what": "复核包编制完成（本清单时刻）"
+    }
+  ],
+  "packet_files": {
+    "after/http/checks.json": {
+      "bytes": 6404,
+      "sha256": "cd2168945a7466d49727b592924b0d593aebc402e28ecd4cd256c97e3d1b6d77"
+    },
+    "after/q-checks.json": {
+      "bytes": 41893,
+      "sha256": "bbcc976b406e9e7a2ee75bdffc28b9b9786796c971f16b6a266c39082447bee9"
+    },
+    "after/regression-arc-first-batch.json": {
+      "bytes": 44808,
+      "sha256": "87845042aeeb4ed65ccb8e2876a230c3b4d67ce32d2897bacf78b869671c67eb"
+    },
+    "after/regression-w0/checks.json": {
+      "bytes": 9146,
+      "sha256": "250e8f608b55459054265cbd439937fb03dc9a7616fb7420384c49780c23248d"
+    },
+    "after/regression-w0b-http/checks.json": {
+      "bytes": 16245,
+      "sha256": "d5091db35b3226b2f2e4d24686ee9091ba5d346e9cce9af0c6b135ab36f17cd5"
+    },
+    "after/regression-w0b-repro.json": {
+      "bytes": 8740,
+      "sha256": "8100b63735fb89126dc211f11257b42d780d610a488ea0f25c0736f8814e14d2"
+    },
+    "after/text-cases.json": {
+      "bytes": 6474,
+      "sha256": "925cb2c95cbc4323eb650167408ee6e7d1fa313135e853e50d86108b205480c8"
+    },
+    "before/http/checks.json": {
+      "bytes": 5896,
+      "sha256": "a7f376984f1aef5bd2821d550c66c07ada95e1057e4d63b309af6a2eca4ec56f"
+    },
+    "before/text-cases.json": {
+      "bytes": 5542,
+      "sha256": "b06972f6cd6f013dbf8eb7d5fe33f8cfe4b725cd6d7381820f02f368b7efe607"
+    },
+    "browser/browser-observations.json": {
+      "bytes": 1819,
+      "sha256": "396f5e73052acce1cb221c0227ae3073ef97456399c2bcb0f0d0ece460b8edbc"
+    },
+    "browser/text-f3-desktop.png": {
+      "bytes": 183779,
+      "sha256": "5ed68b06a3356bfdb9a4de5a5f297ab1a5baf329d76c7f4e2fe6d768b9e9d54b"
+    },
+    "browser/text-f3-mobile.png": {
+      "bytes": 435344,
+      "sha256": "e8145ad9a9890302d3bee706830ba82442df73eabb0ed33584dde0e286bd910c"
+    },
+    "browser/verification.json": {
+      "bytes": 2865,
+      "sha256": "fbe338f14db7e773b9b3056f9bc13200419a2d054b49e7f67d57057ade769c07"
+    },
+    "changes.patch": {
+      "bytes": 90309,
+      "sha256": "9b58f0c47d32931c23545ce9615b073259da3f225834e6f5076cbe6bef42762a"
+    },
+    "code-diff.md": {
+      "bytes": 6544,
+      "sha256": "0fdfdd9e21bec5cecbf7431150d8bab1cbc608d46cc5fc1808a9582eeb2f3827"
+    },
+    "positive-negative-cases.md": {
+      "bytes": 7565,
+      "sha256": "f16bf6b8018f4e6731d8ca69548bf67ba40da1db63c476cdce10b83ab4405c9d"
+    },
+    "review-packet.md": {
+      "bytes": 14570,
+      "sha256": "4e7cb915a74872f8cd0591e2685418aec63bd99740e7c35d1a56b2ebf1c83b13"
+    },
+    "runtime/frontend-tsc.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runtime/full-unittest.log": {
+      "bytes": 383,
+      "sha256": "97938865f19954e80de098001653955dc6a8efc09eee85e90adfc4e00b2de8b5"
+    }
+  },
+  "source_files": {
+    "mvp/rkd_mvp/studio/revision_task.py": {
+      "bytes": 60904,
+      "sha256": "1d924b3e686ffbe3eccdaa242c566976bf293405b00fbfe9cd6910a80209163b"
+    },
+    "mvp/rkd_mvp/studio/orchestrator.py": {
+      "bytes": 81495,
+      "sha256": "6a30ebd4f032e85601dba09d36e4c4fffe5b8c591ba5ca0c501f4be7c2532486"
+    },
+    "scripts/verify_w0.py": {
+      "bytes": 22881,
+      "sha256": "5c8846fddccf459f79f3e2730c7707eef2730a6c2b16e70ca4e27c74fe5ebfc5"
+    },
+    "scripts/verify_w0b.py": {
+      "bytes": 33993,
+      "sha256": "110f82ba7d869c913d8f63d6d01242365f019b13457a192bf9eafe0f339e3904"
+    },
+    "scripts/text_feedback_cases.py": {
+      "bytes": 17196,
+      "sha256": "afb6b7875e2d71238300da3fff2f57433d0e37014a7fbee5e370fa26ac366baa"
+    },
+    "scripts/verify_text_http.py": {
+      "bytes": 19638,
+      "sha256": "764fe5d88b5c28336cf1305191fadfac5c87b552714b52362df8a462586b4704"
+    },
+    "scripts/verify_text_browser.py": {
+      "bytes": 7935,
+      "sha256": "721f44fd4cf1ce3491e079219f0c58cbbfdcd36011d7974a0f700c6a9d1ef912"
+    },
+    "scripts/verify_text_browser.cjs": {
+      "bytes": 7810,
+      "sha256": "e38982720947029548d1f4b76ff3da0c128d48d082338e73fec25ee5a0dcbc5d"
+    }
+  },
+  "external_calls": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "keys_used": false,
+  "adjudication": {
+    "AD01-AD08": "未改判",
+    "design_stage": "未确认",
+    "w0_release": "未宣布，等架构师复核"
+  }
+}

@@ -1,0 +1,393 @@
+[
+  {
+    "text": "把 F3 旋转到 -30 度，其他家具不动",
+    "objectives": [
+      {
+        "objective_id": "FB1-1",
+        "kind": "measurable",
+        "rule_id": "STD-001",
+        "field": "rot",
+        "target": -30.0,
+        "unit": "degree",
+        "objects_scope": [
+          "furniture"
+        ],
+        "object_ids": [],
+        "comparator": "exact",
+        "quantifier": "all",
+        "source": "text_heuristic",
+        "issue_id": null,
+        "feedback_id": "fb",
+        "parsed_from": "旋转到 -30 度",
+        "computable": true
+      },
+      {
+        "objective_id": "FB1-P1",
+        "kind": "preserve",
+        "rule_id": "LOCK-PRESERVE",
+        "field": "preserved_objects",
+        "target": null,
+        "unit": "n/a",
+        "objects_scope": [],
+        "object_ids": [],
+        "binding_status": "unresolved",
+        "binding_match": "none",
+        "binding_candidates": [],
+        "source_text": "其他家具不动",
+        "source": "text_preserve",
+        "feedback_id": "fb",
+        "computable": false,
+        "note": "保留要求还没绑定到具体对象：未验证，等用户确认或补充对象；不用入口锁或别的锁代替"
+      }
+    ],
+    "checks": [
+      {
+        "objective_id": "FB1-1",
+        "kind": "measurable",
+        "rule_id": "STD-001",
+        "field": "rot",
+        "target": -30.0,
+        "unit": "degree",
+        "source": "text_heuristic",
+        "issue_id": null,
+        "feedback_id": "fb",
+        "target_objects": [
+          "F1",
+          "F2",
+          "F3"
+        ],
+        "quantifier": "all",
+        "input_included": true,
+        "object_changed": true,
+        "linked_objects": [
+          "F3"
+        ],
+        "objective_rechecked": "fail",
+        "user_confirmed": "not_applicable",
+        "resolved": false,
+        "note": "只满足部分对象（通过 ['F3']，未通过 ['F1', 'F2']）；默认量词=all，部分达标不算解决",
+        "evidence": {
+          "before": {
+            "rule_id": "STD-001",
+            "field": "rot",
+            "target": -30.0,
+            "comparator": "exact",
+            "quantifier": "all",
+            "target_objects": [
+              "F1",
+              "F2",
+              "F3"
+            ],
+            "missing_object_ids": [],
+            "declared_object_ids": [],
+            "object_source": "group:furniture",
+            "measured": {
+              "F1": 0,
+              "F2": 0,
+              "F3": -12
+            },
+            "passing_object_ids": [],
+            "failing_object_ids": [
+              "F1",
+              "F2",
+              "F3"
+            ],
+            "rechecked": "fail",
+            "coverage": "declared field value on the object (未渲染复核)"
+          },
+          "after": {
+            "rule_id": "STD-001",
+            "field": "rot",
+            "target": -30.0,
+            "comparator": "exact",
+            "quantifier": "all",
+            "target_objects": [
+              "F1",
+              "F2",
+              "F3"
+            ],
+            "missing_object_ids": [],
+            "declared_object_ids": [],
+            "object_source": "group:furniture",
+            "measured": {
+              "F1": 0,
+              "F2": 0,
+              "F3": -30
+            },
+            "passing_object_ids": [
+              "F3"
+            ],
+            "failing_object_ids": [
+              "F1",
+              "F2"
+            ],
+            "rechecked": "fail",
+            "coverage": "declared field value on the object (未渲染复核)"
+          }
+        }
+      },
+      {
+        "objective_id": "FB1-P1",
+        "kind": "preserve",
+        "rule_id": "LOCK-PRESERVE",
+        "field": "preserved_objects",
+        "target": null,
+        "unit": "n/a",
+        "source": "text_preserve",
+        "issue_id": null,
+        "feedback_id": "fb",
+        "target_objects": [],
+        "quantifier": "all",
+        "input_included": true,
+        "object_changed": false,
+        "linked_objects": [],
+        "objective_rechecked": "unknown",
+        "user_confirmed": "pending",
+        "resolved": null,
+        "note": "这条保留要求还没有绑定到具体对象，未验证；不用入口锁或别的锁代替，等用户确认或补充对象",
+        "evidence": {
+          "binding_status": "unresolved",
+          "candidates": [],
+          "clause": "其他家具不动",
+          "verified_objects": []
+        }
+      }
+    ]
+  },
+  {
+    "text": "主动线净宽不超过 2400mm",
+    "objectives": [
+      {
+        "objective_id": "FB1-1",
+        "kind": "measurable",
+        "rule_id": "CIR-001",
+        "field": "width_mm",
+        "target": 2400.0,
+        "unit": "mm",
+        "objects_scope": [
+          "circulation"
+        ],
+        "object_ids": [],
+        "comparator": "min",
+        "quantifier": "all",
+        "source": "text_heuristic",
+        "issue_id": null,
+        "feedback_id": "fb",
+        "parsed_from": "净宽不超过 2400mm",
+        "computable": true
+      }
+    ],
+    "checks": [
+      {
+        "objective_id": "FB1-1",
+        "kind": "measurable",
+        "rule_id": "CIR-001",
+        "field": "width_mm",
+        "target": 2400.0,
+        "unit": "mm",
+        "source": "text_heuristic",
+        "issue_id": null,
+        "feedback_id": "fb",
+        "target_objects": [
+          "CA1"
+        ],
+        "quantifier": "all",
+        "input_included": true,
+        "object_changed": false,
+        "linked_objects": [],
+        "objective_rechecked": "fail",
+        "user_confirmed": "not_applicable",
+        "resolved": false,
+        "note": "目标值由对应规则复算（比较符 min，量词 all）；未达到目标或目标对象未发生有效变化，不构成已解决",
+        "evidence": {
+          "before": {
+            "rule_id": "CIR-001",
+            "field": "width_mm",
+            "target": 2400.0,
+            "comparator": "min",
+            "quantifier": "all",
+            "target_objects": [
+              "CA1"
+            ],
+            "missing_object_ids": [],
+            "declared_object_ids": [],
+            "object_source": "group:circulation",
+            "measured": {
+              "CA1": {
+                "declared_width_mm": 2000,
+                "measured_clear_width_mm": 6000.0,
+                "target_mm": 2400.0,
+                "comparator": "min",
+                "declared_meets_target": false,
+                "measured_meets_target": true,
+                "absolute_floor_mm": 900,
+                "floor_met": true,
+                "circulation_issues": [],
+                "meets_target": false
+              }
+            },
+            "passing_object_ids": [],
+            "failing_object_ids": [
+              "CA1"
+            ],
+            "rechecked": "fail",
+            "engine": "shapely-2.1.2",
+            "coverage": "limited: declared width + keep-out/entrance geometry; 不覆盖门洞、家具遮挡与完整净宽合规"
+          },
+          "after": {
+            "rule_id": "CIR-001",
+            "field": "width_mm",
+            "target": 2400.0,
+            "comparator": "min",
+            "quantifier": "all",
+            "target_objects": [
+              "CA1"
+            ],
+            "missing_object_ids": [],
+            "declared_object_ids": [],
+            "object_source": "group:circulation",
+            "measured": {
+              "CA1": {
+                "declared_width_mm": 2000,
+                "measured_clear_width_mm": 6000.0,
+                "target_mm": 2400.0,
+                "comparator": "min",
+                "declared_meets_target": false,
+                "measured_meets_target": true,
+                "absolute_floor_mm": 900,
+                "floor_met": true,
+                "circulation_issues": [],
+                "meets_target": false
+              }
+            },
+            "passing_object_ids": [],
+            "failing_object_ids": [
+              "CA1"
+            ],
+            "rechecked": "fail",
+            "engine": "shapely-2.1.2",
+            "coverage": "limited: declared width + keep-out/entrance geometry; 不覆盖门洞、家具遮挡与完整净宽合规"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "text": "主动线净宽至少 2100mm，同时整体更有设计感",
+    "objectives": [
+      {
+        "objective_id": "FB1-1",
+        "kind": "measurable",
+        "rule_id": "CIR-001",
+        "field": "width_mm",
+        "target": 2100.0,
+        "unit": "mm",
+        "objects_scope": [
+          "circulation"
+        ],
+        "object_ids": [],
+        "comparator": "min",
+        "quantifier": "all",
+        "source": "text_heuristic",
+        "issue_id": null,
+        "feedback_id": "fb",
+        "parsed_from": "净宽至少 2100mm",
+        "computable": true
+      }
+    ],
+    "checks": [
+      {
+        "objective_id": "FB1-1",
+        "kind": "measurable",
+        "rule_id": "CIR-001",
+        "field": "width_mm",
+        "target": 2100.0,
+        "unit": "mm",
+        "source": "text_heuristic",
+        "issue_id": null,
+        "feedback_id": "fb",
+        "target_objects": [
+          "CA1"
+        ],
+        "quantifier": "all",
+        "input_included": true,
+        "object_changed": false,
+        "linked_objects": [],
+        "objective_rechecked": "fail",
+        "user_confirmed": "not_applicable",
+        "resolved": false,
+        "note": "目标值由对应规则复算（比较符 min，量词 all）；未达到目标或目标对象未发生有效变化，不构成已解决",
+        "evidence": {
+          "before": {
+            "rule_id": "CIR-001",
+            "field": "width_mm",
+            "target": 2100.0,
+            "comparator": "min",
+            "quantifier": "all",
+            "target_objects": [
+              "CA1"
+            ],
+            "missing_object_ids": [],
+            "declared_object_ids": [],
+            "object_source": "group:circulation",
+            "measured": {
+              "CA1": {
+                "declared_width_mm": 2000,
+                "measured_clear_width_mm": 6000.0,
+                "target_mm": 2100.0,
+                "comparator": "min",
+                "declared_meets_target": false,
+                "measured_meets_target": true,
+                "absolute_floor_mm": 900,
+                "floor_met": true,
+                "circulation_issues": [],
+                "meets_target": false
+              }
+            },
+            "passing_object_ids": [],
+            "failing_object_ids": [
+              "CA1"
+            ],
+            "rechecked": "fail",
+            "engine": "shapely-2.1.2",
+            "coverage": "limited: declared width + keep-out/entrance geometry; 不覆盖门洞、家具遮挡与完整净宽合规"
+          },
+          "after": {
+            "rule_id": "CIR-001",
+            "field": "width_mm",
+            "target": 2100.0,
+            "comparator": "min",
+            "quantifier": "all",
+            "target_objects": [
+              "CA1"
+            ],
+            "missing_object_ids": [],
+            "declared_object_ids": [],
+            "object_source": "group:circulation",
+            "measured": {
+              "CA1": {
+                "declared_width_mm": 2000,
+                "measured_clear_width_mm": 6000.0,
+                "target_mm": 2100.0,
+                "comparator": "min",
+                "declared_meets_target": false,
+                "measured_meets_target": true,
+                "absolute_floor_mm": 900,
+                "floor_met": true,
+                "circulation_issues": [],
+                "meets_target": false
+              }
+            },
+            "passing_object_ids": [],
+            "failing_object_ids": [
+              "CA1"
+            ],
+            "rechecked": "fail",
+            "engine": "shapely-2.1.2",
+            "coverage": "limited: declared width + keep-out/entrance geometry; 不覆盖门洞、家具遮挡与完整净宽合规"
+          }
+        }
+      }
+    ]
+  }
+]

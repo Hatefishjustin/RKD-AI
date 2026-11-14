@@ -1,0 +1,255 @@
+{
+  "task_id": "W0 文字反馈收口（TEXT-01 真实 HTTP）",
+  "schema_version": "rkd-text-http-checks.v1",
+  "executed_at": "2026-11-14T17:51:56+08:00",
+  "code_head": "5571e4ec82753539793e0ae7ecb046bf1c336a73",
+  "environment": {
+    "python": "3.12.14",
+    "model_channel": "local-model-stub (explicitly labelled)",
+    "service": "studio HTTP 127.0.0.1:8123 (isolated DB)",
+    "keys_used": false
+  },
+  "entry_note": "所有留言都用正常入口 POST /messages（只给 text 与选定基线），没有在验收脚本里注入 objectives 或 locks",
+  "checks": [
+    {
+      "id": "TEXT-01",
+      "name": "点名 F3 旋转：只改 F3 通过，目标对象是 F3 而不是整类家具",
+      "result": "observed_pass",
+      "evidence": {
+        "post": 201,
+        "run_status": "succeeded",
+        "object_diff": [
+          "furniture:F3"
+        ],
+        "targets": [
+          [
+            "F3"
+          ]
+        ],
+        "states": [
+          "pass"
+        ],
+        "preserve": [
+          [
+            "pass",
+            "not_applicable"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "TEXT-02",
+      "name": "同一句话：误改「其他家具」被保留要求拦下，不落有效修订",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "valid_artifacts": 0,
+        "LOCK_in_diagnostics": true
+      }
+    },
+    {
+      "id": "TEXT-03",
+      "name": "点名 F1 和 F3：只改 F3 被判部分达标失败",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "targets": [
+          [
+            "F1",
+            "F3"
+          ]
+        ],
+        "states": [
+          "fail"
+        ],
+        "failing": [
+          [
+            "F1"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "TEXT-04",
+      "name": "明确说「家具都」：整组是用户自己说的话，只改一个仍算失败",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "targets": [
+          [
+            "F1",
+            "F2",
+            "F3"
+          ]
+        ],
+        "states": [
+          "fail"
+        ]
+      }
+    },
+    {
+      "id": "TEXT-05",
+      "name": "点名 F9（不存在）不退化成整类家具，按对象缺失判失败",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "targets": [
+          [
+            "F9"
+          ]
+        ],
+        "missing": [
+          [
+            "F9"
+          ]
+        ],
+        "states": [
+          "fail"
+        ]
+      }
+    },
+    {
+      "id": "TEXT-06",
+      "name": "「不超过」进入 max（没有反转成默认 min）；超上限判失败",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "comparators": [
+          "max"
+        ],
+        "states": [
+          "fail"
+        ],
+        "measured": [
+          {
+            "CA1": {
+              "declared_width_mm": 2600,
+              "measured_clear_width_mm": 6000.0,
+              "target_mm": 2400.0,
+              "comparator": "max",
+              "declared_meets_target": false,
+              "measured_meets_target": false,
+              "absolute_floor_mm": 900,
+              "floor_met": true,
+              "circulation_issues": [],
+              "meets_target": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "TEXT-07",
+      "name": "上限正例：3500K 满足「不超过 4000K」→ pass（方向没弄反）",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "succeeded",
+        "comparators": [
+          "max"
+        ],
+        "states": [
+          "pass"
+        ]
+      }
+    },
+    {
+      "id": "TEXT-08",
+      "name": "下限负例：3600K 不满足「不低于 4000K」→ fail（与上限相反）",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "incomplete",
+        "comparators": [
+          "min"
+        ],
+        "states": [
+          "fail"
+        ]
+      }
+    },
+    {
+      "id": "TEXT-09",
+      "name": "数值+保留+审美三类都在；审美不因数值通过而被吞掉",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "succeeded",
+        "kinds": [
+          "aesthetic",
+          "measurable",
+          "preserve"
+        ],
+        "pending_objectives": [
+          "FBFB9-P0",
+          "FBFB9-U0"
+        ],
+        "states": [
+          [
+            "measurable",
+            "pass",
+            "not_applicable"
+          ],
+          [
+            "preserve",
+            "unknown",
+            "pending"
+          ],
+          [
+            "aesthetic",
+            "unknown",
+            "pending"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "TEXT-10",
+      "name": "一句两个数值不取第一个：列为未解析待确认，不冒充已验证",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "succeeded",
+        "pending": [
+          [
+            "multiple_values_in_clause",
+            "F1 和 F3 分别转到 30 和 -30 度"
+          ]
+        ],
+        "measurable_states": []
+      }
+    },
+    {
+      "id": "TEXT-11",
+      "name": "同基线两条互相矛盾的数值要求：显式 conflict，不开跑、不返工硬凑",
+      "result": "observed_pass",
+      "evidence": {
+        "post": [
+          201,
+          201
+        ],
+        "run_status": "conflict",
+        "artifacts": 0,
+        "gate_has_both_requirements": true
+      }
+    },
+    {
+      "id": "TEXT-12",
+      "name": "普通单对象精确值：仍然正常通过（新解析没有把正常输入弄坏）",
+      "result": "observed_pass",
+      "evidence": {
+        "run_status": "succeeded",
+        "comparators": [
+          "exact"
+        ],
+        "object_diff": [
+          "furniture:F1"
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 12,
+    "observed_fail": 0
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost"
+}

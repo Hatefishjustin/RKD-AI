@@ -20,8 +20,20 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "after"
-RUNTIME = ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "runtime"
+
+
+def _arg(flag: str, default: Path) -> Path:
+    """--out / --runtime 避免重跑覆盖上一批历史证据。"""
+    for i, a in enumerate(sys.argv):
+        if a == flag and i + 1 < len(sys.argv):
+            return Path(sys.argv[i + 1]).resolve()
+        if a.startswith(flag + "="):
+            return Path(a.split("=", 1)[1]).resolve()
+    return default
+
+
+EVIDENCE = _arg("--out", ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "after")
+RUNTIME = _arg("--runtime", ROOT / "var" / "evidence" / "roadmap" / "W0-收口" / "runtime")
 EVIDENCE.mkdir(parents=True, exist_ok=True)
 RUNTIME.mkdir(parents=True, exist_ok=True)
 os.environ["RKD_STUDIO_DB"] = str(RUNTIME / "w0-verify.db")

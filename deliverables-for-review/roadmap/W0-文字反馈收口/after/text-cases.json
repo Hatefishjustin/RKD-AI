@@ -1,0 +1,285 @@
+{
+  "task_id": "W0 文字反馈收口（TEXT-01）",
+  "schema_version": "rkd-text-feedback-cases.v1",
+  "phase": "after",
+  "executed_at": "2026-11-14T17:51:47+08:00",
+  "git_head": "5571e4ec82753539793e0ae7ecb046bf1c336a73",
+  "environment": {
+    "python": "3.12.14",
+    "model_calls": "none (pure functions)",
+    "fixture": "arc_first_batch_stub.valid_proposal('A')"
+  },
+  "cases": [
+    {
+      "case": "T01-a",
+      "finding": "点名 F3 却被扩大成整类家具；「其他家具不动」未绑定",
+      "observed": {
+        "measurable_object_ids": [
+          [
+            "F3"
+          ]
+        ],
+        "measurable_scope": [
+          []
+        ],
+        "preserve_binding": [
+          [
+            "resolved",
+            "complement_of_named_objects",
+            [
+              "F1",
+              "F2"
+            ]
+          ]
+        ],
+        "recheck_targets": [
+          [
+            "F3"
+          ]
+        ],
+        "recheck_states": [
+          "pass"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T01-b",
+      "finding": "误改「其他家具」应被保留要求拦下，而不是只靠模型自觉",
+      "observed": {
+        "locked_ids": [
+          [
+            "F1",
+            "F2"
+          ]
+        ],
+        "conflict_object_ids": [
+          "F1"
+        ],
+        "conflict_diagnostics": [
+          "whole_object_changed"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T02",
+      "finding": "点名两个对象时只改一个不能算达标",
+      "observed": {
+        "object_ids": [
+          [
+            "F1",
+            "F3"
+          ]
+        ],
+        "quantifier": [
+          "all"
+        ],
+        "states_when_only_F3_changed": [
+          "fail"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T03",
+      "finding": "明确说「都/所有」时才允许整组范围",
+      "observed": {
+        "scope": [
+          [
+            "furniture"
+          ]
+        ],
+        "object_ids": [
+          []
+        ],
+        "quantifier": [
+          "all"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T04",
+      "finding": "点名不存在的对象不能退回整类；应按对象缺失处理",
+      "observed": {
+        "object_ids": [
+          [
+            "F9"
+          ]
+        ],
+        "scope": [
+          []
+        ],
+        "binding": [
+          [
+            "unresolved",
+            "object_id_not_found"
+          ]
+        ],
+        "states": [
+          "fail"
+        ],
+        "missing": [
+          [
+            "F9"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T05",
+      "finding": "同名对象歧义应报候选，不能随便挑一个绑定",
+      "observed": {
+        "binding": [
+          [
+            "ambiguous",
+            "multiple_object_names",
+            []
+          ]
+        ],
+        "candidates": [
+          [
+            "F1",
+            "F2"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T06",
+      "finding": "「不超过」被当成默认下限（min）",
+      "observed": {
+        "comparator": [
+          "max"
+        ],
+        "target": [
+          2400.0
+        ],
+        "source_text": [
+          "主动线净宽不超过 2400mm"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T07",
+      "finding": "「至少」→min、「恰好」→exact 未区分",
+      "observed": {
+        "min": [
+          "min"
+        ],
+        "exact": [
+          "exact"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T08",
+      "finding": "上限与下限在执行时方向相反（不是只改标签）",
+      "observed": {
+        "max": [
+          [
+            "max",
+            "pass"
+          ]
+        ],
+        "min": [
+          [
+            "min",
+            "fail"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T09",
+      "finding": "同一句两个同类数值只取第一个",
+      "observed": {
+        "measurable": [],
+        "pending_reason": [
+          "multiple_values_in_clause"
+        ],
+        "pending_ids": [
+          "FBFB1-U0"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T10",
+      "finding": "数值目标把「更有设计感」吞掉，审美不 pending",
+      "observed": {
+        "kinds": [
+          "measurable",
+          "aesthetic"
+        ],
+        "states": [
+          [
+            "measurable",
+            "pass",
+            "not_applicable"
+          ],
+          [
+            "aesthetic",
+            "unknown",
+            "pending"
+          ]
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T11",
+      "finding": "数值+保留+审美三类诉求必须同时存在",
+      "observed": {
+        "kinds": [
+          "aesthetic",
+          "measurable",
+          "preserve"
+        ],
+        "preserve": [
+          [
+            "resolved",
+            [
+              "ZA5"
+            ]
+          ]
+        ],
+        "pending": [
+          "整体要更有呼吸感"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T12",
+      "finding": "同基线矛盾要求被一起交给返工硬凑，没有显式冲突",
+      "observed": {
+        "conflict_count": 1,
+        "detail": [
+          "同一目标（CIR-001/width_mm）上要求 min 2400 与 max 2100，两者不能同时成立"
+        ],
+        "decision_needed": [
+          "这两条是同一基线上的矛盾要求：请明确哪条为准或给出替代值；程序不会靠反复返工去'凑'一个矛盾条件"
+        ]
+      },
+      "verdict": "fixed_signature"
+    },
+    {
+      "case": "T13",
+      "finding": "两条同向要求（都加严）不该被误报成矛盾",
+      "observed": {
+        "conflict_count": 0
+      },
+      "verdict": "fixed_signature"
+    }
+  ],
+  "summary": {
+    "fixed_signature": 14
+  }
+}
