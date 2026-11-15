@@ -1,0 +1,377 @@
+{
+  "task_id": "W2-二次收口",
+  "schema_version": "rkd-w2-second-closeout-checks.v1",
+  "label": "architect",
+  "source_root": "D:\\Github\\RKD AI",
+  "executed_at": "2026-11-15T08:07:21+08:00",
+  "environment": {
+    "python": "3.12.14",
+    "renderer": "controllable stub (no Blender in repro)",
+    "stack": "isolated SQLite + real loopback HTTP server",
+    "external_calls": 0,
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "W2C2-C1-01",
+      "name": "三角形 18㎡ 扣 4.5㎡：主量/独立复算/饰面量 13.5㎡、试算 13500 元",
+      "result": "observed_pass",
+      "evidence": {
+        "analytic_basis": "triangle 18 - ∫(6-y)dy[y=1..2]=4.5 -> 13.5㎡",
+        "expected_m2": 13.5,
+        "geometry_m2": 13.5,
+        "independent_m2": 13.5,
+        "finish_m2": 13.5,
+        "finish_status": "known",
+        "trial_amount_cny": 13500.0,
+        "expected_amount_cny": 13500.0
+      }
+    },
+    {
+      "id": "W2C2-C1-02",
+      "name": "扣除区斜穿斜边（交点 x=2600）：净 17.405㎡，两条路径一致",
+      "result": "observed_pass",
+      "evidence": {
+        "analytic_basis": "毛 18㎡；扣除区 x∈[2500,3500],y∈[2400,3400] 被斜边切成两段，∫2500..2600 1.0 dx + ∫2600..3500 (3.6-x/1000... 见 c1-handcheck.md) = 0.595㎡",
+        "expected_m2": 17.405,
+        "geometry_m2": 17.405,
+        "independent_m2": 17.405,
+        "finish_m2": 17.405,
+        "delta": 0.0
+      }
+    },
+    {
+      "id": "W2C2-C1-03",
+      "name": "矩形/L 形回归：24/22 不变，独立复算一致",
+      "result": "observed_pass",
+      "evidence": {
+        "gross": 24.0,
+        "net": 22.0,
+        "independent": 22.0
+      }
+    },
+    {
+      "id": "W2C2-C1-04",
+      "name": "单位契约：scope 只收 mm/m2，m 与 ft2 必须拒绝",
+      "result": "observed_pass",
+      "evidence": {
+        "coord_unit_m": {
+          "rejected": true,
+          "error": "finish_scope.unit 只支持 ['mm']（收到 'm'）；本批不做单位静默换算"
+        },
+        "area_unit_ft2": {
+          "rejected": true,
+          "error": "finish_scope.areas[0].unit 只支持 ['m2']（收到 'ft2'）"
+        },
+        "unknown_deduction_basis": {
+          "rejected": true,
+          "error": "finish_scope.deduction_basis 必须是 ['keepouts_within_scope', 'none']（收到 'auto'）；扣除口径必须明确"
+        }
+      }
+    },
+    {
+      "id": "W2C2-C1-05",
+      "name": "无效多边形：自交/NaN/重复 object_id/退化必须拒绝",
+      "result": "observed_pass",
+      "evidence": {
+        "self_intersection": {
+          "rejected": true,
+          "error": "finish_scope.areas[0] 不是有效简单多边形（自交/退化），不能作为计量依据"
+        },
+        "nan_coordinate": {
+          "rejected": true,
+          "error": "finish_scope.areas[0]：polygon_mm[1] 坐标不是有限数值（NaN/inf）"
+        },
+        "duplicate_object_id": {
+          "rejected": true,
+          "error": "finish_scope 内 object_id 重复：F1"
+        },
+        "degenerate": {
+          "rejected": true,
+          "error": "finish_scope.areas[0] 不是有效简单多边形（自交/退化），不能作为计量依据"
+        }
+      }
+    },
+    {
+      "id": "W2C2-C1-06",
+      "name": "同层材料面重叠：无声明拒绝；有声明按并集不重复相加",
+      "result": "observed_pass",
+      "evidence": {
+        "undeclared": {
+          "rejected": true,
+          "error": "同层材料面重叠但未声明，不能无说明重复相加：floor_finish:A1+A2=2.0㎡。请合并为一块，或用 overlap_declaration 说明叠层语义"
+        },
+        "union_expected_m2": 22.0,
+        "declared_value_m2": 22.0,
+        "note": "重叠声明后按并集算，不得 8+16=24 重复相加"
+      }
+    },
+    {
+      "id": "W2C2-C1-07",
+      "name": "真实入口（架构口径）：合法三角材料面 → 13.5㎡/13500 元，CSV/HTML/清单一致",
+      "result": "observed_pass",
+      "evidence": {
+        "obstacles": [
+          {
+            "object_id": "keepout-楼梯保留区",
+            "rect_mm": [
+              0.0,
+              0.0,
+              2400.0,
+              8000.0
+            ]
+          },
+          {
+            "object_id": "keepout-卫生间保留区",
+            "rect_mm": [
+              22000.0,
+              2600.0,
+              26170.0,
+              7300.0
+            ]
+          }
+        ],
+        "face_mm": [
+          [
+            19000,
+            2600
+          ],
+          [
+            25000,
+            2600
+          ],
+          [
+            19000,
+            8600
+          ]
+        ],
+        "face_area_m2": 18.0,
+        "analytic_deduction_m2": 4.5,
+        "expected_finish_m2": 13.5,
+        "finish": {
+          "value": 13.5,
+          "status": "known",
+          "groups": [
+            {
+              "area_m2": 13.5,
+              "area_objects": [
+                "F1"
+              ],
+              "independent_delta_m2": 0.0,
+              "independent_method": "vertical_strip_exact_v2",
+              "independent_recompute_m2": 13.5,
+              "layer": "floor_finish",
+              "material_id": "test-floor",
+              "material_name": "试验地坪",
+              "material_spec_status": "unknown",
+              "method": "exact_union_per_material_minus_keepouts"
+            }
+          ]
+        },
+        "trial_amount_cny": 13500.0,
+        "expected_amount_cny": 13500.0,
+        "csv_has_finish": true,
+        "html_has_amount": true,
+        "manifest_files": [
+          "cost.html",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ],
+        "expected_fixed": "13.5 ㎡ / 13500 元（架构复核口径）"
+      }
+    },
+    {
+      "id": "W2C2-C1-08",
+      "name": "真实入口（判别性）：保留区竖直带内截断 → 9.4224㎡，旧算法 6.5469㎡",
+      "result": "observed_pass",
+      "evidence": {
+        "obstacles": [
+          {
+            "object_id": "keepout-楼梯保留区",
+            "rect_mm": [
+              0.0,
+              0.0,
+              2400.0,
+              8000.0
+            ]
+          },
+          {
+            "object_id": "keepout-卫生间保留区",
+            "rect_mm": [
+              22000.0,
+              2600.0,
+              26170.0,
+              7300.0
+            ]
+          }
+        ],
+        "face_mm": [
+          [
+            22000,
+            0
+          ],
+          [
+            26170,
+            0
+          ],
+          [
+            22000,
+            8340
+          ]
+        ],
+        "face_area_m2": 17.3889,
+        "analytic_deduction_m2": 7.9665,
+        "expected_finish_m2": 9.4224,
+        "finish": {
+          "value": 9.422,
+          "status": "known",
+          "groups": [
+            {
+              "area_m2": 9.422,
+              "area_objects": [
+                "F1"
+              ],
+              "independent_delta_m2": 0.0,
+              "independent_method": "vertical_strip_exact_v2",
+              "independent_recompute_m2": 9.422,
+              "layer": "floor_finish",
+              "material_id": "test-floor",
+              "material_name": "试验地坪",
+              "material_spec_status": "unknown",
+              "method": "exact_union_per_material_minus_keepouts"
+            }
+          ]
+        },
+        "trial_amount_cny": 9422.0,
+        "expected_amount_cny": 9422.4,
+        "csv_has_finish": true,
+        "html_has_amount": true,
+        "manifest_files": [
+          "cost.html",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ]
+      }
+    },
+    {
+      "id": "W2C2-C2-01",
+      "name": "提交后/启动前的真实 HTTP 状态查询不得终结正常任务",
+      "result": "observed_pass",
+      "evidence": {
+        "submit_status": 202,
+        "get_status": 200,
+        "status_in_gap": "queued",
+        "error_in_gap": null,
+        "revision_in_gap": null,
+        "final_status": "succeeded",
+        "note": "没有重启；状态查询不得把刚提交的正常任务判成重启残留"
+      }
+    },
+    {
+      "id": "W2C2-C2-02",
+      "name": "同一窗口取消仍生效、不复活、可显式重试",
+      "result": "observed_pass",
+      "evidence": {
+        "status_in_gap": "queued",
+        "cancel_status": 200,
+        "cancel_body_status": "cancelled",
+        "final_status": "cancelled",
+        "registered": 0,
+        "retry_status_code": 202,
+        "retried_status": "succeeded",
+        "retry_of": "ai-spatial-job_e6f1b1385044"
+      }
+    },
+    {
+      "id": "W2C2-C2-03",
+      "name": "真正遗留任务标中断；本实例在跑不被误杀；其他类型不受影响",
+      "result": "observed_pass",
+      "evidence": {
+        "recovered": [
+          "ai-spatial-job_4dc4cea3ed1d"
+        ],
+        "live_job": "ai-spatial-job_02531e68c33f",
+        "live_status_during_recover": "running",
+        "live_final": "succeeded",
+        "orphan": {
+          "id": "ai-spatial-job_4dc4cea3ed1d",
+          "status": "failed",
+          "error": "WORKER_RESTARTED"
+        },
+        "other_kind": {
+          "id": "ai-development-job_3a965b7510cd",
+          "status": "running"
+        },
+        "instance_id": "spatial-worker-9764-186cb049e347",
+        "note": "恢复以持久化的实例标记判定，不看内存 active 集合"
+      }
+    },
+    {
+      "id": "W2C2-C3-01",
+      "name": "显式 job_id 只返回自己：失败任务不借用他人 revision/artifacts",
+      "result": "observed_pass",
+      "evidence": {
+        "good_job": "ai-spatial-job_ac324524427e",
+        "requested_job": "ai-spatial-job_4ba2256ccfc5",
+        "returned_job": "ai-spatial-job_4ba2256ccfc5",
+        "job_status": "failed",
+        "returned_revision": null,
+        "returned_revision_job": null,
+        "artifacts": 0,
+        "revision_source": "none",
+        "note": "显式查一个失败任务时，revision/artifacts 必须为空，不能拿别人的"
+      }
+    },
+    {
+      "id": "W2C2-C3-02",
+      "name": "按 production_revision_id 查，返回的 job 必须对应它",
+      "result": "observed_pass",
+      "evidence": {
+        "requested_revision": "ai-production-revision_4b0778f200dc",
+        "returned_revision": "ai-production-revision_4b0778f200dc",
+        "expected_job": "ai-spatial-job_ec2a21adec31",
+        "returned_job": "ai-spatial-job_ec2a21adec31",
+        "newer_job": "ai-spatial-job_f4cff7120836"
+      }
+    },
+    {
+      "id": "W2C2-C3-03",
+      "name": "job_id 与 production_revision_id 同时指定 → 明确拒绝",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 400,
+        "error_code": "AMBIGUOUS_QUERY",
+        "message": "job_id 与 production_revision_id 不能同时指定；请只查一个对象"
+      }
+    },
+    {
+      "id": "W2C2-C3-04",
+      "name": "超过 50 条历史仍能按 ID 命中（真实 HTTP）",
+      "result": "observed_pass",
+      "evidence": {
+        "requested_job": "ai-spatial-job_89333a89f11e",
+        "job_status_before_query": "succeeded",
+        "query_status": 200,
+        "returned_job": "ai-spatial-job_89333a89f11e",
+        "returned_revision_job": "ai-spatial-job_89333a89f11e",
+        "artifacts": 6,
+        "overview_job_kinds": [
+          "spatial_outputs"
+        ],
+        "note": "分页前按类型筛选；按 ID 直接查，不扫最新 50 条"
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 15,
+    "observed_fail": 0
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost"
+}

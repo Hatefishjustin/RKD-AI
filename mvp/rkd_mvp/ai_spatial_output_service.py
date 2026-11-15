@@ -32,6 +32,7 @@ from .models import new_id, now_iso
 ROOT = Path(__file__).resolve().parents[2]
 BLENDER = ROOT / "tools" / "blender" / "blender-4.2.9-windows-x64" / "blender.exe"
 RENDER_SCRIPT = ROOT / "scripts" / "render_spatial_scene.py"
+RENDER_SCRIPT_R4 = ROOT / "scripts" / "render_spatial_scene_r4.py"
 
 JOB_KIND = "spatial_outputs"
 MEASUREMENT_PREFIX = "rkd-spatial-outputs"
@@ -104,19 +105,26 @@ def _settings(request: dict) -> dict:
         scope = normalize_finish_scope(scope)
     except ValueError as error:
         raise AISpatialOutputError(400, "INVALID_FINISH_SCOPE", str(error)) from error
+    presentation = raw.get("presentation")
+    if presentation is not None:
+        from .spatial_presentation import PresentationError, normalize_presentation
+        try:
+            presentation = normalize_presentation(presentation)
+        except PresentationError as error:
+            raise AISpatialOutputError(400, "INVALID_PRESENTATION", str(error)) from error
     return {"width": width, "height": height, "samples": samples, "render": render,
             "floor_unit_price_cny": price,
             "material_unit_prices": {str(k): float(v) for k, v in prices.items()},
-            "finish_scope": scope}
+            "finish_scope": scope, "presentation": presentation}
 
 
 def run_blender(scene_path: Path, out_png: Path, width: int, height: int,
-                samples: int) -> dict:
+                samples: int, *, script: Path | None = None) -> dict:
     if not BLENDER.exists():
         raise AISpatialOutputError(503, "RENDERER_UNAVAILABLE",
                                    "本机没有可用的 Blender 执行器")
     cmd = [str(BLENDER), "-b", "--factory-startup", "-noaudio",
-           "--python", str(RENDER_SCRIPT), "--",
+           "--python", str(script or RENDER_SCRIPT), "--",
            "--scene", str(scene_path), "--out", str(out_png),
            "--width", str(width), "--height", str(height),
            "--samples", str(samples)]
@@ -190,6 +198,14 @@ class AISpatialOutputService:
             raise AISpatialOutputError(
                 422, "SPATIAL_PAYLOAD_REQUIRED",
                 "该修订没有精确 spatial 载荷；旧矩形候选不能进入 W2 成果链")
+        if settings["presentation"]:
+            from .spatial_presentation import PresentationError, normalize_presentation
+            boundary_mm = (spatial.get("origin") or {}).get("boundary_mm")
+            try:
+                settings["presentation"] = normalize_presentation(
+                    settings["presentation"], boundary_mm=boundary_mm)
+            except PresentationError as error:
+                raise AISpatialOutputError(400, "INVALID_PRESENTATION", str(error)) from error
         if (revision.get("validation") or {}).get("status") != "passed":
             raise AISpatialOutputError(422, "MODEL_NOT_VALIDATED", "模型修订未通过硬检查")
         if settings["render"] and self.renderer is run_blender and not BLENDER.exists():
@@ -208,6 +224,8 @@ class AISpatialOutputService:
         config = {"kind": JOB_KIND, "generator_version": GENERATOR_VERSION,
                   "plan_version": PLAN_VERSION, "scene_version": SCENE_VERSION,
                   "quantity_version": QUANTITY_VERSION, "cost_version": COST_VERSION,
+                  "presentation_version": (settings.get("presentation") or {}).get("schema_version"),
+                  "presentation_assumption": bool(settings.get("presentation")),
                   "renderer": ("blender-4.2.9/CYCLES-CPU" if self.renderer is run_blender
                                else "injected_renderer"),
                   "binding_at_submit": binding,
@@ -319,13 +337,22 @@ class AISpatialOutputService:
             render_meta = None
             if settings["render"]:
                 png_path = revision_dir / "render.png"
-                render_meta = self.renderer(scene_path, png_path, settings["width"],
-                                            settings["height"], settings["samples"])
+                renderer = self.renderer
+                if settings.get("presentation") and renderer is run_blender:
+                    # Scene v2 carries the presentation fixture; the real-asset
+                    # renderer is chosen by the SAME settings, not by a hidden flag.
+                    from functools import partial
+                    renderer = partial(run_blender, script=RENDER_SCRIPT_R4)
+                render_meta = renderer(scene_path, png_path, settings["width"],
+                                       settings["height"], settings["samples"])
                 png = png_path.read_bytes()
                 files["render.png"] = ("render_png", "image/png", png)
                 package["manifest"]["render"] = {
                     **render_meta,
-                    "assumption": "机位/材质/家具高度为渲染假设，非实测"}
+                    "assumption": ("表达层为人工测试假设，非现场事实、非 AI 设计；"
+                                   "详见 manifest.presentation 与 scene.json/assumptions"
+                                   if settings.get("presentation") else
+                                   "机位/材质/家具高度为渲染假设，非实测")}
             # cancellation may have arrived while rendering: discard, never register
             with self.repository.transaction(organization_id, project_id) as tx:
                 state = tx.job(job_id)
@@ -369,10 +396,17 @@ class AISpatialOutputService:
                     "quantities": package["quantities"], "cost": package["cost"],
                     "objects": {"zones": model["spatial"]["zones"],
                                 "furniture": model["spatial"]["furniture"],
-                                "platforms": model["spatial"].get("platforms") or []},
+                                "platforms": model["spatial"].get("platforms") or [],
+                                "presentation_enclosure": (package["scene"].get("enclosure")
+                                                           if package.get("presentation") else None),
+                                "presentation_furniture": (
+                                    package["scene"].get("presentation_furniture")
+                                    if package.get("presentation") else None)},
                     "materials": {"main": model["materials"],
                                   "spatial": model["spatial"]["materials"],
-                                  "finish_scope": package["finish_scope"]},
+                                  "finish_scope": package["finish_scope"],
+                                  "presentation": (package["manifest"].get("presentation")
+                                                   if package.get("presentation") else None)},
                     "unknowns": package["cost"]["unknown_items"],
                     "view_mapping": {"camera": package["camera"],
                                      "plan_version": PLAN_VERSION},

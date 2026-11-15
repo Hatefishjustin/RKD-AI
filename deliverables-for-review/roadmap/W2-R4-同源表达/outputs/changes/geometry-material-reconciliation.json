@@ -1,0 +1,171 @@
+{
+  "zone_to_material": [
+    {
+      "zone_id": "ZA1",
+      "role": null,
+      "material_slot": "oak"
+    },
+    {
+      "zone_id": "ZA2",
+      "role": null,
+      "material_slot": "stone"
+    },
+    {
+      "zone_id": "ZA3",
+      "role": null,
+      "material_slot": "floor_microcement"
+    },
+    {
+      "zone_id": "ZA4",
+      "role": null,
+      "material_slot": "walnut"
+    },
+    {
+      "zone_id": "ZA5",
+      "role": null,
+      "material_slot": "fabric"
+    },
+    {
+      "zone_id": "ZA6",
+      "role": null,
+      "material_slot": "stone"
+    }
+  ],
+  "material_groups": [
+    {
+      "layer": "floor_finish",
+      "material_id": "mat-fabric",
+      "material_name": "羊毛圈绒",
+      "material_spec_status": "assumption",
+      "area_m2": 38.19,
+      "independent_recompute_m2": 38.19,
+      "independent_delta_m2": 0.0,
+      "independent_method": "vertical_strip_exact_v2",
+      "area_objects": [
+        "FA-ZA5"
+      ],
+      "method": "exact_union_per_material_minus_keepouts"
+    },
+    {
+      "layer": "floor_finish",
+      "material_id": "mat-floor-microcement",
+      "material_name": "微水泥地坪",
+      "material_spec_status": "assumption",
+      "area_m2": 72.16,
+      "independent_recompute_m2": 72.16,
+      "independent_delta_m2": 0.0,
+      "independent_method": "vertical_strip_exact_v2",
+      "area_objects": [
+        "FA-ZA3"
+      ],
+      "method": "exact_union_per_material_minus_keepouts"
+    },
+    {
+      "layer": "floor_finish",
+      "material_id": "mat-oak",
+      "material_name": "白橡木饰面",
+      "material_spec_status": "assumption",
+      "area_m2": 25.18,
+      "independent_recompute_m2": 25.18,
+      "independent_delta_m2": 0.0,
+      "independent_method": "vertical_strip_exact_v2",
+      "area_objects": [
+        "FA-ZA1"
+      ],
+      "method": "exact_union_per_material_minus_keepouts"
+    },
+    {
+      "layer": "floor_finish",
+      "material_id": "mat-stone",
+      "material_name": "石材",
+      "material_spec_status": "assumption",
+      "area_m2": 46.5,
+      "independent_recompute_m2": 46.5,
+      "independent_delta_m2": 0.0,
+      "independent_method": "vertical_strip_exact_v2",
+      "area_objects": [
+        "FA-ZA2",
+        "FA-ZA6"
+      ],
+      "method": "exact_union_per_material_minus_keepouts"
+    },
+    {
+      "layer": "floor_finish",
+      "material_id": "mat-walnut",
+      "material_name": "玫瑰木饰面",
+      "material_spec_status": "assumption",
+      "area_m2": 51.0,
+      "independent_recompute_m2": 51.0,
+      "independent_delta_m2": 0.0,
+      "independent_method": "vertical_strip_exact_v2",
+      "area_objects": [
+        "FA-ZA4"
+      ],
+      "method": "exact_union_per_material_minus_keepouts"
+    }
+  ],
+  "trial_items": [
+    {
+      "item": "羊毛圈绒（按输入假设单价试算）",
+      "material_id": "mat-fabric",
+      "layer": "floor_finish",
+      "quantity_ref": "Q-FLOOR-FINISH/mat-fabric",
+      "quantity_m2": 38.19,
+      "unit_price_cny": 1000.0,
+      "amount_cny": 38190.0,
+      "basis": "caller_provided_assumption_not_a_quote",
+      "area_basis_source": "executor_manual_fixture_w2_r4",
+      "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+    },
+    {
+      "item": "微水泥地坪（按输入假设单价试算）",
+      "material_id": "mat-floor-microcement",
+      "layer": "floor_finish",
+      "quantity_ref": "Q-FLOOR-FINISH/mat-floor-microcement",
+      "quantity_m2": 72.16,
+      "unit_price_cny": 1000.0,
+      "amount_cny": 72160.0,
+      "basis": "caller_provided_assumption_not_a_quote",
+      "area_basis_source": "executor_manual_fixture_w2_r4",
+      "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+    },
+    {
+      "item": "白橡木饰面（按输入假设单价试算）",
+      "material_id": "mat-oak",
+      "layer": "floor_finish",
+      "quantity_ref": "Q-FLOOR-FINISH/mat-oak",
+      "quantity_m2": 25.18,
+      "unit_price_cny": 1000.0,
+      "amount_cny": 25180.0,
+      "basis": "caller_provided_assumption_not_a_quote",
+      "area_basis_source": "executor_manual_fixture_w2_r4",
+      "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+    },
+    {
+      "item": "石材（按输入假设单价试算）",
+      "material_id": "mat-stone",
+      "layer": "floor_finish",
+      "quantity_ref": "Q-FLOOR-FINISH/mat-stone",
+      "quantity_m2": 46.5,
+      "unit_price_cny": 1000.0,
+      "amount_cny": 46500.0,
+      "basis": "caller_provided_assumption_not_a_quote",
+      "area_basis_source": "executor_manual_fixture_w2_r4",
+      "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+    },
+    {
+      "item": "玫瑰木饰面（按输入假设单价试算）",
+      "material_id": "mat-walnut",
+      "layer": "floor_finish",
+      "quantity_ref": "Q-FLOOR-FINISH/mat-walnut",
+      "quantity_m2": 51.0,
+      "unit_price_cny": 1000.0,
+      "amount_cny": 51000.0,
+      "basis": "caller_provided_assumption_not_a_quote",
+      "area_basis_source": "executor_manual_fixture_w2_r4",
+      "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+    }
+  ],
+  "trial_total_cny": 233030.0,
+  "note": "材料面切片 → 材料编号 → CC0 贴图 slot → 分组面积 → 假设单价试算，逐行可追踪"
+}

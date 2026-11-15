@@ -1,0 +1,6 @@
+{
+  "design_origin": "labelled_local_fixture_not_ai_design",
+  "presentation": "executor_manual_test_assumptions",
+  "site_verified": false,
+  "declaration": "本表达层是人工编写的受控样板假设：墙厚/高度、门窗洞口、隔断、材质贴图、家具资产映射、绿植软装、机位与灯光均为人工测试假设，未现场复核，不是系统模型自动设计结果，不计入 AI 接替设计验收；照明为示意，不宣称照度合规；平面为内部评审图，不是施工图。"
+}

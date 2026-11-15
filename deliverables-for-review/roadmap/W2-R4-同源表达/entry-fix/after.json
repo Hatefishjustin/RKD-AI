@@ -1,0 +1,407 @@
+{
+  "task_id": "W2-R4 入口小修：同层异材重叠冲突",
+  "schema_version": "rkd-w2-r4-finish-conflict.v1",
+  "label": "after",
+  "source_root": "D:\\Github\\RKD AI",
+  "executed_at": "2026-11-15T20:08:50+08:00",
+  "environment": {
+    "python": "3.12.14",
+    "stack": "isolated SQLite + real loopback HTTP + controllable render stub",
+    "external_calls": 0,
+    "keys_used": false
+  },
+  "expected_signatures": {
+    "R4F-01": "fixed_signature",
+    "R4F-02": "regression_guard",
+    "R4F-03": "regression_guard",
+    "R4F-04": "fixed_signature",
+    "R4F-05": "fixed_signature",
+    "R4F-06": "fixed_signature",
+    "R4F-07": "fixed_signature",
+    "R4F-08": "regression_guard"
+  },
+  "unexpected_cases": [],
+  "all_as_expected": true,
+  "checks": [
+    {
+      "id": "R4F-01",
+      "name": "同层异材完全重叠 + 声明文字：不得产出 known 重复工程量",
+      "signature": "fixed_signature",
+      "expected_before": "8㎡/known + 两笔试算（重复工程量）",
+      "expected_after": "conflict/None + 0 笔试算 + 冲突明细",
+      "observed": {
+        "finish_status": "conflict",
+        "finish_value": null,
+        "groups": [],
+        "conflicts": [
+          {
+            "layer": "floor_finish",
+            "objects": [
+              "F-WOOD",
+              "F-STONE"
+            ],
+            "material_ids": [
+              "wood",
+              "stone"
+            ],
+            "overlap_m2": 4.0,
+            "conflict_code": "SAME_LAYER_MIXED_MATERIAL_OVERLAP",
+            "declaration_is_not_disambiguation": true,
+            "resolution_required": "合并为单一材料面，或给出结构化互斥裁切；否则保持 conflict/待核"
+          }
+        ],
+        "quantity_kind": null,
+        "layer_scope_note": null,
+        "allocation_applied": null,
+        "known_items": [],
+        "assumption_trial_total_cny": null,
+        "basis": {
+          "area_basis": "same_layer_material_conflict",
+          "unit_prices": "unknown",
+          "loss_rate": "unknown",
+          "labor_and_process": "unknown",
+          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+          "markup": "user_confirmed_but_not_applied_without_price_source",
+          "conflict_count": 1
+        }
+      }
+    },
+    {
+      "id": "R4F-02",
+      "name": "回归：同材同层重叠声明后仍按并集 4㎡",
+      "signature": "regression_guard",
+      "expected": "4㎡/known，按并集不重复相加，试算 4000 元",
+      "observed": {
+        "finish_status": "known",
+        "finish_value": 4.0,
+        "groups": [
+          {
+            "layer": "floor_finish",
+            "material_id": "wood",
+            "area_m2": 4.0
+          }
+        ],
+        "conflicts": null,
+        "quantity_kind": "single_layer_net",
+        "layer_scope_note": null,
+        "allocation_applied": null,
+        "known_items": [
+          {
+            "item": "wood（按输入假设单价试算）",
+            "material_id": "wood",
+            "layer": "floor_finish",
+            "quantity_ref": "Q-FLOOR-FINISH/wood",
+            "quantity_m2": 4.0,
+            "unit_price_cny": 1000,
+            "amount_cny": 4000.0,
+            "basis": "caller_provided_assumption_not_a_quote",
+            "area_basis_source": "w2_r4_finish_conflict_fixture",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+          }
+        ],
+        "assumption_trial_total_cny": 4000.0,
+        "basis": {
+          "area_basis": "w2_r4_finish_conflict_fixture",
+          "unit_prices": "partially_provided_by_caller_assumption",
+          "loss_rate": "unknown",
+          "labor_and_process": "unknown",
+          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+          "markup": "user_confirmed_but_not_applied_without_price_source"
+        }
+      }
+    },
+    {
+      "id": "R4F-03",
+      "name": "正例：同层异材几何互斥 4+4=8㎡ 合法",
+      "signature": "regression_guard",
+      "expected": "8㎡/known，两组各 4㎡（几何互斥，不是重复工程量）",
+      "observed": {
+        "finish_status": "known",
+        "finish_value": 8.0,
+        "groups": [
+          {
+            "layer": "floor_finish",
+            "material_id": "stone",
+            "area_m2": 4.0
+          },
+          {
+            "layer": "floor_finish",
+            "material_id": "wood",
+            "area_m2": 4.0
+          }
+        ],
+        "conflicts": null,
+        "quantity_kind": "single_layer_net",
+        "layer_scope_note": null,
+        "allocation_applied": null,
+        "known_items": [
+          {
+            "item": "stone（按输入假设单价试算）",
+            "material_id": "stone",
+            "layer": "floor_finish",
+            "quantity_ref": "Q-FLOOR-FINISH/stone",
+            "quantity_m2": 4.0,
+            "unit_price_cny": 1000,
+            "amount_cny": 4000.0,
+            "basis": "caller_provided_assumption_not_a_quote",
+            "area_basis_source": "w2_r4_finish_conflict_fixture",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+          },
+          {
+            "item": "wood（按输入假设单价试算）",
+            "material_id": "wood",
+            "layer": "floor_finish",
+            "quantity_ref": "Q-FLOOR-FINISH/wood",
+            "quantity_m2": 4.0,
+            "unit_price_cny": 1000,
+            "amount_cny": 4000.0,
+            "basis": "caller_provided_assumption_not_a_quote",
+            "area_basis_source": "w2_r4_finish_conflict_fixture",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+          }
+        ],
+        "assumption_trial_total_cny": 8000.0,
+        "basis": {
+          "area_basis": "w2_r4_finish_conflict_fixture",
+          "unit_prices": "partially_provided_by_caller_assumption",
+          "loss_rate": "unknown",
+          "labor_and_process": "unknown",
+          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+          "markup": "user_confirmed_but_not_applied_without_price_source"
+        }
+      }
+    },
+    {
+      "id": "R4F-04",
+      "name": "不同构造层分别计量，合计不得叫单层地坪净面积",
+      "signature": "fixed_signature",
+      "expected_after": "分组计量 + quantity_kind=multi_layer_sum + 非单层净面积标注",
+      "expected_before": "无多构造层口径标注（合计被当作单层净面积）",
+      "observed": {
+        "finish_status": "known",
+        "finish_value": 8.0,
+        "groups": [
+          {
+            "layer": "floor_finish",
+            "material_id": "wood",
+            "area_m2": 4.0
+          },
+          {
+            "layer": "wall_finish",
+            "material_id": "stone",
+            "area_m2": 4.0
+          }
+        ],
+        "conflicts": null,
+        "quantity_kind": "multi_layer_sum",
+        "layer_scope_note": "本切片包含 2 个不同构造层（floor_finish、wall_finish）；各层分别计量，合计是多构造层合计，不是单层地坪净面积",
+        "allocation_applied": null,
+        "known_items": [
+          {
+            "item": "wood（按输入假设单价试算）",
+            "material_id": "wood",
+            "layer": "floor_finish",
+            "quantity_ref": "Q-FLOOR-FINISH/wood",
+            "quantity_m2": 4.0,
+            "unit_price_cny": 1000,
+            "amount_cny": 4000.0,
+            "basis": "caller_provided_assumption_not_a_quote",
+            "area_basis_source": "w2_r4_finish_conflict_fixture",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+          },
+          {
+            "item": "stone（按输入假设单价试算）",
+            "material_id": "stone",
+            "layer": "wall_finish",
+            "quantity_ref": "Q-FLOOR-FINISH/stone@wall_finish",
+            "quantity_m2": 4.0,
+            "unit_price_cny": 1000,
+            "amount_cny": 4000.0,
+            "basis": "caller_provided_assumption_not_a_quote",
+            "area_basis_source": "w2_r4_finish_conflict_fixture",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+          }
+        ],
+        "assumption_trial_total_cny": 8000.0,
+        "basis": {
+          "area_basis": "w2_r4_finish_conflict_fixture",
+          "unit_prices": "partially_provided_by_caller_assumption",
+          "loss_rate": "unknown",
+          "labor_and_process": "unknown",
+          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+          "markup": "user_confirmed_but_not_applied_without_price_source"
+        }
+      }
+    },
+    {
+      "id": "R4F-05",
+      "name": "结构化互斥分配并实际裁切 → 4㎡ known",
+      "signature": "fixed_signature",
+      "expected_after": "4㎡/known，wood 2㎡ + stone 2㎡，记录实际裁切",
+      "expected_before": "结构化裁切字段被忽略，仍按重叠算 8㎡",
+      "observed": {
+        "finish_status": "known",
+        "finish_value": 4.0,
+        "groups": [
+          {
+            "layer": "floor_finish",
+            "material_id": "stone",
+            "area_m2": 2.0
+          },
+          {
+            "layer": "floor_finish",
+            "material_id": "wood",
+            "area_m2": 2.0
+          }
+        ],
+        "conflicts": null,
+        "quantity_kind": "single_layer_net",
+        "layer_scope_note": null,
+        "allocation_applied": {
+          "declared_by": "w2_r4_finish_conflict_fixture",
+          "method": "explicit_disjoint_cut",
+          "declaration": "把 2×2m 面按 x=1000 裁成互斥的两块，几何可复核",
+          "cut_count": 2,
+          "cut_ids": [
+            "CUT-WOOD",
+            "CUT-STONE"
+          ],
+          "replaced_object_ids": [
+            "F-STONE",
+            "F-WOOD"
+          ],
+          "coverage_symmetric_difference_m2": 0.0,
+          "note": "裁切面已实际替换重叠原面，几何互斥且等价覆盖，不是文字声明"
+        },
+        "known_items": [
+          {
+            "item": "stone（按输入假设单价试算）",
+            "material_id": "stone",
+            "layer": "floor_finish",
+            "quantity_ref": "Q-FLOOR-FINISH/stone",
+            "quantity_m2": 2.0,
+            "unit_price_cny": 1000,
+            "amount_cny": 2000.0,
+            "basis": "caller_provided_assumption_not_a_quote",
+            "area_basis_source": "w2_r4_finish_conflict_fixture",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+          },
+          {
+            "item": "wood（按输入假设单价试算）",
+            "material_id": "wood",
+            "layer": "floor_finish",
+            "quantity_ref": "Q-FLOOR-FINISH/wood",
+            "quantity_m2": 2.0,
+            "unit_price_cny": 1000,
+            "amount_cny": 2000.0,
+            "basis": "caller_provided_assumption_not_a_quote",
+            "area_basis_source": "w2_r4_finish_conflict_fixture",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+          }
+        ],
+        "assumption_trial_total_cny": 4000.0,
+        "basis": {
+          "area_basis": "w2_r4_finish_conflict_fixture",
+          "unit_prices": "partially_provided_by_caller_assumption",
+          "loss_rate": "unknown",
+          "labor_and_process": "unknown",
+          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+          "markup": "user_confirmed_but_not_applied_without_price_source"
+        }
+      }
+    },
+    {
+      "id": "R4F-06",
+      "name": "裁切不互斥/不覆盖 → 仍为 conflict 待核",
+      "signature": "fixed_signature",
+      "expected_after": "重叠裁切面被拒，仍为 conflict/待核，不产 known 总量",
+      "expected_before": "裁切字段被忽略：要么按重叠算 8㎡，要么入口直接抛错",
+      "observed": {
+        "finish_status": "conflict",
+        "finish_value": null,
+        "groups": [],
+        "conflicts": [
+          {
+            "layer": "floor_finish",
+            "objects": [
+              "F-WOOD",
+              "F-STONE"
+            ],
+            "material_ids": [
+              "wood",
+              "stone"
+            ],
+            "overlap_m2": 4.0,
+            "conflict_code": "SAME_LAYER_MIXED_MATERIAL_OVERLAP",
+            "declaration_is_not_disambiguation": false,
+            "resolution_required": "合并为单一材料面，或给出结构化互斥裁切；否则保持 conflict/待核"
+          }
+        ],
+        "quantity_kind": null,
+        "layer_scope_note": null,
+        "allocation_applied": null,
+        "known_items": [],
+        "assumption_trial_total_cny": null,
+        "basis": {
+          "area_basis": "same_layer_material_conflict",
+          "unit_prices": "unknown",
+          "loss_rate": "unknown",
+          "labor_and_process": "unknown",
+          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+          "markup": "user_confirmed_but_not_applied_without_price_source",
+          "conflict_count": 1
+        }
+      }
+    },
+    {
+      "id": "R4F-07",
+      "name": "真实 HTTP 负例：冲突不产生 known 总量/试算（修复前为缺陷）",
+      "signature": "fixed_signature",
+      "expected_after": "任务成功但饰面量 conflict/None，CSV/HTML 标待核，0 笔试算",
+      "observed": {
+        "job_status": "succeeded",
+        "finish_status": "conflict",
+        "finish_value": null,
+        "conflicts": [
+          {
+            "conflict_code": "SAME_LAYER_MIXED_MATERIAL_OVERLAP",
+            "declaration_is_not_disambiguation": true,
+            "layer": "floor_finish",
+            "material_ids": [
+              "wood",
+              "stone"
+            ],
+            "objects": [
+              "F-WOOD",
+              "F-STONE"
+            ],
+            "overlap_m2": 4.0,
+            "resolution_required": "合并为单一材料面，或给出结构化互斥裁切；否则保持 conflict/待核"
+          }
+        ],
+        "known_items": 0,
+        "assumption_trial_total_cny": null,
+        "csv_has_conflict": true,
+        "html_has_pending": true,
+        "html_has_amount": false,
+        "manifest_conflict": true
+      }
+    },
+    {
+      "id": "R4F-08",
+      "name": "真实 HTTP 回归：同材声明后并集 4㎡/4000 元",
+      "signature": "regression_guard",
+      "expected": "同材声明后仍按并集 4㎡，真实入口试算 4000 元",
+      "observed": {
+        "job_status": "succeeded",
+        "finish_status": "known",
+        "finish_value": 4.0,
+        "amount": 4000.0
+      }
+    }
+  ],
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost"
+}

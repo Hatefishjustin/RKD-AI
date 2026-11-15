@@ -1,0 +1,205 @@
+{
+  "task_id": "W2-R4 同源表达",
+  "schema_version": "rkd-w2-r4-review-checks.v1",
+  "compiled_at": "2026-11-15T21:10:11+08:00",
+  "source_baseline": "ffad892",
+  "business_code_baseline": "7425464",
+  "environment": {
+    "python": "3.12.14 (project .venv)",
+    "renderer": "Blender 4.2.9 LTS Cycles CPU (local)",
+    "browser": "Microsoft Edge headless via Playwright",
+    "database": "isolated SQLite",
+    "keys_used": false
+  },
+  "commands": [
+    "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/verify_w2_r4_finish_conflict.py --label before|after --out <dir>",
+    "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/w2_second_closeout_repro.py --label r4-regression --out <dir>",
+    "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/verify_w2_r4.py --out <dir> --samples 24",
+    "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/verify_w2_r4_browser.py --out <dir> --runtime <dir> --outputs <dir>",
+    "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe -m unittest discover -s mvp/tests -p \"test_*.py\" -q",
+    "npx tsc --noEmit && npm run build (web/)",
+    "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/build_w2_r4_review.py"
+  ],
+  "checks": [
+    {
+      "id": "R4-A-SUBMIT",
+      "name": "布局 A 由同一生成器产出完整成果",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-A-ZIP",
+      "name": "布局 A 完整 ZIP/下载 SHA 与 PNG 一致",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-B-SUBMIT",
+      "name": "布局 B 由同一生成器产出完整成果",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-B-ZIP",
+      "name": "布局 B 完整 ZIP/下载 SHA 与 PNG 一致",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-01",
+      "name": "两种不同布局由同一生成器出平面/场景/人眼图，模型哈希与净量不同",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-02-A",
+      "name": "布局 A 平面含墙/洞口/家具/材料/机位/尺寸链且文字可读",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-02-B",
+      "name": "布局 B 平面含墙/洞口/家具/材料/机位/尺寸链且文字可读",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-03-A",
+      "name": "布局 A 围合/开口/家具在平面与三维读同一 ID 与尺寸",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-03-B",
+      "name": "布局 B 围合/开口/家具在平面与三维读同一 ID 与尺寸",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-04-A",
+      "name": "布局 A 真实 CC0 材质/家具/窗光/人眼机位出图",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-04-B",
+      "name": "布局 B 真实 CC0 材质/家具/窗光/人眼机位出图",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-05",
+      "name": "四项受控变更：开口尺寸同步平面/场景且改几何不改量；换材质可追踪；只改相机不改量；只改单价不改几何",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-06",
+      "name": "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-07",
+      "name": "按 job_id 查询只返回该任务的 revision/artifacts，不串另一布局",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-08",
+      "name": "同一 R4 服务代码：取消晚到不复活可显式重试；失败任务不借用他人成果",
+      "result": "observed_pass",
+      "evidence_ref": "var/evidence/roadmap/W2-R4-同源表达/checks.json",
+      "executed_at": "2026-11-15T20:57:05+08:00"
+    },
+    {
+      "id": "R4-ENTRY-FIX-BEFORE",
+      "name": "入口小修整改前 8 例缺陷/护栏符合预期",
+      "result": "observed_pass",
+      "evidence_ref": "entry-fix/before.json",
+      "executed_at": "2026-11-15T20:05:54+08:00"
+    },
+    {
+      "id": "R4-ENTRY-FIX-AFTER",
+      "name": "入口小修整改后 8 例修复/护栏符合预期",
+      "result": "observed_pass",
+      "evidence_ref": "entry-fix/after.json",
+      "executed_at": "2026-11-15T20:08:50+08:00"
+    },
+    {
+      "id": "R4-REGRESSION-15",
+      "name": "原 15 项 W2 二次收口回归",
+      "result": "observed_pass",
+      "evidence_ref": "entry-fix/regression-15.json",
+      "executed_at": "2026-11-15T20:09:16+08:00"
+    },
+    {
+      "id": "R4-BROWSER",
+      "name": "真实 Edge 浏览器：成果可见、下载 SHA、390px、无 JS 错误",
+      "result": "observed_pass",
+      "evidence_ref": "browser/verification.json",
+      "executed_at": "2026-11-15T20:57:21+08:00"
+    },
+    {
+      "id": "R4-FULL-UNITTEST",
+      "name": "全量单元测试 262/262",
+      "result": "observed_pass",
+      "evidence_ref": "runtime/full-unittest.log",
+      "executed_at": "2026-11-15T21:10:11+08:00"
+    },
+    {
+      "id": "R4-FRONTEND",
+      "name": "tsc --noEmit 与 npm run build EXIT=0",
+      "result": "observed_pass",
+      "evidence_ref": "review-packet.md §2",
+      "executed_at": "2026-11-15T21:10:11+08:00"
+    },
+    {
+      "id": "W3-W4-REAL-DESIGN",
+      "name": "W3/W4 真实设计与完整客户成果",
+      "result": "not_run",
+      "evidence_ref": "design-gaps.md",
+      "executed_at": null
+    },
+    {
+      "id": "AD01-AD08-USER-JUDGEMENT",
+      "name": "固定验收与用户设计阶段确认",
+      "result": "not_run",
+      "evidence_ref": "PROJECT_STATUS.md",
+      "executed_at": null
+    }
+  ],
+  "totals": {
+    "observed_pass": 21,
+    "observed_fail": 0,
+    "not_run": 2
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "images_generated": 2,
+  "images_external_generated": 0,
+  "images_sent_out": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "not_customer_design_approval": true,
+  "boundaries": [
+    "W2 整体未放行",
+    "AD01—AD08 与用户阶段确认不变",
+    "W3/W4 未授权启动",
+    "不扩 PG/NAS/账号/租约平台"
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "job_status": "succeeded",
+  "production_revision_id": "ai-production-revision_88fb8729c02e",
+  "artifact_names": [
+    "cost.html",
+    "quantity.json",
+    "manifest.json",
+    "package.zip",
+    "plan.svg",
+    "quantity.csv"
+  ],
+  "baseline_generator": "rkd-spatial-outputs.v4",
+  "baseline_presentation_assumption": true,
+  "package_missing_head": [
+    "柱网与结构构件（无依据，不编）",
+    "洁具与给排水（无依据，不编）",
+    "门窗产品与构造节点（只有洞口假设）"
+  ],
+  "plan_is_blob": true,
+  "render_is_blob": true,
+  "quantity_rows": 8,
+  "panel_has_missing": true,
+  "panel_has_unknown": true,
+  "panel_has_trial": true,
+  "panel_has_boundary": true,
+  "downloads": {
+    "plan.svg": {
+      "status": 200,
+      "bytes": 23811,
+      "sha256": "40d00b41a483ebb4f55aeb517b8910ca5fff7bc86336a9f1ab2cdc58f15fa7ba"
+    },
+    "render.png": {
+      "status": 200,
+      "bytes": 1060577,
+      "sha256": "6218f637b3160e243ebb6cd9ef3efc70cc4e34e6c08b2a0eece400d948f68112"
+    },
+    "package.zip": {
+      "status": 200,
+      "bytes": 1084363,
+      "sha256": "f2fb7d58404dfce2542fb58385d8440fea81c33b475d3d7b5c25c765d76af78e"
+    }
+  },
+  "manifest_sha_match": true,
+  "zip_sha_match": true,
+  "mobile_scroll_width": 390,
+  "mobile_overflow_elements": [
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "text": "预算与试算 0",
+      "right": 481,
+      "width": 82
+    },
+    {
+      "tag": "SPAN",
+      "cls": "",
+      "text": "0",
+      "right": 479,
+      "width": 6
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "text": "空间与工程量 0",
+      "right": 588,
+      "width": 95
+    },
+    {
+      "tag": "SPAN",
+      "cls": "",
+      "text": "0",
+      "right": 586,
+      "width": 6
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "text": "采购施工 0",
+      "right": 669,
+      "width": 69
+    },
+    {
+      "tag": "SPAN",
+      "cls": "",
+      "text": "0",
+      "right": 667,
+      "width": 6
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "text": "成果与任务 0",
+      "right": 763,
+      "width": 82
+    },
+    {
+      "tag": "SPAN",
+      "cls": "",
+      "text": "0",
+      "right": 761,
+      "width": 6
+    }
+  ],
+  "plan_previews": [
+    {
+      "layout": "A",
+      "file": "plan-preview-A.png",
+      "bytes": 193903
+    },
+    {
+      "layout": "B",
+      "file": "plan-preview-B.png",
+      "bytes": 191592
+    }
+  ],
+  "page_errors": [],
+  "passed": true
+}

@@ -1,0 +1,892 @@
+{
+  "schema_version": "rkd-spatial-output-manifest.v3",
+  "baseline": {
+    "schema_version": "rkd-spatial-frozen-input.v1",
+    "project_id": "project_ningbo_xiecheng_2026",
+    "option_revision_id": "ai-option-revision_b0c83b02e886",
+    "option_id": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2r4-B",
+    "revision_no": 1,
+    "model_hash": "d863ee6150711f1a67f787522f013055a83a3cadbd7d94eb01884bbbf1948536",
+    "source_artifact_id": "art_d98ba96cd6",
+    "source_sha256": "9974dbc988c50da9ea0d14a5deb3eb2dae61213d390a3885671b0b3fa411cf41",
+    "source_revision_uid": "uid-w2r4-B",
+    "source_parent_revision_uid": null,
+    "root_revision_uid": "uid-w2r4-B",
+    "parent_link_status": "source_root",
+    "design_origin": {
+      "declaration": "labelled_local_fixture",
+      "declared_by": "studio_artifact.diagnostics.source",
+      "kind": "fixture",
+      "run_refs": [
+        "run-w2r4-B",
+        "group-w2r4-B"
+      ]
+    },
+    "geometry_authority": "spatial.zones[].polygon_mm",
+    "legacy_bbox_used_for_measurement": false,
+    "object_versions": [
+      "ZB1",
+      "ZB2",
+      "ZB3",
+      "ZB4",
+      "ZB5",
+      "ZB6"
+    ],
+    "materials_version": "studio-material-unspecified/intent_only",
+    "views_version": "presentation_fixture_assumption_v1",
+    "presentation_version": "rkd-spatial-presentation-fixture.v1",
+    "presentation_declared_by": "executor_manual_fixture_w2_r4",
+    "presentation_assumption": true,
+    "presentation_not_ai_design": true,
+    "asset_manifest_sha256": "593d84554d4778ad6b247a2206d5c6fd081e70f06dcefa3cd02108a6d83ee08d",
+    "generator_version": "rkd-spatial-outputs.v4",
+    "frozen_at": "2026-11-15T20:56:30+08:00",
+    "finish_scope": {
+      "kind": "material_face_slice",
+      "declared_by": "executor_manual_fixture_w2_r4",
+      "declaration": "材料面按精确分区多边形切片，材料编号与表达层材质映射同源；人工夹具，未经现场复核",
+      "areas": [
+        {
+          "object_id": "FA-ZB1",
+          "material_id": "mat-oak",
+          "polygon_mm": [
+            [
+              0.0,
+              8600.0
+            ],
+            [
+              4200.0,
+              8600.0
+            ],
+            [
+              4200.0,
+              13500.0
+            ],
+            [
+              1200.0,
+              13500.0
+            ],
+            [
+              0.0,
+              12300.0
+            ]
+          ]
+        },
+        {
+          "object_id": "FA-ZB2",
+          "material_id": "mat-floor-microcement",
+          "polygon_mm": [
+            [
+              4200.0,
+              8500.0
+            ],
+            [
+              17500.0,
+              8500.0
+            ],
+            [
+              17500.0,
+              14000.0
+            ],
+            [
+              4200.0,
+              14000.0
+            ]
+          ]
+        },
+        {
+          "object_id": "FA-ZB3",
+          "material_id": "mat-stone",
+          "polygon_mm": [
+            [
+              18300.0,
+              7800.0
+            ],
+            [
+              24000.0,
+              7800.0
+            ],
+            [
+              24000.0,
+              11500.0
+            ],
+            [
+              18300.0,
+              11500.0
+            ]
+          ]
+        },
+        {
+          "object_id": "FA-ZB4",
+          "material_id": "mat-walnut",
+          "polygon_mm": [
+            [
+              4200.0,
+              1800.0
+            ],
+            [
+              17500.0,
+              1800.0
+            ],
+            [
+              17500.0,
+              7600.0
+            ],
+            [
+              4200.0,
+              7600.0
+            ]
+          ]
+        },
+        {
+          "object_id": "FA-ZB5",
+          "material_id": "mat-fabric",
+          "polygon_mm": [
+            [
+              17500.0,
+              14200.0
+            ],
+            [
+              26100.0,
+              14200.0
+            ],
+            [
+              26100.0,
+              17700.0
+            ],
+            [
+              17500.0,
+              17700.0
+            ]
+          ]
+        },
+        {
+          "object_id": "FA-ZB6",
+          "material_id": "mat-stone",
+          "polygon_mm": [
+            [
+              2400.0,
+              1800.0
+            ],
+            [
+              4200.0,
+              1800.0
+            ],
+            [
+              4200.0,
+              6100.0
+            ],
+            [
+              2400.0,
+              6100.0
+            ]
+          ]
+        }
+      ]
+    },
+    "binding": {
+      "adopted_option_revision_id": "ai-option-revision_b0c83b02e886",
+      "adoption_version": 2,
+      "adopted_at_submit": true,
+      "status_at_generation": "current_adopted",
+      "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览"
+    }
+  },
+  "binding": {
+    "adopted_option_revision_id": "ai-option-revision_b0c83b02e886",
+    "adoption_version": 2,
+    "adopted_at_submit": true,
+    "status_at_generation": "current_adopted",
+    "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览"
+  },
+  "camera": {
+    "camera_id": "R4-CAM-01",
+    "kind": "eye_level",
+    "assumption": true,
+    "presentation_camera": true,
+    "assumption_note": "机位来自人工测试假设样板（presentation.cameras[0]），不是设计决定的视点，也不是实测机位；只改机位不改工程量",
+    "eye_height_mm": 1500.0,
+    "position_mm": [
+      1200.0,
+      11200.0
+    ],
+    "target_mm": [
+      21150.0,
+      9650.0
+    ],
+    "lens_mm": 24.0,
+    "sensor_mm": 36,
+    "boundary_mm": [
+      26170.0,
+      17920.0
+    ]
+  },
+  "quantities": {
+    "schema_version": "rkd-spatial-quantity.v4",
+    "items": [
+      {
+        "quantity_id": "Q-FLOOR-GROSS",
+        "name": "功能区地坪总面积（未扣）",
+        "value": 229.08,
+        "unit": "m2",
+        "known_status": "known",
+        "method": "exact_polygon_union",
+        "formula_version": "rkd-spatial-quantity.v4",
+        "source_objects": [
+          "ZB1",
+          "ZB2",
+          "ZB3",
+          "ZB4",
+          "ZB5",
+          "ZB6"
+        ],
+        "note": "按精确多边形并集；不是建筑面积，也不含墙厚"
+      },
+      {
+        "quantity_id": "Q-KEEPOUT-DEDUCT",
+        "name": "保留区扣除面积",
+        "value": 0.0,
+        "unit": "m2",
+        "known_status": "known",
+        "method": "exact_intersection_with_keepouts",
+        "formula_version": "rkd-spatial-quantity.v4",
+        "source_objects": [],
+        "deductions": []
+      },
+      {
+        "quantity_id": "Q-FLOOR-GEOMETRIC-NET",
+        "name": "功能分区几何净面积（非完成面工程量）",
+        "value": 229.08,
+        "unit": "m2",
+        "known_status": "known",
+        "method": "exact_union_minus_keepouts",
+        "formula_version": "rkd-spatial-quantity.v4",
+        "engineering_status": "geometric_only_not_a_finish_quantity",
+        "source_objects": [
+          "ZB1",
+          "ZB2",
+          "ZB3",
+          "ZB4",
+          "ZB5",
+          "ZB6"
+        ],
+        "independent_recompute_m2": 229.08,
+        "independent_gross_m2": 229.08,
+        "independent_method": "vertical_strip_exact_v2",
+        "independent_delta_m2": 0.0,
+        "sum_of_zones_m2": 229.08,
+        "zone_overlap_m2": 0.0,
+        "bbox_value_m2": 229.8,
+        "bbox_delta_m2": 0.72,
+        "note": "功能分区并集减保留区；可计算但不等于铺装/饰面完成面范围，不得直接流入已知工程量或正式报价。bbox 结果仅证明不能据包围盒计量"
+      },
+      {
+        "quantity_id": "Q-FLOOR-FINISH",
+        "name": "地坪完成面饰面净面积（按材料面切片）",
+        "value": 229.08,
+        "unit": "m2",
+        "known_status": "known",
+        "method": "exact_union_per_material_minus_keepouts",
+        "formula_version": "rkd-spatial-quantity.v4",
+        "quantity_kind": "single_layer_net",
+        "layer_breakdown": [
+          {
+            "layer": "floor_finish",
+            "area_m2": 229.08
+          }
+        ],
+        "layer_scope_note": null,
+        "source_objects": [
+          "FA-ZB1",
+          "FA-ZB2",
+          "FA-ZB3",
+          "FA-ZB4",
+          "FA-ZB5",
+          "FA-ZB6"
+        ],
+        "basis_source": {
+          "declared_by": "executor_manual_fixture_w2_r4",
+          "declaration": "材料面按精确分区多边形切片，材料编号与表达层材质映射同源；人工夹具，未经现场复核",
+          "kind": "material_face_slice",
+          "unit": "mm",
+          "deduction_basis": "keepouts_within_scope",
+          "overlap_declaration": null,
+          "same_layer_overlaps": [],
+          "same_layer_material_conflicts": [],
+          "material_allocation_applied": null,
+          "allocation_applied": null,
+          "material_allocation_rejected": null,
+          "layer_scope_note": null,
+          "site_verified": false
+        },
+        "material_groups": [
+          {
+            "layer": "floor_finish",
+            "material_id": "mat-fabric",
+            "material_name": "羊毛圈绒",
+            "material_spec_status": "assumption",
+            "area_m2": 30.1,
+            "independent_recompute_m2": 30.1,
+            "independent_delta_m2": 0.0,
+            "independent_method": "vertical_strip_exact_v2",
+            "area_objects": [
+              "FA-ZB5"
+            ],
+            "method": "exact_union_per_material_minus_keepouts"
+          },
+          {
+            "layer": "floor_finish",
+            "material_id": "mat-floor-microcement",
+            "material_name": "微水泥地坪",
+            "material_spec_status": "assumption",
+            "area_m2": 73.15,
+            "independent_recompute_m2": 73.15,
+            "independent_delta_m2": 0.0,
+            "independent_method": "vertical_strip_exact_v2",
+            "area_objects": [
+              "FA-ZB2"
+            ],
+            "method": "exact_union_per_material_minus_keepouts"
+          },
+          {
+            "layer": "floor_finish",
+            "material_id": "mat-oak",
+            "material_name": "白橡木饰面",
+            "material_spec_status": "assumption",
+            "area_m2": 19.86,
+            "independent_recompute_m2": 19.86,
+            "independent_delta_m2": 0.0,
+            "independent_method": "vertical_strip_exact_v2",
+            "area_objects": [
+              "FA-ZB1"
+            ],
+            "method": "exact_union_per_material_minus_keepouts"
+          },
+          {
+            "layer": "floor_finish",
+            "material_id": "mat-stone",
+            "material_name": "石材",
+            "material_spec_status": "assumption",
+            "area_m2": 28.83,
+            "independent_recompute_m2": 28.83,
+            "independent_delta_m2": 0.0,
+            "independent_method": "vertical_strip_exact_v2",
+            "area_objects": [
+              "FA-ZB3",
+              "FA-ZB6"
+            ],
+            "method": "exact_union_per_material_minus_keepouts"
+          },
+          {
+            "layer": "floor_finish",
+            "material_id": "mat-walnut",
+            "material_name": "玫瑰木饰面",
+            "material_spec_status": "assumption",
+            "area_m2": 77.14,
+            "independent_recompute_m2": 77.14,
+            "independent_delta_m2": 0.0,
+            "independent_method": "vertical_strip_exact_v2",
+            "area_objects": [
+              "FA-ZB4"
+            ],
+            "method": "exact_union_per_material_minus_keepouts"
+          }
+        ],
+        "independent_max_delta_m2": 0.0,
+        "independent_tolerance_m2": 0.001,
+        "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；材料规格与产品选型仍为假设，单价缺失时金额保持 unknown。"
+      },
+      {
+        "quantity_id": "Q-PLATFORM-ENVELOPE",
+        "name": "展台包络面积（非实体量）",
+        "value": 21.09,
+        "unit": "m2",
+        "known_status": "intent_only",
+        "method": "exact_polygon_union",
+        "formula_version": "rkd-spatial-quantity.v4",
+        "source_objects": [
+          "P1"
+        ],
+        "note": "平台包络不等于台体/基层/饰面实体工程量，不计入本批净量"
+      },
+      {
+        "quantity_id": "Q-PARTITION-LENGTH",
+        "name": "隔断长度",
+        "value": null,
+        "unit": "m",
+        "known_status": "unknown",
+        "unknown_reason": "Studio 提案未建模隔断构件，不能从分区边界推断"
+      },
+      {
+        "quantity_id": "Q-CEILING-AREA",
+        "name": "天花面积",
+        "value": null,
+        "unit": "m2",
+        "known_status": "unknown",
+        "unknown_reason": "天花只到意向（灯槽/灯具点位），未建模吊顶构造与标高"
+      },
+      {
+        "quantity_id": "Q-DOOR-WINDOW",
+        "name": "门窗数量",
+        "value": null,
+        "unit": "count",
+        "known_status": "unknown",
+        "unknown_reason": "建议案未建模门窗对象，只有场地条件"
+      }
+    ],
+    "declared_area_sum_m2": 229.08,
+    "declared_vs_exact_delta_m2": 0.0,
+    "finish_scope": {
+      "schema_version": "rkd-spatial-finish-scope.v3",
+      "kind": "material_face_slice",
+      "declared_by": "executor_manual_fixture_w2_r4",
+      "declaration": "材料面按精确分区多边形切片，材料编号与表达层材质映射同源；人工夹具，未经现场复核",
+      "unit": "mm",
+      "deduction_basis": "keepouts_within_scope",
+      "overlap_declaration": null,
+      "same_layer_overlaps": [],
+      "same_layer_material_conflicts": [],
+      "material_allocation_applied": null,
+      "material_allocation_rejected": null,
+      "layer_scope_note": null,
+      "site_verified": false,
+      "areas": [
+        {
+          "object_id": "FA-ZB1",
+          "name": "入口门厅 材料面（样板假设）",
+          "polygon_mm": [
+            [
+              0.0,
+              8600.0
+            ],
+            [
+              4200.0,
+              8600.0
+            ],
+            [
+              4200.0,
+              13500.0
+            ],
+            [
+              1200.0,
+              13500.0
+            ],
+            [
+              0.0,
+              12300.0
+            ]
+          ],
+          "material_id": "mat-oak",
+          "material_name": "白橡木饰面",
+          "material_spec_status": "assumption",
+          "unit": "m2",
+          "layer": "floor_finish",
+          "declared_area_m2": 19.86
+        },
+        {
+          "object_id": "FA-ZB2",
+          "name": "一轴主展 材料面（样板假设）",
+          "polygon_mm": [
+            [
+              4200.0,
+              8500.0
+            ],
+            [
+              17500.0,
+              8500.0
+            ],
+            [
+              17500.0,
+              14000.0
+            ],
+            [
+              4200.0,
+              14000.0
+            ]
+          ],
+          "material_id": "mat-floor-microcement",
+          "material_name": "微水泥地坪",
+          "material_spec_status": "assumption",
+          "unit": "m2",
+          "layer": "floor_finish",
+          "declared_area_m2": 73.15
+        },
+        {
+          "object_id": "FA-ZB3",
+          "name": "东端中岛 材料面（样板假设）",
+          "polygon_mm": [
+            [
+              18300.0,
+              7800.0
+            ],
+            [
+              24000.0,
+              7800.0
+            ],
+            [
+              24000.0,
+              11500.0
+            ],
+            [
+              18300.0,
+              11500.0
+            ]
+          ],
+          "material_id": "mat-stone",
+          "material_name": "石材",
+          "material_spec_status": "assumption",
+          "unit": "m2",
+          "layer": "floor_finish",
+          "declared_area_m2": 21.09
+        },
+        {
+          "object_id": "FA-ZB4",
+          "name": "南场景带 材料面（样板假设）",
+          "polygon_mm": [
+            [
+              4200.0,
+              1800.0
+            ],
+            [
+              17500.0,
+              1800.0
+            ],
+            [
+              17500.0,
+              7600.0
+            ],
+            [
+              4200.0,
+              7600.0
+            ]
+          ],
+          "material_id": "mat-walnut",
+          "material_name": "玫瑰木饰面",
+          "material_spec_status": "assumption",
+          "unit": "m2",
+          "layer": "floor_finish",
+          "declared_area_m2": 77.14
+        },
+        {
+          "object_id": "FA-ZB5",
+          "name": "北洽谈 材料面（样板假设）",
+          "polygon_mm": [
+            [
+              17500.0,
+              14200.0
+            ],
+            [
+              26100.0,
+              14200.0
+            ],
+            [
+              26100.0,
+              17700.0
+            ],
+            [
+              17500.0,
+              17700.0
+            ]
+          ],
+          "material_id": "mat-fabric",
+          "material_name": "羊毛圈绒",
+          "material_spec_status": "assumption",
+          "unit": "m2",
+          "layer": "floor_finish",
+          "declared_area_m2": 30.1
+        },
+        {
+          "object_id": "FA-ZB6",
+          "name": "茶水服务 材料面（样板假设）",
+          "polygon_mm": [
+            [
+              2400.0,
+              1800.0
+            ],
+            [
+              4200.0,
+              1800.0
+            ],
+            [
+              4200.0,
+              6100.0
+            ],
+            [
+              2400.0,
+              6100.0
+            ]
+          ],
+          "material_id": "mat-stone",
+          "material_name": "石材",
+          "material_spec_status": "assumption",
+          "unit": "m2",
+          "layer": "floor_finish",
+          "declared_area_m2": 7.74
+        }
+      ]
+    },
+    "coverage": "只覆盖功能区几何面积与保留区扣除，以及可选的、显式标注来源的材料面切片；同层异材重叠按 conflict 待核，不产 known 总量/试算，除非给出结构化互斥裁切并实际替换原面；不同构造层分别计量，合计不叫单层净面积；隔断/天花/门窗/机电未建模，保持 unknown"
+  },
+  "cost": {
+    "schema_version": "rkd-spatial-cost.v4",
+    "currency": "CNY",
+    "known_items": [
+      {
+        "item": "羊毛圈绒（按输入假设单价试算）",
+        "material_id": "mat-fabric",
+        "layer": "floor_finish",
+        "quantity_ref": "Q-FLOOR-FINISH/mat-fabric",
+        "quantity_m2": 30.1,
+        "unit_price_cny": 1000.0,
+        "amount_cny": 30100.0,
+        "basis": "caller_provided_assumption_not_a_quote",
+        "area_basis_source": "executor_manual_fixture_w2_r4",
+        "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+      },
+      {
+        "item": "微水泥地坪（按输入假设单价试算）",
+        "material_id": "mat-floor-microcement",
+        "layer": "floor_finish",
+        "quantity_ref": "Q-FLOOR-FINISH/mat-floor-microcement",
+        "quantity_m2": 73.15,
+        "unit_price_cny": 1000.0,
+        "amount_cny": 73150.0,
+        "basis": "caller_provided_assumption_not_a_quote",
+        "area_basis_source": "executor_manual_fixture_w2_r4",
+        "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+      },
+      {
+        "item": "白橡木饰面（按输入假设单价试算）",
+        "material_id": "mat-oak",
+        "layer": "floor_finish",
+        "quantity_ref": "Q-FLOOR-FINISH/mat-oak",
+        "quantity_m2": 19.86,
+        "unit_price_cny": 1000.0,
+        "amount_cny": 19860.0,
+        "basis": "caller_provided_assumption_not_a_quote",
+        "area_basis_source": "executor_manual_fixture_w2_r4",
+        "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+      },
+      {
+        "item": "石材（按输入假设单价试算）",
+        "material_id": "mat-stone",
+        "layer": "floor_finish",
+        "quantity_ref": "Q-FLOOR-FINISH/mat-stone",
+        "quantity_m2": 28.83,
+        "unit_price_cny": 1000.0,
+        "amount_cny": 28830.0,
+        "basis": "caller_provided_assumption_not_a_quote",
+        "area_basis_source": "executor_manual_fixture_w2_r4",
+        "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+      },
+      {
+        "item": "玫瑰木饰面（按输入假设单价试算）",
+        "material_id": "mat-walnut",
+        "layer": "floor_finish",
+        "quantity_ref": "Q-FLOOR-FINISH/mat-walnut",
+        "quantity_m2": 77.14,
+        "unit_price_cny": 1000.0,
+        "amount_cny": 77140.0,
+        "basis": "caller_provided_assumption_not_a_quote",
+        "area_basis_source": "executor_manual_fixture_w2_r4",
+        "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+      }
+    ],
+    "unknown_items": [
+      {
+        "statement": "隔断、天花、门窗工程量未建模",
+        "quantity_ref": "Q-PARTITION-LENGTH",
+        "impact": "相关金额保持 unknown"
+      },
+      {
+        "statement": "税率与成本加成虽有用户口径，但没有价源，本批不做合计试算",
+        "quantity_ref": null,
+        "impact": "不输出项目合计金额"
+      }
+    ],
+    "assumption_trial_total_cny": 229080.0,
+    "total_project_estimate": {
+      "value": null,
+      "known_status": "unknown",
+      "unknown_reason": "没有价源；不把地坪小计当项目总造价"
+    },
+    "formal_quote": false,
+    "pricing_basis": {
+      "area_basis": "executor_manual_fixture_w2_r4",
+      "unit_prices": "partially_provided_by_caller_assumption",
+      "loss_rate": "unknown",
+      "labor_and_process": "unknown",
+      "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+      "markup": "user_confirmed_but_not_applied_without_price_source"
+    },
+    "note": "本页金额全部为调用方假设单价的试算，不是报价；金额一律不填 0"
+  },
+  "missing": [
+    "柱网与结构构件（无依据，不编）",
+    "洁具与给排水（无依据，不编）",
+    "门窗产品与构造节点（只有洞口假设）",
+    "材料规格、产品选型与价源（贴图只是材质意向）",
+    "照度/配光计算与合规结论",
+    "消防、疏散、无障碍与施工图合规",
+    "现场实测标高与实测墙厚",
+    "客户可交付的多视角效果图、天花、立面、材料板与汇总 PDF（本批不做）",
+    "本表达层是人工编写的受控样板假设：墙厚/高度、门窗洞口、隔断、材质贴图、家具资产映射、绿植软装、机位与灯光均为人工测试假设，未现场复核，不是系统模型自动设计结果，不计入 AI 接替设计验收；照明为示意，不宣称照度合规；平面为内部评审图，不是施工图。"
+  ],
+  "presentation": {
+    "schema_version": "rkd-spatial-presentation-fixture.v1",
+    "declared_by": "executor_manual_fixture_w2_r4",
+    "site_verified": false,
+    "not_ai_design": true,
+    "asset_manifest_sha256": "593d84554d4778ad6b247a2206d5c6fd081e70f06dcefa3cd02108a6d83ee08d",
+    "counts": {
+      "cameras": 1,
+      "coves": 1,
+      "fixtures": 3,
+      "furniture": 16,
+      "furniture_placeholders": 1,
+      "materials": 6,
+      "openings": 7,
+      "partitions": 2,
+      "walls": 4,
+      "window_lights": 5
+    },
+    "assumptions": [
+      "周界墙厚 200mm、高 3000mm 为人工测试假设；场地边界本身是标为 manual_boundary_not_site_verified 的测试参数，未现场复核。",
+      "没有从任何功能区多边形边界自动生成墙体；两段隔断是独立显式给出的样板假设。",
+      "北向/东向窗洞口的节奏只借用阶段1底图窗带的间距作示意，不作为本项目现场事实；窗台 900mm、窗高 1800mm、门高 2400mm 均为人工假设。",
+      "入口门洞位置与 1800mm 宽度来自模型 boundary.entrance（测试参数），门扇/门套构造未建模。",
+      "材质贴图来自 Poly Haven CC0 1.0 六套 1k PBR；贴图与分区 role 的对应是人工样板假设，只代表材质意向，不是材料规格、产品选型或价源。",
+      "家具从 CC0 glTF 目录引用，真实尺寸取 assets/CC0-素材清单.json 的 dimensions_mm；统一 anchor=center_floor、0° 沿 +X、rotation_deg 逆时针；无对应资产的目录条目明确留程序化占位。",
+      "绿植、器物、补充桌椅是表达层道具（presentation_prop），对象 ID 独立于模型家具，按分区中心加固定偏移摆放；不宣称是自动设计出的陈设。",
+      "机位为 1500mm 人眼高度、24mm 镜头的内部评审视点（人工假设），不是设计决定也不是实测。",
+      "中岛台面上的器物显式给出 z_offset_m=0.72（与平台 height_mm 一致），避免与平台实体穿插；该高度是表达层人工假设，不是展陈设计标高。",
+      "贴图 tile 按 1k 贴图约 0.6—2m 重复尺度设置（人工假设），不是材料规格或施工排版。",
+      "窗光只从已建模窗洞口发出；灯具点位/灯槽来自模型 ceiling 意向，太阳角度与强度是假设。未做照度/配光计算，不宣称照度合规。",
+      "柱网、洁具、构造节点、消防/疏散/无障碍、实测标高、产品清单、现场照片均缺依据，一律不编造、不补 0、不在图上冒充。"
+    ],
+    "disclaimer": "本表达层是人工编写的受控样板假设：墙厚/高度、门窗洞口、隔断、材质贴图、家具资产映射、绿植软装、机位与灯光均为人工测试假设，未现场复核，不是系统模型自动设计结果，不计入 AI 接替设计验收；照明为示意，不宣称照度合规；平面为内部评审图，不是施工图。"
+  },
+  "files": [
+    {
+      "filename": "cost.html",
+      "kind": "cost_html",
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "be85348dbc8c4c8487f1b0363cb5229edd908c5b655e0808834922a90c93b413",
+      "size_bytes": 3366
+    },
+    {
+      "filename": "plan.svg",
+      "kind": "plan_svg",
+      "content_type": "image/svg+xml",
+      "sha256": "40d00b41a483ebb4f55aeb517b8910ca5fff7bc86336a9f1ab2cdc58f15fa7ba",
+      "size_bytes": 23811
+    },
+    {
+      "filename": "quantity.csv",
+      "kind": "quantity_csv",
+      "content_type": "text/csv; charset=utf-8",
+      "sha256": "a3de587f441c9e03bf227cfd4a4f765dcb105e82694704d4430ab14596e5dd94",
+      "size_bytes": 1430
+    },
+    {
+      "filename": "quantity.json",
+      "kind": "development_json",
+      "content_type": "application/json",
+      "sha256": "6637a5876cf7892307555873dbabf7b6f54b638050a6e5da7994274293b7bb6f",
+      "size_bytes": 7933
+    },
+    {
+      "filename": "render.png",
+      "kind": "render_png",
+      "content_type": "image/png",
+      "sha256": "6218f637b3160e243ebb6cd9ef3efc70cc4e34e6c08b2a0eece400d948f68112",
+      "size_bytes": 1060577
+    },
+    {
+      "filename": "scene.json",
+      "kind": "development_json",
+      "content_type": "application/json",
+      "sha256": "c2de040dd8a62387ccfa48de2a76d511f95b2aec4c923c9d3c6a7b9a0dfe0d1d",
+      "size_bytes": 36615
+    }
+  ],
+  "render": {
+    "engine": "CYCLES-CPU",
+    "samples": 24,
+    "width": 1120,
+    "height": 700,
+    "seconds": 31.33,
+    "scene": "scene.json",
+    "presentation": true,
+    "image_count": 1,
+    "assets": {
+      "license": "CC0 1.0 (Poly Haven)",
+      "manifest_sha256": "593d84554d4778ad6b247a2206d5c6fd081e70f06dcefa3cd02108a6d83ee08d",
+      "textures_used": [
+        "fabric",
+        "floor_microcement",
+        "oak",
+        "stone",
+        "wall_plaster",
+        "walnut"
+      ],
+      "models_used": [
+        "bar_chair_round_01",
+        "ceramic_vase_01",
+        "dining_chair_02",
+        "dining_table",
+        "modern_arm_chair_01",
+        "modern_coffee_table_01",
+        "potted_plant_01",
+        "round_wooden_table_01",
+        "sofa_02",
+        "wooden_bowl_01"
+      ],
+      "placeholders": [
+        "F3"
+      ]
+    },
+    "lights": {
+      "window_area_lights": 5,
+      "fixture_lights": 3,
+      "cove_segments": 4,
+      "sun": true,
+      "assumption_fill_light": 1,
+      "note": "窗光来自已建模窗洞口；灯具/灯槽来自模型天花意向；太阳与弱补光为假设照明，未做照度/配光计算，不宣称合规"
+    },
+    "camera": {
+      "object_id": "R4-CAM-01",
+      "eye_height_m": 1.5,
+      "lens_mm": 24.0,
+      "assumption": true
+    },
+    "enclosure": {
+      "walls": 4,
+      "partitions": 2,
+      "openings": 7
+    },
+    "rounded_platforms": [
+      {
+        "object_id": "P1",
+        "radius_m": 1.18
+      }
+    ],
+    "assumptions": [
+      "周界墙厚 200mm、高 3000mm 为人工测试假设；场地边界本身是标为 manual_boundary_not_site_verified 的测试参数，未现场复核。",
+      "没有从任何功能区多边形边界自动生成墙体；两段隔断是独立显式给出的样板假设。",
+      "北向/东向窗洞口的节奏只借用阶段1底图窗带的间距作示意，不作为本项目现场事实；窗台 900mm、窗高 1800mm、门高 2400mm 均为人工假设。",
+      "入口门洞位置与 1800mm 宽度来自模型 boundary.entrance（测试参数），门扇/门套构造未建模。",
+      "材质贴图来自 Poly Haven CC0 1.0 六套 1k PBR；贴图与分区 role 的对应是人工样板假设，只代表材质意向，不是材料规格、产品选型或价源。",
+      "家具从 CC0 glTF 目录引用，真实尺寸取 assets/CC0-素材清单.json 的 dimensions_mm；统一 anchor=center_floor、0° 沿 +X、rotation_deg 逆时针；无对应资产的目录条目明确留程序化占位。",
+      "绿植、器物、补充桌椅是表达层道具（presentation_prop），对象 ID 独立于模型家具，按分区中心加固定偏移摆放；不宣称是自动设计出的陈设。",
+      "机位为 1500mm 人眼高度、24mm 镜头的内部评审视点（人工假设），不是设计决定也不是实测。",
+      "中岛台面上的器物显式给出 z_offset_m=0.72（与平台 height_mm 一致），避免与平台实体穿插；该高度是表达层人工假设，不是展陈设计标高。",
+      "贴图 tile 按 1k 贴图约 0.6—2m 重复尺度设置（人工假设），不是材料规格或施工排版。",
+      "窗光只从已建模窗洞口发出；灯具点位/灯槽来自模型 ceiling 意向，太阳角度与强度是假设。未做照度/配光计算，不宣称照度合规。",
+      "柱网、洁具、构造节点、消防/疏散/无障碍、实测标高、产品清单、现场照片均缺依据，一律不编造、不补 0、不在图上冒充。",
+      "本表达层是人工编写的受控样板假设：墙厚/高度、门窗洞口、隔断、材质贴图、家具资产映射、绿植软装、机位与灯光均为人工测试假设，未现场复核，不是系统模型自动设计结果，不计入 AI 接替设计验收；照明为示意，不宣称照度合规；平面为内部评审图，不是施工图。"
+    ],
+    "disclaimer": "本表达层是人工编写的受控样板假设：墙厚/高度、门窗洞口、隔断、材质贴图、家具资产映射、绿植软装、机位与灯光均为人工测试假设，未现场复核，不是系统模型自动设计结果，不计入 AI 接替设计验收；照明为示意，不宣称照度合规；平面为内部评审图，不是施工图。",
+    "assumption": "表达层为人工测试假设，非现场事实、非 AI 设计；详见 manifest.presentation 与 scene.json/assumptions"
+  }
+}

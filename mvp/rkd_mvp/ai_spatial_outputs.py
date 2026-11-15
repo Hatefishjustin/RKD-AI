@@ -24,13 +24,14 @@ from typing import Any
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
-GENERATOR_VERSION = "rkd-spatial-outputs.v3"
-PLAN_VERSION = "rkd-spatial-plan.v3"
-SCENE_VERSION = "rkd-spatial-scene.v1"
-QUANTITY_VERSION = "rkd-spatial-quantity.v3"
-COST_VERSION = "rkd-spatial-cost.v3"
-MANIFEST_VERSION = "rkd-spatial-output-manifest.v2"
-FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v2"
+GENERATOR_VERSION = "rkd-spatial-outputs.v4"
+PLAN_VERSION = "rkd-spatial-plan.v4"
+SCENE_VERSION = "rkd-spatial-scene.v2"
+QUANTITY_VERSION = "rkd-spatial-quantity.v4"
+COST_VERSION = "rkd-spatial-cost.v4"
+MANIFEST_VERSION = "rkd-spatial-output-manifest.v3"
+FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v3"
+PRESENTATION_VERSION = "rkd-spatial-presentation-fixture.v1"
 
 MM2 = 1_000_000.0
 
@@ -60,7 +61,8 @@ def now_iso() -> str:
 
 
 # --------------------------------------------------------------------- input
-def freeze_input(model: dict, *, project_id: str, option_revision_id: str) -> dict:
+def freeze_input(model: dict, *, project_id: str, option_revision_id: str,
+                 presentation: dict | None = None) -> dict:
     """The frozen input manifest every W2 output must cite."""
     spatial = model["spatial"]
     source = spatial["source"]
@@ -82,22 +84,44 @@ def freeze_input(model: dict, *, project_id: str, option_revision_id: str) -> di
         "legacy_bbox_used_for_measurement": False,
         "object_versions": sorted(z["object_id"] for z in spatial["zones"]),
         "materials_version": "studio-material-unspecified/intent_only",
-        "views_version": "derived_camera_assumption_v1",
+        "views_version": ("presentation_fixture_assumption_v1" if presentation
+                          else "derived_camera_assumption_v1"),
+        "presentation_version": (presentation or {}).get("schema_version"),
+        "presentation_declared_by": (presentation or {}).get("declared_by"),
+        "presentation_assumption": bool(presentation),
+        "presentation_not_ai_design": True,
+        "asset_manifest_sha256": (presentation or {}).get("asset_manifest_sha256"),
         "generator_version": GENERATOR_VERSION,
         "frozen_at": now_iso(),
     }
 
 
 # -------------------------------------------------------------------- camera
-def derive_camera(model: dict) -> dict:
+def derive_camera(model: dict, presentation: dict | None = None) -> dict:
     """A deterministic presentation camera, explicitly an ASSUMPTION.
 
     The Studio proposal has no camera; W2 derives one from the entrance and the
-    largest zone. It is never presented as a designed view or a measured fact.
+    largest zone. In R4 an explicitly declared fixture camera may replace it —
+    still an assumption, never a designed view or a measured fact. A camera
+    change must never change a quantity.
     """
     spatial = model["spatial"]
     width_mm = float(spatial["origin"]["boundary_mm"][0])
     height_mm = float(spatial["origin"]["boundary_mm"][1])
+    if presentation and presentation.get("cameras"):
+        cam = presentation["cameras"][0]
+        return {
+            "camera_id": cam["object_id"],
+            "kind": "eye_level", "assumption": True,
+            "presentation_camera": True,
+            "assumption_note": "机位来自人工测试假设样板（presentation.cameras[0]），"
+                               "不是设计决定的视点，也不是实测机位；只改机位不改工程量",
+            "eye_height_mm": cam["eye_height_mm"],
+            "position_mm": list(cam["position_mm"]),
+            "target_mm": list(cam["target_mm"]),
+            "lens_mm": cam["lens_mm"], "sensor_mm": 36,
+            "boundary_mm": [width_mm, height_mm],
+        }
     ent = model["boundary"]["entrance"]
     ex = float(model["boundary"]["width"]) * 1000  # placeholder, replaced below
     point = [float(ent["point"][0]) * 1000, float(ent["point"][1]) * 1000]
@@ -306,6 +330,87 @@ def _polygon_pts(obj: dict) -> list[list[float]]:
     return pts
 
 
+def _validated_cut_items(allocation: dict, conflicts: list[dict],
+                         parsed: list[dict]) -> tuple[bool, str, list[dict], float]:
+    """A FREE-TEXT declaration is never a disambiguation rule.
+
+    The only way to keep two different materials on the SAME layer is to supply
+    an explicit, structurally described disjoint allocation that is ACTUALLY
+    CUT: each piece must be a valid polygon, pieces must not overlap, their union
+    must be exactly the conflicting region (no invented extra area), and each
+    piece must stay inside the source faces it cites. Returns the replacement
+    area records; the caller then measures those, not the overlapping originals.
+    """
+    if allocation.get("method") != "explicit_disjoint_cut":
+        return False, "material_allocation.method 必须是 explicit_disjoint_cut", [], 0.0
+    if not isinstance(allocation.get("declared_by"), str) or not allocation["declared_by"].strip():
+        return False, "material_allocation.declared_by 必须标明来源", [], 0.0
+    cuts = allocation.get("cuts")
+    if not isinstance(cuts, list) or not cuts:
+        return False, "material_allocation.cuts 必须是非空数组", [], 0.0
+    by_id = {a["object_id"]: a for a in parsed}
+    conflict_ids = {oid for c in conflicts for oid in c["objects"]}
+    allowed_materials = {by_id[oid]["material_id"] for oid in conflict_ids
+                         if oid in by_id}
+    source_union = unary_union([
+        Polygon([(x, y) for x, y in by_id[oid]["polygon_mm"]])
+        for oid in sorted(conflict_ids) if oid in by_id])
+    items: list[dict] = []
+    seen: set[str] = set()
+    for index, cut in enumerate(cuts):
+        if not isinstance(cut, dict):
+            return False, f"cuts[{index}] 必须是对象", [], 0.0
+        oid = str(cut.get("object_id") or "")
+        if not oid or oid in seen or oid in by_id:
+            return False, f"cuts[{index}].object_id 必须非空、唯一且不得与原对象重名", [], 0.0
+        seen.add(oid)
+        material_id = str(cut.get("material_id") or "")
+        if not material_id or material_id not in allowed_materials:
+            return False, (f"cuts[{index}].material_id 必须是参与冲突的材料之一 "
+                           f"{sorted(allowed_materials)}"), [], 0.0
+        sources = cut.get("source_object_ids")
+        if (not isinstance(sources, list) or not sources
+                or any(s not in conflict_ids for s in sources)):
+            return False, f"cuts[{index}].source_object_ids 必须引用参与冲突的原对象", [], 0.0
+        try:
+            pts = _polygon_pts(cut)
+        except ValueError as error:
+            return False, f"cuts[{index}]：{error}", [], 0.0
+        if len(pts) < 3:
+            return False, f"cuts[{index}] 多边形少于 3 点", [], 0.0
+        poly = Polygon([(x, y) for x, y in pts])
+        if not poly.is_valid or poly.area <= 0:
+            return False, f"cuts[{index}] 不是有效简单多边形", [], 0.0
+        src_union = unary_union([
+            Polygon([(x, y) for x, y in by_id[s]["polygon_mm"]])
+            for s in sources if s in by_id])
+        if poly.difference(src_union).area > 1.0:      # > 1 mm² 即视为凭空扩面
+            return False, f"cuts[{index}] 超出所引用原材料的几何范围", [], 0.0
+        items.append({
+            "object_id": oid, "name": str(cut.get("name") or oid),
+            "polygon_mm": pts, "material_id": material_id,
+            "material_name": cut.get("material_name") or material_id,
+            "material_spec_status": cut.get("spec_status") or "unknown",
+            "unit": "m2", "layer": str(cut.get("layer") or "floor_finish"),
+            "declared_area_m2": round(poly.area / MM2, 4),
+            "from_material_allocation": True,
+        })
+    for index, first in enumerate(items):
+        pa = Polygon([(x, y) for x, y in first["polygon_mm"]])
+        for second in items[index + 1:]:
+            pb = Polygon([(x, y) for x, y in second["polygon_mm"]])
+            if pa.intersection(pb).area > 1.0:
+                return False, (f"裁切面 {first['object_id']} 与 {second['object_id']} "
+                               "仍重叠，不是互斥分配"), [], 0.0
+    cut_union = unary_union(
+        [Polygon([(x, y) for x, y in item["polygon_mm"]]) for item in items])
+    delta_m2 = cut_union.symmetric_difference(source_union).area / MM2
+    if delta_m2 > 1e-5:
+        return False, (f"裁切并集与冲突区域不等价（对称差 {delta_m2:.6f} ㎡），"
+                       "不得据此消歧"), [], delta_m2
+    return True, "", items, delta_m2
+
+
 def normalize_finish_scope(scope: dict | None) -> dict | None:
     """Validate an explicitly declared material-face / paving scope.
 
@@ -318,9 +423,15 @@ def normalize_finish_scope(scope: dict | None) -> dict | None:
       as if millimetres);
     * every polygon must be finite and a valid simple polygon;
     * object ids must be present and unique; material references are required;
-    * overlapping faces on the SAME layer must be declared explicitly, otherwise
-      they would be double counted without explanation. Different layers are
-      kept as separate groups.
+    * overlapping faces of the SAME material on the SAME layer need an explicit
+      ``overlap_declaration`` (union, no double counting);
+    * overlapping faces of DIFFERENT materials on the SAME layer are a CONFLICT:
+      free-text declaration cannot decide which material covers which square
+      metre, and ``_finish_quantity`` must never add the two unions into a
+      ``known`` total. Only an explicit, geometrically disjoint cut
+      (``material_allocation``) that is actually applied may resolve it;
+    * genuinely different construction layers are measured as separate groups,
+      and their sum is never labelled a single-layer floor net area.
     """
     if scope is None:
         return None
@@ -390,28 +501,86 @@ def normalize_finish_scope(scope: dict | None) -> dict | None:
             "layer": str(area.get("layer") or "floor_finish"),
             "declared_area_m2": round(polygon.area / MM2, 4),
         })
-    # 同层重叠：不给说明就拒绝，避免同一块地被两层材料各算一次
-    overlaps = []
-    for index, first in enumerate(parsed):
-        for second in parsed[index + 1:]:
-            if first["layer"] != second["layer"]:
-                continue
-            pa = Polygon([(x, y) for x, y in first["polygon_mm"]])
-            pb = Polygon([(x, y) for x, y in second["polygon_mm"]])
-            if not pa.intersects(pb):
-                continue
-            shared = pa.intersection(pb).area / MM2
-            if shared > 1e-6:
-                overlaps.append({"layer": first["layer"],
-                                 "objects": [first["object_id"], second["object_id"]],
-                                 "overlap_m2": round(shared, 4)})
-    if overlaps and not (isinstance(overlap_declaration, str)
-                         and overlap_declaration.strip()):
+    def _overlaps(items: list[dict]) -> list[dict]:
+        found = []
+        for index, first in enumerate(items):
+            for second in items[index + 1:]:
+                if first["layer"] != second["layer"]:
+                    continue
+                pa = Polygon([(x, y) for x, y in first["polygon_mm"]])
+                pb = Polygon([(x, y) for x, y in second["polygon_mm"]])
+                if not pa.intersects(pb):
+                    continue
+                shared = pa.intersection(pb).area / MM2
+                if shared > 1e-6:
+                    found.append({
+                        "layer": first["layer"],
+                        "objects": [first["object_id"], second["object_id"]],
+                        "material_ids": [first["material_id"], second["material_id"]],
+                        "overlap_m2": round(shared, 4),
+                        "mixed_material": first["material_id"] != second["material_id"],
+                    })
+        return found
+
+    declared = bool(isinstance(overlap_declaration, str) and overlap_declaration.strip())
+    raw_overlaps = _overlaps(parsed)
+    same_material = [o for o in raw_overlaps if not o["mixed_material"]]
+    mixed = [o for o in raw_overlaps if o["mixed_material"]]
+    # 同材同层：沿用原契约，不给说明就拒绝（W2C2-C1-06 回归护栏）
+    if same_material and not declared:
         detail = "；".join(f"{o['layer']}:{'+'.join(o['objects'])}={o['overlap_m2']}㎡"
-                          for o in overlaps)
+                          for o in same_material)
         raise ValueError(
             "同层材料面重叠但未声明，不能无说明重复相加：" + detail
             + "。请合并为一块，或用 overlap_declaration 说明叠层语义")
+
+    allocation_applied = None
+    allocation_rejected = None
+    if mixed:
+        allocation = scope.get("material_allocation")
+        if isinstance(allocation, dict):
+            ok, reason, cut_items, delta = _validated_cut_items(allocation, mixed, parsed)
+            if ok:
+                conflict_ids = {oid for o in mixed for oid in o["objects"]}
+                kept = [a for a in parsed if a["object_id"] not in conflict_ids]
+                parsed = kept + cut_items
+                allocation_applied = {
+                    "declared_by": allocation["declared_by"],
+                    "method": "explicit_disjoint_cut",
+                    "declaration": allocation.get("declaration"),
+                    "cut_count": len(cut_items),
+                    "cut_ids": [c["object_id"] for c in cut_items],
+                    "replaced_object_ids": sorted(conflict_ids),
+                    "coverage_symmetric_difference_m2": round(delta, 8),
+                    "note": "裁切面已实际替换重叠原面，几何互斥且等价覆盖，不是文字声明",
+                }
+                raw_overlaps = _overlaps(parsed)
+                same_material = [o for o in raw_overlaps if not o["mixed_material"]]
+                mixed = [o for o in raw_overlaps if o["mixed_material"]]
+                if same_material and not declared:
+                    raise ValueError("裁切后仍存在未声明的同材同层重叠，不能无说明重复相加")
+            else:
+                allocation_rejected = {"reason": reason,
+                                       "note": "结构化分配未通过几何校验，按冲突待核处理"}
+        else:
+            allocation_rejected = {
+                "reason": "没有提供 material_allocation；overlap_declaration 是自由文字，"
+                          "不能作为材料分配消歧规则",
+                "note": "自由文字说明只保留为留痕，不参与计量",
+            }
+
+    conflicts = [{**{k: o[k] for k in ("layer", "objects", "material_ids", "overlap_m2")},
+                  "conflict_code": "SAME_LAYER_MIXED_MATERIAL_OVERLAP",
+                  "declaration_is_not_disambiguation": declared,
+                  "resolution_required": "合并为单一材料面，或给出结构化互斥裁切；"
+                                         "否则保持 conflict/待核"}
+                 for o in mixed]
+    overlaps = [{k: o[k] for k in ("layer", "objects", "overlap_m2")}
+                for o in raw_overlaps]
+    layer_ids = sorted({a["layer"] for a in parsed})
+    layer_note = (f"本切片包含 {len(layer_ids)} 个不同构造层（{'、'.join(layer_ids)}）；"
+                  "各层分别计量，合计是多构造层合计，不是单层地坪净面积"
+                  if len(layer_ids) > 1 else None)
     return {"schema_version": FINISH_SCOPE_VERSION,
             "kind": scope.get("kind") or "material_face_slice",
             "declared_by": declared_by,
@@ -420,6 +589,10 @@ def normalize_finish_scope(scope: dict | None) -> dict | None:
             "deduction_basis": deduction_basis,
             "overlap_declaration": overlap_declaration,
             "same_layer_overlaps": overlaps,
+            "same_layer_material_conflicts": conflicts,
+            "material_allocation_applied": allocation_applied,
+            "material_allocation_rejected": allocation_rejected,
+            "layer_scope_note": layer_note,
             "site_verified": False,
             "areas": parsed}
 
@@ -531,6 +704,8 @@ def measure(model: dict, *, finish_scope: dict | None = None) -> dict:
             "declared_vs_exact_delta_m2": round(declared - net / MM2, 3),
             "finish_scope": scope,
             "coverage": "只覆盖功能区几何面积与保留区扣除，以及可选的、显式标注来源的材料面切片；"
+                        "同层异材重叠按 conflict 待核，不产 known 总量/试算，除非给出"
+                        "结构化互斥裁切并实际替换原面；不同构造层分别计量，合计不叫单层净面积；"
                         "隔断/天花/门窗/机电未建模，保持 unknown"}
 
 
@@ -550,6 +725,47 @@ def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
                                   "本批没有显式材料面或铺装范围依据，"
                                   "不得据此推出完成面工程量",
                 "required_basis": "显式材料面切片（铺装范围 + 材料引用 + 计量单位 + 扣除依据 + 来源）"}
+    basis_source = {
+        "declared_by": scope["declared_by"],
+        "declaration": scope["declaration"],
+        "kind": scope["kind"], "unit": scope["unit"],
+        "deduction_basis": scope["deduction_basis"],
+        "overlap_declaration": scope.get("overlap_declaration"),
+        "same_layer_overlaps": scope.get("same_layer_overlaps") or [],
+        "same_layer_material_conflicts": scope.get("same_layer_material_conflicts") or [],
+        "material_allocation_applied": scope.get("material_allocation_applied"),
+        "allocation_applied": scope.get("material_allocation_applied"),
+        "material_allocation_rejected": scope.get("material_allocation_rejected"),
+        "layer_scope_note": scope.get("layer_scope_note"),
+        "site_verified": False,
+    }
+    conflicts = scope.get("same_layer_material_conflicts") or []
+    if conflicts:
+        # 同层异材重叠：没有几何互斥裁切就不能决定哪块地铺哪种材料。
+        # 两条几何算法都算对各自并集，也不能证明材料分配正确，因此不输出
+        # known 总量、不给可试算分组、不试算金额。
+        detail = "；".join(
+            f"{c['layer']}:{'+'.join(c['objects'])}"
+            f"({' / '.join(c['material_ids'])}) 重叠 {c['overlap_m2']}㎡"
+            for c in conflicts)
+        return {
+            "quantity_id": "Q-FLOOR-FINISH",
+            "name": "地坪完成面饰面净面积（同层异材冲突，待核）",
+            "value": None, "unit": "m2", "known_status": "conflict",
+            "conflict_code": "SAME_LAYER_MIXED_MATERIAL_OVERLAP",
+            "method": "not_measured_pending_material_allocation",
+            "formula_version": QUANTITY_VERSION,
+            "source_objects": [a["object_id"] for a in scope["areas"]],
+            "basis_source": basis_source,
+            "same_layer_material_conflicts": conflicts,
+            "material_groups": [],
+            "resolution_required": "合并为单一材料面，或提供 material_allocation "
+                                   "的结构化互斥裁切并实际替换原面；自由文字说明无效",
+            "unknown_reason": "同层异材材料面重叠，未给出几何互斥分配：" + detail
+                              + "。若按 (layer, material_id) 分别并集再相加会把同一块"
+                                "地坪重复计入 known 工程量，并据此试算金额",
+            "note": "冲突保留留痕，value 不填 0；本项待核，不给数值、不给试算分组",
+        }
     apply_keepouts = scope["deduction_basis"] != "none"
     keep_polys = [Polygon([(x, y) for x, y in pts]) for pts in keep_pts] if apply_keepouts else []
     keep_union = unary_union(keep_polys) if keep_polys else None
@@ -583,12 +799,12 @@ def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
             "method": "exact_union_per_material_minus_keepouts",
         })
     disputed = worst_delta > INDEPENDENT_TOL_M2
-    basis_source = {"declared_by": scope["declared_by"],
-                    "declaration": scope["declaration"],
-                    "kind": scope["kind"], "unit": scope["unit"],
-                    "deduction_basis": scope["deduction_basis"],
-                    "overlap_declaration": scope.get("overlap_declaration"),
-                    "site_verified": False}
+    layer_ids = sorted({g["layer"] for g in groups})
+    multi_layer = len(layer_ids) > 1
+    layer_breakdown = [{"layer": layer,
+                        "area_m2": round(sum(g["area_m2"] for g in groups
+                                             if g["layer"] == layer), 3)}
+                       for layer in layer_ids]
     if disputed:
         return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积（按材料面切片）",
                 "value": None, "unit": "m2", "known_status": "disputed",
@@ -603,17 +819,25 @@ def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
                                   f"超过容差 {INDEPENDENT_TOL_M2} ㎡；两条可信路径不一致时"
                                   "不输出已知饰面量，也不据此试算金额",
                 "note": "材料面切片来自声明来源，未经现场复核；本项待核，不给数值"}
-    return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积（按材料面切片）",
+    return {"quantity_id": "Q-FLOOR-FINISH",
+            "name": ("各构造层饰面面积合计（非单层地坪净面积）" if multi_layer
+                     else "地坪完成面饰面净面积（按材料面切片）"),
             "value": round(total_exact, 3), "unit": "m2", "known_status": "known",
             "method": "exact_union_per_material_minus_keepouts",
             "formula_version": QUANTITY_VERSION,
+            "quantity_kind": "multi_layer_sum" if multi_layer else "single_layer_net",
+            "layer_breakdown": layer_breakdown,
+            "layer_scope_note": scope.get("layer_scope_note"),
             "source_objects": [a["object_id"] for a in scope["areas"]],
             "basis_source": basis_source,
             "material_groups": groups,
             "independent_max_delta_m2": round(worst_delta, 4),
             "independent_tolerance_m2": INDEPENDENT_TOL_M2,
-            "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；"
-                    "材料规格与产品选型仍为假设，单价缺失时金额保持 unknown"}
+            "note": ("面积来自人工/夹具标注的材料面切片，未经现场复核；"
+                     "材料规格与产品选型仍为假设，单价缺失时金额保持 unknown。"
+                     + ("本项合计跨多个不同构造层，仅作分层计量对账，"
+                        "不得当作单层地坪净面积或据此汇总单层报价。"
+                        if multi_layer else ""))}
 
 
 # --------------------------------------------------------------------- cost
@@ -644,6 +868,21 @@ def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
                          f"{(finish or {}).get('discrepancy_m2')} ㎡），本批不给已知饰面量",
             "quantity_ref": "Q-FLOOR-FINISH",
             "impact": "即使给了单价也不试算金额；待核清几何后再出数"})
+    elif finish_status == "conflict":
+        basis["area_basis"] = "same_layer_material_conflict"
+        conflicts = (finish or {}).get("same_layer_material_conflicts") or []
+        basis["conflict_count"] = len(conflicts)
+        unknown.append({
+            "statement": "同层异材材料面重叠（"
+                         + "；".join(f"{c['layer']}:{'+'.join(c['objects'])}"
+                                    f"={c['overlap_m2']}㎡" for c in conflicts)
+                         + "）：自由文字声明不能决定材料分配，需结构化互斥裁切或待核",
+            "quantity_ref": "Q-FLOOR-FINISH",
+            "impact": "不输出已知饰面量，也不给可试算分组；即使给了单价也不试算金额"})
+        unknown.append({
+            "statement": "材料分配冲突未解决，相关材料金额全部保持 unknown",
+            "quantity_ref": "Q-FLOOR-FINISH",
+            "impact": "assumption_trial_total_cny 保持 None，不填 0"})
     elif finish_status != "known" or not groups:
         basis["area_basis"] = "missing_finish_scope"
         unknown.append({"statement": "地坪完成面铺装范围/材料面未提供，面积依据 unknown",
@@ -726,6 +965,11 @@ def cost_html(cost: dict, quantities: dict) -> bytes:
                     f"{finish.get('discrepancy_m2')} ㎡，超过容差 "
                     f"{finish.get('discrepancy_tolerance_m2')} ㎡），<b>待核</b>；"
                     "不输出已知饰面量，也不据其试算，金额一律不填 0。")
+    elif finish.get("known_status") == "conflict":
+        headline = ("本页没有金额：<b>同层异材材料面重叠冲突，待核</b>。"
+                    "自由文字声明不能当材料分配消歧规则，两条几何算法同时算对各自并集"
+                    "也不能证明分配正确；不输出已知饰面量、不给可试算分组，"
+                    "即使给了假设单价也不试算，金额一律不填 0。")
     else:
         headline = ("本页没有金额：面积依据或价源缺失，所有金额保持 unknown。"
                     "不把几何净量当作造价，也不把草案当报价或合同。")
@@ -733,6 +977,13 @@ def cost_html(cost: dict, quantities: dict) -> bytes:
         escape(str(scope.get("declared_by") or "unknown")),
         escape(str(scope.get("declaration") or "未声明"))) if scope
         else "材料面来源：未提供（完成面工程量 unknown）")
+    conflict_rows = "".join(
+        f"<li>{escape(c['layer'])}：{escape('+'.join(c['objects']))}"
+        f"（{escape(' / '.join(c['material_ids']))}）重叠 {c['overlap_m2']} ㎡</li>"
+        for c in (finish.get("same_layer_material_conflicts") or []))
+    conflict_note = (f'<div class="warn"><b>冲突明细（待核，不试算）</b><ul>{conflict_rows}</ul>'
+                     '请合并为单一材料面，或给出结构化互斥裁切；自由文字声明无效。</div>'
+                     if conflict_rows else "")
     empty_known = '<tr><td colspan="6">无（面积依据或价源缺失）</td></tr>'
     html = f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <title>成本缺项表（草案）</title>
@@ -744,6 +995,7 @@ th,td{{border:1px solid #d7dee6;padding:6px 8px;text-align:left}}th{{background:
 <h1>成本缺项表 · 草案（非正式报价）</h1>
 <div class="warn">{headline}</div>
 <div class="scope">{scope_note}</div>
+{conflict_note}
 <h2>数量（按来源标注）</h2><table><thead><tr><th>项目</th><th>数值</th><th>单位</th><th>状态</th></tr></thead>
 <tbody>{qrows}</tbody></table>
 <h2>假设单价试算（非报价）</h2><table><thead><tr><th>项目</th><th>材料</th><th>面积</th>
@@ -760,7 +1012,132 @@ def _fmt_mm(value: float) -> str:
     return f"{value:.0f}"
 
 
-def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
+def rounded_polygon_2d(points_mm: list, radius_mm: float,
+                       segments: int = 8) -> list[list[float]]:
+    """Quadratic-Bezier corner rounding of a planar polygon (mm).
+
+    The SAME rounding is used by the readable plan and by the Blender renderer,
+    so ``platforms[].corner_radius_mm`` does not silently become a box in 3D.
+    """
+    pts = [(float(p[0]), float(p[1])) for p in points_mm]
+    n = len(pts)
+    if n < 3 or radius_mm <= 0:
+        return [[x, y] for x, y in pts]
+    out: list[list[float]] = []
+    for i in range(n):
+        px, py = pts[(i - 1) % n]
+        cx, cy = pts[i]
+        nx, ny = pts[(i + 1) % n]
+        v1x, v1y = px - cx, py - cy
+        v2x, v2y = nx - cx, ny - cy
+        l1, l2 = math.hypot(v1x, v1y), math.hypot(v2x, v2y)
+        if l1 < 1e-6 or l2 < 1e-6:
+            out.append([cx, cy])
+            continue
+        r = min(radius_mm, l1 * 0.45, l2 * 0.45)
+        ax, ay = cx + v1x / l1 * r, cy + v1y / l1 * r
+        bx, by = cx + v2x / l2 * r, cy + v2y / l2 * r
+        for j in range(segments + 1):
+            t = j / segments
+            out.append([(1 - t) ** 2 * ax + 2 * (1 - t) * t * cx + t ** 2 * bx,
+                        (1 - t) ** 2 * ay + 2 * (1 - t) * t * cy + t ** 2 * by])
+    return out
+
+
+def _plan_enclosure_parts(presentation: dict, X, Y, pts, scale: float) -> list[str]:
+    """Walls / openings / partitions drawn from the SAME presentation objects
+    (id + thickness + width + height) that the Blender scene consumes."""
+    out: list[str] = []
+    walls = presentation["walls"] + presentation["partitions"]
+    by_id = {w["object_id"]: w for w in walls}
+    for w in walls:
+        (x1, y1), (x2, y2) = w["segment_mm"]
+        dx, dy = x2 - x1, y2 - y1
+        length = math.hypot(dx, dy) or 1.0
+        ux, uy = dx / length, dy / length
+        nx, ny = -uy, ux
+        half = w["thickness_mm"] / 2
+        poly = [[x1 + nx * half, y1 + ny * half], [x2 + nx * half, y2 + ny * half],
+                [x2 - nx * half, y2 - ny * half], [x1 - nx * half, y1 - ny * half]]
+        colour = "#3f3f46" if w["kind"] == "perimeter" else "#78716c"
+        out.append(f'<polygon points="{pts(poly)}" fill="{colour}" '
+                   f'fill-opacity="0.92" stroke="#1c1917" stroke-width="0.8"/>')
+        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+        out.append(f'<text x="{X(mx):.1f}" y="{Y(my):.1f}" text-anchor="middle" '
+                   f'font-size="8" fill="#ffffff">{escape(w["object_id"])} '
+                   f'{_fmt_mm(w["thickness_mm"])}mm</text>')
+    for o in presentation["openings"]:
+        host = by_id.get(o["wall_object_id"])
+        if host is None:
+            continue
+        (x1, y1), (x2, y2) = host["segment_mm"]
+        dx, dy = x2 - x1, y2 - y1
+        length = math.hypot(dx, dy) or 1.0
+        ux, uy = dx / length, dy / length
+        nx, ny = -uy, ux
+        cx, cy = o["center_mm"]
+        half_w, half_t = o["width_mm"] / 2, host["thickness_mm"] / 2 + 30
+        a = [cx - ux * half_w - nx * half_t, cy - uy * half_w - ny * half_t]
+        b = [cx + ux * half_w - nx * half_t, cy + uy * half_w - ny * half_t]
+        c = [cx + ux * half_w + nx * half_t, cy + uy * half_w + ny * half_t]
+        d = [cx - ux * half_w + nx * half_t, cy - uy * half_w + ny * half_t]
+        out.append(f'<polygon points="{pts([a, b, c, d])}" fill="#ffffff" '
+                   f'stroke="#1c1917" stroke-width="0.6"/>')
+        if o["kind"] == "window":
+            for offset in (-half_t * 0.35, half_t * 0.35):
+                p1 = [cx - ux * half_w + nx * offset, cy - uy * half_w + ny * offset]
+                p2 = [cx + ux * half_w + nx * offset, cy + uy * half_w + ny * offset]
+                out.append(f'<line x1="{X(p1[0]):.1f}" y1="{Y(p1[1]):.1f}" '
+                           f'x2="{X(p2[0]):.1f}" y2="{Y(p2[1]):.1f}" '
+                           f'stroke="#0369a1" stroke-width="1.4"/>')
+        else:
+            hinge = [cx - ux * half_w, cy - uy * half_w]
+            leaf = [hinge[0] + nx * o["width_mm"], hinge[1] + ny * o["width_mm"]]
+            out.append(f'<line x1="{X(hinge[0]):.1f}" y1="{Y(hinge[1]):.1f}" '
+                       f'x2="{X(leaf[0]):.1f}" y2="{Y(leaf[1]):.1f}" '
+                       f'stroke="#a16207" stroke-width="1.6"/>')
+            arc_end = [cx + ux * half_w, cy + uy * half_w]
+            out.append(f'<path d="M {X(arc_end[0]):.1f} {Y(arc_end[1]):.1f} '
+                       f'A {o["width_mm"]*scale:.1f} {o["width_mm"]*scale:.1f} 0 0 1 '
+                       f'{X(leaf[0]):.1f} {Y(leaf[1]):.1f}" fill="none" '
+                       f'stroke="#a16207" stroke-width="1" stroke-dasharray="3 3"/>')
+        # 图上只放短编号，完整 width×height×窗台高度放到下方「门窗洞口表」，
+        # 避免入口区域多组长文字互相压叠（不靠缩小字号隐藏重叠）。
+        short = o["object_id"].replace("R4-", "")
+        label = [cx + nx * (host["thickness_mm"] + 330),
+                 cy + ny * (host["thickness_mm"] + 330)]
+        out.append(f'<text x="{X(label[0]):.1f}" y="{Y(label[1]):.1f}" '
+                   f'text-anchor="middle" font-size="8.5" fill="#1e3a8a">'
+                   f'{escape(short)}</text>')
+    return out
+
+
+def _plan_furniture_parts(presentation: dict, X, Y, pts) -> list[str]:
+    """Catalog furniture with REAL asset dimensions, same ids as the scene."""
+    out: list[str] = []
+    for f in presentation["furniture"]:
+        dims = f.get("asset_dimensions_mm") or [600.0, 600.0, 750.0]
+        w, d = float(dims[0]), float(dims[1])
+        x, y = f["position_mm"]
+        rot = math.radians(f["rotation_deg"])
+        corners = []
+        for dx, dy in ((-w / 2, -d / 2), (w / 2, -d / 2), (w / 2, d / 2), (-w / 2, d / 2)):
+            corners.append([x + dx * math.cos(rot) - dy * math.sin(rot),
+                            y + dx * math.sin(rot) + dy * math.cos(rot)])
+        stroke = "#0f766e" if not f["placeholder"] else "#b45309"
+        fill = "#d1fae5" if not f["placeholder"] else "#fef3c7"
+        dash = "" if not f["placeholder"] else ' stroke-dasharray="3 2"'
+        out.append(f'<polygon points="{pts(corners)}" fill="{fill}" fill-opacity="0.85" '
+                   f'stroke="{stroke}" stroke-width="1.1"{dash}/>')
+        short = (f["object_id"] if len(f["object_id"]) <= 5
+                 else "P" + f["object_id"].split("-")[-1])
+        out.append(f'<text x="{X(x):.1f}" y="{Y(y)+3:.1f}" text-anchor="middle" '
+                   f'font-size="8" fill="#134e4a">{escape(short)}</text>')
+    return out
+
+
+def build_plan_svg(model: dict, camera: dict, quantities: dict,
+                   presentation: dict | None = None) -> bytes:
     """A readable concept plan: polygons, furniture, circulation, dimensions,
     legend, area table, camera marker and explicit missing items."""
     spatial = model["spatial"]
@@ -770,7 +1147,7 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
     scale = min(draw_w / width, draw_h / height)
     ox, oy = 80.0, 110.0
     W = ox + width * scale + 330
-    H = oy + height * scale + 110
+    H = oy + height * scale + (330 if presentation else 110)
 
     def X(mm: float) -> float:
         return ox + mm * scale
@@ -811,6 +1188,8 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
                      f'{_fmt_mm(max(xs)-min(xs))}×{_fmt_mm(max(ys)-min(ys))} mm</text>')
         parts.append(f'<text x="{X(cx):.1f}" y="{Y(cy)+28:.1f}" text-anchor="middle" '
                      f'font-size="10" fill="#0f172a">{z.get("area_sqm")} ㎡</text>')
+    if presentation:
+        parts.extend(_plan_enclosure_parts(presentation, X, Y, pts, scale))
     for o in model["boundary"]["obstacles"]:
         s = o["shape"]
         x, y = float(s["x"]) * 1000, float(s["y"]) * 1000
@@ -822,30 +1201,45 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
                      f'font-size="9" fill="#334155">{escape(o["name"])}（保留）</text>')
     for p in spatial.get("platforms") or []:
         if len(p.get("polygon_mm") or []) >= 3:
-            parts.append(f'<polygon points="{pts(p["polygon_mm"])}" fill="#f8fafc" '
+            plan_outline = (rounded_polygon_2d(p["polygon_mm"],
+                                               float(p.get("corner_radius_mm") or 0))
+                            if p.get("corner_radius_mm") else p["polygon_mm"])
+            parts.append(f'<polygon points="{pts(plan_outline)}" fill="#f8fafc" '
                          f'fill-opacity="0.6" stroke="#b45309" stroke-width="2" '
                          f'stroke-dasharray="5 3"/>')
-    for f in spatial["furniture"]:
-        w = float(f.get("w_mm") or 600)
-        d = float(f.get("d_mm") or 600)
-        x, y = float(f["x_mm"]), float(f["y_mm"])
-        rot = math.radians(float(f.get("rot") or 0))
-        corners = []
-        for dx, dy in ((-w/2, -d/2), (w/2, -d/2), (w/2, d/2), (-w/2, d/2)):
-            corners.append([x + dx*math.cos(rot) - dy*math.sin(rot),
-                            y + dx*math.sin(rot) + dy*math.cos(rot)])
-        parts.append(f'<polygon points="{pts(corners)}" fill="#cbd5e1" fill-opacity="0.85" '
-                     f'stroke="#334155" stroke-width="1"/>')
-        parts.append(f'<text x="{X(x):.1f}" y="{Y(y)+3:.1f}" text-anchor="middle" '
-                     f'font-size="9" fill="#0f172a">{escape(f["object_id"])}</text>')
+            if p.get("corner_radius_mm"):
+                cx = sum(float(q[0]) for q in p["polygon_mm"]) / len(p["polygon_mm"])
+                cy = sum(float(q[1]) for q in p["polygon_mm"]) / len(p["polygon_mm"])
+                parts.append(f'<text x="{X(cx):.1f}" y="{Y(cy)+16:.1f}" '
+                             f'text-anchor="middle" font-size="9" fill="#b45309">'
+                             f'{escape(p["object_id"])} 圆角 R{_fmt_mm(p["corner_radius_mm"])}'
+                             f'（平面/三维同一圆角轮廓）</text>')
+    if presentation:
+        parts.extend(_plan_furniture_parts(presentation, X, Y, pts))
+    else:
+        for f in spatial["furniture"]:
+            w = float(f.get("w_mm") or 600)
+            d = float(f.get("d_mm") or 600)
+            x, y = float(f["x_mm"]), float(f["y_mm"])
+            rot = math.radians(float(f.get("rot") or 0))
+            corners = []
+            for dx, dy in ((-w/2, -d/2), (w/2, -d/2), (w/2, d/2), (-w/2, d/2)):
+                corners.append([x + dx*math.cos(rot) - dy*math.sin(rot),
+                                y + dx*math.sin(rot) + dy*math.cos(rot)])
+            parts.append(f'<polygon points="{pts(corners)}" fill="#cbd5e1" fill-opacity="0.85" '
+                         f'stroke="#334155" stroke-width="1"/>')
+            parts.append(f'<text x="{X(x):.1f}" y="{Y(y)+3:.1f}" text-anchor="middle" '
+                         f'font-size="9" fill="#0f172a">{escape(f["object_id"])}</text>')
     for c in spatial["circulation"]:
         path = c["path_mm"]
         parts.append('<polyline points="' + pts(path) + '" fill="none" stroke="#dc2626" '
                      'stroke-width="3" stroke-dasharray="10 5"/>')
-        mx, my = (float(path[0][0]) + float(path[1][0])) / 2, \
-                 (float(path[0][1]) + float(path[1][1])) / 2
-        parts.append(f'<text x="{X(mx):.1f}" y="{Y(my)-6:.1f}" font-size="10" '
-                     f'fill="#b91c1c">动线 {escape(c["object_id"])} · {c["width_mm"]}mm</text>')
+        if not presentation:
+            mx, my = (float(path[0][0]) + float(path[1][0])) / 2, \
+                     (float(path[0][1]) + float(path[1][1])) / 2
+            parts.append(f'<text x="{X(mx):.1f}" y="{Y(my)-6:.1f}" font-size="10" '
+                         f'fill="#b91c1c">动线 {escape(c["object_id"])} · '
+                         f'{c["width_mm"]}mm</text>')
     for fx in (spatial["ceiling"].get("fixtures") or []):
         x, y = float(fx.get("x") or 0), float(fx.get("y") or 0)
         parts.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="4.5" fill="#f59e0b" '
@@ -858,8 +1252,36 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
                  f'y2="{Y(ty):.1f}" stroke="#7c3aed" stroke-width="1.5" '
                  f'stroke-dasharray="4 4"/>')
     parts.append(f'<circle cx="{X(ex):.1f}" cy="{Y(ey):.1f}" r="6" fill="#7c3aed"/>')
-    parts.append(f'<text x="{X(ex)+10:.1f}" y="{Y(ey)-8:.1f}" font-size="10" fill="#5b21b6">'
-                 f'C1 人眼 1.5m · 24mm（推导机位，非设计视点）</text>')
+    if not presentation:
+        parts.append(f'<text x="{X(ex)+10:.1f}" y="{Y(ey)-8:.1f}" font-size="10" '
+                     f'fill="#5b21b6">C1 人眼 1.5m · 24mm（推导机位，非设计视点）</text>')
+    if presentation:
+        vx, vy = tx - ex, ty - ey
+        angle0 = math.atan2(vy, vx)
+        half_angle = math.degrees(math.atan(18.0 / max(cam["lens_mm"], 1)))
+        reach = min(width, height) * 0.55
+        for sign in (-1, 1):
+            ang = angle0 + math.radians(sign * half_angle)
+            parts.append(f'<line x1="{X(ex):.1f}" y1="{Y(ey):.1f}" '
+                         f'x2="{X(ex + reach * math.cos(ang)):.1f}" '
+                         f'y2="{Y(ey + reach * math.sin(ang)):.1f}" '
+                         f'stroke="#7c3aed" stroke-width="1" stroke-dasharray="6 4"/>')
+        parts.append(f'<text x="{X(ex)+10:.1f}" y="{Y(ey)+10:.1f}" font-size="9" '
+                     f'fill="#5b21b6">{escape(str(cam["camera_id"]))} · 人眼 '
+                     f'{cam["eye_height_mm"]/1000:.2f}m · {cam["lens_mm"]}mm'
+                     f'（人工假设机位，视锥示意）</text>')
+        window_by_id = {o["object_id"]: o for o in presentation["openings"]}
+        for win in presentation["lighting"]["window_opening_ids"]:
+            o = window_by_id.get(win)
+            if not o:
+                continue
+            cx, cy = o["center_mm"]
+            inward = [width / 2 - cx, height / 2 - cy]
+            n = math.hypot(*inward) or 1.0
+            parts.append(f'<line x1="{X(cx):.1f}" y1="{Y(cy):.1f}" '
+                         f'x2="{X(cx + inward[0]/n * 2200):.1f}" '
+                         f'y2="{Y(cy + inward[1]/n * 2200):.1f}" '
+                         f'stroke="#0284c7" stroke-width="1.4" stroke-dasharray="5 3"/>')
     # overall dimension lines
     parts.append(f'<line x1="{ox}" y1="{oy-26}" x2="{ox+width*scale:.1f}" y2="{oy-26}" '
                  f'stroke="#334155" stroke-width="1"/>')
@@ -879,6 +1301,10 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
                  f'模型 {model_hash(model)[:12]} · {GENERATOR_VERSION}</text>')
     parts.append(f'<text x="{ox}" y="74" font-size="11" fill="#b91c1c">'
                  f'概念平面（内部评审）：不是施工图，不宣称消防/无障碍/门洞净宽合规</text>')
+    if presentation:
+        parts.append(f'<text x="{ox}" y="92" font-size="10.5" fill="#9a3412">'
+                     f'表达层：墙/门窗/隔断/材质/家具/机位/灯光均为人工测试假设，'
+                     f'非现场事实、非 AI 自动设计；照明示意，不宣称照度合规</text>')
     # legend
     lx = ox + width * scale + 60
     ly = oy + 10
@@ -886,6 +1312,22 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
     legend = [("#dbeafe", "功能分区（多边形，非墙体）"), ("#cbd5e1", "家具（目录尺寸）"),
               ("#dc2626", "主动线（净宽 mm）"), ("#f59e0b", "灯具点位（意向）"),
               ("#7c3aed", "人眼机位（推导）"), ("url(#keepout)", "保留区（扣除）")]
+    if presentation:
+        circulation_width = (spatial["circulation"][0]["width_mm"]
+                             if spatial.get("circulation") else "unknown")
+        legend[2] = ("#dc2626", f"主动线（净宽 {circulation_width}mm）")
+        legend[4] = ("#7c3aed", "人眼机位（人工假设视点）")
+        legend += [("#3f3f46", "周界墙（人工假设厚度/高度）"),
+                   ("#78716c", "隔断（显式对象，非分区边界）"),
+                   ("#ffffff", "门洞 + 门扇弧线（宽度标注）"),
+                   ("#0369a1", "窗洞口 + 窗光方向（假设）"),
+                   ("#d1fae5", "CC0 家具（真实目录尺寸）"),
+                   ("#fef3c7", "无对应资产：明确占位"),
+                   ("#7c3aed", "人眼机位 + 视锥（人工假设）"),
+                   ("#94a3b8", "灯具/灯槽意向（非照度结论）")]
+        for mat in presentation["materials"]:
+            legend.append((mat["hex"],
+                           f'材质 {mat["name"]}（{mat["slot"]}，CC0 贴图意向）'))
     for i, (fill, label) in enumerate(legend):
         yy = ly + 24 + i * 22
         parts.append(f'<rect x="{lx}" y="{yy-11}" width="18" height="12" fill="{fill}" '
@@ -913,32 +1355,61 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict) -> bytes:
     parts.append(f'<text x="{lx}" y="{base_y+14}" font-size="9" fill="#b91c1c">'
                  f'（几何量，不是铺装/完成面工程量）</text>')
     finish_item = next(q for q in quantities["items"] if q["quantity_id"] == "Q-FLOOR-FINISH")
+    conflict = finish_item.get("known_status") == "conflict"
+    finish_display = ("conflict/待核" if conflict else
+                      finish_item["value"] if finish_item["value"] is not None else "unknown")
     parts.append(f'<text x="{lx}" y="{base_y+30}" font-size="10" fill="#0f172a">'
                  f'地坪完成面饰面净面积</text>')
     parts.append(f'<text x="{lx+250}" y="{base_y+30}" font-size="10" text-anchor="end" '
-                 f'fill="#0f172a">'
-                 f'{finish_item["value"] if finish_item["value"] is not None else "unknown"}'
+                 f'fill="#0f172a">{finish_display}'
                  f'{" ㎡" if finish_item["value"] is not None else ""}</text>')
-    if finish_item["value"] is None:
+    if conflict:
+        parts.append(f'<text x="{lx}" y="{base_y+44}" font-size="9" fill="#b91c1c">'
+                     f'（同层异材冲突，待核；不填 0、不试算）</text>')
+    elif finish_item["value"] is None:
         parts.append(f'<text x="{lx}" y="{base_y+44}" font-size="9" fill="#b91c1c">'
                      f'（没有材料面/铺装范围依据，不填 0）</text>')
     # missing items
     my = base_y + 62
     parts.append(f'<text x="{lx}" y="{my}" font-size="12" font-weight="700" fill="#b91c1c">'
                  f'未建模 / 缺项</text>')
-    missing = ["墙体构造与门窗（未建模，不画框线冒充）", "洁具（未建模）",
-               "隔断构件与长度（未建模）", "天花吊顶构造（只有灯槽意向）",
-               "照度/配光（未计算）", "材料规格与产品选型（unknown）"]
+    if presentation:
+        missing = (["墙体/门窗/隔断/材质/家具/机位为人工测试假设，非现场事实"]
+                   + list(presentation["missing"])[:7])
+    else:
+        missing = ["墙体构造与门窗（未建模，不画框线冒充）", "洁具（未建模）",
+                   "隔断构件与长度（未建模）", "天花吊顶构造（只有灯槽意向）",
+                   "照度/配光（未计算）", "材料规格与产品选型（unknown）"]
     for i, text in enumerate(missing):
         parts.append(f'<text x="{lx}" y="{my+18+i*16}" font-size="9.5" fill="#7f1d1d">'
                      f'· {escape(text)}</text>')
+    if presentation:
+        table_y = oy + height * scale + 34
+        parts.append(f'<text x="{ox}" y="{table_y}" font-size="12" font-weight="700" '
+                     f'fill="#111827">门窗洞口表（人工测试假设，单位 mm；完整尺寸不压在图面上）</text>')
+        for i, op in enumerate(presentation["openings"]):
+            col, row = i % 2, i // 2
+            tx = ox + col * 430
+            ty = table_y + 20 + row * 15
+            parts.append(f'<text x="{tx}" y="{ty}" font-size="9.5" fill="#334155">'
+                         f'{escape(op["object_id"])} · {op["kind"]} · '
+                         f'{_fmt_mm(op["width_mm"])}×{_fmt_mm(op["height_mm"])} · '
+                         f'窗台 {_fmt_mm(op["sill_mm"])}</text>')
+        parts.append(f'<text x="{ox}" y="{table_y + 20 + ((len(presentation["openings"])+1)//2)*15 + 8}" '
+                     f'font-size="9.5" fill="#b91c1c">'
+                     f'墙体厚度/高度、洞口尺寸均为人工假设，未现场复核；图上粗线为围合，不是施工墙体</text>')
     parts.append('</svg>')
     return "".join(parts).encode("utf-8")
 
 
 # -------------------------------------------------------------------- scene
-def build_scene(model: dict, camera: dict) -> dict:
-    """Blender scene spec in metres; coordinates and sizes come from the model."""
+def build_scene(model: dict, camera: dict, presentation: dict | None = None) -> dict:
+    """Blender scene spec in metres; coordinates and sizes come from the model.
+
+    With a presentation fixture the SAME object ids and mm dimensions that draw
+    the readable plan are carried into ``enclosure`` / ``presentation``; the
+    renderer converts them to metres. Nothing here is invented from a zone edge.
+    """
     spatial = model["spatial"]
     width_mm = float(spatial["origin"]["boundary_mm"][0])
     height_mm = float(spatial["origin"]["boundary_mm"][1])
@@ -965,6 +1436,10 @@ def build_scene(model: dict, camera: dict) -> dict:
     for p in spatial.get("platforms") or []:
         if len(p.get("polygon_mm") or []) >= 3:
             platforms.append({"object_id": p["object_id"],
+                              "name": p.get("name"),
+                              "kind": p.get("kind"),
+                              "corner_radius_m": (m(p["corner_radius_mm"])
+                                                  if p.get("corner_radius_mm") else None),
                               "polygon_m": [[m(q[0]), m(q[1])] for q in p["polygon_mm"]],
                               "height_m": m(p.get("height_mm") or 0)})
     keepouts = []
@@ -977,7 +1452,7 @@ def build_scene(model: dict, camera: dict) -> dict:
     fixtures = [{"object_id": fx.get("id"), "x_m": m(fx.get("x") or 0),
                  "y_m": m(fx.get("y") or 0), "kelvin": fx.get("kelvin"),
                  "type": fx.get("type")} for fx in (spatial["ceiling"].get("fixtures") or [])]
-    return {
+    out = {
         "schema_version": SCENE_VERSION,
         "unit": "m",
         "boundary": {"width_m": m(width_mm), "length_m": m(height_mm),
@@ -985,9 +1460,12 @@ def build_scene(model: dict, camera: dict) -> dict:
         "zones": zones, "furniture": furniture, "platforms": platforms,
         "keepouts": keepouts, "fixtures": fixtures,
         # Blender convention: [x, y, z] with z up.
-        "camera": {"position": [m(camera["position_mm"][0]), m(camera["position_mm"][1]), 1.5],
+        "camera": {"position": [m(camera["position_mm"][0]), m(camera["position_mm"][1]),
+                                m(camera.get("eye_height_mm") or 1500)],
                    "target": [m(camera["target_mm"][0]), m(camera["target_mm"][1]), 1.2],
-                   "lens_mm": camera["lens_mm"], "eye_height_m": 1.5,
+                   "lens_mm": camera["lens_mm"],
+                   "eye_height_m": m(camera.get("eye_height_mm") or 1500),
+                   "camera_id": camera.get("camera_id"),
                    "assumption": True},
         "render_assumptions": [
             "机位/视线由入口与最大分区推导，不是设计决定的视点",
@@ -999,6 +1477,56 @@ def build_scene(model: dict, camera: dict) -> dict:
                    "artifact_id": spatial["source"]["artifact_id"],
                    "model_hash": model_hash(model)},
     }
+    if presentation:
+        role_to_material = {role: mat for mat in presentation["materials"]
+                            for role in mat["zone_roles"]}
+        default_material = presentation["materials"][0]
+        for zone, source in zip(zones, spatial["zones"]):
+            mat = role_to_material.get(str(source.get("role") or ""), default_material)
+            zone["material_id"] = mat["material_id"]
+            zone["material_slot"] = mat["slot"]
+            zone["material_source"] = "presentation_fixture_assumption"
+        textures = {mat["slot"]: f'pbr/{mat["slot"]}'
+                    for mat in presentation["materials"]}
+        asset_models = {f["asset_id"]: f'models/{f["asset_id"]}/{f["asset_id"]}.gltf'
+                        for f in presentation["furniture"] if f["asset_id"]}
+        out["presentation"] = presentation
+        out["enclosure"] = {
+            "unit": "mm",
+            "walls": presentation["walls"],
+            "partitions": presentation["partitions"],
+            "openings": presentation["openings"],
+            "note": "与平面读取同一对象 ID 与 mm 尺寸；渲染器按 /1000 转米",
+        }
+        out["presentation_furniture"] = [{
+            **f,
+            "position_m": [m(f["position_mm"][0]), m(f["position_mm"][1]),
+                           f.get("z_offset_m") or 0.0],
+        } for f in presentation["furniture"]]
+        out["presentation_cameras"] = [{
+            **c, "position_m": [m(c["position_mm"][0]), m(c["position_mm"][1]),
+                               m(c["eye_height_mm"])],
+            "target_m": [m(c["target_mm"][0]), m(c["target_mm"][1]), 1.2],
+        } for c in presentation["cameras"]]
+        out["lighting"] = {
+            "window_opening_ids": presentation["lighting"]["window_opening_ids"],
+            "fixtures": [{**fx, "position_m": [m(fx["position_mm"][0]),
+                                               m(fx["position_mm"][1])]}
+                         for fx in presentation["lighting"]["fixtures"]],
+            "coves": [{**cv, "polygon_m": [[m(p[0]), m(p[1])] for p in cv["polygon_mm"]]}
+                      for cv in presentation["lighting"]["coves"]],
+            "sun": presentation["lighting"]["sun"],
+            "note": presentation["lighting"]["note"],
+        }
+        out["assets"] = {"root": "tools/assets",
+                         "manifest_sha256": presentation["asset_manifest_sha256"],
+                         "textures": textures, "models": asset_models,
+                         "license": "CC0 1.0 (Poly Haven)"}
+        out["render_assumptions"] = list(presentation["assumptions"]) + [
+            presentation["disclaimer"],
+        ]
+        out["presentation_disclaimer"] = presentation["disclaimer"]
+    return out
 
 
 # ------------------------------------------------------------------ package
@@ -1006,10 +1534,12 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
                   settings: dict | None = None, finish_scope: dict | None = None,
                   binding: dict | None = None) -> dict:
     settings = settings or {}
+    presentation = settings.get("presentation") or None
     scope = normalize_finish_scope(finish_scope if finish_scope is not None
                                    else settings.get("finish_scope"))
     frozen = freeze_input(model, project_id=project_id,
-                          option_revision_id=option_revision_id)
+                          option_revision_id=option_revision_id,
+                          presentation=presentation)
     if scope:
         frozen["finish_scope"] = {"kind": scope["kind"], "declared_by": scope["declared_by"],
                                   "declaration": scope["declaration"],
@@ -1019,11 +1549,11 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
                                             for a in scope["areas"]]}
     if binding:
         frozen["binding"] = binding
-    camera = derive_camera(model)
+    camera = derive_camera(model, presentation)
     quantities = measure(model, finish_scope=scope)
     cost = build_cost(quantities, settings=settings)
-    plan = build_plan_svg(model, camera, quantities)
-    scene = build_scene(model, camera)
+    plan = build_plan_svg(model, camera, quantities, presentation)
+    scene = build_scene(model, camera, presentation)
     files = {
         "plan.svg": ("plan_svg", "image/svg+xml", plan),
         "quantity.json": ("development_json", "application/json", _json(quantities)),
@@ -1040,13 +1570,25 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
         "camera": camera,
         "quantities": quantities,
         "cost": cost,
-        "missing": ["墙体与门窗构造", "洁具", "隔断构件", "天花吊顶构造", "照度/配光",
-                    "材料规格与产品选型", "相机原始视点（推导假设）"],
+        "missing": (list(presentation["missing"]) + [presentation["disclaimer"]]
+                    if presentation else
+                    ["墙体与门窗构造", "洁具", "隔断构件", "天花吊顶构造", "照度/配光",
+                     "材料规格与产品选型", "相机原始视点（推导假设）"]),
+        "presentation": ({
+            "schema_version": presentation["schema_version"],
+            "declared_by": presentation["declared_by"],
+            "site_verified": False, "not_ai_design": True,
+            "asset_manifest_sha256": presentation["asset_manifest_sha256"],
+            "counts": presentation["counts"],
+            "assumptions": presentation["assumptions"],
+            "disclaimer": presentation["disclaimer"],
+        } if presentation else None),
         "files": [],
     }
     return {"frozen": frozen, "camera": camera, "quantities": quantities,
             "cost": cost, "scene": scene, "plan": plan, "files": files,
-            "manifest": manifest, "settings": settings, "finish_scope": scope}
+            "manifest": manifest, "settings": settings, "finish_scope": scope,
+            "presentation": presentation}
 
 
 def _quantity_csv(quantities: dict) -> bytes:
