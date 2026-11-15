@@ -1,12 +1,12 @@
 {
  "task_id": "W2-二次收口",
  "schema_version": "rkd-review-packet.v1",
- "built_at": "2026-11-15T08:02:41+08:00",
+ "built_at": "2026-11-15T08:03:04+08:00",
  "code_baseline": {
   "compare_base": "82d2a66",
   "compare_base_subject": "W2 收口整改复核提交（架构复核：R1 通过、R2/R3 定点补修）",
   "code_commit": "7425464",
-  "batch_commit": null,
+  "batch_commit": "b877138",
   "rebuild_command": "git diff 82d2a66 -- mvp web scripts",
   "diff_shortstat": "5 files changed, 1100 insertions(+), 99 deletions(-)",
   "patch_bytes": 78885,
