@@ -1,0 +1,251 @@
+{
+  "sloped_deduction": {
+    "analytic_basis": "triangle 18m2 minus integral(6-y, y=1..2)=4.5m2; net=13.5m2",
+    "expected_m2": 13.5,
+    "geometry": {
+      "quantity_id": "Q-FLOOR-GEOMETRIC-NET",
+      "name": "功能分区几何净面积（非完成面工程量）",
+      "value": 13.5,
+      "unit": "m2",
+      "known_status": "known",
+      "method": "exact_union_minus_keepouts",
+      "formula_version": "rkd-spatial-quantity.v2",
+      "engineering_status": "geometric_only_not_a_finish_quantity",
+      "source_objects": [
+        "ZL1"
+      ],
+      "independent_recompute_m2": 12.0,
+      "independent_gross_m2": 18.0,
+      "independent_method": "vertical_strip_union_v1",
+      "independent_delta_m2": -1.5,
+      "sum_of_zones_m2": 18.0,
+      "zone_overlap_m2": 0.0,
+      "bbox_value_m2": 30.0,
+      "bbox_delta_m2": 16.5,
+      "note": "功能分区并集减保留区；可计算但不等于铺装/饰面完成面范围，不得直接流入已知工程量或正式报价。bbox 结果仅证明不能据包围盒计量"
+    },
+    "finish": {
+      "quantity_id": "Q-FLOOR-FINISH",
+      "name": "地坪完成面饰面净面积（按材料面切片）",
+      "value": 12.0,
+      "unit": "m2",
+      "known_status": "known",
+      "method": "declared_finish_scope_minus_keepouts",
+      "formula_version": "rkd-spatial-quantity.v2",
+      "source_objects": [
+        "face1"
+      ],
+      "basis_source": {
+        "declared_by": "architect_manual_test",
+        "declaration": "analytic fixture only",
+        "kind": "material_face_slice",
+        "unit": "mm",
+        "deduction_basis": "keepouts_within_scope",
+        "site_verified": false
+      },
+      "material_groups": [
+        {
+          "material_id": "test-floor",
+          "material_name": null,
+          "material_spec_status": "unknown",
+          "area_m2": 12.0,
+          "area_objects": [
+            "face1"
+          ]
+        }
+      ],
+      "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；材料规格与产品选型仍为假设，单价缺失时金额保持 unknown"
+    },
+    "cost": {
+      "schema_version": "rkd-spatial-cost.v2",
+      "currency": "CNY",
+      "known_items": [
+        {
+          "item": "test-floor（按输入假设单价试算）",
+          "material_id": "test-floor",
+          "quantity_ref": "Q-FLOOR-FINISH/test-floor",
+          "quantity_m2": 12.0,
+          "unit_price_cny": 1000,
+          "amount_cny": 12000.0,
+          "basis": "caller_provided_assumption_not_a_quote",
+          "area_basis_source": "architect_manual_test",
+          "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+        }
+      ],
+      "unknown_items": [
+        {
+          "statement": "隔断、天花、门窗工程量未建模",
+          "quantity_ref": "Q-PARTITION-LENGTH",
+          "impact": "相关金额保持 unknown"
+        },
+        {
+          "statement": "税率与成本加成虽有用户口径，但没有价源，本批不做合计试算",
+          "quantity_ref": null,
+          "impact": "不输出项目合计金额"
+        }
+      ],
+      "assumption_trial_total_cny": 12000.0,
+      "total_project_estimate": {
+        "value": null,
+        "known_status": "unknown",
+        "unknown_reason": "没有价源；不把地坪小计当项目总造价"
+      },
+      "formal_quote": false,
+      "pricing_basis": {
+        "area_basis": "architect_manual_test",
+        "unit_prices": "partially_provided_by_caller_assumption",
+        "loss_rate": "unknown",
+        "labor_and_process": "unknown",
+        "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+        "markup": "user_confirmed_but_not_applied_without_price_source"
+      },
+      "note": "本页金额全部为调用方假设单价的试算，不是报价；金额一律不填 0"
+    }
+  },
+  "unit_mismatch": {
+    "rejected": false,
+    "result": {
+      "quantity_id": "Q-FLOOR-FINISH",
+      "name": "地坪完成面饰面净面积（按材料面切片）",
+      "value": 12.0,
+      "unit": "m2",
+      "known_status": "known",
+      "method": "declared_finish_scope_minus_keepouts",
+      "formula_version": "rkd-spatial-quantity.v2",
+      "source_objects": [
+        "face1"
+      ],
+      "basis_source": {
+        "declared_by": "architect_manual_test",
+        "declaration": "analytic fixture only",
+        "kind": "material_face_slice",
+        "unit": "m",
+        "deduction_basis": "keepouts_within_scope",
+        "site_verified": false
+      },
+      "material_groups": [
+        {
+          "material_id": "test-floor",
+          "material_name": null,
+          "material_spec_status": "unknown",
+          "area_m2": 12.0,
+          "area_objects": [
+            "face1"
+          ]
+        }
+      ],
+      "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；材料规格与产品选型仍为假设，单价缺失时金额保持 unknown"
+    }
+  },
+  "packages": [
+    {
+      "layout": "layout-A",
+      "mismatches": [],
+      "render_in_zip": true
+    },
+    {
+      "layout": "layout-B",
+      "mismatches": [],
+      "render_in_zip": true
+    }
+  ],
+  "normal_launch_gap": {
+    "submit_status": 202,
+    "get_status": 200,
+    "job_during_gap": {
+      "job_id": "ai-spatial-job_5db8a68c9088",
+      "organization_id": "org-local",
+      "project_id": "project_ningbo_xiecheng_2026",
+      "option_revision_id": "ai-option-revision_31062048a4ad",
+      "adoption_version": 0,
+      "input_hash": "29ab349ee42f9ba24338b6450dea21081aaadbf016923d45640cf3b546f7f0bf",
+      "status": "failed",
+      "phase": "failed",
+      "attempt_count": 0,
+      "error_code": "WORKER_RESTARTED",
+      "error_message": "服务重启，本任务中断；请显式重试",
+      "idempotency_key": "architect-launch-gap-0001",
+      "actor_id": "local-user",
+      "created_at": "2026-11-14T16:01:24.438357+00:00",
+      "updated_at": "2026-11-14T16:01:24.495492+00:00",
+      "settings": {
+        "finish_scope": null,
+        "floor_unit_price_cny": null,
+        "height": 240,
+        "material_unit_prices": {},
+        "render": false,
+        "samples": 8,
+        "width": 320
+      },
+      "config": {
+        "binding_at_submit": {
+          "adopted_at_submit": false,
+          "adopted_option_revision_id": null,
+          "adoption_version": 0,
+          "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览",
+          "status_at_generation": "candidate_preview"
+        },
+        "cost_version": "rkd-spatial-cost.v2",
+        "finish_scope_declared_by": null,
+        "generator_version": "rkd-spatial-outputs.v2",
+        "kind": "spatial_outputs",
+        "plan_version": "rkd-spatial-plan.v3",
+        "quantity_version": "rkd-spatial-quantity.v2",
+        "renderer": "injected_renderer",
+        "retry_of": null,
+        "scene_version": "rkd-spatial-scene.v1"
+      }
+    },
+    "final_job": {
+      "job_id": "ai-spatial-job_5db8a68c9088",
+      "organization_id": "org-local",
+      "project_id": "project_ningbo_xiecheng_2026",
+      "option_revision_id": "ai-option-revision_31062048a4ad",
+      "adoption_version": 0,
+      "input_hash": "29ab349ee42f9ba24338b6450dea21081aaadbf016923d45640cf3b546f7f0bf",
+      "status": "failed",
+      "phase": "failed",
+      "attempt_count": 0,
+      "error_code": "WORKER_RESTARTED",
+      "error_message": "服务重启，本任务中断；请显式重试",
+      "idempotency_key": "architect-launch-gap-0001",
+      "actor_id": "local-user",
+      "created_at": "2026-11-14T16:01:24.438357+00:00",
+      "updated_at": "2026-11-14T16:01:24.495492+00:00",
+      "settings": {
+        "finish_scope": null,
+        "floor_unit_price_cny": null,
+        "height": 240,
+        "material_unit_prices": {},
+        "render": false,
+        "samples": 8,
+        "width": 320
+      },
+      "config": {
+        "binding_at_submit": {
+          "adopted_at_submit": false,
+          "adopted_option_revision_id": null,
+          "adoption_version": 0,
+          "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览",
+          "status_at_generation": "candidate_preview"
+        },
+        "cost_version": "rkd-spatial-cost.v2",
+        "finish_scope_declared_by": null,
+        "generator_version": "rkd-spatial-outputs.v2",
+        "kind": "spatial_outputs",
+        "plan_version": "rkd-spatial-plan.v3",
+        "quantity_version": "rkd-spatial-quantity.v2",
+        "renderer": "injected_renderer",
+        "retry_of": null,
+        "scene_version": "rkd-spatial-scene.v1"
+      }
+    }
+  },
+  "explicit_failed_job_query": {
+    "requested_job_id": "ai-spatial-job_5db8a68c9088",
+    "job_status": "failed",
+    "returned_revision_job_id": "ai-spatial-job_8739ccd2e695",
+    "previous_successful_job_id": "ai-spatial-job_8739ccd2e695",
+    "unrelated_artifacts_returned": true
+  }
+}

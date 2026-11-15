@@ -1,0 +1,104 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<title>W2 二次收口复核包</title>
+<style>
+body{font:14px/1.65 system-ui,"Microsoft YaHei",sans-serif;margin:0;color:#111827;background:#f6f7f9}
+main{max-width:1080px;margin:0 auto;padding:32px 24px 64px;background:#fff}
+h1{font-size:23px;margin:0 0 6px} h2{font-size:16px;margin:28px 0 8px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+.meta{color:#475569;font-size:12.5px;margin-bottom:18px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin:8px 0 18px}
+th,td{border:1px solid #e2e8f0;padding:5px 7px;text-align:left;vertical-align:top}
+th{background:#f1f5f9;font-weight:600}
+.ok{color:#166534;font-weight:600} .bad{color:#b91c1c;font-weight:600} .na{color:#6b7280}
+.warn{background:#fff7ed;border-left:4px solid #c2410c;padding:10px 14px;margin:14px 0;font-size:13px}
+.note{background:#f8fafc;border-left:4px solid #64748b;padding:10px 14px;margin:14px 0;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+figure{margin:0} img{width:100%;border:1px solid #e2e8f0;background:#fff}
+figcaption{font-size:12px;color:#475569;padding-top:4px}
+a{color:#1d4ed8} code{background:#f1f5f9;padding:1px 4px;border-radius:3px;font-size:12px}
+ul{margin:6px 0 6px 18px;padding:0} li{margin:3px 0;font-size:13px}
+@media print{body{background:#fff} main{padding:0} .grid{page-break-inside:avoid}}
+</style>
+<main>
+<h1>W2 二次收口复核包（C1 / C2 / C3）</h1>
+<div class="meta">审查基线 <code>82d2a66</code> · 业务提交 <code>c4487fa</code> · 编制时间 2026-11-15<br>
+架构复核 <code>W2-closeout-architect/review-and-next.md</code> 的定点补修 ·
+R1 维持通过（轻量回归） · <b>R2/R3 待复核</b> · 不进 W3/W4 · AD01—AD08 不变</div>
+
+<div class="warn"><b>先说结论</b>：C1 斜边扣除/饰面量/单位契约、C2 恢复误杀、C3 按 ID 串成果与历史截断，
+同一负例整改前 <b>3 通过 / 12 失败</b> → 整改后
+<b>15 / 15 全部通过</b>；原 15 项回归 15/15；
+真实 Blender 7/7；真实浏览器通过；全量单测 262 通过；前端 tsc/build EXIT=0。<br>
+<b>图面仍是灰盒内部试验级</b>（色块地面、盒体家具、无门窗/材质/软装），<b>不是客户交付成果</b>；R4 待做。</div>
+
+<h2>1. 同一负例，整改前 → 整改后</h2>
+<table><thead><tr><th>编号</th><th>判据</th><th>整改前（82d2a66）</th><th>整改后</th></tr></thead>
+<tbody>
+<tr><td>W2C2-C1-01</td><td>三角形 18㎡ 扣 4.5㎡：主量/独立复算/饰面量 13.5㎡、试算 13500 元</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C1-02</td><td>扣除区斜穿斜边（交点 x=2600）：净 17.405㎡，两条路径一致</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C1-03</td><td>矩形/L 形回归：24/22 不变，独立复算一致</td><td class='ok'>observed_pass</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C1-04</td><td>单位契约：scope 只收 mm/m2，m 与 ft2 必须拒绝</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C1-05</td><td>无效多边形：自交/NaN/重复 object_id/退化必须拒绝</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C1-06</td><td>同层材料面重叠：无声明拒绝；有声明按并集不重复相加</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C1-07</td><td>真实入口（架构口径）：合法三角材料面 → 13.5㎡/13500 元，CSV/HTML/清单一致</td><td class='ok'>observed_pass</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C1-08</td><td>真实入口（判别性）：保留区竖直带内截断 → 9.4224㎡，旧算法 6.5469㎡</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C2-01</td><td>提交后/启动前的真实 HTTP 状态查询不得终结正常任务</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C2-02</td><td>同一窗口取消仍生效、不复活、可显式重试</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C2-03</td><td>真正遗留任务标中断；本实例在跑不被误杀；其他类型不受影响</td><td class='ok'>observed_pass</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C3-01</td><td>显式 job_id 只返回自己：失败任务不借用他人 revision/artifacts</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C3-02</td><td>按 production_revision_id 查，返回的 job 必须对应它</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C3-03</td><td>job_id 与 production_revision_id 同时指定 → 明确拒绝</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+<tr><td>W2C2-C3-04</td><td>超过 50 条历史仍能按 ID 命中（真实 HTTP）</td><td class='bad'>observed_fail</td><td class='ok'>observed_pass</td></tr>
+</tbody></table>
+<div class="note">整改前也通过的 3 条如实用例标注：C1-03（矩形回归保护）、C1-07（该几何下旧算法误差恰为 0，
+另造判别性 C1-08）、C2-03（恢复范围保护）。期望值全部来自解析手算（<a href="c1-handcheck.md">c1-handcheck.md</a>）。</div>
+
+<h2>2. 三条缺陷的机制与修法</h2>
+<ul>
+<li><b>C1 计量</b>：旧条带只在顶点 x 切分，斜边与保留区边界相交处截面长度非线性，中点采样系统性偏差；
+饰面量又直接把这条复算当业务主值。→ 断点补齐边-边交点；饰面量改精确几何为主值、条带只做交叉校验，
+差值超容差即 <code>disputed</code>（不给数值、不试算金额）。单位契约 <code>mm/m2</code> 之外拒绝；
+无效多边形/重复 object_id/同层重叠无声明拒绝。</li>
+<li><b>C2 恢复误杀</b>：提交事务已落库、worker 尚未登记进内存集合时，任何状态查询都会把正常任务写成
+<code>failed/WORKER_RESTARTED</code>。→ 任务持久化 <code>run_instance</code>，恢复只回收其他实例遗留，
+内存集合不再参与判定；取消/晚到渲染/显式重试语义不变（见 <a href="c2-race-evidence.md">c2-race-evidence.md</a>）。</li>
+<li><b>C3 按 ID 串成果</b>：显式查询先扫"全局最新 50 条"再找 ID，找不到就回退到别的成果。→ 主键直查、
+不回退、两参数冲突 400；类型过滤下沉 SQL 后分页；默认概览续看上一份成功成果但明确标注
+（见 <a href="c3-id-and-history.md">c3-id-and-history.md</a>）。</li>
+</ul>
+
+<h2>3. 真实链路与页面</h2>
+<div class="grid">
+<figure><img src="outputs/finish-13.5/plan.svg" alt="13.5㎡ 平面"><figcaption>真实入口：三角材料面 13.5 ㎡ / 13 500 元（CSV/HTML/清单一致）</figcaption></figure>
+<figure><img src="browser/w2-outputs-desktop.png" alt="桌面截图"><figcaption>真实 Edge 浏览器（生成器 v3，page_errors=[]）</figcaption></figure>
+<figure><img src="browser/w2-outputs-mobile.png" alt="390px 截图"><figcaption>390px 窄屏（无横向溢出）</figcaption></figure>
+<figure><img src="outputs/finish-band-9.4224/plan.svg" alt="9.4224㎡ 平面"><figcaption>判别性用例：竖直带内截断 9.4224 ㎡ / 9 422 元（旧算法 10.842 ㎡ / 10 842 元）</figcaption></figure>
+</div>
+
+<h2>4. 仍然不像设计公司成果的地方</h2>
+<ul>
+<li>平面：概念分区图，无墙厚、门窗、柱网、洁具、隔断构造；尺寸链只到总尺寸与分区外包尺寸。</li>
+<li>人眼图：色块地面、盒体家具、两个点光源；无真实材质纹理、无门窗洞口、无软装绿植人物、无灯光层次。</li>
+<li>材料面切片是人工/夹具输入（来源已标注、site_verified=false），不是 AI 生成，不计入设计验收。</li>
+<li>因此本批只证明<b>计量与任务生命周期是对的</b>，不证明设计成立；R4 按 W2 既有授权继续。</li>
+</ul>
+
+<h2>5. 未做 / 未测</h2>
+<ul>
+<li>多进程双活实例仍会互相误判（需要真实租约，原实现同样不能区分，本批不宣称解决）。</li>
+<li>PG 路径只在代码层写了 Postgres 分支，未实测；本批验证都在 SQLite 隔离库。</li>
+<li>render.png 仍不占独立成果行（架构已认可，无需迁移）；R4 表达质量本批未动。</li>
+<li>本批修过一次自己的解析期望值（漏断点 9.4224→11.1124），详见 <a href="c1-handcheck.md">c1-handcheck.md §5</a>。</li>
+</ul>
+
+<h2>6. 文件索引</h2>
+<ul>
+<li><a href="review-packet.md">review-packet.md</a> — 逐条落实、前后对照、未做项、图面差距</li>
+<li><a href="checks.json">checks.json</a> — 15 项前后对照 + 回归/真实链路汇总 + 包内文件 SHA</li>
+<li><a href="c1-handcheck.md">c1-handcheck.md</a> · <a href="c2-race-evidence.md">c2-race-evidence.md</a> · <a href="c3-id-and-history.md">c3-id-and-history.md</a></li>
+<li><a href="changes.patch">changes.patch</a>（78.9 KB）/ <a href="code-diff.md">code-diff.md</a> — 基线 82d2a66 的可定位补丁</li>
+<li><a href="manifest.json">manifest.json</a> — 源码基线、提交号、包内字节与 SHA</li>
+<li><a href="boundary-results-before.json">boundary-results-before.json</a> — 架构脚本在未改代码上的复跑结果（与架构自带结果一致）</li>
+<li><code>outputs/finish-13.5/</code> · <code>outputs/finish-band-9.4224/</code> — 真实入口成果包（可离线打开）</li>
+<li><code>browser/</code> · <code>runtime/</code> — 浏览器验证与单测/前端/真实 Blender 日志</li>
+</ul>
+</main></html>

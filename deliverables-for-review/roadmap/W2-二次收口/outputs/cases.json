@@ -1,0 +1,16 @@
+{
+ "finish-13.5": {
+  "job_id": "ai-spatial-job_71f48233007f",
+  "passed": true,
+  "finish_m2": 13.5,
+  "amount_cny": 13500.0,
+  "expected_m2": 13.5
+ },
+ "finish-band-9.4224": {
+  "job_id": "ai-spatial-job_99d407c22f10",
+  "passed": true,
+  "finish_m2": 9.422,
+  "amount_cny": 9422.0,
+  "expected_m2": 9.4224
+ }
+}

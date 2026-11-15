@@ -1,0 +1,398 @@
+{
+  "task_id": "W2-收口整改",
+  "schema_version": "rkd-w2-closeout-checks.v1",
+  "label": "after",
+  "source_root": "D:\\Github\\RKD AI",
+  "executed_at": "2026-11-15T07:45:44+08:00",
+  "environment": {
+    "python": "3.12.14",
+    "renderer": "controllable stub (no Blender in repro)",
+    "stack": "isolated SQLite + real HTTP server",
+    "external_calls": 0,
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "W2C-R1-01",
+      "name": "同一文件集合生成清单与 ZIP，清单所列文件全部在 ZIP 内且字节一致",
+      "result": "observed_pass",
+      "evidence": {
+        "zip_entries": [
+          "cost.html",
+          "manifest.json",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "render.png",
+          "scene.json"
+        ],
+        "manifest_listed": [
+          "cost.html",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "render.png",
+          "scene.json"
+        ],
+        "problems": [],
+        "self_check": {
+          "ok": true,
+          "problems": [],
+          "checked": 6,
+          "zip_bytes": 10045,
+          "zip_sha256": "2f98b5657bb18d471b0695105aeef6a5366853a5b7b7a740c970d687aee037c4",
+          "entries": [
+            "cost.html",
+            "plan.svg",
+            "quantity.csv",
+            "quantity.json",
+            "render.png",
+            "scene.json"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W2C-R1-02",
+      "name": "render=false 时清单与 ZIP 都不声明 PNG",
+      "result": "observed_pass",
+      "evidence": {
+        "zip_entries": [
+          "cost.html",
+          "manifest.json",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ],
+        "manifest_listed": [
+          "cost.html",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ]
+      }
+    },
+    {
+      "id": "W2C-R3-01",
+      "name": "L 形手算 24/22，独立复算与主算法不同路径，完成面量保持 unknown",
+      "result": "observed_pass",
+      "evidence": {
+        "gross": 24.0,
+        "net": 22.0,
+        "net_name": "功能分区几何净面积（非完成面工程量）",
+        "engine_where": "geometric_only_not_a_finish_quantity",
+        "independent": 22.0,
+        "independent_method": "vertical_strip_exact_v2",
+        "finish": {
+          "value": null,
+          "known_status": "unknown",
+          "unknown_reason": "功能分区几何净面积不等于铺装/饰面范围；本批没有显式材料面或铺装范围依据，不得据此推出完成面工程量"
+        },
+        "quantity_ids": [
+          "Q-FLOOR-GROSS",
+          "Q-KEEPOUT-DEDUCT",
+          "Q-FLOOR-GEOMETRIC-NET",
+          "Q-FLOOR-FINISH",
+          "Q-PLATFORM-ENVELOPE",
+          "Q-PARTITION-LENGTH",
+          "Q-CEILING-AREA",
+          "Q-DOOR-WINDOW"
+        ]
+      }
+    },
+    {
+      "id": "W2C-R3-02",
+      "name": "扣除规则：相交扣区不重复扣、外置扣区为 0、跨边界只扣区内部分",
+      "result": "observed_pass",
+      "evidence": {
+        "intersecting_deduct": 3.25,
+        "intersecting_net": 20.75,
+        "expected_union_deduct": 3.25,
+        "outside_deduct": 0.0,
+        "cross_boundary_deduct": 1.0,
+        "expected_cross_deduct": 1.0,
+        "note": "跨边界扣区只有落在分区内的 0.5×2=1.0㎡ 计入；外置扣区不产生负面积"
+      }
+    },
+    {
+      "id": "W2C-R3-03",
+      "name": "材料面切片需显式来源；单价不能掩盖未知范围",
+      "result": "observed_pass",
+      "evidence": {
+        "accepts_finish_scope": true,
+        "finish": {
+          "value": 22.0,
+          "known_status": "known",
+          "basis_source": {
+            "declared_by": "executor_manual_fixture",
+            "declaration": "人工夹具：按手算 L 形铺装范围切片，未经现场复核",
+            "kind": "material_face_slice",
+            "unit": "mm",
+            "deduction_basis": "keepouts_within_scope",
+            "overlap_declaration": null,
+            "site_verified": false
+          },
+          "material_groups": [
+            {
+              "layer": "floor_finish",
+              "material_id": "M-CEMENT",
+              "material_name": "微水泥",
+              "material_spec_status": "assumption",
+              "area_m2": 22.0,
+              "independent_recompute_m2": 22.0,
+              "independent_delta_m2": 0.0,
+              "independent_method": "vertical_strip_exact_v2",
+              "area_objects": [
+                "FA1"
+              ],
+              "method": "exact_union_per_material_minus_keepouts"
+            }
+          ]
+        },
+        "cost_without_price": [],
+        "cost_with_price": [
+          {
+            "item": "微水泥（按输入假设单价试算）",
+            "material_id": "M-CEMENT",
+            "layer": "floor_finish",
+            "quantity_ref": "Q-FLOOR-FINISH/M-CEMENT",
+            "quantity_m2": 22.0,
+            "unit_price_cny": 800,
+            "amount_cny": 17600.0,
+            "basis": "caller_provided_assumption_not_a_quote",
+            "area_basis_source": "executor_manual_fixture",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+          }
+        ],
+        "cost_price_but_no_scope": []
+      }
+    },
+    {
+      "id": "W2C-R1-03",
+      "name": "真实 HTTP 下载 ZIP→空目录解压→逐项核对清单（含 PNG 与单下载一致）",
+      "result": "observed_pass",
+      "evidence": {
+        "zip_bytes": 11596,
+        "manifest_files": [
+          "cost.html",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "render.png",
+          "scene.json"
+        ],
+        "problems": [],
+        "render_matches_separate_download": true,
+        "separate_render_bytes": 712
+      }
+    },
+    {
+      "id": "W2C-R1-04",
+      "name": "真实入口 render=false：ZIP 与清单均无 PNG",
+      "result": "observed_pass",
+      "evidence": {
+        "zip_entries": [
+          "cost.html",
+          "manifest.json",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ],
+        "manifest_files": [
+          "cost.html",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ]
+      }
+    },
+    {
+      "id": "W2C-R2-01",
+      "name": "生成中取消为单调终态，晚到渲染不得复活，失败/取消不登记半份成果",
+      "result": "observed_pass",
+      "evidence": {
+        "cancel_status": 200,
+        "cancel_body": "cancelled",
+        "final_status": "cancelled",
+        "final_phase": "measurement",
+        "revisions_registered": 0,
+        "second_cancel": 200
+      }
+    },
+    {
+      "id": "W2C-R2-02",
+      "name": "换版后旧成果标历史预览，当前成果按 job/修订查询",
+      "result": "observed_pass",
+      "evidence": {
+        "binding_a": "historical_preview",
+        "binding_b": "current_adopted",
+        "binding_a_facts": {
+          "adopted_at_submit": true,
+          "adopted_option_revision_id": "ai-option-revision_f263b32d65e2",
+          "adoption_version": 4,
+          "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览",
+          "status_at_generation": "current_adopted"
+        },
+        "current_job": "ai-spatial-job_55b048347fa6",
+        "job_a": "ai-spatial-job_70a97bd91dbe",
+        "job_b": "ai-spatial-job_55b048347fa6",
+        "revisions_listed": 4
+      }
+    },
+    {
+      "id": "W2C-R2-03",
+      "name": "失败后显式重试关联原任务，同一幂等键不偷偷重跑",
+      "result": "observed_pass",
+      "evidence": {
+        "failed_status": "failed",
+        "failed_error": "SPATIAL_OUTPUT_FAILED",
+        "half_registered": false,
+        "idempotent_reuse": true,
+        "retry_status_code": 202,
+        "retried_status": "succeeded",
+        "retry_of": "ai-spatial-job_2ffd7ca889aa",
+        "original": "ai-spatial-job_2ffd7ca889aa"
+      }
+    },
+    {
+      "id": "W2C-R2-04",
+      "name": "共用表内深化量价成果不污染本页当前成果",
+      "result": "observed_pass",
+      "evidence": {
+        "before_revision": "ai-production-revision_f2492e7383dd",
+        "after_revision": "ai-production-revision_f2492e7383dd",
+        "revisions_listed": 5,
+        "foreign_revisions_in_list": 0,
+        "note": "深化量价修订插入共用表后，本页当前成果仍须可见且其修订不得混入本页列表"
+      }
+    },
+    {
+      "id": "W2C-R1-05",
+      "name": "渲染无产出时不得交出成功完整包",
+      "result": "observed_pass",
+      "evidence": {
+        "status_code": 202,
+        "job_status": "failed",
+        "error": "SPATIAL_OUTPUT_FAILED",
+        "registered": 0
+      }
+    },
+    {
+      "id": "W2C-R1-06",
+      "name": "清单字节被改动后拒绝据其校验交付文件",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 500,
+        "error_code": "MANIFEST_HASH_MISMATCH",
+        "note": "清单被改动后必须拒绝，不能把未经校验的清单当可信哈希来源"
+      }
+    },
+    {
+      "id": "W2C-R2-05",
+      "name": "A/B 反序完成与重启恢复：按 job 关联、只恢复本批中断任务",
+      "result": "observed_pass",
+      "evidence": {
+        "job_a": "succeeded",
+        "job_b": "succeeded",
+        "finished_order": {
+          "ai-spatial-job_03a0bc6c821f": "2026-11-14T23:45:43.430296+00:00",
+          "ai-spatial-job_9f085651792d": "2026-11-14T23:45:43.464226+00:00"
+        },
+        "mapped": true,
+        "recovered": [
+          "ai-spatial-job_4f4151688083"
+        ],
+        "orphan_status": "failed",
+        "orphan_error": "WORKER_RESTARTED",
+        "historical_bytes_readable": [
+          "ai-spatial-job_03a0bc6c821f",
+          "ai-spatial-job_0e0f8f8438aa",
+          "ai-spatial-job_324aabf07e75",
+          "ai-spatial-job_55b048347fa6",
+          "ai-spatial-job_70a97bd91dbe",
+          "ai-spatial-job_7f272183ea7d",
+          "ai-spatial-job_9b22dc4fb152",
+          "ai-spatial-job_9f085651792d"
+        ]
+      }
+    },
+    {
+      "id": "W2C-R3-04",
+      "name": "真实入口冻结材料面与假设单价；成本与面积依据同页且不矛盾",
+      "result": "observed_pass",
+      "evidence": {
+        "finish": {
+          "value": 84.6,
+          "expected": 84.6,
+          "known_status": "known",
+          "material_groups": [
+            {
+              "area_m2": 51.0,
+              "area_objects": [
+                "FA1"
+              ],
+              "independent_delta_m2": 0.0,
+              "independent_method": "vertical_strip_exact_v2",
+              "independent_recompute_m2": 51.0,
+              "layer": "floor_finish",
+              "material_id": "M-A",
+              "material_name": "微水泥",
+              "material_spec_status": "assumption",
+              "method": "exact_union_per_material_minus_keepouts"
+            },
+            {
+              "area_m2": 33.6,
+              "area_objects": [
+                "FA2"
+              ],
+              "independent_delta_m2": 0.0,
+              "independent_method": "vertical_strip_exact_v2",
+              "independent_recompute_m2": 33.6,
+              "layer": "floor_finish",
+              "material_id": "M-B",
+              "material_name": "橡木地板",
+              "material_spec_status": "assumption",
+              "method": "exact_union_per_material_minus_keepouts"
+            }
+          ]
+        },
+        "known_items": [
+          {
+            "amount_cny": 40800.0,
+            "area_basis_source": "executor_manual_fixture",
+            "basis": "caller_provided_assumption_not_a_quote",
+            "item": "微水泥（按输入假设单价试算）",
+            "layer": "floor_finish",
+            "material_id": "M-A",
+            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺",
+            "quantity_m2": 51.0,
+            "quantity_ref": "Q-FLOOR-FINISH/M-A",
+            "unit_price_cny": 800.0
+          }
+        ],
+        "unpriced_groups": [
+          {
+            "impact": "33.6 ㎡ 的金额保持 unknown",
+            "material_id": "M-B",
+            "quantity_ref": "Q-FLOOR-FINISH/M-B",
+            "statement": "橡木地板 没有对应价源（材料/工艺/损耗/起订量）"
+          }
+        ],
+        "html_contradiction": false,
+        "csv_has_finish_row": true
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 15,
+    "observed_fail": 0
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost"
+}

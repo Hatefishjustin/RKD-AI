@@ -1,0 +1,812 @@
+{
+ "task_id": "W2-二次收口",
+ "schema_version": "rkd-w2-second-closeout-packet-checks.v1",
+ "generated_at": "2026-11-15T07:59:00+08:00",
+ "review_baseline": "82d2a66",
+ "review_inputs": {
+  "architect_review": "deliverables-for-review/roadmap/W2-closeout-architect/review-and-next.md",
+  "architect_boundary_script": "architect-boundary-before.py（逐字副本）",
+  "architect_boundary_results_before": "boundary-results-before.json"
+ },
+ "environment": {
+  "python": "3.12.14 (.venv)",
+  "renderer": "blender-4.2.9 Cycles CPU (real, 2 renders) + stub (repro)",
+  "databases": "isolated SQLite per run",
+  "external_calls": 0,
+  "keys_used": false,
+  "cost_amount_or_null": null
+ },
+ "second_closeout": {
+  "before_pass": 3,
+  "before_fail": 12,
+  "after_pass": 15,
+  "after_fail": 0,
+  "note": "W2C2-C1-03/C1-07/C2-03 在整改前也通过：C1-03 是矩形回归保护，C1-07 的保留区恰好覆盖整段条带（误差为 0 的巧合），C2-03 保护恢复范围不回退"
+ },
+ "regression_prev_15": {
+  "pass": 15,
+  "fail": 0,
+  "evidence": "regression-15-repro-after.json（包内副本）"
+ },
+ "real_blender": {
+  "pass": 7,
+  "fail": 0,
+  "code_head_at_run": "82d2a660e57b4b098cb89ea89d8a0c7aa19d22cf",
+  "note": "运行时为工作区代码（82d2a66 + 本批 diff，未提交）；提交字节与本包 source_files SHA 一致"
+ },
+ "browser": {
+  "passed": true,
+  "page_errors": [],
+  "mobile_scroll_width": 390,
+  "generator_version": "rkd-spatial-outputs.v3"
+ },
+ "unittest": {
+  "modules": 43,
+  "ran": 262,
+  "failures": 0,
+  "errors": 0,
+  "status": "ok",
+  "invocation": "PYTHONPATH=\".;mvp\" .venv/Scripts/python.exe -B var/tmp/run_full_unittest.py",
+  "log": "runtime/full-unittest.log（包内副本）"
+ },
+ "frontend": {
+  "tsc_exit": 0,
+  "build_exit": 0,
+  "log": "runtime/frontend-build.log（包内副本）"
+ },
+ "items": [
+  {
+   "id": "W2C2-C1-01",
+   "name": "三角形 18㎡ 扣 4.5㎡：主量/独立复算/饰面量 13.5㎡、试算 13500 元",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "analytic_basis": "triangle 18 - ∫(6-y)dy[y=1..2]=4.5 -> 13.5㎡",
+    "expected_m2": 13.5,
+    "geometry_m2": 13.5,
+    "independent_m2": 12.0,
+    "finish_m2": 12.0,
+    "finish_status": "known",
+    "trial_amount_cny": 12000.0,
+    "expected_amount_cny": 13500.0
+   },
+   "after_evidence": {
+    "analytic_basis": "triangle 18 - ∫(6-y)dy[y=1..2]=4.5 -> 13.5㎡",
+    "expected_m2": 13.5,
+    "geometry_m2": 13.5,
+    "independent_m2": 13.5,
+    "finish_m2": 13.5,
+    "finish_status": "known",
+    "trial_amount_cny": 13500.0,
+    "expected_amount_cny": 13500.0
+   }
+  },
+  {
+   "id": "W2C2-C1-02",
+   "name": "扣除区斜穿斜边（交点 x=2600）：净 17.405㎡，两条路径一致",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "analytic_basis": "毛 18㎡；扣除区 x∈[2500,3500],y∈[2400,3400] 被斜边切成两段，∫2500..2600 1.0 dx + ∫2600..3500 (3.6-x/1000... 见 c1-handcheck.md) = 0.595㎡",
+    "expected_m2": 17.405,
+    "geometry_m2": 17.405,
+    "independent_m2": 17.4,
+    "finish_m2": 17.4,
+    "delta": -0.005
+   },
+   "after_evidence": {
+    "analytic_basis": "毛 18㎡；扣除区 x∈[2500,3500],y∈[2400,3400] 被斜边切成两段，∫2500..2600 1.0 dx + ∫2600..3500 (3.6-x/1000... 见 c1-handcheck.md) = 0.595㎡",
+    "expected_m2": 17.405,
+    "geometry_m2": 17.405,
+    "independent_m2": 17.405,
+    "finish_m2": 17.405,
+    "delta": 0.0
+   }
+  },
+  {
+   "id": "W2C2-C1-03",
+   "name": "矩形/L 形回归：24/22 不变，独立复算一致",
+   "before": "observed_pass",
+   "after": "observed_pass",
+   "before_evidence": {
+    "gross": 24.0,
+    "net": 22.0,
+    "independent": 22.0
+   },
+   "after_evidence": {
+    "gross": 24.0,
+    "net": 22.0,
+    "independent": 22.0
+   }
+  },
+  {
+   "id": "W2C2-C1-04",
+   "name": "单位契约：scope 只收 mm/m2，m 与 ft2 必须拒绝",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "coord_unit_m": {
+     "rejected": false,
+     "finish": 12.0
+    },
+    "area_unit_ft2": {
+     "rejected": false,
+     "finish": 12.0
+    },
+    "unknown_deduction_basis": {
+     "rejected": false,
+     "finish": 12.0
+    }
+   },
+   "after_evidence": {
+    "coord_unit_m": {
+     "rejected": true,
+     "error": "finish_scope.unit 只支持 ['mm']（收到 'm'）；本批不做单位静默换算"
+    },
+    "area_unit_ft2": {
+     "rejected": true,
+     "error": "finish_scope.areas[0].unit 只支持 ['m2']（收到 'ft2'）"
+    },
+    "unknown_deduction_basis": {
+     "rejected": true,
+     "error": "finish_scope.deduction_basis 必须是 ['keepouts_within_scope', 'none']（收到 'auto'）；扣除口径必须明确"
+    }
+   }
+  },
+  {
+   "id": "W2C2-C1-05",
+   "name": "无效多边形：自交/NaN/重复 object_id/退化必须拒绝",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "self_intersection": {
+     "rejected": false
+    },
+    "nan_coordinate": {
+     "rejected": false
+    },
+    "duplicate_object_id": {
+     "rejected": false
+    },
+    "degenerate": {
+     "rejected": false
+    }
+   },
+   "after_evidence": {
+    "self_intersection": {
+     "rejected": true,
+     "error": "finish_scope.areas[0] 不是有效简单多边形（自交/退化），不能作为计量依据"
+    },
+    "nan_coordinate": {
+     "rejected": true,
+     "error": "finish_scope.areas[0]：polygon_mm[1] 坐标不是有限数值（NaN/inf）"
+    },
+    "duplicate_object_id": {
+     "rejected": true,
+     "error": "finish_scope 内 object_id 重复：F1"
+    },
+    "degenerate": {
+     "rejected": true,
+     "error": "finish_scope.areas[0] 不是有效简单多边形（自交/退化），不能作为计量依据"
+    }
+   }
+  },
+  {
+   "id": "W2C2-C1-06",
+   "name": "同层材料面重叠：无声明拒绝；有声明按并集不重复相加",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "undeclared": {
+     "rejected": false
+    },
+    "union_expected_m2": 22.0,
+    "declared_value_m2": 24.0,
+    "note": "重叠声明后按并集算，不得 8+16=24 重复相加"
+   },
+   "after_evidence": {
+    "undeclared": {
+     "rejected": true,
+     "error": "同层材料面重叠但未声明，不能无说明重复相加：floor_finish:A1+A2=2.0㎡。请合并为一块，或用 overlap_declaration 说明叠层语义"
+    },
+    "union_expected_m2": 22.0,
+    "declared_value_m2": 22.0,
+    "note": "重叠声明后按并集算，不得 8+16=24 重复相加"
+   }
+  },
+  {
+   "id": "W2C2-C1-07",
+   "name": "真实入口（架构口径）：合法三角材料面 → 13.5㎡/13500 元，CSV/HTML/清单一致",
+   "before": "observed_pass",
+   "after": "observed_pass",
+   "before_evidence": {
+    "obstacles": [
+     {
+      "object_id": "keepout-楼梯保留区",
+      "rect_mm": [
+       0.0,
+       0.0,
+       2400.0,
+       8000.0
+      ]
+     },
+     {
+      "object_id": "keepout-卫生间保留区",
+      "rect_mm": [
+       22000.0,
+       2600.0,
+       26170.0,
+       7300.0
+      ]
+     }
+    ],
+    "face_mm": [
+     [
+      19000,
+      2600
+     ],
+     [
+      25000,
+      2600
+     ],
+     [
+      19000,
+      8600
+     ]
+    ],
+    "face_area_m2": 18.0,
+    "analytic_deduction_m2": 4.5,
+    "expected_finish_m2": 13.5,
+    "finish": {
+     "value": 13.5,
+     "status": "known",
+     "groups": [
+      {
+       "area_m2": 13.5,
+       "area_objects": [
+        "F1"
+       ],
+       "material_id": "test-floor",
+       "material_name": "试验地坪",
+       "material_spec_status": "unknown"
+      }
+     ]
+    },
+    "trial_amount_cny": 13500.0,
+    "expected_amount_cny": 13500.0,
+    "csv_has_finish": true,
+    "html_has_amount": true,
+    "manifest_files": [
+     "cost.html",
+     "plan.svg",
+     "quantity.csv",
+     "quantity.json",
+     "scene.json"
+    ],
+    "expected_fixed": "13.5 ㎡ / 13500 元（架构复核口径）"
+   },
+   "after_evidence": {
+    "obstacles": [
+     {
+      "object_id": "keepout-楼梯保留区",
+      "rect_mm": [
+       0.0,
+       0.0,
+       2400.0,
+       8000.0
+      ]
+     },
+     {
+      "object_id": "keepout-卫生间保留区",
+      "rect_mm": [
+       22000.0,
+       2600.0,
+       26170.0,
+       7300.0
+      ]
+     }
+    ],
+    "face_mm": [
+     [
+      19000,
+      2600
+     ],
+     [
+      25000,
+      2600
+     ],
+     [
+      19000,
+      8600
+     ]
+    ],
+    "face_area_m2": 18.0,
+    "analytic_deduction_m2": 4.5,
+    "expected_finish_m2": 13.5,
+    "finish": {
+     "value": 13.5,
+     "status": "known",
+     "groups": [
+      {
+       "area_m2": 13.5,
+       "area_objects": [
+        "F1"
+       ],
+       "independent_delta_m2": 0.0,
+       "independent_method": "vertical_strip_exact_v2",
+       "independent_recompute_m2": 13.5,
+       "layer": "floor_finish",
+       "material_id": "test-floor",
+       "material_name": "试验地坪",
+       "material_spec_status": "unknown",
+       "method": "exact_union_per_material_minus_keepouts"
+      }
+     ]
+    },
+    "trial_amount_cny": 13500.0,
+    "expected_amount_cny": 13500.0,
+    "csv_has_finish": true,
+    "html_has_amount": true,
+    "manifest_files": [
+     "cost.html",
+     "plan.svg",
+     "quantity.csv",
+     "quantity.json",
+     "scene.json"
+    ],
+    "expected_fixed": "13.5 ㎡ / 13500 元（架构复核口径）"
+   }
+  },
+  {
+   "id": "W2C2-C1-08",
+   "name": "真实入口（判别性）：保留区竖直带内截断 → 9.4224㎡，旧算法 6.5469㎡",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "obstacles": [
+     {
+      "object_id": "keepout-楼梯保留区",
+      "rect_mm": [
+       0.0,
+       0.0,
+       2400.0,
+       8000.0
+      ]
+     },
+     {
+      "object_id": "keepout-卫生间保留区",
+      "rect_mm": [
+       22000.0,
+       2600.0,
+       26170.0,
+       7300.0
+      ]
+     }
+    ],
+    "face_mm": [
+     [
+      22000,
+      0
+     ],
+     [
+      26170,
+      0
+     ],
+     [
+      22000,
+      8340
+     ]
+    ],
+    "face_area_m2": 17.3889,
+    "analytic_deduction_m2": 7.9665,
+    "expected_finish_m2": 9.4224,
+    "finish": {
+     "value": 10.842,
+     "status": "known",
+     "groups": [
+      {
+       "area_m2": 10.842,
+       "area_objects": [
+        "F1"
+       ],
+       "material_id": "test-floor",
+       "material_name": "试验地坪",
+       "material_spec_status": "unknown"
+      }
+     ]
+    },
+    "trial_amount_cny": 10842.0,
+    "expected_amount_cny": 9422.4,
+    "csv_has_finish": true,
+    "html_has_amount": false,
+    "manifest_files": [
+     "cost.html",
+     "plan.svg",
+     "quantity.csv",
+     "quantity.json",
+     "scene.json"
+    ]
+   },
+   "after_evidence": {
+    "obstacles": [
+     {
+      "object_id": "keepout-楼梯保留区",
+      "rect_mm": [
+       0.0,
+       0.0,
+       2400.0,
+       8000.0
+      ]
+     },
+     {
+      "object_id": "keepout-卫生间保留区",
+      "rect_mm": [
+       22000.0,
+       2600.0,
+       26170.0,
+       7300.0
+      ]
+     }
+    ],
+    "face_mm": [
+     [
+      22000,
+      0
+     ],
+     [
+      26170,
+      0
+     ],
+     [
+      22000,
+      8340
+     ]
+    ],
+    "face_area_m2": 17.3889,
+    "analytic_deduction_m2": 7.9665,
+    "expected_finish_m2": 9.4224,
+    "finish": {
+     "value": 9.422,
+     "status": "known",
+     "groups": [
+      {
+       "area_m2": 9.422,
+       "area_objects": [
+        "F1"
+       ],
+       "independent_delta_m2": 0.0,
+       "independent_method": "vertical_strip_exact_v2",
+       "independent_recompute_m2": 9.422,
+       "layer": "floor_finish",
+       "material_id": "test-floor",
+       "material_name": "试验地坪",
+       "material_spec_status": "unknown",
+       "method": "exact_union_per_material_minus_keepouts"
+      }
+     ]
+    },
+    "trial_amount_cny": 9422.0,
+    "expected_amount_cny": 9422.4,
+    "csv_has_finish": true,
+    "html_has_amount": true,
+    "manifest_files": [
+     "cost.html",
+     "plan.svg",
+     "quantity.csv",
+     "quantity.json",
+     "scene.json"
+    ]
+   }
+  },
+  {
+   "id": "W2C2-C2-01",
+   "name": "提交后/启动前的真实 HTTP 状态查询不得终结正常任务",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "submit_status": 202,
+    "get_status": 200,
+    "status_in_gap": "failed",
+    "error_in_gap": "WORKER_RESTARTED",
+    "revision_in_gap": "ai-production-revision_71e908f0f941",
+    "final_status": "failed",
+    "note": "没有重启；状态查询不得把刚提交的正常任务判成重启残留"
+   },
+   "after_evidence": {
+    "submit_status": 202,
+    "get_status": 200,
+    "status_in_gap": "queued",
+    "error_in_gap": null,
+    "revision_in_gap": null,
+    "final_status": "succeeded",
+    "note": "没有重启；状态查询不得把刚提交的正常任务判成重启残留"
+   }
+  },
+  {
+   "id": "W2C2-C2-02",
+   "name": "同一窗口取消仍生效、不复活、可显式重试",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "status_in_gap": "failed",
+    "cancel_status": 409,
+    "cancel_body_status": null,
+    "final_status": "failed",
+    "registered": 0,
+    "retry_status_code": 202,
+    "retried_status": "succeeded",
+    "retry_of": "ai-spatial-job_567ef4729913"
+   },
+   "after_evidence": {
+    "status_in_gap": "queued",
+    "cancel_status": 200,
+    "cancel_body_status": "cancelled",
+    "final_status": "cancelled",
+    "registered": 0,
+    "retry_status_code": 202,
+    "retried_status": "succeeded",
+    "retry_of": "ai-spatial-job_9e9550d53ae2"
+   }
+  },
+  {
+   "id": "W2C2-C2-03",
+   "name": "真正遗留任务标中断；本实例在跑不被误杀；其他类型不受影响",
+   "before": "observed_pass",
+   "after": "observed_pass",
+   "before_evidence": {
+    "recovered": [
+     "ai-spatial-job_b2f681cd967a"
+    ],
+    "live_job": "ai-spatial-job_04e4c676dcd9",
+    "live_status_during_recover": "running",
+    "live_final": "succeeded",
+    "orphan": {
+     "id": "ai-spatial-job_b2f681cd967a",
+     "status": "failed",
+     "error": "WORKER_RESTARTED"
+    },
+    "other_kind": {
+     "id": "ai-development-job_3e8b64190a54",
+     "status": "running"
+    },
+    "instance_id": null,
+    "note": "恢复以持久化的实例标记判定，不看内存 active 集合"
+   },
+   "after_evidence": {
+    "recovered": [
+     "ai-spatial-job_f2adca33c846"
+    ],
+    "live_job": "ai-spatial-job_7979bbf065fc",
+    "live_status_during_recover": "running",
+    "live_final": "succeeded",
+    "orphan": {
+     "id": "ai-spatial-job_f2adca33c846",
+     "status": "failed",
+     "error": "WORKER_RESTARTED"
+    },
+    "other_kind": {
+     "id": "ai-development-job_bcc40759e26e",
+     "status": "running"
+    },
+    "instance_id": "spatial-worker-14752-6ec7f4562775",
+    "note": "恢复以持久化的实例标记判定，不看内存 active 集合"
+   }
+  },
+  {
+   "id": "W2C2-C3-01",
+   "name": "显式 job_id 只返回自己：失败任务不借用他人 revision/artifacts",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "good_job": "ai-spatial-job_5f906d5bf208",
+    "requested_job": "ai-spatial-job_9c90d563812b",
+    "returned_job": "ai-spatial-job_9c90d563812b",
+    "job_status": "failed",
+    "returned_revision": "ai-production-revision_63decaf9635e",
+    "returned_revision_job": "ai-spatial-job_5f906d5bf208",
+    "artifacts": 6,
+    "revision_source": null,
+    "note": "显式查一个失败任务时，revision/artifacts 必须为空，不能拿别人的"
+   },
+   "after_evidence": {
+    "good_job": "ai-spatial-job_c778094a3bb3",
+    "requested_job": "ai-spatial-job_75efe9954d34",
+    "returned_job": "ai-spatial-job_75efe9954d34",
+    "job_status": "failed",
+    "returned_revision": null,
+    "returned_revision_job": null,
+    "artifacts": 0,
+    "revision_source": "none",
+    "note": "显式查一个失败任务时，revision/artifacts 必须为空，不能拿别人的"
+   }
+  },
+  {
+   "id": "W2C2-C3-02",
+   "name": "按 production_revision_id 查，返回的 job 必须对应它",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "requested_revision": "ai-production-revision_1091a1fda9cd",
+    "returned_revision": "ai-production-revision_1091a1fda9cd",
+    "expected_job": "ai-spatial-job_a1bc0040be6d",
+    "returned_job": "ai-spatial-job_b1e86f5df7f0",
+    "newer_job": "ai-spatial-job_b1e86f5df7f0"
+   },
+   "after_evidence": {
+    "requested_revision": "ai-production-revision_9bea8b603245",
+    "returned_revision": "ai-production-revision_9bea8b603245",
+    "expected_job": "ai-spatial-job_54d6f933c96e",
+    "returned_job": "ai-spatial-job_54d6f933c96e",
+    "newer_job": "ai-spatial-job_9b77b646ddd3"
+   }
+  },
+  {
+   "id": "W2C2-C3-03",
+   "name": "job_id 与 production_revision_id 同时指定 → 明确拒绝",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "status": 404,
+    "error_code": "JOB_NOT_FOUND",
+    "message": "找不到该同源成果任务"
+   },
+   "after_evidence": {
+    "status": 400,
+    "error_code": "AMBIGUOUS_QUERY",
+    "message": "job_id 与 production_revision_id 不能同时指定；请只查一个对象"
+   }
+  },
+  {
+   "id": "W2C2-C3-04",
+   "name": "超过 50 条历史仍能按 ID 命中（真实 HTTP）",
+   "before": "observed_fail",
+   "after": "observed_pass",
+   "before_evidence": {
+    "requested_job": "ai-spatial-job_cf3a0abf06c2",
+    "job_status_before_query": "succeeded",
+    "query_status": 404,
+    "returned_job": null,
+    "returned_revision_job": null,
+    "artifacts": 0,
+    "overview_job_kinds": [
+     "spatial_outputs"
+    ],
+    "note": "分页前按类型筛选；按 ID 直接查，不扫最新 50 条"
+   },
+   "after_evidence": {
+    "requested_job": "ai-spatial-job_71936f5a4644",
+    "job_status_before_query": "succeeded",
+    "query_status": 200,
+    "returned_job": "ai-spatial-job_71936f5a4644",
+    "returned_revision_job": "ai-spatial-job_71936f5a4644",
+    "artifacts": 6,
+    "overview_job_kinds": [
+     "spatial_outputs"
+    ],
+    "note": "分页前按类型筛选；按 ID 直接查，不扫最新 50 条"
+   }
+  }
+ ],
+ "file_hashes": {
+  "architect-boundary-before.py": {
+   "bytes": 4817,
+   "sha256": "0c118385c4ad32aedee80329216ef3e383267e23ddebae60f25cd7bb41e3f7c5"
+  },
+  "boundary-results-before.json": {
+   "bytes": 9291,
+   "sha256": "67b74af0b7bad3f30f76821110002a63b434a6e983c7af2dbf057dfb84d3bd03"
+  },
+  "browser/browser-observations.json": {
+   "bytes": 3637,
+   "sha256": "0779b263f0633389fceb85b2b797b0138a402b7e155c1cdfb5548f9614adbba4"
+  },
+  "browser/verification.json": {
+   "bytes": 4386,
+   "sha256": "b0fe3984eea9ada7ca200cbfd03cce5e6e3c50955ba707a20cd7b613061ca444"
+  },
+  "browser/w2-outputs-desktop.png": {
+   "bytes": 368787,
+   "sha256": "cf96dce579f376bf59b2318aecda76b814ee74c36b0ebdc97d2a4466044260e8"
+  },
+  "browser/w2-outputs-mobile.png": {
+   "bytes": 237743,
+   "sha256": "0119b56e9dcacb54be79c3d924be3fde713aba1af5648dfe0a3cff886d7bb1ab"
+  },
+  "c1-handcheck.md": {
+   "bytes": 4400,
+   "sha256": "cc593d63535550e1a8c820e07c5ecaadda309a0b0884afd74ecf4d07db961a2f"
+  },
+  "c2-race-evidence.md": {
+   "bytes": 2867,
+   "sha256": "327f61003fa838dddb145f1937b1222cf5897046c6ab5c9f45749e6cb3b38864"
+  },
+  "c3-id-and-history.md": {
+   "bytes": 2657,
+   "sha256": "baf8925ca6cd6e675c425f96c044600e2a2d6638cb7eb51bb47a1f744b71c728"
+  },
+  "changes.patch": {
+   "bytes": 78885,
+   "sha256": "d3be9969d0f37a746eb822f0bbf5ad2f4e5c5a63b52a26b0f86d8f8b701502a8"
+  },
+  "code-diff.md": {
+   "bytes": 3917,
+   "sha256": "4f366ab5daf7580b111c5da7f308322330d16f855912c70484d2ee6930c16a62"
+  },
+  "index.html": {
+   "bytes": 9838,
+   "sha256": "39b9b9888580b1d7c556c6c5ae7e500c257e7deb99f3cd1d6738d8aa64ced978"
+  },
+  "outputs/cases.json": {
+   "bytes": 328,
+   "sha256": "3c40feea4917d8fb0e9cbd30113f6e7f08b0ccec6bdfc98c79df47ef01d144a3"
+  },
+  "outputs/finish-13.5/cost.html": {
+   "bytes": 2577,
+   "sha256": "51e5296c8371496be54b0f85cca1c03a2b4a216412fea50e133d8058382d9c91"
+  },
+  "outputs/finish-13.5/package.zip": {
+   "bytes": 12264,
+   "sha256": "0ee431b8423615002ec07b1178bbf84f18ce22f03796a9325842ea5db1c65c52"
+  },
+  "outputs/finish-13.5/plan.svg": {
+   "bytes": 10330,
+   "sha256": "df52feac7f6510512748e8a506492f2dda9599b1b79385c047b7c708cedf7060"
+  },
+  "outputs/finish-13.5/quantity.csv": {
+   "bytes": 1424,
+   "sha256": "9d467ba930ad1e0a82a7604df7a1f2668065f54621f4825dbd6152aa4be3a72d"
+  },
+  "outputs/finish-13.5/quantity.json": {
+   "bytes": 4180,
+   "sha256": "5fab32eeb43182869c5110e69baf369ad0c9422bc9e123255e5dd2f3f5a3d0b7"
+  },
+  "outputs/finish-band-9.4224/cost.html": {
+   "bytes": 2578,
+   "sha256": "221b63970829b1cb6fb8af4232ce0f3ba05f65d9b1e2f5347eb8b60454aec900"
+  },
+  "outputs/finish-band-9.4224/package.zip": {
+   "bytes": 12286,
+   "sha256": "c0f9be72d0c9e19322707ae641d5e7130ebfbe5ab7f2236adf389c8ae1314f8d"
+  },
+  "outputs/finish-band-9.4224/plan.svg": {
+   "bytes": 10331,
+   "sha256": "8d9f6d4fa18773b75f7a8afa3f9d78ca070f37aa42f2086ffcf251af42d18c89"
+  },
+  "outputs/finish-band-9.4224/quantity.csv": {
+   "bytes": 1425,
+   "sha256": "560e54b45f08a93c2dd364821e0a85d880937d7e610c62b866f81eb0023c5ee9"
+  },
+  "outputs/finish-band-9.4224/quantity.json": {
+   "bytes": 4180,
+   "sha256": "ee0ae65c6519e7d586c73e8120a6b78d2f52f63dbf04ddc2c8725cbf693d91f1"
+  },
+  "regression-15-repro-after.json": {
+   "bytes": 13401,
+   "sha256": "56243cde03cd1f4961092ae71b2dd508c7e46aa762891ffa58066d5dab829974"
+  },
+  "review-packet.md": {
+   "bytes": 9279,
+   "sha256": "3af6927be178261f9fb9198c22ff12c2fe5f1d90d4d169284f3c7a02a4aa0ced"
+  },
+  "runtime/frontend-build.log": {
+   "bytes": 959,
+   "sha256": "58b00e5856e7ea9c6f4c827128f8bbfd10bc29ff0735457de51fcba642b27cc4"
+  },
+  "runtime/full-unittest.log": {
+   "bytes": 727,
+   "sha256": "9534fc2c73a1258576cee9583923078e65e580e607c425fc031ae8745359a075"
+  },
+  "runtime/real-blender-checks.json": {
+   "bytes": 5127,
+   "sha256": "f025697bd3f75804f097e8f95c8bf7bc15c428ae0798d8cf17a17160419be0ab"
+  },
+  "runtime/verify-browser.log": {
+   "bytes": 40,
+   "sha256": "3323279989b47bf14c6a0b0a1175bb3f0fe9dd1ccf498acf8a11ee68b89698d6"
+  },
+  "runtime/verify-w2-script.log": {
+   "bytes": 899,
+   "sha256": "417c8c8381630a6af1979c89d275e8e766802d8bdb122049344035006f0790d4"
+  }
+ }
+}

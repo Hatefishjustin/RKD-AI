@@ -1,0 +1,370 @@
+{
+  "schema_version": "rkd-spatial-output-manifest.v2",
+  "baseline": {
+    "schema_version": "rkd-spatial-frozen-input.v1",
+    "project_id": "project_ningbo_xiecheng_2026",
+    "option_revision_id": "ai-option-revision_20502485a95c",
+    "option_id": "studio:project_ningbo_xiecheng_2026:ningbo-xiecheng:root:uid-w2-A",
+    "revision_no": 1,
+    "model_hash": "5e60a6ddaf553a19e37790c3df88e1c13f5fc29d3969f3d23aafb3a8030d5c97",
+    "source_artifact_id": "art_dde27187ff",
+    "source_sha256": "219976f7464ffeece42fd4e622409b1a24a7327303877a5c3fabf7feb2db37e3",
+    "source_revision_uid": "uid-w2-A",
+    "source_parent_revision_uid": null,
+    "root_revision_uid": "uid-w2-A",
+    "parent_link_status": "source_root",
+    "design_origin": {
+      "declaration": "labelled_local_fixture",
+      "declared_by": "studio_artifact.diagnostics.source",
+      "kind": "fixture",
+      "run_refs": [
+        "run-w2-A",
+        "group-w2-A"
+      ]
+    },
+    "geometry_authority": "spatial.zones[].polygon_mm",
+    "legacy_bbox_used_for_measurement": false,
+    "object_versions": [
+      "ZA1",
+      "ZA2",
+      "ZA3",
+      "ZA4",
+      "ZA5",
+      "ZA6"
+    ],
+    "materials_version": "studio-material-unspecified/intent_only",
+    "views_version": "derived_camera_assumption_v1",
+    "generator_version": "rkd-spatial-outputs.v3",
+    "frozen_at": "2026-11-15T07:56:57+08:00",
+    "finish_scope": {
+      "kind": "material_face_slice",
+      "declared_by": "w2c2_analytic_fixture",
+      "declaration": "解析手算夹具，未经现场复核",
+      "areas": [
+        {
+          "object_id": "F1",
+          "material_id": "test-floor",
+          "polygon_mm": [
+            [
+              19000.0,
+              2600.0
+            ],
+            [
+              25000.0,
+              2600.0
+            ],
+            [
+              19000.0,
+              8600.0
+            ]
+          ]
+        }
+      ]
+    },
+    "binding": {
+      "adopted_option_revision_id": "ai-option-revision_20502485a95c",
+      "adoption_version": 1,
+      "adopted_at_submit": true,
+      "status_at_generation": "current_adopted",
+      "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览"
+    }
+  },
+  "binding": {
+    "adopted_option_revision_id": "ai-option-revision_20502485a95c",
+    "adoption_version": 1,
+    "adopted_at_submit": true,
+    "status_at_generation": "current_adopted",
+    "note": "候选预览与当前采用版本成果分开；换版后旧成果只作历史预览"
+  },
+  "camera": {
+    "camera_id": "C1-人眼入口视角",
+    "kind": "eye_level",
+    "assumption": true,
+    "assumption_note": "Studio 提案未建模相机；机位由入口区段与最大功能区按固定规则推导，不是设计决定的视点，也不是实测机位",
+    "eye_height_mm": 1500,
+    "position_mm": [
+      1200.0,
+      11200.0
+    ],
+    "target_mm": [
+      13600.0,
+      15500.0
+    ],
+    "lens_mm": 24,
+    "sensor_mm": 36,
+    "boundary_mm": [
+      26170.0,
+      17920.0
+    ]
+  },
+  "quantities": {
+    "schema_version": "rkd-spatial-quantity.v3",
+    "items": [
+      {
+        "quantity_id": "Q-FLOOR-GROSS",
+        "name": "功能区地坪总面积（未扣）",
+        "value": 233.03,
+        "unit": "m2",
+        "known_status": "known",
+        "method": "exact_polygon_union",
+        "formula_version": "rkd-spatial-quantity.v3",
+        "source_objects": [
+          "ZA1",
+          "ZA2",
+          "ZA3",
+          "ZA4",
+          "ZA5",
+          "ZA6"
+        ],
+        "note": "按精确多边形并集；不是建筑面积，也不含墙厚"
+      },
+      {
+        "quantity_id": "Q-KEEPOUT-DEDUCT",
+        "name": "保留区扣除面积",
+        "value": 0.0,
+        "unit": "m2",
+        "known_status": "known",
+        "method": "exact_intersection_with_keepouts",
+        "formula_version": "rkd-spatial-quantity.v3",
+        "source_objects": [],
+        "deductions": []
+      },
+      {
+        "quantity_id": "Q-FLOOR-GEOMETRIC-NET",
+        "name": "功能分区几何净面积（非完成面工程量）",
+        "value": 233.03,
+        "unit": "m2",
+        "known_status": "known",
+        "method": "exact_union_minus_keepouts",
+        "formula_version": "rkd-spatial-quantity.v3",
+        "engineering_status": "geometric_only_not_a_finish_quantity",
+        "source_objects": [
+          "ZA1",
+          "ZA2",
+          "ZA3",
+          "ZA4",
+          "ZA5",
+          "ZA6"
+        ],
+        "independent_recompute_m2": 233.03,
+        "independent_gross_m2": 233.03,
+        "independent_method": "vertical_strip_exact_v2",
+        "independent_delta_m2": 0.0,
+        "sum_of_zones_m2": 233.03,
+        "zone_overlap_m2": 0.0,
+        "bbox_value_m2": 234.31,
+        "bbox_delta_m2": 1.28,
+        "note": "功能分区并集减保留区；可计算但不等于铺装/饰面完成面范围，不得直接流入已知工程量或正式报价。bbox 结果仅证明不能据包围盒计量"
+      },
+      {
+        "quantity_id": "Q-FLOOR-FINISH",
+        "name": "地坪完成面饰面净面积（按材料面切片）",
+        "value": 13.5,
+        "unit": "m2",
+        "known_status": "known",
+        "method": "exact_union_per_material_minus_keepouts",
+        "formula_version": "rkd-spatial-quantity.v3",
+        "source_objects": [
+          "F1"
+        ],
+        "basis_source": {
+          "declared_by": "w2c2_analytic_fixture",
+          "declaration": "解析手算夹具，未经现场复核",
+          "kind": "material_face_slice",
+          "unit": "mm",
+          "deduction_basis": "keepouts_within_scope",
+          "overlap_declaration": null,
+          "site_verified": false
+        },
+        "material_groups": [
+          {
+            "layer": "floor_finish",
+            "material_id": "test-floor",
+            "material_name": "试验地坪",
+            "material_spec_status": "unknown",
+            "area_m2": 13.5,
+            "independent_recompute_m2": 13.5,
+            "independent_delta_m2": 0.0,
+            "independent_method": "vertical_strip_exact_v2",
+            "area_objects": [
+              "F1"
+            ],
+            "method": "exact_union_per_material_minus_keepouts"
+          }
+        ],
+        "independent_max_delta_m2": 0.0,
+        "independent_tolerance_m2": 0.001,
+        "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；材料规格与产品选型仍为假设，单价缺失时金额保持 unknown"
+      },
+      {
+        "quantity_id": "Q-PLATFORM-ENVELOPE",
+        "name": "展台包络面积（非实体量）",
+        "value": 33.6,
+        "unit": "m2",
+        "known_status": "intent_only",
+        "method": "exact_polygon_union",
+        "formula_version": "rkd-spatial-quantity.v3",
+        "source_objects": [
+          "P1"
+        ],
+        "note": "平台包络不等于台体/基层/饰面实体工程量，不计入本批净量"
+      },
+      {
+        "quantity_id": "Q-PARTITION-LENGTH",
+        "name": "隔断长度",
+        "value": null,
+        "unit": "m",
+        "known_status": "unknown",
+        "unknown_reason": "Studio 提案未建模隔断构件，不能从分区边界推断"
+      },
+      {
+        "quantity_id": "Q-CEILING-AREA",
+        "name": "天花面积",
+        "value": null,
+        "unit": "m2",
+        "known_status": "unknown",
+        "unknown_reason": "天花只到意向（灯槽/灯具点位），未建模吊顶构造与标高"
+      },
+      {
+        "quantity_id": "Q-DOOR-WINDOW",
+        "name": "门窗数量",
+        "value": null,
+        "unit": "count",
+        "known_status": "unknown",
+        "unknown_reason": "建议案未建模门窗对象，只有场地条件"
+      }
+    ],
+    "declared_area_sum_m2": 233.03,
+    "declared_vs_exact_delta_m2": 0.0,
+    "finish_scope": {
+      "schema_version": "rkd-spatial-finish-scope.v2",
+      "kind": "material_face_slice",
+      "declared_by": "w2c2_analytic_fixture",
+      "declaration": "解析手算夹具，未经现场复核",
+      "unit": "mm",
+      "deduction_basis": "keepouts_within_scope",
+      "overlap_declaration": null,
+      "same_layer_overlaps": [],
+      "site_verified": false,
+      "areas": [
+        {
+          "object_id": "F1",
+          "name": "解析三角材料面",
+          "polygon_mm": [
+            [
+              19000.0,
+              2600.0
+            ],
+            [
+              25000.0,
+              2600.0
+            ],
+            [
+              19000.0,
+              8600.0
+            ]
+          ],
+          "material_id": "test-floor",
+          "material_name": "试验地坪",
+          "material_spec_status": "unknown",
+          "unit": "m2",
+          "layer": "floor_finish",
+          "declared_area_m2": 18.0
+        }
+      ]
+    },
+    "coverage": "只覆盖功能区几何面积与保留区扣除，以及可选的、显式标注来源的材料面切片；隔断/天花/门窗/机电未建模，保持 unknown"
+  },
+  "cost": {
+    "schema_version": "rkd-spatial-cost.v3",
+    "currency": "CNY",
+    "known_items": [
+      {
+        "item": "试验地坪（按输入假设单价试算）",
+        "material_id": "test-floor",
+        "layer": "floor_finish",
+        "quantity_ref": "Q-FLOOR-FINISH/test-floor",
+        "quantity_m2": 13.5,
+        "unit_price_cny": 1000,
+        "amount_cny": 13500.0,
+        "basis": "caller_provided_assumption_not_a_quote",
+        "area_basis_source": "w2c2_analytic_fixture",
+        "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
+      }
+    ],
+    "unknown_items": [
+      {
+        "statement": "隔断、天花、门窗工程量未建模",
+        "quantity_ref": "Q-PARTITION-LENGTH",
+        "impact": "相关金额保持 unknown"
+      },
+      {
+        "statement": "税率与成本加成虽有用户口径，但没有价源，本批不做合计试算",
+        "quantity_ref": null,
+        "impact": "不输出项目合计金额"
+      }
+    ],
+    "assumption_trial_total_cny": 13500.0,
+    "total_project_estimate": {
+      "value": null,
+      "known_status": "unknown",
+      "unknown_reason": "没有价源；不把地坪小计当项目总造价"
+    },
+    "formal_quote": false,
+    "pricing_basis": {
+      "area_basis": "w2c2_analytic_fixture",
+      "unit_prices": "partially_provided_by_caller_assumption",
+      "loss_rate": "unknown",
+      "labor_and_process": "unknown",
+      "tax_rate": "user_confirmed_but_not_applied_without_price_source",
+      "markup": "user_confirmed_but_not_applied_without_price_source"
+    },
+    "note": "本页金额全部为调用方假设单价的试算，不是报价；金额一律不填 0"
+  },
+  "missing": [
+    "墙体与门窗构造",
+    "洁具",
+    "隔断构件",
+    "天花吊顶构造",
+    "照度/配光",
+    "材料规格与产品选型",
+    "相机原始视点（推导假设）"
+  ],
+  "files": [
+    {
+      "filename": "cost.html",
+      "kind": "cost_html",
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "51e5296c8371496be54b0f85cca1c03a2b4a216412fea50e133d8058382d9c91",
+      "size_bytes": 2577
+    },
+    {
+      "filename": "plan.svg",
+      "kind": "plan_svg",
+      "content_type": "image/svg+xml",
+      "sha256": "df52feac7f6510512748e8a506492f2dda9599b1b79385c047b7c708cedf7060",
+      "size_bytes": 10330
+    },
+    {
+      "filename": "quantity.csv",
+      "kind": "quantity_csv",
+      "content_type": "text/csv; charset=utf-8",
+      "sha256": "9d467ba930ad1e0a82a7604df7a1f2668065f54621f4825dbd6152aa4be3a72d",
+      "size_bytes": 1424
+    },
+    {
+      "filename": "quantity.json",
+      "kind": "development_json",
+      "content_type": "application/json",
+      "sha256": "5fab32eeb43182869c5110e69baf369ad0c9422bc9e123255e5dd2f3f5a3d0b7",
+      "size_bytes": 4180
+    },
+    {
+      "filename": "scene.json",
+      "kind": "development_json",
+      "content_type": "application/json",
+      "sha256": "7543e3bc23b9098fcc45cdfd49344bd276820a40399d9861f007de885aa8ac40",
+      "size_bytes": 2439
+    }
+  ]
+}

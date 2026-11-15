@@ -1,0 +1,1448 @@
+diff --git a/mvp/rkd_mvp/ai_development_repository.py b/mvp/rkd_mvp/ai_development_repository.py
+index 8b5f8c2..6d0cbe2 100644
+--- a/mvp/rkd_mvp/ai_development_repository.py
++++ b/mvp/rkd_mvp/ai_development_repository.py
+@@ -98,11 +98,32 @@ class _DevelopmentTransaction:
+             (*self.scope, job_id))
+         return self._public_job(rows[0]) if rows else None
+ 
+-    def jobs(self, limit: int = 20) -> list[dict[str, Any]]:
+-        rows = self._rows(
+-            f"SELECT * FROM {self.job_table} WHERE organization_id={self._p} AND project_id={self._p} ORDER BY created_at DESC, job_id DESC LIMIT {self._p}",
+-            (*self.scope, limit))
+-        return [self._public_job(row) for row in rows]
++    def jobs(self, limit: int | None = 20, *, kind: str | None = None) -> list[dict[str, Any]]:
++        """Jobs newest first.
++
++        ``kind`` filters by ``config.kind`` **before** the limit is applied, so a
++        page can never claim "the 50 newest rows are the whole history": the
++        shared table is written by more than one subsystem. ``limit=None`` means
++        "all rows of that kind".
++        """
++        sql = (f"SELECT * FROM {self.job_table} WHERE organization_id={self._p} "
++               f"AND project_id={self._p}")
++        args: tuple[Any, ...] = self.scope
++        if kind is not None:
++            if self.postgres:
++                sql += f" AND config->>'kind'={self._p}"
++                args += (kind,)
++            else:
++                sql += f" AND config_json LIKE {self._p}"
++                args += (f'%"kind":"{kind}"%',)
++        sql += " ORDER BY created_at DESC, job_id DESC"
++        if limit is not None:
++            sql += f" LIMIT {self._p}"
++            args += (limit,)
++        items = [self._public_job(row) for row in self._rows(sql, args)]
++        if kind is not None:
++            items = [j for j in items if (j.get("config") or {}).get("kind") == kind]
++        return items
+ 
+     def insert_job(self, row: dict[str, Any]) -> None:
+         columns = ("job_id", "organization_id", "project_id", "option_revision_id", "adoption_version",
+@@ -196,10 +217,32 @@ class _DevelopmentTransaction:
+             (*self.scope, production_revision_id))
+         return self._public_revision(rows[0]) if rows else None
+ 
+-    def revisions(self, limit: int = 20) -> list[dict[str, Any]]:
++    def revisions(self, limit: int | None = 20, *,
++                  measurement_prefix: str | None = None) -> list[dict[str, Any]]:
++        """Revisions newest first, optionally restricted to one measurement family.
++
++        The prefix filter is pushed into SQL so that a busy shared table cannot
++        push this page's revisions out of an arbitrary "latest N" window.
++        """
++        sql = (f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} "
++               f"AND project_id={self._p}")
++        args: tuple[Any, ...] = self.scope
++        if measurement_prefix:
++            sql += f" AND measurement_version LIKE {self._p}"
++            args += (f"{measurement_prefix}%",)
++        sql += " ORDER BY created_at DESC, production_revision_id DESC"
++        if limit is not None:
++            sql += f" LIMIT {self._p}"
++            args += (limit,)
++        return [self._public_revision(row) for row in self._rows(sql, args)]
++
++    def revisions_by_job(self, job_id: str) -> list[dict[str, Any]]:
++        """Revisions belonging to ONE job (direct lookup, no global window)."""
+         rows = self._rows(
+-            f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} AND project_id={self._p} ORDER BY created_at DESC LIMIT {self._p}",
+-            (*self.scope, limit))
++            f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} "
++            f"AND project_id={self._p} AND job_id={self._p} "
++            f"ORDER BY created_at DESC, production_revision_id DESC",
++            (*self.scope, job_id))
+         return [self._public_revision(row) for row in rows]
+ 
+     def insert_revision(self, row: dict[str, Any]) -> None:
+diff --git a/mvp/rkd_mvp/ai_spatial_output_service.py b/mvp/rkd_mvp/ai_spatial_output_service.py
+index 6dbe74a..701f220 100644
+--- a/mvp/rkd_mvp/ai_spatial_output_service.py
++++ b/mvp/rkd_mvp/ai_spatial_output_service.py
+@@ -18,6 +18,7 @@ import json
+ import os
+ import subprocess
+ import threading
++import uuid
+ from pathlib import Path
+ from typing import Any, Callable
+ 
+@@ -41,6 +42,17 @@ TERMINAL = {"succeeded", "failed", "cancelled"}
+ # package.zip. Everything registered here must be inside the archive as well.
+ ARTIFACT_KINDS = {"plan_svg", "development_json", "quantity_csv", "cost_html",
+                   "manifest_json", "package_zip"}
++HISTORY_LIMIT = 50
++
++
++def new_instance_id() -> str:
++    """Identity of one worker process instance.
++
++    Recovery must distinguish "left behind by a previous process" from "created a
++    microsecond ago by this process and not yet registered in the in-memory set".
++    Only a persisted instance stamp can do that.
++    """
++    return f"spatial-worker-{os.getpid()}-{uuid.uuid4().hex[:12]}"
+ 
+ 
+ class AISpatialOutputError(Exception):
+@@ -126,12 +138,14 @@ def run_blender(scene_path: Path, out_png: Path, width: int, height: int,
+ class AISpatialOutputService:
+     def __init__(self, repository: Any, option_service: Any, runtime_root: str | Path,
+                  *, start_workers: bool = True,
+-                 renderer: Callable[[Path, Path, int, int, int], dict] | None = None) -> None:
++                 renderer: Callable[[Path, Path, int, int, int], dict] | None = None,
++                 instance_id: str | None = None) -> None:
+         self.repository = repository
+         self.option_service = option_service
+         self.runtime_root = Path(runtime_root).resolve()
+         self.start_workers = start_workers
+         self.renderer = renderer or run_blender
++        self.instance_id = instance_id or new_instance_id()
+         self._lock = threading.Lock()
+         self._active: set[str] = set()
+ 
+@@ -199,6 +213,7 @@ class AISpatialOutputService:
+                   "binding_at_submit": binding,
+                   "finish_scope_declared_by": (settings.get("finish_scope") or {}).get(
+                       "declared_by"),
++                  "run_instance": self.instance_id,
+                   "retry_of": retry_of}
+         now = now_iso()
+         job_id = new_id("ai-spatial-job")
+@@ -414,13 +429,29 @@ class AISpatialOutputService:
+ 
+     # ------------------------------------------------------------------ recovery
+     def recover(self, organization_id: str, project_id: str) -> dict[str, Any]:
+-        """Only this batch's interrupted jobs; finished bytes stay readable."""
++        """Reclaim ONLY jobs left behind by another worker instance.
++
++        The previous version treated "queued/running but not in the in-memory
++        active set" as a restart leftover. Between the submit commit and
++        ``_launch`` registering the thread there is a real window, so an ordinary
++        status read could kill a perfectly healthy job. Ownership is now decided
++        by the persisted ``config.run_instance`` stamp: same instance means "this
++        process still owns it", different/absent means "a previous process died".
++
++        Scope stays this batch only; other job kinds are never touched. Multi
++        process deployments (two live instances) are out of scope and would need
++        a real lease — that is not claimed here.
++        """
+         with self.repository.transaction(organization_id, project_id) as tx:
+-            jobs = [j for j in tx.jobs(limit=100) if self._is_spatial_job(j)]
+-        with self._lock:
+-            active = set(self._active)
+-        stale = [j["job_id"] for j in jobs
+-                 if j["status"] in {"queued", "running"} and j["job_id"] not in active]
++            jobs = tx.jobs(limit=None, kind=JOB_KIND)
++        stale = []
++        for job in jobs:
++            if job["status"] not in {"queued", "running"}:
++                continue
++            owner = (job.get("config") or {}).get("run_instance")
++            if owner == self.instance_id:
++                continue  # created by this process; ownership is not lost
++            stale.append(job["job_id"])
+         recovered = []
+         for job_id in stale:
+             with self.repository.transaction(organization_id, project_id, write=True) as tx:
+@@ -429,55 +460,99 @@ class AISpatialOutputService:
+                                 error_message="服务重启，本任务中断；请显式重试",
+                                 only_status=("queued", "running")):
+                     recovered.append(job_id)
+-        return {"recovered": recovered, "checked": len(jobs)}
++        return {"recovered": recovered, "checked": len(jobs),
++                "instance_id": self.instance_id}
+ 
+     # -------------------------------------------------------------------- read
++    @staticmethod
++    def _is_spatial_revision(revision: dict | None) -> bool:
++        return bool(revision) and str(revision.get("measurement_version") or "").startswith(
++            MEASUREMENT_PREFIX)
++
++    def _label_binding(self, revisions: list[dict], adopted: str | None) -> None:
++        for item in revisions:
++            bound = (item.get("package") or {}).get("binding") or {}
++            if adopted and adopted == item["option_revision_id"]:
++                item["binding_status"] = "current_adopted"
++            elif adopted:
++                item["binding_status"] = "historical_preview"
++            else:
++                item["binding_status"] = "candidate_preview"
++            item["bound_option_revision_id"] = bound.get("adopted_option_revision_id")
++            item["is_current"] = item["binding_status"] == "current_adopted"
++
+     def status(self, organization_id: str, project_id: str, *,
+                job_id: str | None = None,
+-               production_revision_id: str | None = None) -> dict[str, Any]:
++               production_revision_id: str | None = None,
++               history_limit: int = HISTORY_LIMIT) -> dict[str, Any]:
++        """Read one job's own outputs, or an explicitly labelled overview.
++
++        An explicit ``job_id`` / ``production_revision_id`` never falls back to
++        another job's revision or artifacts, and is looked up directly by id — not
++        by scanning a truncated "latest 50" window. Without parameters the page
++        keeps showing the last successful output, but says so
++        (``revision_source='last_successful'``).
++        """
++        if job_id and production_revision_id:
++            raise AISpatialOutputError(
++                400, "AMBIGUOUS_QUERY",
++                "job_id 与 production_revision_id 不能同时指定；请只查一个对象")
+         self.recover(organization_id, project_id)
+         adoption = self._adoption(organization_id, project_id)
++        adopted = adoption.get("option_revision_id")
++        explicit = bool(job_id or production_revision_id)
+         with self.repository.transaction(organization_id, project_id) as tx:
+-            jobs = [j for j in tx.jobs(limit=50) if self._is_spatial_job(j)]
+-            revisions = [r for r in tx.revisions(limit=50)
+-                         if str(r.get("measurement_version") or "").startswith(
+-                             MEASUREMENT_PREFIX)]
+-            job = next((j for j in jobs if j["job_id"] == job_id), None) if job_id else None
+-            if job_id and job is None:
+-                raise AISpatialOutputError(404, "JOB_NOT_FOUND", "找不到该同源成果任务")
+-            if job is None:
+-                job = jobs[0] if jobs else None
+-            adopted = adoption.get("option_revision_id")
+-            for item in revisions:
+-                bound = (item.get("package") or {}).get("binding") or {}
+-                if adopted and adopted == item["option_revision_id"]:
+-                    item["binding_status"] = "current_adopted"
+-                elif adopted:
+-                    item["binding_status"] = "historical_preview"
+-                else:
+-                    item["binding_status"] = "candidate_preview"
+-                item["bound_option_revision_id"] = bound.get("adopted_option_revision_id")
+-                item["is_current"] = item["binding_status"] == "current_adopted"
+-            revision = None
+-            if production_revision_id:
+-                revision = next((r for r in revisions
+-                                 if r["production_revision_id"] == production_revision_id),
+-                                None)
+-                if revision is None:
++            if job_id:
++                job = tx.job(job_id)
++                if not job or not self._is_spatial_job(job):
++                    raise AISpatialOutputError(404, "JOB_NOT_FOUND", "找不到该同源成果任务")
++                revisions = [r for r in tx.revisions_by_job(job_id)
++                             if self._is_spatial_revision(r)]
++                jobs = [job]
++                revision = revisions[0] if revisions else None
++                revision_source = "requested_job" if revision else "none"
++            elif production_revision_id:
++                revision = tx.revision(production_revision_id)
++                if not self._is_spatial_revision(revision):
+                     raise AISpatialOutputError(404, "OUTPUT_NOT_FOUND", "找不到该成果修订")
+-            elif job and job["status"] == "succeeded":
+-                revision = next((r for r in revisions if r["job_id"] == job["job_id"]), None)
+-            if revision is None:
+-                revision = next((r for r in revisions if r["is_current"]), None) or \
+-                    (revisions[0] if revisions else None)
++                job = tx.job(revision["job_id"])
++                if not job or not self._is_spatial_job(job):
++                    raise AISpatialOutputError(
++                        404, "JOB_NOT_FOUND", "该成果修订对应的任务不存在或不属于同源成果")
++                revisions = [r for r in tx.revisions_by_job(job["job_id"])
++                             if self._is_spatial_revision(r)]
++                jobs = [job]
++                revision_source = "requested_revision"
++            else:
++                jobs = tx.jobs(limit=10, kind=JOB_KIND)
++                revisions = tx.revisions(limit=history_limit,
++                                         measurement_prefix=MEASUREMENT_PREFIX)
++                job = jobs[0] if jobs else None
++                revision = None
++                revision_source = "none"
++                if job and job["status"] == "succeeded":
++                    revision = next((r for r in revisions if r["job_id"] == job["job_id"]), None)
++                    if revision:
++                        revision_source = "job"
++            self._label_binding(revisions, adopted)
++            last_successful = next((r for r in revisions if r.get("is_current")), None) \
++                or (revisions[0] if revisions else None)
++            if revision is None and not explicit and last_successful is not None:
++                revision = last_successful
++                revision_source = "last_successful"
+             artifacts = tx.artifacts(revision["production_revision_id"]) if revision else []
+-            return {"job": job, "jobs": jobs[:10], "revision": revision,
+-                    "revisions": revisions,
+-                    "artifacts": artifacts, "adoption": adoption,
+-                    "boundary": {"formal_quote": False, "purchase": False,
+-                                 "publish": False,
+-                                 "renderer": "blender/CYCLES-CPU"
+-                                 if self.renderer is run_blender else "injected_renderer"}}
++        return {"job": job, "jobs": jobs[:10], "revision": revision,
++                "revisions": revisions, "last_successful": last_successful,
++                "revision_source": revision_source,
++                "query": {"job_id": job_id, "production_revision_id": production_revision_id,
++                          "explicit": explicit},
++                "artifacts": artifacts, "adoption": adoption,
++                "boundary": {"formal_quote": False, "purchase": False,
++                             "publish": False,
++                             "renderer": "blender/CYCLES-CPU"
++                             if self.renderer is run_blender else "injected_renderer",
++                             "one_instance": True,
++                             "instance_id": self.instance_id}}
+ 
+     def file(self, organization_id: str, project_id: str,
+              production_revision_id: str, filename: str) -> tuple[dict, bytes]:
+diff --git a/mvp/rkd_mvp/ai_spatial_outputs.py b/mvp/rkd_mvp/ai_spatial_outputs.py
+index 1e32a91..8b47a0c 100644
+--- a/mvp/rkd_mvp/ai_spatial_outputs.py
++++ b/mvp/rkd_mvp/ai_spatial_outputs.py
+@@ -24,16 +24,23 @@ from typing import Any
+ from shapely.geometry import Polygon, box
+ from shapely.ops import unary_union
+ 
+-GENERATOR_VERSION = "rkd-spatial-outputs.v2"
++GENERATOR_VERSION = "rkd-spatial-outputs.v3"
+ PLAN_VERSION = "rkd-spatial-plan.v3"
+ SCENE_VERSION = "rkd-spatial-scene.v1"
+-QUANTITY_VERSION = "rkd-spatial-quantity.v2"
+-COST_VERSION = "rkd-spatial-cost.v2"
++QUANTITY_VERSION = "rkd-spatial-quantity.v3"
++COST_VERSION = "rkd-spatial-cost.v3"
+ MANIFEST_VERSION = "rkd-spatial-output-manifest.v2"
+-FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v1"
++FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v2"
+ 
+ MM2 = 1_000_000.0
+ 
++# finish_scope 单位契约：坐标只接受 mm，面积只接受 m2，不做静默换算。
++FINISH_SCOPE_COORD_UNITS = {"mm"}
++FINISH_SCOPE_AREA_UNITS = {"m2"}
++FINISH_SCOPE_DEDUCTION_BASES = {"keepouts_within_scope", "none"}
++MAX_COORD_MM = 1_000_000.0        # 单点坐标绝对值上限（1 km），挡住 NaN/inf 与明显错单位
++INDEPENDENT_TOL_M2 = 0.001        # 两条计量路径允许的最大差值（1e-3 ㎡）
++
+ 
+ def _json(value: Any) -> bytes:
+     return json.dumps(value, ensure_ascii=False, sort_keys=True,
+@@ -186,17 +193,65 @@ def _length(intervals: list[tuple[float, float]]) -> float:
+     return sum(high - low for low, high in intervals)
+ 
+ 
++def _segments(points: list) -> list[tuple[tuple[float, float], tuple[float, float]]]:
++    n = len(points)
++    return [((float(points[i][0]), float(points[i][1])),
++             (float(points[(i + 1) % n][0]), float(points[(i + 1) % n][1])))
++            for i in range(n)]
++
++
++def _segment_cross_x(a: tuple, b: tuple) -> float | None:
++    """两线段真实相交处的 x（含端点接触）；平行/共线返回 None。"""
++    (x1, y1), (x2, y2) = a
++    (x3, y3), (x4, y4) = b
++    denom = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
++    if denom == 0:
++        return None
++    t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / denom
++    u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / denom
++    if -1e-12 <= t <= 1 + 1e-12 and -1e-12 <= u <= 1 + 1e-12:
++        return x1 + t * (x2 - x1)
++    return None
++
++
++def _event_abscissae(polys: list[list[list[float]]]) -> list[float]:
++    """条带必须切开的所有 x：顶点 + 边与边的交点。
++
++    只在顶点 x 处切条带是不够的：斜边与扣除区边界相交处，条带内的截面长度
++    不再是 x 的线性函数，中点采样会系统性偏差（三角形扣 4.5㎡ 会被算成 6㎡）。
++    把交点的 x 也当作断点后，每个条带内截面长度对 x 线性，中点值即精确积分。
++    """
++    xs: set[float] = set()
++    edges: list[tuple[tuple[float, float], tuple[float, float]]] = []
++    for poly in polys:
++        pts = [(float(p[0]), float(p[1])) for p in poly]
++        if len(pts) < 3:
++            continue
++        xs.update(x for x, _ in pts)
++        edges.extend(_segments(pts))
++    for index, (a1, a2) in enumerate(edges):
++        low_a, high_a = min(a1[0], a2[0]), max(a1[0], a2[0])
++        for b1, b2 in edges[index + 1:]:
++            low_b, high_b = min(b1[0], b2[0]), max(b1[0], b2[0])
++            if max(low_a, low_b) > min(high_a, high_b):
++                continue  # x 区间不相交，不可能有交点
++            x = _segment_cross_x((a1, a2), (b1, b2))
++            if x is not None and math.isfinite(x):
++                xs.add(x)
++    return sorted(xs)
++
++
+ def scanline_area(polys: list[list[list[float]]]) -> float:
+     """Exact area of the UNION of polygons by vertical-strip integration.
+ 
+-    Deliberately independent of Shapely: stripes are cut at every vertex
+-    abscissa and sampled at the mid-point, so overlapping polygons are unioned
+-    (not summed) and no GEOS predicate is reused.
++    Deliberately independent of Shapely: strips are cut at every vertex abscissa
++    AND every edge-edge crossing, so the slice length is linear inside a strip
++    and the mid-point value integrates exactly. No GEOS predicate is reused.
+     """
+-    xs = sorted({float(p[0]) for poly in polys for p in poly})
++    xs = _event_abscissae(polys)
+     total = 0.0
+     for a, b in zip(xs, xs[1:]):
+-        if b - a <= 0:
++        if b - a <= 1e-9:
+             continue
+         mid = (a + b) / 2.0
+         intervals: list[tuple[float, float]] = []
+@@ -208,13 +263,17 @@ def scanline_area(polys: list[list[list[float]]]) -> float:
+ 
+ def scanline_area_minus(polys: list[list[list[float]]],
+                         holes: list[list[list[float]]]) -> float:
+-    """Union(polys) minus Union(holes), same strip method; holes never double-deduct."""
++    """Union(polys) minus Union(holes), same exact strip method.
++
++    Holes never double-deduct (intervals are merged before subtraction) and the
++    crossing abscissae of holes against polygon edges are strip breakpoints too.
++    """
+     if not holes:
+         return scanline_area(polys)
+-    xs = sorted({float(p[0]) for poly in polys + holes for p in poly})
++    xs = _event_abscissae(polys + holes)
+     total = 0.0
+     for a, b in zip(xs, xs[1:]):
+-        if b - a <= 0:
++        if b - a <= 1e-9:
+             continue
+         mid = (a + b) / 2.0
+         inside: list[tuple[float, float]] = []
+@@ -228,52 +287,139 @@ def scanline_area_minus(polys: list[list[list[float]]],
+ 
+ 
+ def _polygon_pts(obj: dict) -> list[list[float]]:
+-    return [[float(p[0]), float(p[1])] for p in obj.get("polygon_mm") or []]
++    raw = obj.get("polygon_mm")
++    if not isinstance(raw, list):
++        raise ValueError("polygon_mm 必须是坐标数组")
++    pts: list[list[float]] = []
++    for index, point in enumerate(raw):
++        if not isinstance(point, (list, tuple)) or len(point) < 2:
++            raise ValueError(f"polygon_mm[{index}] 必须是 [x, y]")
++        try:
++            x, y = float(point[0]), float(point[1])
++        except (TypeError, ValueError) as error:
++            raise ValueError(f"polygon_mm[{index}] 坐标不是数值") from error
++        if not (math.isfinite(x) and math.isfinite(y)):
++            raise ValueError(f"polygon_mm[{index}] 坐标不是有限数值（NaN/inf）")
++        if abs(x) > MAX_COORD_MM or abs(y) > MAX_COORD_MM:
++            raise ValueError(f"polygon_mm[{index}] 坐标超出 ±{MAX_COORD_MM:.0f} mm，疑似单位错误")
++        pts.append([x, y])
++    return pts
+ 
+ 
+ def normalize_finish_scope(scope: dict | None) -> dict | None:
+     """Validate an explicitly declared material-face / paving scope.
+ 
+     The scope must carry its own provenance: it is the only thing that may turn
+-    a geometric zone union into a supported finish quantity.
++    a geometric zone union into a supported finish quantity. Being a manual
++    fixture does not excuse it from the contract:
++
++    * coordinates are mm; areas are m2 — anything else is rejected, never silently
++      converted (``unit='m'`` / ``unit='ft2'`` used to be accepted and measured
++      as if millimetres);
++    * every polygon must be finite and a valid simple polygon;
++    * object ids must be present and unique; material references are required;
++    * overlapping faces on the SAME layer must be declared explicitly, otherwise
++      they would be double counted without explanation. Different layers are
++      kept as separate groups.
+     """
+     if scope is None:
+         return None
+     if not isinstance(scope, dict):
+         raise ValueError("finish_scope 必须是对象")
++    unit = scope.get("unit") or "mm"
++    if not isinstance(unit, str) or unit not in FINISH_SCOPE_COORD_UNITS:
++        raise ValueError(
++            f"finish_scope.unit 只支持 {sorted(FINISH_SCOPE_COORD_UNITS)}（收到 {unit!r}）；"
++            "本批不做单位静默换算")
++    deduction_basis = scope.get("deduction_basis") or "keepouts_within_scope"
++    if deduction_basis not in FINISH_SCOPE_DEDUCTION_BASES:
++        raise ValueError(
++            f"finish_scope.deduction_basis 必须是 {sorted(FINISH_SCOPE_DEDUCTION_BASES)}"
++            f"（收到 {deduction_basis!r}）；扣除口径必须明确")
+     areas = scope.get("areas")
+     if not isinstance(areas, list) or not areas:
+         raise ValueError("finish_scope.areas 必须是非空数组")
+     declared_by = scope.get("declared_by")
+     if not isinstance(declared_by, str) or not declared_by:
+         raise ValueError("finish_scope.declared_by 必须标明来源（人工/夹具/依据）")
++    overlap_declaration = scope.get("overlap_declaration")
++    if overlap_declaration is not None and not isinstance(overlap_declaration, str):
++        raise ValueError("finish_scope.overlap_declaration 必须是说明文字")
+     parsed = []
++    seen_ids: set[str] = set()
+     for index, area in enumerate(areas):
+-        pts = _polygon_pts(area)
++        if not isinstance(area, dict):
++            raise ValueError(f"finish_scope.areas[{index}] 必须是对象")
++        try:
++            pts = _polygon_pts(area)
++        except ValueError as error:
++            raise ValueError(f"finish_scope.areas[{index}]：{error}") from error
+         if len(pts) < 3:
+             raise ValueError(f"finish_scope.areas[{index}] 多边形少于 3 点")
++        object_id = str(area.get("object_id") or f"FA{index + 1}")
++        if object_id in seen_ids:
++            raise ValueError(f"finish_scope 内 object_id 重复：{object_id}")
++        seen_ids.add(object_id)
++        area_unit = area.get("unit") or "m2"
++        if not isinstance(area_unit, str) or area_unit not in FINISH_SCOPE_AREA_UNITS:
++            raise ValueError(
++                f"finish_scope.areas[{index}].unit 只支持 "
++                f"{sorted(FINISH_SCOPE_AREA_UNITS)}（收到 {area_unit!r}）")
+         material = area.get("material_ref") or {}
++        if not isinstance(material, dict):
++            raise ValueError(f"finish_scope.areas[{index}].material_ref 必须是对象")
+         if not material.get("material_id") and area.get("material_id"):
+             material = {"material_id": area.get("material_id"),
+                         "name": area.get("material_name"),
+                         "spec_status": area.get("material_spec_status")}
+         if not material.get("material_id"):
+             raise ValueError(f"finish_scope.areas[{index}] 缺少 material_ref.material_id")
++        polygon = Polygon([(x, y) for x, y in pts])
++        if not polygon.is_valid or polygon.area <= 0:
++            raise ValueError(
++                f"finish_scope.areas[{index}] 不是有效简单多边形（自交/退化），"
++                "不能作为计量依据")
+         parsed.append({
+-            "object_id": str(area.get("object_id") or f"FA{index + 1}"),
++            "object_id": object_id,
+             "name": str(area.get("name") or f"材料面 {index + 1}"),
+             "polygon_mm": pts,
+             "material_id": str(material["material_id"]),
+             "material_name": material.get("name"),
+             "material_spec_status": material.get("spec_status") or "unknown",
+-            "unit": area.get("unit") or "m2",
++            "unit": area_unit,
++            "layer": str(area.get("layer") or "floor_finish"),
++            "declared_area_m2": round(polygon.area / MM2, 4),
+         })
++    # 同层重叠：不给说明就拒绝，避免同一块地被两层材料各算一次
++    overlaps = []
++    for index, first in enumerate(parsed):
++        for second in parsed[index + 1:]:
++            if first["layer"] != second["layer"]:
++                continue
++            pa = Polygon([(x, y) for x, y in first["polygon_mm"]])
++            pb = Polygon([(x, y) for x, y in second["polygon_mm"]])
++            if not pa.intersects(pb):
++                continue
++            shared = pa.intersection(pb).area / MM2
++            if shared > 1e-6:
++                overlaps.append({"layer": first["layer"],
++                                 "objects": [first["object_id"], second["object_id"]],
++                                 "overlap_m2": round(shared, 4)})
++    if overlaps and not (isinstance(overlap_declaration, str)
++                         and overlap_declaration.strip()):
++        detail = "；".join(f"{o['layer']}:{'+'.join(o['objects'])}={o['overlap_m2']}㎡"
++                          for o in overlaps)
++        raise ValueError(
++            "同层材料面重叠但未声明，不能无说明重复相加：" + detail
++            + "。请合并为一块，或用 overlap_declaration 说明叠层语义")
+     return {"schema_version": FINISH_SCOPE_VERSION,
+             "kind": scope.get("kind") or "material_face_slice",
+             "declared_by": declared_by,
+             "declaration": scope.get("declaration"),
+-            "unit": scope.get("unit") or "mm",
+-            "deduction_basis": scope.get("deduction_basis") or "keepouts_within_scope",
++            "unit": unit,
++            "deduction_basis": deduction_basis,
++            "overlap_declaration": overlap_declaration,
++            "same_layer_overlaps": overlaps,
+             "site_verified": False,
+             "areas": parsed}
+ 
+@@ -355,7 +501,7 @@ def measure(model: dict, *, finish_scope: dict | None = None) -> dict:
+          "source_objects": [oid for oid, _p in zones],
+          "independent_recompute_m2": round(independent_net, 3),
+          "independent_gross_m2": round(independent_gross, 3),
+-         "independent_method": "vertical_strip_union_v1",
++         "independent_method": "vertical_strip_exact_v2",
+          "independent_delta_m2": round(independent_net - net / MM2, 4),
+          "sum_of_zones_m2": round(shoelace_sum, 3),
+          "zone_overlap_m2": round(overlap / MM2, 3),
+@@ -389,6 +535,14 @@ def measure(model: dict, *, finish_scope: dict | None = None) -> dict:
+ 
+ 
+ def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
++    """Supported finish area: EXACT geometry is the business value.
++
++    The strip integration stays as an independent cross-check only. It used to be
++    the business value itself, which turned a known-independent error on slanted
++    edges into a wrong finish quantity and a wrong trial amount. When the two
++    paths disagree beyond ``INDEPENDENT_TOL_M2`` this returns ``disputed`` with no
++    value and no priceable groups, instead of a confidently wrong number.
++    """
+     if scope is None:
+         return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积",
+                 "value": None, "unit": "m2", "known_status": "unknown",
+@@ -396,30 +550,68 @@ def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
+                                   "本批没有显式材料面或铺装范围依据，"
+                                   "不得据此推出完成面工程量",
+                 "required_basis": "显式材料面切片（铺装范围 + 材料引用 + 计量单位 + 扣除依据 + 来源）"}
+-    groups: dict[str, dict] = {}
+-    total = 0.0
++    apply_keepouts = scope["deduction_basis"] != "none"
++    keep_polys = [Polygon([(x, y) for x, y in pts]) for pts in keep_pts] if apply_keepouts else []
++    keep_union = unary_union(keep_polys) if keep_polys else None
++    layers: dict[tuple[str, str], list[dict]] = {}
+     for area in scope["areas"]:
+-        pts = area["polygon_mm"]
+-        net = scanline_area_minus([pts], keep_pts) / MM2
+-        total += net
+-        gid = area["material_id"]
+-        group = groups.setdefault(gid, {
+-            "material_id": gid, "material_name": area["material_name"],
+-            "material_spec_status": area["material_spec_status"],
+-            "area_m2": 0.0, "area_objects": []})
+-        group["area_m2"] = round(group["area_m2"] + net, 3)
+-        group["area_objects"].append(area["object_id"])
++        layers.setdefault((area["layer"], area["material_id"]), []).append(area)
++    groups: list[dict] = []
++    total_exact = 0.0
++    worst_delta = 0.0
++    for (layer, material_id), areas in sorted(layers.items()):
++        polygons = [Polygon([(x, y) for x, y in area["polygon_mm"]]) for area in areas]
++        merged = unary_union(polygons)
++        exact = merged.area
++        if keep_union is not None:
++            exact -= merged.intersection(keep_union).area
++        exact_m2 = max(0.0, exact / MM2)
++        independent_m2 = scanline_area_minus([a["polygon_mm"] for a in areas],
++                                             keep_pts if apply_keepouts else []) / MM2
++        delta = independent_m2 - exact_m2
++        worst_delta = max(worst_delta, abs(delta))
++        total_exact += exact_m2
++        groups.append({
++            "layer": layer, "material_id": material_id,
++            "material_name": areas[0]["material_name"],
++            "material_spec_status": areas[0]["material_spec_status"],
++            "area_m2": round(exact_m2, 3),
++            "independent_recompute_m2": round(independent_m2, 3),
++            "independent_delta_m2": round(delta, 4),
++            "independent_method": "vertical_strip_exact_v2",
++            "area_objects": [a["object_id"] for a in areas],
++            "method": "exact_union_per_material_minus_keepouts",
++        })
++    disputed = worst_delta > INDEPENDENT_TOL_M2
++    basis_source = {"declared_by": scope["declared_by"],
++                    "declaration": scope["declaration"],
++                    "kind": scope["kind"], "unit": scope["unit"],
++                    "deduction_basis": scope["deduction_basis"],
++                    "overlap_declaration": scope.get("overlap_declaration"),
++                    "site_verified": False}
++    if disputed:
++        return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积（按材料面切片）",
++                "value": None, "unit": "m2", "known_status": "disputed",
++                "method": "declared_finish_scope_minus_keepouts",
++                "formula_version": QUANTITY_VERSION,
++                "source_objects": [a["object_id"] for a in scope["areas"]],
++                "basis_source": basis_source,
++                "material_groups": groups,
++                "discrepancy_m2": round(worst_delta, 4),
++                "discrepancy_tolerance_m2": INDEPENDENT_TOL_M2,
++                "unknown_reason": f"精确几何与独立条带复算相差 {worst_delta:.4f} ㎡，"
++                                  f"超过容差 {INDEPENDENT_TOL_M2} ㎡；两条可信路径不一致时"
++                                  "不输出已知饰面量，也不据此试算金额",
++                "note": "材料面切片来自声明来源，未经现场复核；本项待核，不给数值"}
+     return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积（按材料面切片）",
+-            "value": round(total, 3), "unit": "m2", "known_status": "known",
+-            "method": "declared_finish_scope_minus_keepouts",
++            "value": round(total_exact, 3), "unit": "m2", "known_status": "known",
++            "method": "exact_union_per_material_minus_keepouts",
+             "formula_version": QUANTITY_VERSION,
+             "source_objects": [a["object_id"] for a in scope["areas"]],
+-            "basis_source": {"declared_by": scope["declared_by"],
+-                             "declaration": scope["declaration"],
+-                             "kind": scope["kind"], "unit": scope["unit"],
+-                             "deduction_basis": scope["deduction_basis"],
+-                             "site_verified": False},
+-            "material_groups": sorted(groups.values(), key=lambda g: g["material_id"]),
++            "basis_source": basis_source,
++            "material_groups": groups,
++            "independent_max_delta_m2": round(worst_delta, 4),
++            "independent_tolerance_m2": INDEPENDENT_TOL_M2,
+             "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；"
+                     "材料规格与产品选型仍为假设，单价缺失时金额保持 unknown"}
+ 
+@@ -444,7 +636,15 @@ def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
+              "markup": "user_confirmed_but_not_applied_without_price_source"}
+     known_items: list[dict] = []
+     unknown: list[dict] = []
+-    if (finish or {}).get("known_status") != "known" or not groups:
++    finish_status = (finish or {}).get("known_status")
++    if finish_status == "disputed":
++        basis["area_basis"] = "two_paths_disagree"
++        unknown.append({
++            "statement": "饰面面积的两条独立计量路径结果不一致（相差 "
++                         f"{(finish or {}).get('discrepancy_m2')} ㎡），本批不给已知饰面量",
++            "quantity_ref": "Q-FLOOR-FINISH",
++            "impact": "即使给了单价也不试算金额；待核清几何后再出数"})
++    elif finish_status != "known" or not groups:
+         basis["area_basis"] = "missing_finish_scope"
+         unknown.append({"statement": "地坪完成面铺装范围/材料面未提供，面积依据 unknown",
+                         "quantity_ref": "Q-FLOOR-FINISH",
+@@ -453,12 +653,16 @@ def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
+         basis["area_basis"] = (finish.get("basis_source") or {}).get("declared_by") or "declared"
+         for group in groups:
+             price = prices.get(group["material_id"])
++            ref = f"Q-FLOOR-FINISH/{group['material_id']}"
++            if group.get("layer") and group["layer"] != "floor_finish":
++                ref = f"{ref}@{group['layer']}"
+             if isinstance(price, (int, float)) and not isinstance(price, bool) and price > 0:
+                 known_items.append({
+                     "item": f"{group.get('material_name') or group['material_id']}"
+                             f"（按输入假设单价试算）",
+                     "material_id": group["material_id"],
+-                    "quantity_ref": f"Q-FLOOR-FINISH/{group['material_id']}",
++                    "layer": group.get("layer"),
++                    "quantity_ref": ref,
+                     "quantity_m2": group["area_m2"], "unit_price_cny": price,
+                     "amount_cny": round(group["area_m2"] * price, 2),
+                     "basis": "caller_provided_assumption_not_a_quote",
+@@ -471,7 +675,7 @@ def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
+                     "statement": f"{group.get('material_name') or group['material_id']}"
+                                  f" 没有对应价源（材料/工艺/损耗/起订量）",
+                     "material_id": group["material_id"],
+-                    "quantity_ref": f"Q-FLOOR-FINISH/{group['material_id']}",
++                    "quantity_ref": ref,
+                     "impact": f"{group['area_m2']} ㎡ 的金额保持 unknown"})
+         basis["unit_prices"] = ("partially_provided_by_caller_assumption" if known_items
+                                 else "not_provided")
+@@ -517,6 +721,11 @@ def cost_html(cost: dict, quantities: dict) -> bytes:
+     if cost["known_items"]:
+         headline = ("以下金额是<b>假设单价试算</b>，面积依据同时列出；不是报价、不是合同、"
+                     "不含损耗/工艺/税，采购与发布未触发。")
++    elif finish.get("known_status") == "disputed":
++        headline = ("本页没有金额：饰面面积的两条独立计量路径不一致（相差 "
++                    f"{finish.get('discrepancy_m2')} ㎡，超过容差 "
++                    f"{finish.get('discrepancy_tolerance_m2')} ㎡），<b>待核</b>；"
++                    "不输出已知饰面量，也不据其试算，金额一律不填 0。")
+     else:
+         headline = ("本页没有金额：面积依据或价源缺失，所有金额保持 unknown。"
+                     "不把几何净量当作造价，也不把草案当报价或合同。")
+diff --git a/scripts/w2_second_closeout_repro.py b/scripts/w2_second_closeout_repro.py
+new file mode 100644
+index 0000000..90a4a91
+--- /dev/null
++++ b/scripts/w2_second_closeout_repro.py
+@@ -0,0 +1,670 @@
++"""W2 二次收口：C1/C2/C3 同一负例，对整改前/后源码各跑一次。
++
++用法（整改前）：
++  RKD_VERIFY_ROOT="var/evidence/roadmap/W2-二次收口/before-code" \
++  ./.venv/Scripts/python.exe scripts/w2_second_closeout_repro.py --label before --out <dir>
++用法（整改后）：
++  ./.venv/Scripts/python.exe scripts/w2_second_closeout_repro.py --label after --out <dir>
++
++只用隔离 SQLite + 真实回环 HTTP + 可控渲染桩；0 外部模型调用、0 密钥、0 费用。
++竞态用确定性屏障（替换 _launch 在提交后/启动前插入一次真实 HTTP 读），不靠 sleep 碰运气。
++期望值用解析手算给出，不拿另一条实现当标准答案。
++"""
++from __future__ import annotations
++
++import argparse
++import copy
++import json
++import os
++import sys
++import traceback
++from datetime import datetime, timezone
++from pathlib import Path
++
++ROOT = Path(os.environ.get("RKD_VERIFY_ROOT") or
++            Path(__file__).resolve().parents[1]).resolve()
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++sys.path.insert(0, str(ROOT))
++
++import w2_closeout_repro as base  # noqa: E402  复用隔离装配与 HTTP 夹具
++from rkd_mvp.ai_spatial_outputs import build_cost, measure  # noqa: E402
++
++CHECKS: list[dict] = []
++ORG = base.ORG
++MM2 = 1_000_000.0
++
++TRIANGLE = [[0, 0], [6000, 0], [0, 6000]]          # 18.0 ㎡
++TRI_HOLE = [[0, 1000], [6000, 1000], [6000, 2000], [0, 2000]]   # 与三角形交 4.5 ㎡
++
++
++def record(cid: str, name: str, fn) -> None:
++    try:
++        ok, evidence = fn()
++    except Exception as error:  # noqa: BLE001
++        ok, evidence = False, {"error": f"{type(error).__name__}: {error}",
++                               "trace": traceback.format_exc(limit=4).splitlines()[-4:]}
++    CHECKS.append({"id": cid, "name": name,
++                   "result": "observed_pass" if ok else "observed_fail",
++                   "evidence": evidence})
++    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++
++
++def get(path: str):
++    return base.http("GET", path)
++
++
++def wait_job(stack, job_id: str, timeout: float = 60.0):
++    import time
++    deadline = time.monotonic() + timeout
++    last = {}
++    while time.monotonic() < deadline:
++        code, data, _ = base.http("GET", f"{stack.base}/spatial-outputs?job_id={job_id}")
++        last = data.get("job") or {}
++        if last.get("job_id") != job_id:
++            last = next((j for j in data.get("jobs") or [] if j["job_id"] == job_id), last)
++        if last.get("status") in {"succeeded", "failed", "cancelled"}:
++            return code, data, last
++        time.sleep(0.02)
++    raise AssertionError(f"等待任务超时：{job_id} 最后 {last.get('status')}")
++
++
++# --------------------------------------------------------------- 解析手算工具
++def triangle_rect_area(ax: float, ay: float, lx: float, ly: float,
++                       rect: tuple[float, float, float, float]) -> float:
++    """解析求「轴对齐直角三角形 ∩ 矩形」面积（mm²）。
++
++    三角形：x>=ax, y>=ay, (x-ax)/lx + (y-ay)/ly <= 1（两条直角边分别沿 +x / +y）。
++    矩形：(x0,y0,x1,y1)。只在斜边与矩形上下边相交的 x 处分段；段内被积函数线性，
++    因此该分段积分是精确值，不是采样近似。
++    """
++    x0, y0, x1, y1 = rect
++    low, high = max(x0, ax), min(x1, ax + lx)
++    if high <= low:
++        return 0.0
++    lower = max(y0, ay)
++    slope = ly / lx
++    top_at = ax + lx                       # 斜边回到 y=ay 的 x
++    upper = lambda x: ay + ly - (x - ax) * slope          # noqa: E731
++    # 断点：斜边与矩形上边相交处、斜边低于矩形下边处（被积函数在此改斜率/归零）
++    breaks = sorted({low, high,
++                     *[b for b in (ax + lx * (ay + ly - y1) / ly,
++                                   ax + lx * (ay + ly - lower) / ly,
++                                   top_at) if low < b < high]})
++    total = 0.0
++    for a, b in zip(breaks, breaks[1:]):
++        if b - a <= 0:
++            continue
++        mid = (a + b) / 2.0
++        total += (b - a) * max(0.0, min(y1, upper(mid)) - lower)
++    return total
++
++
++def tri_scope(polygon_mm: list, material: str = "test-floor", **extra) -> dict:
++    scope = {"kind": "material_face_slice", "declared_by": "w2c2_analytic_fixture",
++             "declaration": "解析手算夹具，未经现场复核", "unit": "mm",
++             "deduction_basis": "keepouts_within_scope",
++             "areas": [{"object_id": "F1", "name": "解析三角材料面",
++                        "polygon_mm": polygon_mm, "unit": "m2",
++                        "material_ref": {"material_id": material, "name": "试验地坪"}}]}
++    scope.update(extra)
++    return scope
++
++
++def tri_model(keepouts: list[dict], polygon_mm: list) -> dict:
++    model = base.l_shape_model(keepouts)
++    model["spatial"]["zones"][0]["polygon_mm"] = [list(p) for p in polygon_mm]
++    model["spatial"]["zones"][0]["area_sqm"] = 18.0
++    return model
++
++
++# ------------------------------------------------------------------- C1 函数级
++def c1_triangle_deduction():
++    """C1：三角形 18㎡ 扣 4.5㎡ = 13.5㎡；主量/独立复算/饰面量/试算金额都要对。"""
++    model = tri_model([base.keepout("cut", 0, 1, 6, 1)], TRIANGLE)
++    qty = measure(model, finish_scope=tri_scope(TRIANGLE))
++    geom = base.find_q(qty, "Q-FLOOR-GEOMETRIC-NET")
++    finish = base.find_q(qty, "Q-FLOOR-FINISH")
++    cost = build_cost(qty, settings={"floor_unit_price_cny": 1000})
++    amount = (cost["known_items"][0]["amount_cny"] if cost["known_items"] else None)
++    ok = (geom and abs(geom["value"] - 13.5) < 1e-6
++          and abs((geom.get("independent_recompute_m2") or -1) - 13.5) < 1e-3
++          and finish and finish.get("known_status") == "known"
++          and abs((finish.get("value") or -1) - 13.5) < 1e-3
++          and amount is not None and abs(amount - 13500.0) < 1.0)
++    return ok, {
++        "analytic_basis": "triangle 18 - ∫(6-y)dy[y=1..2]=4.5 -> 13.5㎡",
++        "expected_m2": 13.5, "geometry_m2": (geom or {}).get("value"),
++        "independent_m2": (geom or {}).get("independent_recompute_m2"),
++        "finish_m2": (finish or {}).get("value"),
++        "finish_status": (finish or {}).get("known_status"),
++        "trial_amount_cny": amount, "expected_amount_cny": 13500.0}
++
++
++def c1_slanted_crossing():
++    """C1：扣除区斜穿斜边（x=2500..3500, y=2400..3400），净 18-0.595=17.405㎡。"""
++    hole = base.keepout("X1", 2.5, 2.4, 1.0, 1.0)
++    model = tri_model([hole], TRIANGLE)
++    qty = measure(model, finish_scope=tri_scope(TRIANGLE))
++    geom = base.find_q(qty, "Q-FLOOR-GEOMETRIC-NET")
++    finish = base.find_q(qty, "Q-FLOOR-FINISH")
++    ok = (geom and abs(geom["value"] - 17.405) < 1e-6
++          and abs((geom.get("independent_recompute_m2") or -1) - 17.405) < 1e-3
++          and finish and abs((finish.get("value") or -1) - 17.405) < 1e-3)
++    return ok, {
++        "analytic_basis": "毛 18㎡；扣除区 x∈[2500,3500],y∈[2400,3400] 被斜边切成两段，"
++                          "∫2500..2600 1.0 dx + ∫2600..3500 (3.6-x/1000... 见 c1-handcheck.md) = 0.595㎡",
++        "expected_m2": 17.405, "geometry_m2": (geom or {}).get("value"),
++        "independent_m2": (geom or {}).get("independent_recompute_m2"),
++        "finish_m2": (finish or {}).get("value"),
++        "delta": (geom or {}).get("independent_delta_m2")}
++
++
++def c1_rect_regression():
++    """C1 回归：L 形 24㎡ 扣 2㎡ = 22㎡；矩形边与斜边无关，结果不得变。"""
++    model = base.l_shape_model([base.keepout("K1", 1.0, 1.0, 1.0, 2.0)])
++    qty = measure(model)
++    gross = base.find_q(qty, "Q-FLOOR-GROSS")
++    net = base.find_q(qty, "Q-FLOOR-GEOMETRIC-NET")
++    ok = (gross and abs(gross["value"] - 24.0) < 1e-6
++          and net and abs(net["value"] - 22.0) < 1e-6
++          and abs((net.get("independent_recompute_m2") or -1) - 22.0) < 1e-3)
++    return ok, {"gross": (gross or {}).get("value"), "net": (net or {}).get("value"),
++                "independent": (net or {}).get("independent_recompute_m2")}
++
++
++def c1_unit_contract():
++    """C1：scope 坐标单位只收 mm、面积单位只收 m2；m/ft2 必须拒绝而不是照毫米算。"""
++    model = tri_model([base.keepout("cut", 0, 1, 6, 1)], TRIANGLE)
++    results = {}
++    for name, mutate in (
++            ("coord_unit_m", lambda s: s.update({"unit": "m"})),
++            ("area_unit_ft2", lambda s: s["areas"][0].update({"unit": "ft2"})),
++            ("unknown_deduction_basis", lambda s: s.update({"deduction_basis": "auto"})),
++    ):
++        scope = tri_scope(TRIANGLE)
++        mutate(scope)
++        try:
++            qty = measure(model, finish_scope=scope)
++            results[name] = {"rejected": False,
++                             "finish": (base.find_q(qty, "Q-FLOOR-FINISH") or {}).get("value")}
++        except ValueError as error:
++            results[name] = {"rejected": True, "error": str(error)}
++    return all(v.get("rejected") for v in results.values()), results
++
++
++def c1_invalid_polygon():
++    """C1：自交/退化/NaN/重复 object_id 必须拒绝，不能进计量。"""
++    model = tri_model([], TRIANGLE)
++    cases = {}
++    bowtie = [[0, 0], [6000, 6000], [6000, 0], [0, 6000]]
++    cases["self_intersection"] = tri_scope(bowtie)
++    nan_scope = tri_scope(TRIANGLE)
++    nan_scope["areas"][0]["polygon_mm"] = [[0, 0], [float("nan"), 0], [0, 6000]]
++    cases["nan_coordinate"] = nan_scope
++    dup = tri_scope(TRIANGLE)
++    dup["areas"].append(copy.deepcopy(dup["areas"][0]))
++    cases["duplicate_object_id"] = dup
++    tiny = tri_scope([[0, 0], [10, 0], [0, 0]])
++    cases["degenerate"] = tiny
++    out = {}
++    for name, scope in cases.items():
++        try:
++            measure(model, finish_scope=scope)
++            out[name] = {"rejected": False}
++        except ValueError as error:
++            out[name] = {"rejected": True, "error": str(error)[:160]}
++    return all(v.get("rejected") for v in out.values()), out
++
++
++def c1_same_layer_overlap():
++    """C1：同层重叠无说明必须拒绝；有说明时按并集算，不能各算一次相加。"""
++    model = tri_model([], TRIANGLE)
++    left = [[0, 0], [4000, 0], [0, 4000]]                    # 8.0 ㎡
++    right = [[2000, 0], [6000, 0], [6000, 4000], [2000, 4000]]  # 16.0 ㎡
++    shared = {"declared_by": "w2c2_analytic_fixture", "declaration": "叠层夹具",
++              "unit": "mm", "deduction_basis": "none"}
++    areas = [
++        {"object_id": "A1", "polygon_mm": left, "layer": "floor_finish", "unit": "m2",
++         "material_ref": {"material_id": "M1"}},
++        {"object_id": "A2", "polygon_mm": right, "layer": "floor_finish", "unit": "m2",
++         "material_ref": {"material_id": "M1"}},
++    ]
++    undeclared: dict
++    try:
++        measure(model, finish_scope={**shared, "areas": copy.deepcopy(areas)})
++        undeclared = {"rejected": False}
++    except ValueError as error:
++        undeclared = {"rejected": True, "error": str(error)[:200]}
++    declared_scope = {**shared, "areas": copy.deepcopy(areas),
++                      "overlap_declaration": "两块材料面有意搭接 200mm，按并集计量不重复"}
++    qty = measure(model, finish_scope=declared_scope)
++    finish = base.find_q(qty, "Q-FLOOR-FINISH")
++    # 并集：三角形(0,0)-(4,0)-(0,4) ∪ 三角形(2,0)-(6,0)-(6,4)... right 是矩形梯形，手算见下
++    union_expected = 8.0 + 16.0 - _overlap_area(left, right)
++    return (undeclared.get("rejected") is True
++            and finish and abs((finish.get("value") or -1) - union_expected) < 1e-3), {
++        "undeclared": undeclared,
++        "union_expected_m2": round(union_expected, 4),
++        "declared_value_m2": (finish or {}).get("value"),
++        "note": "重叠声明后按并集算，不得 8+16=24 重复相加"}
++
++
++def _overlap_area(left: list, right: list) -> float:
++    """两块夹具多边形的重叠面积（解析，不调用被测实现）。
++
++    left  = (0,0),(4000,0),(0,4000)            直角三角形，8㎡
++    right = (2000,0),(6000,0),(6000,4000),(2000,4000)  矩形，16㎡
++    重叠 = left 在 x>=2000 的部分 = ∫2000..4000 (4000-x)dx = 2㎡
++    """
++    del left, right  # 形状写死，仅用于自证解析式与夹具一致
++    return triangle_rect_area(0, 0, 4000, 4000, (2000, 0, 6000, 4000)) / MM2
++
++
++# ------------------------------------------------------------------- C1 真实入口
++def _entry_case(stack, key: str, face: list, lx: float, ly: float) -> tuple[bool, dict]:
++    """真实入口：声明一块三角材料面，跑完整 HTTP 链，比对解析值。
++
++    期望值由「三角形 ∩ 每个保留区矩形」的解析积分给出，不拿被测实现当标准答案。
++    """
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    detail = stack.options_ai.revision_by_id(ORG, stack.project_id,
++                                             rev["option_revision_id"]) or {}
++    model = detail.get("model") or {}
++    obstacles = (model.get("boundary") or {}).get("obstacles") or []
++    rects = []
++    for item in obstacles:
++        shape = item.get("shape") or {}
++        x, y = float(shape["x"]) * 1000, float(shape["y"]) * 1000
++        rects.append((item.get("object_id"), x, y,
++                      x + float(shape["width"]) * 1000,
++                      y + float(shape["length"]) * 1000))
++    ax, ay = float(face[0][0]), float(face[0][1])
++    deducted = sum(triangle_rect_area(ax, ay, lx, ly, r[1:]) for r in rects) / MM2
++    face_area = 0.5 * lx * ly / MM2
++    expected = face_area - deducted
++    scope = tri_scope(face)
++    code, gen, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                             {"option_revision_id": rev["option_revision_id"],
++                              "settings": {"render": False, "finish_scope": scope,
++                                           "floor_unit_price_cny": 1000}},
++                             {"Idempotency-Key": key})
++    if code not in (200, 202):
++        return False, {"submit_status": code, "submit_body": gen}
++    _, state, job = wait_job(stack, gen["item"]["job_id"])
++    revision = state.get("revision") or {}
++    if job.get("status") != "succeeded" or not revision:
++        return False, {"job_status": job.get("status"), "error": job.get("error_code"),
++                       "message": job.get("error_message")}
++    finish = base.find_q(revision["quantities"], "Q-FLOOR-FINISH")
++    cost = revision["cost"]
++    rid = revision["production_revision_id"]
++    csv_text = get(f"{stack.base}/spatial-outputs/{rid}/files/quantity.csv")[2].decode("utf-8")
++    html = get(f"{stack.base}/spatial-outputs/{rid}/files/cost.html")[2].decode("utf-8")
++    manifest = json.loads(get(f"{stack.base}/spatial-outputs/{rid}/files/manifest.json")[2])
++    listed = [e["filename"] for e in manifest.get("files") or []]
++    amount = (cost["known_items"][0]["amount_cny"] if cost["known_items"] else None)
++    got = finish.get("value") if finish else None
++    ok = (finish and finish.get("known_status") == "known"
++          and got is not None and abs(got - expected) < 1e-3
++          and amount is not None and abs(amount - round(expected * 1000, 2)) < 1.0
++          and "Q-FLOOR-FINISH" in csv_text and str(round(expected, 3)) in csv_text
++          and str(int(round(expected * 1000))) in html
++          and "quantity.csv" in listed and "cost.html" in listed)
++    return ok, {
++        "obstacles": [{"object_id": r[0], "rect_mm": list(r[1:])} for r in rects],
++        "face_mm": face, "face_area_m2": round(face_area, 4),
++        "analytic_deduction_m2": round(deducted, 4),
++        "expected_finish_m2": round(expected, 4),
++        "finish": {"value": got, "status": (finish or {}).get("known_status"),
++                   "groups": (finish or {}).get("material_groups")},
++        "trial_amount_cny": amount,
++        "expected_amount_cny": round(expected * 1000, 2),
++        "csv_has_finish": "Q-FLOOR-FINISH" in csv_text,
++        "html_has_amount": str(int(round(expected * 1000))) in html,
++        "manifest_files": listed}
++
++
++def c1_entry_architect(stack):
++    """C1 真实入口（架构给的 13.5㎡/13500 元口径）：三角材料面跨卫生间保留区。"""
++    face = [[19000, 2600], [25000, 2600], [19000, 8600]]
++    ok, evidence = _entry_case(stack, "w2c2-c1-entry-0001", face, 6000.0, 6000.0)
++    evidence["expected_fixed"] = "13.5 ㎡ / 13500 元（架构复核口径）"
++    return ok, evidence
++
++
++def c1_entry_partial_band(stack):
++    """C1 真实入口（判别性）：保留区是竖直带，条带内被上下两处截断。
++
++    面 (22000,0)-(26170,0)-(22000,8340)：毛 17.3889㎡；与卫生间保留区
++    y∈[2600,7300] 的解析扣除 7.9665㎡ → 净 9.4224㎡。旧算法只切顶点 x，
++    整个 x 区间按一个中点算成 6.5469㎡，饰面量与试算金额都跟着错。
++    """
++    face = [[22000, 0], [26170, 0], [22000, 8340]]
++    return _entry_case(stack, "w2c2-c1-entry-band-0002", face, 4170.0, 8340.0)
++
++
++# ------------------------------------------------------------------- C2 竞态
++def c2_status_in_launch_gap(stack) -> tuple[bool, dict]:
++    """C2：提交已提交、worker 尚未登记时，另一次真实 HTTP 状态查询不得终结任务。"""
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    original = stack.spatial_ai._launch
++    seen: dict = {}
++
++    def launch_after_read(org, project, job_id):
++        code, data, _ = base.http("GET", f"{stack.base}/spatial-outputs?job_id={job_id}")
++        job = data.get("job") or {}
++        seen.update({"get_status": code, "status_in_gap": job.get("status"),
++                     "error_in_gap": job.get("error_code"),
++                     "revision_in_gap": (data.get("revision") or {}).get("production_revision_id")})
++        original(org, project, job_id)
++
++    stack.spatial_ai._launch = launch_after_read
++    try:
++        code, gen, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                                 {"option_revision_id": rev["option_revision_id"],
++                                  "settings": {"render": False}},
++                                 {"Idempotency-Key": "w2c2-c2-gap-0001"})
++        job_id = gen["item"]["job_id"]
++        _, _, job = wait_job(stack, job_id)
++    finally:
++        stack.spatial_ai._launch = original
++    ok = (code in (200, 202) and seen.get("status_in_gap") in {"queued", "running"}
++          and seen.get("error_in_gap") in (None, "")
++          and job.get("status") == "succeeded")
++    return ok, {"submit_status": code, **seen, "final_status": job.get("status"),
++                "note": "没有重启；状态查询不得把刚提交的正常任务判成重启残留"}
++
++
++def c2_cancel_in_gap(stack) -> tuple[bool, dict]:
++    """C2：同一窗口内取消仍生效、不复活，且可显式重试。"""
++    rev = stack.import_layout("B")
++    stack.adopt(rev)
++    original = stack.spatial_ai._launch
++    seen: dict = {}
++
++    def launch_after_read_and_cancel(org, project, job_id):
++        code, data, _ = base.http("GET", f"{stack.base}/spatial-outputs?job_id={job_id}")
++        seen["status_in_gap"] = (data.get("job") or {}).get("status")
++        ccode, cdata, _ = base.http("POST", f"{stack.base}/spatial-outputs/{job_id}/cancel", {})
++        seen["cancel_status"] = ccode
++        seen["cancel_body_status"] = (cdata.get("item") or {}).get("status")
++        original(org, project, job_id)
++
++    stack.spatial_ai._launch = launch_after_read_and_cancel
++    try:
++        code, gen, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                                 {"option_revision_id": rev["option_revision_id"],
++                                  "settings": {"render": False}},
++                                 {"Idempotency-Key": "w2c2-c2-gapcancel-0001"})
++        job_id = gen["item"]["job_id"]
++        _, state, job = wait_job(stack, job_id)
++    finally:
++        stack.spatial_ai._launch = original
++    registered = [r for r in state.get("revisions") or [] if r["job_id"] == job_id]
++    rcode, retry, _ = base.http("POST", f"{stack.base}/spatial-outputs/{job_id}/retry",
++                                {"settings": {"render": False}},
++                                {"Idempotency-Key": "w2c2-c2-gapcancel-retry-0001"})
++    retried = {}
++    if rcode in (200, 202):
++        _, _, retried = wait_job(stack, retry["item"]["job_id"])
++    ok = (seen.get("cancel_status") == 200 and job.get("status") == "cancelled"
++          and not registered and rcode in (200, 202)
++          and retried.get("status") == "succeeded"
++          and ((retry.get("item") or {}).get("config") or {}).get("retry_of") == job_id)
++    return ok, {**seen, "final_status": job.get("status"),
++                "registered": len(registered), "retry_status_code": rcode,
++                "retried_status": retried.get("status"),
++                "retry_of": ((retry.get("item") or {}).get("config") or {}).get("retry_of")}
++
++
++def c2_restart_scope(stack) -> tuple[bool, dict]:
++    """C2：真正遗留（上一实例）任务标中断；本实例在跑的不被误杀；其他类型不动。"""
++    from rkd_mvp.models import new_id, now_iso
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    orphan = new_id("ai-spatial-job")
++    foreign_dev = new_id("ai-development-job")
++    with stack.dev_repo.transaction(ORG, stack.project_id, write=True) as tx:
++        tx.insert_job({"job_id": orphan, "option_revision_id": rev["option_revision_id"],
++                       "adoption_version": 0, "input_hash": "0" * 64, "status": "running",
++                       "phase": "measurement", "attempt_count": 1, "settings": {},
++                       "config": {"kind": "spatial_outputs",
++                                  "run_instance": "spatial-worker-dead-000000000000"},
++                       "error_code": None, "error_message": None,
++                       "idempotency_key": f"orphan-{orphan}", "actor_id": "tool",
++                       "created_at": now_iso(), "updated_at": now_iso()})
++        tx.insert_job({"job_id": foreign_dev, "option_revision_id": rev["option_revision_id"],
++                       "adoption_version": 0, "input_hash": "0" * 64, "status": "running",
++                       "phase": "geometry", "attempt_count": 1, "settings": {},
++                       "config": {"kind": "ai_development_production"},
++                       "error_code": None, "error_message": None,
++                       "idempotency_key": f"dev-{foreign_dev}", "actor_id": "tool",
++                       "created_at": now_iso(), "updated_at": now_iso()})
++    os.environ["RKD_STUB_RENDER_MODE"] = "wait"
++    stack.gate.clear()
++    stack.entered.clear()
++    try:
++        code, gen, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                                 {"option_revision_id": rev["option_revision_id"],
++                                  "settings": {"render": True, "width": 320, "height": 240,
++                                               "samples": 8}},
++                                 {"Idempotency-Key": "w2c2-c2-live-0001"})
++        live_id = gen["item"]["job_id"]
++        if not stack.entered.wait(timeout=20):
++            return False, {"stage": "render_not_entered", "job": live_id}
++        recovered = stack.spatial_ai.recover(ORG, stack.project_id)
++        code_live, data_live, _ = base.http(
++            "GET", f"{stack.base}/spatial-outputs?job_id={live_id}")
++        live_status = (data_live.get("job") or {}).get("status")
++    finally:
++        os.environ["RKD_STUB_RENDER_MODE"] = "fast"
++        stack.gate.set()
++    _, _, live_final = wait_job(stack, live_id)
++    with stack.dev_repo.transaction(ORG, stack.project_id) as tx:
++        orphan_job = tx.job(orphan)
++        dev_job = tx.job(foreign_dev)
++    ok = (live_id not in (recovered.get("recovered") or [])
++          and live_status == "running" and live_final.get("status") == "succeeded"
++          and orphan in (recovered.get("recovered") or [])
++          and orphan_job and orphan_job["status"] == "failed"
++          and orphan_job["error_code"] == "WORKER_RESTARTED"
++          and dev_job and dev_job["status"] == "running")
++    return ok, {"recovered": recovered.get("recovered"), "live_job": live_id,
++                "live_status_during_recover": live_status,
++                "live_final": live_final.get("status"),
++                "orphan": {"id": orphan, "status": (orphan_job or {}).get("status"),
++                           "error": (orphan_job or {}).get("error_code")},
++                "other_kind": {"id": foreign_dev, "status": (dev_job or {}).get("status")},
++                "instance_id": recovered.get("instance_id"),
++                "note": "恢复以持久化的实例标记判定，不看内存 active 集合"}
++
++
++# ------------------------------------------------------------------- C3 按 ID
++def c3_explicit_isolated(stack) -> tuple[bool, dict]:
++    """C3：显式查失败任务，不得借用另一个成功任务的 revision/artifacts。"""
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    _, good, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                           {"option_revision_id": rev["option_revision_id"],
++                            "settings": {"render": False}},
++                           {"Idempotency-Key": "w2c2-c3-good-0001"})
++    good_id = good["item"]["job_id"]
++    _, _, good_job = wait_job(stack, good_id)
++    original = stack.spatial_ai.renderer
++
++    def boom(*_a, **_k):
++        raise RuntimeError("stub render failure")
++
++    stack.spatial_ai.renderer = boom
++    try:
++        _, bad, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                              {"option_revision_id": rev["option_revision_id"],
++                               "settings": {"render": True, "width": 320, "height": 240,
++                                            "samples": 8}},
++                              {"Idempotency-Key": "w2c2-c3-bad-0001"})
++        bad_id = bad["item"]["job_id"]
++        _, _, bad_job = wait_job(stack, bad_id)
++    finally:
++        stack.spatial_ai.renderer = original
++    code, state, _ = base.http("GET", f"{stack.base}/spatial-outputs?job_id={bad_id}")
++    revision = state.get("revision")
++    artifacts = state.get("artifacts") or []
++    ok = (good_job.get("status") == "succeeded" and bad_job.get("status") == "failed"
++          and code == 200 and (state.get("job") or {}).get("job_id") == bad_id
++          and revision is None and not artifacts)
++    return ok, {"good_job": good_id, "requested_job": bad_id,
++                "returned_job": (state.get("job") or {}).get("job_id"),
++                "job_status": (state.get("job") or {}).get("status"),
++                "returned_revision": (revision or {}).get("production_revision_id"),
++                "returned_revision_job": (revision or {}).get("job_id"),
++                "artifacts": len(artifacts), "revision_source": state.get("revision_source"),
++                "note": "显式查一个失败任务时，revision/artifacts 必须为空，不能拿别人的"}
++
++
++def c3_revision_lookup(stack) -> tuple[bool, dict]:
++    """C3：按 production_revision_id 查，返回的 job 必须就是它的 job。"""
++    rev = stack.import_layout("B")
++    stack.adopt(rev)
++    _, gen, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                          {"option_revision_id": rev["option_revision_id"],
++                           "settings": {"render": False}},
++                          {"Idempotency-Key": "w2c2-c3-rev-0001"})
++    job_id = gen["item"]["job_id"]
++    _, state, _ = wait_job(stack, job_id)
++    revision = state.get("revision") or {}
++    rid = revision.get("production_revision_id")
++    # 再造一个更新的任务，确保"返回最新 job"会答错
++    _, gen2, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                           {"option_revision_id": rev["option_revision_id"],
++                            "settings": {"render": False}},
++                           {"Idempotency-Key": "w2c2-c3-rev-0002"})
++    wait_job(stack, gen2["item"]["job_id"])
++    code, data, _ = base.http("GET",
++                              f"{stack.base}/spatial-outputs?production_revision_id={rid}")
++    returned = (data.get("revision") or {}).get("production_revision_id")
++    ok = (rid is not None and code == 200 and returned == rid
++          and (data.get("job") or {}).get("job_id") == job_id
++          and (data.get("job") or {}).get("job_id") != gen2["item"]["job_id"])
++    return ok, {"requested_revision": rid, "returned_revision": returned,
++                "expected_job": job_id, "returned_job": (data.get("job") or {}).get("job_id"),
++                "newer_job": gen2["item"]["job_id"]}
++
++
++def c3_conflict_rejected(stack) -> tuple[bool, dict]:
++    """C3：job_id 与 production_revision_id 同时给 → 明确拒绝。"""
++    code, data, _ = base.http(
++        "GET", f"{stack.base}/spatial-outputs?job_id=x&production_revision_id=y")
++    return (code == 400 and data.get("error_code") == "AMBIGUOUS_QUERY"), {
++        "status": code, "error_code": data.get("error_code"),
++        "message": data.get("message")}
++
++
++def c3_history_over_50(stack) -> tuple[bool, dict]:
++    """C3：>50 条历史后，显式按 ID 仍要命中，不能被"最新 50 条"截断吃掉。"""
++    rev = stack.import_layout("A")
++    stack.adopt(rev)
++    original = stack.spatial_ai.start_workers
++    stack.spatial_ai.start_workers = False   # 同步执行：55 个任务逐条落库，避免并发噪声
++    try:
++        code, first, _ = base.http("POST", f"{stack.base}/spatial-outputs",
++                                   {"option_revision_id": rev["option_revision_id"],
++                                    "settings": {"render": False}},
++                                   {"Idempotency-Key": "w2c2-c3-history-0000"})
++        target = first["item"]["job_id"]
++        target_status = first["item"]["status"]
++        for index in range(1, 55):
++            base.http("POST", f"{stack.base}/spatial-outputs",
++                      {"option_revision_id": rev["option_revision_id"],
++                       "settings": {"render": False}},
++                      {"Idempotency-Key": f"w2c2-c3-history-{index:04d}"})
++    finally:
++        stack.spatial_ai.start_workers = original
++    code, state, _ = base.http("GET", f"{stack.base}/spatial-outputs?job_id={target}")
++    revision = state.get("revision") or {}
++    overview = base.http("GET", f"{stack.base}/spatial-outputs")[1]
++    kinds = {(j.get("config") or {}).get("kind") for j in overview.get("jobs") or []}
++    ok = (target_status == "succeeded" and code == 200
++          and (state.get("job") or {}).get("job_id") == target
++          and revision.get("job_id") == target
++          and bool(state.get("artifacts"))
++          and kinds in ({"spatial_outputs"}, set()))
++    return ok, {"requested_job": target, "job_status_before_query": target_status,
++                "query_status": code, "returned_job": (state.get("job") or {}).get("job_id"),
++                "returned_revision_job": revision.get("job_id"),
++                "artifacts": len(state.get("artifacts") or []),
++                "overview_job_kinds": sorted(k for k in kinds if k),
++                "note": "分页前按类型筛选；按 ID 直接查，不扫最新 50 条"}
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--label", default="after")
++    parser.add_argument("--out", default=str(ROOT / "var/evidence/roadmap/W2-二次收口"))
++    args = parser.parse_args()
++    raw = Path(args.out)
++    out_dir = raw if raw.is_absolute() else (ROOT / raw)
++    out_dir.mkdir(parents=True, exist_ok=True)
++
++    record("W2C2-C1-01", "三角形 18㎡ 扣 4.5㎡：主量/独立复算/饰面量 13.5㎡、试算 13500 元",
++           c1_triangle_deduction)
++    record("W2C2-C1-02", "扣除区斜穿斜边（交点 x=2600）：净 17.405㎡，两条路径一致",
++           c1_slanted_crossing)
++    record("W2C2-C1-03", "矩形/L 形回归：24/22 不变，独立复算一致", c1_rect_regression)
++    record("W2C2-C1-04", "单位契约：scope 只收 mm/m2，m 与 ft2 必须拒绝", c1_unit_contract)
++    record("W2C2-C1-05", "无效多边形：自交/NaN/重复 object_id/退化必须拒绝",
++           c1_invalid_polygon)
++    record("W2C2-C1-06", "同层材料面重叠：无声明拒绝；有声明按并集不重复相加",
++           c1_same_layer_overlap)
++
++    runtime = out_dir / f"runtime-{args.label}"
++    stack = base.Stack(runtime)
++    try:
++        record("W2C2-C1-07", "真实入口（架构口径）：合法三角材料面 → 13.5㎡/13500 元，CSV/HTML/清单一致",
++               lambda: c1_entry_architect(stack))
++        record("W2C2-C1-08", "真实入口（判别性）：保留区竖直带内截断 → 9.4224㎡，旧算法 6.5469㎡",
++               lambda: c1_entry_partial_band(stack))
++        record("W2C2-C2-01", "提交后/启动前的真实 HTTP 状态查询不得终结正常任务",
++               lambda: c2_status_in_launch_gap(stack))
++        record("W2C2-C2-02", "同一窗口取消仍生效、不复活、可显式重试",
++               lambda: c2_cancel_in_gap(stack))
++        record("W2C2-C2-03", "真正遗留任务标中断；本实例在跑不被误杀；其他类型不受影响",
++               lambda: c2_restart_scope(stack))
++        record("W2C2-C3-01", "显式 job_id 只返回自己：失败任务不借用他人 revision/artifacts",
++               lambda: c3_explicit_isolated(stack))
++        record("W2C2-C3-02", "按 production_revision_id 查，返回的 job 必须对应它",
++               lambda: c3_revision_lookup(stack))
++        record("W2C2-C3-03", "job_id 与 production_revision_id 同时指定 → 明确拒绝",
++               lambda: c3_conflict_rejected(stack))
++        record("W2C2-C3-04", "超过 50 条历史仍能按 ID 命中（真实 HTTP）",
++               lambda: c3_history_over_50(stack))
++    finally:
++        stack.close()
++
++    failed = sum(1 for c in CHECKS if c["result"] != "observed_pass")
++    payload = {
++        "task_id": "W2-二次收口",
++        "schema_version": "rkd-w2-second-closeout-checks.v1",
++        "label": args.label,
++        "source_root": str(ROOT),
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "environment": {"python": sys.version.split()[0],
++                        "renderer": "controllable stub (no Blender in repro)",
++                        "stack": "isolated SQLite + real loopback HTTP server",
++                        "external_calls": 0, "keys_used": False},
++        "checks": CHECKS,
++        "totals": {"observed_pass": len(CHECKS) - failed, "observed_fail": failed},
++        "external_calls": 0, "tokens": 0, "cost_amount_or_null": None,
++        "cost_status": "no_external_calls_zero_cost",
++    }
++    path = out_dir / f"repro-{args.label}.json"
++    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"label": args.label, "passed": len(CHECKS) - failed,
++                      "failed": failed, "out": str(path)}, ensure_ascii=False))
++    return 0 if failed == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/web/src/AiSpatialOutputsPanel.tsx b/web/src/AiSpatialOutputsPanel.tsx
+index 6257b8f..ff27680 100644
+--- a/web/src/AiSpatialOutputsPanel.tsx
++++ b/web/src/AiSpatialOutputsPanel.tsx
+@@ -13,7 +13,7 @@ type Revision = {
+   package: { missing: string[]; render?: Record<string, any>; binding?: Binding; manifest_only_files?: string[]; package_check?: Record<string, any> };
+ };
+ type Artifact = { artifact_id: string; filename: string; content_type: string; size_bytes: number; sha256: string };
+-type Status = { job: Job | null; jobs: Job[]; revision: Revision | null; revisions: Revision[]; artifacts: Artifact[]; adoption: Record<string, any> | null; boundary: Record<string, any> };
++type Status = { job: Job | null; jobs: Job[]; revision: Revision | null; revisions: Revision[]; artifacts: Artifact[]; adoption: Record<string, any> | null; boundary: Record<string, any>; revision_source?: string; last_successful?: Revision | null; query?: { explicit?: boolean } };
+ type Option = { option_revision_id: string; option_id: string; revision_no: number; lifecycle_status: string; model: Record<string, any> };
+ 
+ async function request<T>(path: string, method = "GET", body?: unknown, extra?: Record<string, string>): Promise<T> {
+@@ -161,6 +161,10 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
+         <button type="button" data-testid="spatial-retry" disabled={busy} onClick={() => void retryJob(status.job!.job_id)}>按原参数重试</button>}
+     </div>
+     {status?.job?.error_message && <p className="design-feedback error" role="alert">{status.job.error_message}</p>}
++    {status?.revision_source === "last_successful" && <p className="ai-boundary" data-testid="spatial-previous-output">
++      本次任务没有产出成果，下面显示的是<b>上一份成功成果</b>（{status.revision?.option_id} v{status.revision?.baseline?.revision_no}）；
++      这不是当前任务的产物，只是页面默认续看。
++    </p>}
+     {(status?.revisions?.length ?? 0) > 1 && <div className="spatial-history">
+       <strong>成果历史（按任务关联，不按完成顺序推断）</strong>
+       <ul>
