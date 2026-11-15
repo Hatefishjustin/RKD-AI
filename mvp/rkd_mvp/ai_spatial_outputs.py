@@ -24,15 +24,22 @@ from typing import Any
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
-GENERATOR_VERSION = "rkd-spatial-outputs.v2"
+GENERATOR_VERSION = "rkd-spatial-outputs.v3"
 PLAN_VERSION = "rkd-spatial-plan.v3"
 SCENE_VERSION = "rkd-spatial-scene.v1"
-QUANTITY_VERSION = "rkd-spatial-quantity.v2"
-COST_VERSION = "rkd-spatial-cost.v2"
+QUANTITY_VERSION = "rkd-spatial-quantity.v3"
+COST_VERSION = "rkd-spatial-cost.v3"
 MANIFEST_VERSION = "rkd-spatial-output-manifest.v2"
-FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v1"
+FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v2"
 
 MM2 = 1_000_000.0
+
+# finish_scope 单位契约：坐标只接受 mm，面积只接受 m2，不做静默换算。
+FINISH_SCOPE_COORD_UNITS = {"mm"}
+FINISH_SCOPE_AREA_UNITS = {"m2"}
+FINISH_SCOPE_DEDUCTION_BASES = {"keepouts_within_scope", "none"}
+MAX_COORD_MM = 1_000_000.0        # 单点坐标绝对值上限（1 km），挡住 NaN/inf 与明显错单位
+INDEPENDENT_TOL_M2 = 0.001        # 两条计量路径允许的最大差值（1e-3 ㎡）
 
 
 def _json(value: Any) -> bytes:
@@ -186,17 +193,65 @@ def _length(intervals: list[tuple[float, float]]) -> float:
     return sum(high - low for low, high in intervals)
 
 
+def _segments(points: list) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    n = len(points)
+    return [((float(points[i][0]), float(points[i][1])),
+             (float(points[(i + 1) % n][0]), float(points[(i + 1) % n][1])))
+            for i in range(n)]
+
+
+def _segment_cross_x(a: tuple, b: tuple) -> float | None:
+    """两线段真实相交处的 x（含端点接触）；平行/共线返回 None。"""
+    (x1, y1), (x2, y2) = a
+    (x3, y3), (x4, y4) = b
+    denom = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
+    if denom == 0:
+        return None
+    t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / denom
+    u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / denom
+    if -1e-12 <= t <= 1 + 1e-12 and -1e-12 <= u <= 1 + 1e-12:
+        return x1 + t * (x2 - x1)
+    return None
+
+
+def _event_abscissae(polys: list[list[list[float]]]) -> list[float]:
+    """条带必须切开的所有 x：顶点 + 边与边的交点。
+
+    只在顶点 x 处切条带是不够的：斜边与扣除区边界相交处，条带内的截面长度
+    不再是 x 的线性函数，中点采样会系统性偏差（三角形扣 4.5㎡ 会被算成 6㎡）。
+    把交点的 x 也当作断点后，每个条带内截面长度对 x 线性，中点值即精确积分。
+    """
+    xs: set[float] = set()
+    edges: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    for poly in polys:
+        pts = [(float(p[0]), float(p[1])) for p in poly]
+        if len(pts) < 3:
+            continue
+        xs.update(x for x, _ in pts)
+        edges.extend(_segments(pts))
+    for index, (a1, a2) in enumerate(edges):
+        low_a, high_a = min(a1[0], a2[0]), max(a1[0], a2[0])
+        for b1, b2 in edges[index + 1:]:
+            low_b, high_b = min(b1[0], b2[0]), max(b1[0], b2[0])
+            if max(low_a, low_b) > min(high_a, high_b):
+                continue  # x 区间不相交，不可能有交点
+            x = _segment_cross_x((a1, a2), (b1, b2))
+            if x is not None and math.isfinite(x):
+                xs.add(x)
+    return sorted(xs)
+
+
 def scanline_area(polys: list[list[list[float]]]) -> float:
     """Exact area of the UNION of polygons by vertical-strip integration.
 
-    Deliberately independent of Shapely: stripes are cut at every vertex
-    abscissa and sampled at the mid-point, so overlapping polygons are unioned
-    (not summed) and no GEOS predicate is reused.
+    Deliberately independent of Shapely: strips are cut at every vertex abscissa
+    AND every edge-edge crossing, so the slice length is linear inside a strip
+    and the mid-point value integrates exactly. No GEOS predicate is reused.
     """
-    xs = sorted({float(p[0]) for poly in polys for p in poly})
+    xs = _event_abscissae(polys)
     total = 0.0
     for a, b in zip(xs, xs[1:]):
-        if b - a <= 0:
+        if b - a <= 1e-9:
             continue
         mid = (a + b) / 2.0
         intervals: list[tuple[float, float]] = []
@@ -208,13 +263,17 @@ def scanline_area(polys: list[list[list[float]]]) -> float:
 
 def scanline_area_minus(polys: list[list[list[float]]],
                         holes: list[list[list[float]]]) -> float:
-    """Union(polys) minus Union(holes), same strip method; holes never double-deduct."""
+    """Union(polys) minus Union(holes), same exact strip method.
+
+    Holes never double-deduct (intervals are merged before subtraction) and the
+    crossing abscissae of holes against polygon edges are strip breakpoints too.
+    """
     if not holes:
         return scanline_area(polys)
-    xs = sorted({float(p[0]) for poly in polys + holes for p in poly})
+    xs = _event_abscissae(polys + holes)
     total = 0.0
     for a, b in zip(xs, xs[1:]):
-        if b - a <= 0:
+        if b - a <= 1e-9:
             continue
         mid = (a + b) / 2.0
         inside: list[tuple[float, float]] = []
@@ -228,52 +287,139 @@ def scanline_area_minus(polys: list[list[list[float]]],
 
 
 def _polygon_pts(obj: dict) -> list[list[float]]:
-    return [[float(p[0]), float(p[1])] for p in obj.get("polygon_mm") or []]
+    raw = obj.get("polygon_mm")
+    if not isinstance(raw, list):
+        raise ValueError("polygon_mm 必须是坐标数组")
+    pts: list[list[float]] = []
+    for index, point in enumerate(raw):
+        if not isinstance(point, (list, tuple)) or len(point) < 2:
+            raise ValueError(f"polygon_mm[{index}] 必须是 [x, y]")
+        try:
+            x, y = float(point[0]), float(point[1])
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"polygon_mm[{index}] 坐标不是数值") from error
+        if not (math.isfinite(x) and math.isfinite(y)):
+            raise ValueError(f"polygon_mm[{index}] 坐标不是有限数值（NaN/inf）")
+        if abs(x) > MAX_COORD_MM or abs(y) > MAX_COORD_MM:
+            raise ValueError(f"polygon_mm[{index}] 坐标超出 ±{MAX_COORD_MM:.0f} mm，疑似单位错误")
+        pts.append([x, y])
+    return pts
 
 
 def normalize_finish_scope(scope: dict | None) -> dict | None:
     """Validate an explicitly declared material-face / paving scope.
 
     The scope must carry its own provenance: it is the only thing that may turn
-    a geometric zone union into a supported finish quantity.
+    a geometric zone union into a supported finish quantity. Being a manual
+    fixture does not excuse it from the contract:
+
+    * coordinates are mm; areas are m2 — anything else is rejected, never silently
+      converted (``unit='m'`` / ``unit='ft2'`` used to be accepted and measured
+      as if millimetres);
+    * every polygon must be finite and a valid simple polygon;
+    * object ids must be present and unique; material references are required;
+    * overlapping faces on the SAME layer must be declared explicitly, otherwise
+      they would be double counted without explanation. Different layers are
+      kept as separate groups.
     """
     if scope is None:
         return None
     if not isinstance(scope, dict):
         raise ValueError("finish_scope 必须是对象")
+    unit = scope.get("unit") or "mm"
+    if not isinstance(unit, str) or unit not in FINISH_SCOPE_COORD_UNITS:
+        raise ValueError(
+            f"finish_scope.unit 只支持 {sorted(FINISH_SCOPE_COORD_UNITS)}（收到 {unit!r}）；"
+            "本批不做单位静默换算")
+    deduction_basis = scope.get("deduction_basis") or "keepouts_within_scope"
+    if deduction_basis not in FINISH_SCOPE_DEDUCTION_BASES:
+        raise ValueError(
+            f"finish_scope.deduction_basis 必须是 {sorted(FINISH_SCOPE_DEDUCTION_BASES)}"
+            f"（收到 {deduction_basis!r}）；扣除口径必须明确")
     areas = scope.get("areas")
     if not isinstance(areas, list) or not areas:
         raise ValueError("finish_scope.areas 必须是非空数组")
     declared_by = scope.get("declared_by")
     if not isinstance(declared_by, str) or not declared_by:
         raise ValueError("finish_scope.declared_by 必须标明来源（人工/夹具/依据）")
+    overlap_declaration = scope.get("overlap_declaration")
+    if overlap_declaration is not None and not isinstance(overlap_declaration, str):
+        raise ValueError("finish_scope.overlap_declaration 必须是说明文字")
     parsed = []
+    seen_ids: set[str] = set()
     for index, area in enumerate(areas):
-        pts = _polygon_pts(area)
+        if not isinstance(area, dict):
+            raise ValueError(f"finish_scope.areas[{index}] 必须是对象")
+        try:
+            pts = _polygon_pts(area)
+        except ValueError as error:
+            raise ValueError(f"finish_scope.areas[{index}]：{error}") from error
         if len(pts) < 3:
             raise ValueError(f"finish_scope.areas[{index}] 多边形少于 3 点")
+        object_id = str(area.get("object_id") or f"FA{index + 1}")
+        if object_id in seen_ids:
+            raise ValueError(f"finish_scope 内 object_id 重复：{object_id}")
+        seen_ids.add(object_id)
+        area_unit = area.get("unit") or "m2"
+        if not isinstance(area_unit, str) or area_unit not in FINISH_SCOPE_AREA_UNITS:
+            raise ValueError(
+                f"finish_scope.areas[{index}].unit 只支持 "
+                f"{sorted(FINISH_SCOPE_AREA_UNITS)}（收到 {area_unit!r}）")
         material = area.get("material_ref") or {}
+        if not isinstance(material, dict):
+            raise ValueError(f"finish_scope.areas[{index}].material_ref 必须是对象")
         if not material.get("material_id") and area.get("material_id"):
             material = {"material_id": area.get("material_id"),
                         "name": area.get("material_name"),
                         "spec_status": area.get("material_spec_status")}
         if not material.get("material_id"):
             raise ValueError(f"finish_scope.areas[{index}] 缺少 material_ref.material_id")
+        polygon = Polygon([(x, y) for x, y in pts])
+        if not polygon.is_valid or polygon.area <= 0:
+            raise ValueError(
+                f"finish_scope.areas[{index}] 不是有效简单多边形（自交/退化），"
+                "不能作为计量依据")
         parsed.append({
-            "object_id": str(area.get("object_id") or f"FA{index + 1}"),
+            "object_id": object_id,
             "name": str(area.get("name") or f"材料面 {index + 1}"),
             "polygon_mm": pts,
             "material_id": str(material["material_id"]),
             "material_name": material.get("name"),
             "material_spec_status": material.get("spec_status") or "unknown",
-            "unit": area.get("unit") or "m2",
+            "unit": area_unit,
+            "layer": str(area.get("layer") or "floor_finish"),
+            "declared_area_m2": round(polygon.area / MM2, 4),
         })
+    # 同层重叠：不给说明就拒绝，避免同一块地被两层材料各算一次
+    overlaps = []
+    for index, first in enumerate(parsed):
+        for second in parsed[index + 1:]:
+            if first["layer"] != second["layer"]:
+                continue
+            pa = Polygon([(x, y) for x, y in first["polygon_mm"]])
+            pb = Polygon([(x, y) for x, y in second["polygon_mm"]])
+            if not pa.intersects(pb):
+                continue
+            shared = pa.intersection(pb).area / MM2
+            if shared > 1e-6:
+                overlaps.append({"layer": first["layer"],
+                                 "objects": [first["object_id"], second["object_id"]],
+                                 "overlap_m2": round(shared, 4)})
+    if overlaps and not (isinstance(overlap_declaration, str)
+                         and overlap_declaration.strip()):
+        detail = "；".join(f"{o['layer']}:{'+'.join(o['objects'])}={o['overlap_m2']}㎡"
+                          for o in overlaps)
+        raise ValueError(
+            "同层材料面重叠但未声明，不能无说明重复相加：" + detail
+            + "。请合并为一块，或用 overlap_declaration 说明叠层语义")
     return {"schema_version": FINISH_SCOPE_VERSION,
             "kind": scope.get("kind") or "material_face_slice",
             "declared_by": declared_by,
             "declaration": scope.get("declaration"),
-            "unit": scope.get("unit") or "mm",
-            "deduction_basis": scope.get("deduction_basis") or "keepouts_within_scope",
+            "unit": unit,
+            "deduction_basis": deduction_basis,
+            "overlap_declaration": overlap_declaration,
+            "same_layer_overlaps": overlaps,
             "site_verified": False,
             "areas": parsed}
 
@@ -355,7 +501,7 @@ def measure(model: dict, *, finish_scope: dict | None = None) -> dict:
          "source_objects": [oid for oid, _p in zones],
          "independent_recompute_m2": round(independent_net, 3),
          "independent_gross_m2": round(independent_gross, 3),
-         "independent_method": "vertical_strip_union_v1",
+         "independent_method": "vertical_strip_exact_v2",
          "independent_delta_m2": round(independent_net - net / MM2, 4),
          "sum_of_zones_m2": round(shoelace_sum, 3),
          "zone_overlap_m2": round(overlap / MM2, 3),
@@ -389,6 +535,14 @@ def measure(model: dict, *, finish_scope: dict | None = None) -> dict:
 
 
 def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
+    """Supported finish area: EXACT geometry is the business value.
+
+    The strip integration stays as an independent cross-check only. It used to be
+    the business value itself, which turned a known-independent error on slanted
+    edges into a wrong finish quantity and a wrong trial amount. When the two
+    paths disagree beyond ``INDEPENDENT_TOL_M2`` this returns ``disputed`` with no
+    value and no priceable groups, instead of a confidently wrong number.
+    """
     if scope is None:
         return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积",
                 "value": None, "unit": "m2", "known_status": "unknown",
@@ -396,30 +550,68 @@ def _finish_quantity(scope: dict | None, keep_pts: list) -> dict:
                                   "本批没有显式材料面或铺装范围依据，"
                                   "不得据此推出完成面工程量",
                 "required_basis": "显式材料面切片（铺装范围 + 材料引用 + 计量单位 + 扣除依据 + 来源）"}
-    groups: dict[str, dict] = {}
-    total = 0.0
+    apply_keepouts = scope["deduction_basis"] != "none"
+    keep_polys = [Polygon([(x, y) for x, y in pts]) for pts in keep_pts] if apply_keepouts else []
+    keep_union = unary_union(keep_polys) if keep_polys else None
+    layers: dict[tuple[str, str], list[dict]] = {}
     for area in scope["areas"]:
-        pts = area["polygon_mm"]
-        net = scanline_area_minus([pts], keep_pts) / MM2
-        total += net
-        gid = area["material_id"]
-        group = groups.setdefault(gid, {
-            "material_id": gid, "material_name": area["material_name"],
-            "material_spec_status": area["material_spec_status"],
-            "area_m2": 0.0, "area_objects": []})
-        group["area_m2"] = round(group["area_m2"] + net, 3)
-        group["area_objects"].append(area["object_id"])
+        layers.setdefault((area["layer"], area["material_id"]), []).append(area)
+    groups: list[dict] = []
+    total_exact = 0.0
+    worst_delta = 0.0
+    for (layer, material_id), areas in sorted(layers.items()):
+        polygons = [Polygon([(x, y) for x, y in area["polygon_mm"]]) for area in areas]
+        merged = unary_union(polygons)
+        exact = merged.area
+        if keep_union is not None:
+            exact -= merged.intersection(keep_union).area
+        exact_m2 = max(0.0, exact / MM2)
+        independent_m2 = scanline_area_minus([a["polygon_mm"] for a in areas],
+                                             keep_pts if apply_keepouts else []) / MM2
+        delta = independent_m2 - exact_m2
+        worst_delta = max(worst_delta, abs(delta))
+        total_exact += exact_m2
+        groups.append({
+            "layer": layer, "material_id": material_id,
+            "material_name": areas[0]["material_name"],
+            "material_spec_status": areas[0]["material_spec_status"],
+            "area_m2": round(exact_m2, 3),
+            "independent_recompute_m2": round(independent_m2, 3),
+            "independent_delta_m2": round(delta, 4),
+            "independent_method": "vertical_strip_exact_v2",
+            "area_objects": [a["object_id"] for a in areas],
+            "method": "exact_union_per_material_minus_keepouts",
+        })
+    disputed = worst_delta > INDEPENDENT_TOL_M2
+    basis_source = {"declared_by": scope["declared_by"],
+                    "declaration": scope["declaration"],
+                    "kind": scope["kind"], "unit": scope["unit"],
+                    "deduction_basis": scope["deduction_basis"],
+                    "overlap_declaration": scope.get("overlap_declaration"),
+                    "site_verified": False}
+    if disputed:
+        return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积（按材料面切片）",
+                "value": None, "unit": "m2", "known_status": "disputed",
+                "method": "declared_finish_scope_minus_keepouts",
+                "formula_version": QUANTITY_VERSION,
+                "source_objects": [a["object_id"] for a in scope["areas"]],
+                "basis_source": basis_source,
+                "material_groups": groups,
+                "discrepancy_m2": round(worst_delta, 4),
+                "discrepancy_tolerance_m2": INDEPENDENT_TOL_M2,
+                "unknown_reason": f"精确几何与独立条带复算相差 {worst_delta:.4f} ㎡，"
+                                  f"超过容差 {INDEPENDENT_TOL_M2} ㎡；两条可信路径不一致时"
+                                  "不输出已知饰面量，也不据此试算金额",
+                "note": "材料面切片来自声明来源，未经现场复核；本项待核，不给数值"}
     return {"quantity_id": "Q-FLOOR-FINISH", "name": "地坪完成面饰面净面积（按材料面切片）",
-            "value": round(total, 3), "unit": "m2", "known_status": "known",
-            "method": "declared_finish_scope_minus_keepouts",
+            "value": round(total_exact, 3), "unit": "m2", "known_status": "known",
+            "method": "exact_union_per_material_minus_keepouts",
             "formula_version": QUANTITY_VERSION,
             "source_objects": [a["object_id"] for a in scope["areas"]],
-            "basis_source": {"declared_by": scope["declared_by"],
-                             "declaration": scope["declaration"],
-                             "kind": scope["kind"], "unit": scope["unit"],
-                             "deduction_basis": scope["deduction_basis"],
-                             "site_verified": False},
-            "material_groups": sorted(groups.values(), key=lambda g: g["material_id"]),
+            "basis_source": basis_source,
+            "material_groups": groups,
+            "independent_max_delta_m2": round(worst_delta, 4),
+            "independent_tolerance_m2": INDEPENDENT_TOL_M2,
             "note": "面积来自人工/夹具标注的材料面切片，未经现场复核；"
                     "材料规格与产品选型仍为假设，单价缺失时金额保持 unknown"}
 
@@ -444,7 +636,15 @@ def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
              "markup": "user_confirmed_but_not_applied_without_price_source"}
     known_items: list[dict] = []
     unknown: list[dict] = []
-    if (finish or {}).get("known_status") != "known" or not groups:
+    finish_status = (finish or {}).get("known_status")
+    if finish_status == "disputed":
+        basis["area_basis"] = "two_paths_disagree"
+        unknown.append({
+            "statement": "饰面面积的两条独立计量路径结果不一致（相差 "
+                         f"{(finish or {}).get('discrepancy_m2')} ㎡），本批不给已知饰面量",
+            "quantity_ref": "Q-FLOOR-FINISH",
+            "impact": "即使给了单价也不试算金额；待核清几何后再出数"})
+    elif finish_status != "known" or not groups:
         basis["area_basis"] = "missing_finish_scope"
         unknown.append({"statement": "地坪完成面铺装范围/材料面未提供，面积依据 unknown",
                         "quantity_ref": "Q-FLOOR-FINISH",
@@ -453,12 +653,16 @@ def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
         basis["area_basis"] = (finish.get("basis_source") or {}).get("declared_by") or "declared"
         for group in groups:
             price = prices.get(group["material_id"])
+            ref = f"Q-FLOOR-FINISH/{group['material_id']}"
+            if group.get("layer") and group["layer"] != "floor_finish":
+                ref = f"{ref}@{group['layer']}"
             if isinstance(price, (int, float)) and not isinstance(price, bool) and price > 0:
                 known_items.append({
                     "item": f"{group.get('material_name') or group['material_id']}"
                             f"（按输入假设单价试算）",
                     "material_id": group["material_id"],
-                    "quantity_ref": f"Q-FLOOR-FINISH/{group['material_id']}",
+                    "layer": group.get("layer"),
+                    "quantity_ref": ref,
                     "quantity_m2": group["area_m2"], "unit_price_cny": price,
                     "amount_cny": round(group["area_m2"] * price, 2),
                     "basis": "caller_provided_assumption_not_a_quote",
@@ -471,7 +675,7 @@ def build_cost(quantities: dict, *, settings: dict | None = None) -> dict:
                     "statement": f"{group.get('material_name') or group['material_id']}"
                                  f" 没有对应价源（材料/工艺/损耗/起订量）",
                     "material_id": group["material_id"],
-                    "quantity_ref": f"Q-FLOOR-FINISH/{group['material_id']}",
+                    "quantity_ref": ref,
                     "impact": f"{group['area_m2']} ㎡ 的金额保持 unknown"})
         basis["unit_prices"] = ("partially_provided_by_caller_assumption" if known_items
                                 else "not_provided")
@@ -517,6 +721,11 @@ def cost_html(cost: dict, quantities: dict) -> bytes:
     if cost["known_items"]:
         headline = ("以下金额是<b>假设单价试算</b>，面积依据同时列出；不是报价、不是合同、"
                     "不含损耗/工艺/税，采购与发布未触发。")
+    elif finish.get("known_status") == "disputed":
+        headline = ("本页没有金额：饰面面积的两条独立计量路径不一致（相差 "
+                    f"{finish.get('discrepancy_m2')} ㎡，超过容差 "
+                    f"{finish.get('discrepancy_tolerance_m2')} ㎡），<b>待核</b>；"
+                    "不输出已知饰面量，也不据其试算，金额一律不填 0。")
     else:
         headline = ("本页没有金额：面积依据或价源缺失，所有金额保持 unknown。"
                     "不把几何净量当作造价，也不把草案当报价或合同。")

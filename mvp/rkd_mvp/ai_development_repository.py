@@ -98,11 +98,32 @@ class _DevelopmentTransaction:
             (*self.scope, job_id))
         return self._public_job(rows[0]) if rows else None
 
-    def jobs(self, limit: int = 20) -> list[dict[str, Any]]:
-        rows = self._rows(
-            f"SELECT * FROM {self.job_table} WHERE organization_id={self._p} AND project_id={self._p} ORDER BY created_at DESC, job_id DESC LIMIT {self._p}",
-            (*self.scope, limit))
-        return [self._public_job(row) for row in rows]
+    def jobs(self, limit: int | None = 20, *, kind: str | None = None) -> list[dict[str, Any]]:
+        """Jobs newest first.
+
+        ``kind`` filters by ``config.kind`` **before** the limit is applied, so a
+        page can never claim "the 50 newest rows are the whole history": the
+        shared table is written by more than one subsystem. ``limit=None`` means
+        "all rows of that kind".
+        """
+        sql = (f"SELECT * FROM {self.job_table} WHERE organization_id={self._p} "
+               f"AND project_id={self._p}")
+        args: tuple[Any, ...] = self.scope
+        if kind is not None:
+            if self.postgres:
+                sql += f" AND config->>'kind'={self._p}"
+                args += (kind,)
+            else:
+                sql += f" AND config_json LIKE {self._p}"
+                args += (f'%"kind":"{kind}"%',)
+        sql += " ORDER BY created_at DESC, job_id DESC"
+        if limit is not None:
+            sql += f" LIMIT {self._p}"
+            args += (limit,)
+        items = [self._public_job(row) for row in self._rows(sql, args)]
+        if kind is not None:
+            items = [j for j in items if (j.get("config") or {}).get("kind") == kind]
+        return items
 
     def insert_job(self, row: dict[str, Any]) -> None:
         columns = ("job_id", "organization_id", "project_id", "option_revision_id", "adoption_version",
@@ -196,10 +217,32 @@ class _DevelopmentTransaction:
             (*self.scope, production_revision_id))
         return self._public_revision(rows[0]) if rows else None
 
-    def revisions(self, limit: int = 20) -> list[dict[str, Any]]:
+    def revisions(self, limit: int | None = 20, *,
+                  measurement_prefix: str | None = None) -> list[dict[str, Any]]:
+        """Revisions newest first, optionally restricted to one measurement family.
+
+        The prefix filter is pushed into SQL so that a busy shared table cannot
+        push this page's revisions out of an arbitrary "latest N" window.
+        """
+        sql = (f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} "
+               f"AND project_id={self._p}")
+        args: tuple[Any, ...] = self.scope
+        if measurement_prefix:
+            sql += f" AND measurement_version LIKE {self._p}"
+            args += (f"{measurement_prefix}%",)
+        sql += " ORDER BY created_at DESC, production_revision_id DESC"
+        if limit is not None:
+            sql += f" LIMIT {self._p}"
+            args += (limit,)
+        return [self._public_revision(row) for row in self._rows(sql, args)]
+
+    def revisions_by_job(self, job_id: str) -> list[dict[str, Any]]:
+        """Revisions belonging to ONE job (direct lookup, no global window)."""
         rows = self._rows(
-            f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} AND project_id={self._p} ORDER BY created_at DESC LIMIT {self._p}",
-            (*self.scope, limit))
+            f"SELECT * FROM {self.revision_table} WHERE organization_id={self._p} "
+            f"AND project_id={self._p} AND job_id={self._p} "
+            f"ORDER BY created_at DESC, production_revision_id DESC",
+            (*self.scope, job_id))
         return [self._public_revision(row) for row in rows]
 
     def insert_revision(self, row: dict[str, Any]) -> None:

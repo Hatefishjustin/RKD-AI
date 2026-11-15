@@ -13,7 +13,7 @@ type Revision = {
   package: { missing: string[]; render?: Record<string, any>; binding?: Binding; manifest_only_files?: string[]; package_check?: Record<string, any> };
 };
 type Artifact = { artifact_id: string; filename: string; content_type: string; size_bytes: number; sha256: string };
-type Status = { job: Job | null; jobs: Job[]; revision: Revision | null; revisions: Revision[]; artifacts: Artifact[]; adoption: Record<string, any> | null; boundary: Record<string, any> };
+type Status = { job: Job | null; jobs: Job[]; revision: Revision | null; revisions: Revision[]; artifacts: Artifact[]; adoption: Record<string, any> | null; boundary: Record<string, any>; revision_source?: string; last_successful?: Revision | null; query?: { explicit?: boolean } };
 type Option = { option_revision_id: string; option_id: string; revision_no: number; lifecycle_status: string; model: Record<string, any> };
 
 async function request<T>(path: string, method = "GET", body?: unknown, extra?: Record<string, string>): Promise<T> {
@@ -161,6 +161,10 @@ export function AiSpatialOutputsPanel({ projectId }: { projectId: string }) {
         <button type="button" data-testid="spatial-retry" disabled={busy} onClick={() => void retryJob(status.job!.job_id)}>按原参数重试</button>}
     </div>
     {status?.job?.error_message && <p className="design-feedback error" role="alert">{status.job.error_message}</p>}
+    {status?.revision_source === "last_successful" && <p className="ai-boundary" data-testid="spatial-previous-output">
+      本次任务没有产出成果，下面显示的是<b>上一份成功成果</b>（{status.revision?.option_id} v{status.revision?.baseline?.revision_no}）；
+      这不是当前任务的产物，只是页面默认续看。
+    </p>}
     {(status?.revisions?.length ?? 0) > 1 && <div className="spatial-history">
       <strong>成果历史（按任务关联，不按完成顺序推断）</strong>
       <ul>

@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 import threading
+import uuid
 from pathlib import Path
 from typing import Any, Callable
 
@@ -41,6 +42,17 @@ TERMINAL = {"succeeded", "failed", "cancelled"}
 # package.zip. Everything registered here must be inside the archive as well.
 ARTIFACT_KINDS = {"plan_svg", "development_json", "quantity_csv", "cost_html",
                   "manifest_json", "package_zip"}
+HISTORY_LIMIT = 50
+
+
+def new_instance_id() -> str:
+    """Identity of one worker process instance.
+
+    Recovery must distinguish "left behind by a previous process" from "created a
+    microsecond ago by this process and not yet registered in the in-memory set".
+    Only a persisted instance stamp can do that.
+    """
+    return f"spatial-worker-{os.getpid()}-{uuid.uuid4().hex[:12]}"
 
 
 class AISpatialOutputError(Exception):
@@ -126,12 +138,14 @@ def run_blender(scene_path: Path, out_png: Path, width: int, height: int,
 class AISpatialOutputService:
     def __init__(self, repository: Any, option_service: Any, runtime_root: str | Path,
                  *, start_workers: bool = True,
-                 renderer: Callable[[Path, Path, int, int, int], dict] | None = None) -> None:
+                 renderer: Callable[[Path, Path, int, int, int], dict] | None = None,
+                 instance_id: str | None = None) -> None:
         self.repository = repository
         self.option_service = option_service
         self.runtime_root = Path(runtime_root).resolve()
         self.start_workers = start_workers
         self.renderer = renderer or run_blender
+        self.instance_id = instance_id or new_instance_id()
         self._lock = threading.Lock()
         self._active: set[str] = set()
 
@@ -199,6 +213,7 @@ class AISpatialOutputService:
                   "binding_at_submit": binding,
                   "finish_scope_declared_by": (settings.get("finish_scope") or {}).get(
                       "declared_by"),
+                  "run_instance": self.instance_id,
                   "retry_of": retry_of}
         now = now_iso()
         job_id = new_id("ai-spatial-job")
@@ -414,13 +429,29 @@ class AISpatialOutputService:
 
     # ------------------------------------------------------------------ recovery
     def recover(self, organization_id: str, project_id: str) -> dict[str, Any]:
-        """Only this batch's interrupted jobs; finished bytes stay readable."""
+        """Reclaim ONLY jobs left behind by another worker instance.
+
+        The previous version treated "queued/running but not in the in-memory
+        active set" as a restart leftover. Between the submit commit and
+        ``_launch`` registering the thread there is a real window, so an ordinary
+        status read could kill a perfectly healthy job. Ownership is now decided
+        by the persisted ``config.run_instance`` stamp: same instance means "this
+        process still owns it", different/absent means "a previous process died".
+
+        Scope stays this batch only; other job kinds are never touched. Multi
+        process deployments (two live instances) are out of scope and would need
+        a real lease — that is not claimed here.
+        """
         with self.repository.transaction(organization_id, project_id) as tx:
-            jobs = [j for j in tx.jobs(limit=100) if self._is_spatial_job(j)]
-        with self._lock:
-            active = set(self._active)
-        stale = [j["job_id"] for j in jobs
-                 if j["status"] in {"queued", "running"} and j["job_id"] not in active]
+            jobs = tx.jobs(limit=None, kind=JOB_KIND)
+        stale = []
+        for job in jobs:
+            if job["status"] not in {"queued", "running"}:
+                continue
+            owner = (job.get("config") or {}).get("run_instance")
+            if owner == self.instance_id:
+                continue  # created by this process; ownership is not lost
+            stale.append(job["job_id"])
         recovered = []
         for job_id in stale:
             with self.repository.transaction(organization_id, project_id, write=True) as tx:
@@ -429,55 +460,99 @@ class AISpatialOutputService:
                                 error_message="服务重启，本任务中断；请显式重试",
                                 only_status=("queued", "running")):
                     recovered.append(job_id)
-        return {"recovered": recovered, "checked": len(jobs)}
+        return {"recovered": recovered, "checked": len(jobs),
+                "instance_id": self.instance_id}
 
     # -------------------------------------------------------------------- read
+    @staticmethod
+    def _is_spatial_revision(revision: dict | None) -> bool:
+        return bool(revision) and str(revision.get("measurement_version") or "").startswith(
+            MEASUREMENT_PREFIX)
+
+    def _label_binding(self, revisions: list[dict], adopted: str | None) -> None:
+        for item in revisions:
+            bound = (item.get("package") or {}).get("binding") or {}
+            if adopted and adopted == item["option_revision_id"]:
+                item["binding_status"] = "current_adopted"
+            elif adopted:
+                item["binding_status"] = "historical_preview"
+            else:
+                item["binding_status"] = "candidate_preview"
+            item["bound_option_revision_id"] = bound.get("adopted_option_revision_id")
+            item["is_current"] = item["binding_status"] == "current_adopted"
+
     def status(self, organization_id: str, project_id: str, *,
                job_id: str | None = None,
-               production_revision_id: str | None = None) -> dict[str, Any]:
+               production_revision_id: str | None = None,
+               history_limit: int = HISTORY_LIMIT) -> dict[str, Any]:
+        """Read one job's own outputs, or an explicitly labelled overview.
+
+        An explicit ``job_id`` / ``production_revision_id`` never falls back to
+        another job's revision or artifacts, and is looked up directly by id — not
+        by scanning a truncated "latest 50" window. Without parameters the page
+        keeps showing the last successful output, but says so
+        (``revision_source='last_successful'``).
+        """
+        if job_id and production_revision_id:
+            raise AISpatialOutputError(
+                400, "AMBIGUOUS_QUERY",
+                "job_id 与 production_revision_id 不能同时指定；请只查一个对象")
         self.recover(organization_id, project_id)
         adoption = self._adoption(organization_id, project_id)
+        adopted = adoption.get("option_revision_id")
+        explicit = bool(job_id or production_revision_id)
         with self.repository.transaction(organization_id, project_id) as tx:
-            jobs = [j for j in tx.jobs(limit=50) if self._is_spatial_job(j)]
-            revisions = [r for r in tx.revisions(limit=50)
-                         if str(r.get("measurement_version") or "").startswith(
-                             MEASUREMENT_PREFIX)]
-            job = next((j for j in jobs if j["job_id"] == job_id), None) if job_id else None
-            if job_id and job is None:
-                raise AISpatialOutputError(404, "JOB_NOT_FOUND", "找不到该同源成果任务")
-            if job is None:
-                job = jobs[0] if jobs else None
-            adopted = adoption.get("option_revision_id")
-            for item in revisions:
-                bound = (item.get("package") or {}).get("binding") or {}
-                if adopted and adopted == item["option_revision_id"]:
-                    item["binding_status"] = "current_adopted"
-                elif adopted:
-                    item["binding_status"] = "historical_preview"
-                else:
-                    item["binding_status"] = "candidate_preview"
-                item["bound_option_revision_id"] = bound.get("adopted_option_revision_id")
-                item["is_current"] = item["binding_status"] == "current_adopted"
-            revision = None
-            if production_revision_id:
-                revision = next((r for r in revisions
-                                 if r["production_revision_id"] == production_revision_id),
-                                None)
-                if revision is None:
+            if job_id:
+                job = tx.job(job_id)
+                if not job or not self._is_spatial_job(job):
+                    raise AISpatialOutputError(404, "JOB_NOT_FOUND", "找不到该同源成果任务")
+                revisions = [r for r in tx.revisions_by_job(job_id)
+                             if self._is_spatial_revision(r)]
+                jobs = [job]
+                revision = revisions[0] if revisions else None
+                revision_source = "requested_job" if revision else "none"
+            elif production_revision_id:
+                revision = tx.revision(production_revision_id)
+                if not self._is_spatial_revision(revision):
                     raise AISpatialOutputError(404, "OUTPUT_NOT_FOUND", "找不到该成果修订")
-            elif job and job["status"] == "succeeded":
-                revision = next((r for r in revisions if r["job_id"] == job["job_id"]), None)
-            if revision is None:
-                revision = next((r for r in revisions if r["is_current"]), None) or \
-                    (revisions[0] if revisions else None)
+                job = tx.job(revision["job_id"])
+                if not job or not self._is_spatial_job(job):
+                    raise AISpatialOutputError(
+                        404, "JOB_NOT_FOUND", "该成果修订对应的任务不存在或不属于同源成果")
+                revisions = [r for r in tx.revisions_by_job(job["job_id"])
+                             if self._is_spatial_revision(r)]
+                jobs = [job]
+                revision_source = "requested_revision"
+            else:
+                jobs = tx.jobs(limit=10, kind=JOB_KIND)
+                revisions = tx.revisions(limit=history_limit,
+                                         measurement_prefix=MEASUREMENT_PREFIX)
+                job = jobs[0] if jobs else None
+                revision = None
+                revision_source = "none"
+                if job and job["status"] == "succeeded":
+                    revision = next((r for r in revisions if r["job_id"] == job["job_id"]), None)
+                    if revision:
+                        revision_source = "job"
+            self._label_binding(revisions, adopted)
+            last_successful = next((r for r in revisions if r.get("is_current")), None) \
+                or (revisions[0] if revisions else None)
+            if revision is None and not explicit and last_successful is not None:
+                revision = last_successful
+                revision_source = "last_successful"
             artifacts = tx.artifacts(revision["production_revision_id"]) if revision else []
-            return {"job": job, "jobs": jobs[:10], "revision": revision,
-                    "revisions": revisions,
-                    "artifacts": artifacts, "adoption": adoption,
-                    "boundary": {"formal_quote": False, "purchase": False,
-                                 "publish": False,
-                                 "renderer": "blender/CYCLES-CPU"
-                                 if self.renderer is run_blender else "injected_renderer"}}
+        return {"job": job, "jobs": jobs[:10], "revision": revision,
+                "revisions": revisions, "last_successful": last_successful,
+                "revision_source": revision_source,
+                "query": {"job_id": job_id, "production_revision_id": production_revision_id,
+                          "explicit": explicit},
+                "artifacts": artifacts, "adoption": adoption,
+                "boundary": {"formal_quote": False, "purchase": False,
+                             "publish": False,
+                             "renderer": "blender/CYCLES-CPU"
+                             if self.renderer is run_blender else "injected_renderer",
+                             "one_instance": True,
+                             "instance_id": self.instance_id}}
 
     def file(self, organization_id: str, project_id: str,
              production_revision_id: str, filename: str) -> tuple[dict, bytes]:
