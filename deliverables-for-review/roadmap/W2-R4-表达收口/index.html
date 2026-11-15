@@ -1,0 +1,129 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>W2-R4 表达收口 · 复核入口</title><style>
+@page{size:A4;margin:10mm}*{box-sizing:border-box}
+body{font:13px/1.65 "Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+margin:0 auto;max-width:1180px;padding:28px 32px 60px;color:#1f2937;background:#fff}
+h1{font-size:25px;margin:0 0 6px;color:#0f172a}
+h2{font-size:17px;margin:26px 0 10px;padding-bottom:6px;border-bottom:2px solid #1e3a5f;color:#1e3a5f}
+h3{font-size:14px;margin:16px 0 6px;color:#334155}
+.meta{color:#64748b;font-size:12px;margin-bottom:14px}
+.banner{background:#f1f5f9;border-left:4px solid #1e3a5f;padding:12px 16px;margin:14px 0}
+.warn{background:#fff7ed;border-left:4px solid #c2410c;padding:12px 16px;margin:14px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+figure{margin:0;border:1px solid #dbe3ea;background:#fff}
+figure img{display:block;width:100%;height:auto}
+figcaption{font-size:11px;color:#475569;padding:6px 9px;border-top:1px solid #eef2f6}
+table{border-collapse:collapse;width:100%;font-size:12px;margin:10px 0}
+th,td{border:1px solid #d7dee6;padding:5px 8px;text-align:left;vertical-align:top}
+th{background:#f1f5f9}ul{margin:6px 0 6px 18px;padding:0}li{margin:4px 0}
+code{background:#f1f5f9;padding:1px 4px;font-size:11.5px}
+.tag{display:inline-block;background:#e2e8f0;border-radius:3px;padding:1px 7px;font-size:11px;margin:0 4px 4px 0}
+.footer{margin-top:30px;border-top:1px solid #d7dee6;padding-top:12px;font-size:11.5px;color:#64748b}
+@media print{body{font-size:11px;line-height:1.5;padding:0;max-width:none}
+h2{page-break-after:avoid}table{page-break-inside:auto}tr,th,td{page-break-inside:avoid}
+figure{page-break-inside:avoid}.grid2{page-break-inside:auto}thead{display:table-header-group}
+img{max-height:100mm;object-fit:contain}-webkit-print-color-adjust:exact;print-color-adjust:exact}
+</style></head><body>
+<h1>W2-R4 表达收口 · 内部复核入口</h1>
+<div class="meta">编制 2026-11-15T23:19:35+08:00 · 审查基线 <code>8fd7948</code> ·
+运行证据 <code>var/evidence/roadmap/W2-R4-表达收口/full/</code> ·
+上一批原图只读引用，未回写历史</div>
+<div class="banner"><b>受限结论：</b>架构复核确认入口异材冲突修复受限通过、R4 表达进展成立；
+<b>W2 整体未放行</b>，AD01—AD08 与用户阶段确认不变，W3/W4 未启动。
+本批只收口可见表达问题，<b>不得自评客户设计通过、不得宣布 W2 放行、不得修改 AD</b>。</div>
+<p>
+<span class="tag">完整验证 {"observed_pass": 15, "observed_fail": 0, "not_run": 0, "missing_evidence": 0}</span>
+<span class="tag">V1—V3 专项 20/20</span>
+<span class="tag">浏览器 passed=True</span>
+<span class="tag">--no-render 语义已修正</span>
+<span class="tag">人眼图 2 张 · 外部费用 0</span>
+</p>
+
+<h2>0. 本批按 V1 → V2 → V3 连续推进</h2>
+<table><thead><tr><th>检查点</th><th>实际改动</th><th>真实前后图</th></tr></thead><tbody>
+<tr><td>V1 平面可读性 / 尺寸链</td><td>几何·编号·注释三层分离；短编号带引线避让；
+X/Y 受控尺寸链闭合到总尺寸；完整索引与 A4 可打印索引页</td>
+<td>入口区、洽谈区局部前后 + 全图 + 打印缩放</td></tr>
+<tr><td>V2 窗光 / 材质</td><td>透明玻璃替代发光板；窗框/竖梃/洞口深度；
+窗外本地天空渐变假设；地面分缝、木饰面竖缝、踢脚收边；版本化表达输入</td>
+<td>同一机位/模型的窗区局部前后</td></tr>
+<tr><td>V3 功能表达 / 占位</td><td>display-wing 换程序化展墙；测试陈设分四类；
+位置由本布局动线/分区派生；工程量恒 0 影响</td>
+<td>功能区局部前后 + 两布局最终人眼图</td></tr>
+</tbody></table>
+
+<h2>1. 自动断言与人工目检（严格分列）</h2>
+<table><thead><tr><th>类别</th><th>结果 / 证据</th></tr></thead><tbody>
+<tr><td><b>自动断言</b></td><td>完整验证 {"observed_pass": 15, "observed_fail": 0, "not_run": 0, "missing_evidence": 0}；
+V1—V3 专项 20/20；图面标注 0 重叠 / 0 出界 / 最小字号 8.5；
+浏览器下载 SHA 一致；原 15 项回归 15/15。见 <code>checks.json</code>、<code>closeout/</code>、
+<code>visual/capture-observations.json</code>。</td></tr>
+<tr><td><b>人工目检</b></td><td>逐张看前后全图、入口/洽谈区局部、窗区/功能区局部、
+A4 打印缩放，逐处结论与未解决项见 <code>manual-visual-review.md</code>。
+自动断言不代替人工看图，不以非空 SVG 或亮度阈值宣布通过。</td></tr>
+</tbody></table>
+<p class="meta">验证分层（来自 checks-source.json 的 verification_layers）：</p>
+<table><thead><tr><th>层</th><th>状态</th></tr></thead><tbody><tr><td>function_level</td><td>{&quot;status&quot;: &quot;observed_pass&quot;, &quot;checks&quot;: [&quot;R4-05&quot;], &quot;counts&quot;: {&quot;observed_pass&quot;: 1, &quot;observed_fail&quot;: 0, &quot;not_run&quot;: 0, &quot;missing_evidence&quot;: 0}}</td></tr><tr><td>contract</td><td>{&quot;status&quot;: &quot;observed_pass&quot;, &quot;checks&quot;: [&quot;R4-02-A&quot;, &quot;R4-02-B&quot;, &quot;R4-03-A&quot;, &quot;R4-03-B&quot;], &quot;counts&quot;: {&quot;observed_pass&quot;: 4, &quot;observed_fail&quot;: 0, &quot;not_run&quot;: 0, &quot;missing_evidence&quot;: 0}}</td></tr><tr><td>http</td><td>{&quot;status&quot;: &quot;observed_pass&quot;, &quot;checks&quot;: [&quot;R4-A-SUBMIT&quot;, &quot;R4-A-ZIP&quot;, &quot;R4-B-SUBMIT&quot;, &quot;R4-B-ZIP&quot;, &quot;R4-01&quot;, &quot;R4-07&quot;, &quot;R4-08&quot;], &quot;counts&quot;: {&quot;observed_pass&quot;: 7, &quot;observed_fail&quot;: 0, &quot;not_run&quot;: 0, &quot;missing_evidence&quot;: 0}}</td></tr><tr><td>external_evidence</td><td>{&quot;status&quot;: &quot;observed_pass&quot;, &quot;checks&quot;: [&quot;R4-06&quot;], &quot;counts&quot;: {&quot;observed_pass&quot;: 1, &quot;observed_fail&quot;: 0, &quot;not_run&quot;: 0, &quot;missing_evidence&quot;: 0}}</td></tr><tr><td>real_render</td><td>{&quot;status&quot;: &quot;observed_pass&quot;, &quot;checks&quot;: [&quot;R4-04-A&quot;, &quot;R4-04-B&quot;], &quot;counts&quot;: {&quot;observed_pass&quot;: 2, &quot;observed_fail&quot;: 0, &quot;not_run&quot;: 0, &quot;missing_evidence&quot;: 0}}</td></tr><tr><td>browser</td><td>{&quot;status&quot;: &quot;separate_script_not_run_here&quot;, &quot;evidence&quot;: &quot;var/evidence/roadmap/&lt;batch&gt;/browser/verification.json&quot;, &quot;note&quot;: &quot;本脚本不启动浏览器；真实 Edge 验收由 verify_w2_r4_browser.py 单独执行&quot;}</td></tr><tr><td>manual_visual</td><td>{&quot;status&quot;: &quot;reported_in_review_packet&quot;, &quot;evidence&quot;: &quot;deliverables-for-review/roadmap/&lt;batch&gt;/manual-visual-review.md&quot;, &quot;note&quot;: &quot;自动断言只做几何/编号/字符串对账，不代表人工目检；图面可读性、材质尺度与光照层次必须由人工看图判定并单独记录&quot;}</td></tr></tbody></table>
+
+<h2>2. V1 前后：入口区与洽谈区局部</h2>
+<div class="grid2">
+<figure><img src="visual/plan-A-entry-before.png" alt="V1 前 · A 入口区：门号/机位/动线数值压叠"><figcaption>V1 前 · A 入口区：门号/机位/动线数值压叠</figcaption></figure>
+<figure><img src="visual/plan-A-entry-after.png" alt="V1 后 · A 入口区：短编号带引线，压叠消除"><figcaption>V1 后 · A 入口区：短编号带引线，压叠消除</figcaption></figure>
+<figure><img src="visual/plan-A-meeting-before.png" alt="V1 前 · A 洽谈区：三行文字压框、洞口字压线"><figcaption>V1 前 · A 洽谈区：三行文字压框、洞口字压线</figcaption></figure>
+<figure><img src="visual/plan-A-meeting-after.png" alt="V1 后 · A 洽谈区：短徽标 + 引线名称"><figcaption>V1 后 · A 洽谈区：短徽标 + 引线名称</figcaption></figure>
+</div>
+<div class="grid2">
+<figure><img src="visual/plan-A-full-after.png" alt="V1 后 · A 全图（含闭合尺寸链与索引表）"><figcaption>V1 后 · A 全图（含闭合尺寸链与索引表）</figcaption></figure>
+<figure><img src="visual/plan-A-print-after.png" alt="V1 后 · A4 打印缩放 270mm（小字偏小，另见 plan-index-A.html）"><figcaption>V1 后 · A4 打印缩放 270mm（小字偏小，另见 plan-index-A.html）</figcaption></figure>
+</div>
+
+<h2>3. V2 前后：窗区与材质</h2>
+<div class="grid2">
+<figure><img src="render-compare/render-B-window-before.png" alt="V2 前 · B 窗区：3 块纯白发光板"><figcaption>V2 前 · B 窗区：3 块纯白发光板</figcaption></figure>
+<figure><img src="render-compare/render-B-window-after.png" alt="V2 后 · B 窗区：窗框/竖梃/玻璃/窗外渐变可辨；最左扇仍高亮"><figcaption>V2 后 · B 窗区：窗框/竖梃/玻璃/窗外渐变可辨；最左扇仍高亮</figcaption></figure>
+<figure><img src="render-compare/render-A-window-before.png" alt="V2 前 · A 窗区"><figcaption>V2 前 · A 窗区</figcaption></figure>
+<figure><img src="render-compare/render-A-window-after.png" alt="V2 后 · A 窗区：地面分缝与木饰面竖缝可见"><figcaption>V2 后 · A 窗区：地面分缝与木饰面竖缝可见</figcaption></figure>
+</div>
+
+<h2>4. V3 前后：功能表达与最终两布局图</h2>
+<div class="grid2">
+<figure><img src="render-compare/render-B-function-before.png" alt="V3 前 · B 功能区：孤立圆桌、大空地、分散座椅"><figcaption>V3 前 · B 功能区：孤立圆桌、大空地、分散座椅</figcaption></figure>
+<figure><img src="render-compare/render-B-function-after.png" alt="V3 后 · B 功能区：成组座椅、样板展台与器物"><figcaption>V3 后 · B 功能区：成组座椅、样板展台与器物</figcaption></figure>
+<figure><img src="outputs/layout-A/render.png" alt="最终 · 布局 A 人眼图（同一生成器 / 同一假设机位）"><figcaption>最终 · 布局 A 人眼图（同一生成器 / 同一假设机位）</figcaption></figure>
+<figure><img src="outputs/layout-B/render.png" alt="最终 · 布局 B 人眼图（同一生成器 / 同一假设机位）"><figcaption>最终 · 布局 B 人眼图（同一生成器 / 同一假设机位）</figcaption></figure>
+</div>
+
+<h2>5. 阶段1边界：底图确认卡</h2>
+<div class="warn"><b>历史「阶段1已由用户核对认可」在台账中未绑定到具体底图版本标识/哈希/边界快照；</b>
+W2 与本批的场地边界是 <code>manual_boundary_not_site_verified</code> 测试参数，
+表达层墙/门窗/材质/陈设全部 <code>site_verified=false</code>。
+按 docs/26 硬节点 3，不能外推为「当前具体版本已确认」。
+已准备 <code>basemap-confirmation-card.md</code>（版本/边界/入口/保留区/已知与假设/待确认点/图面），
+<b>用户明确确认前停在阶段1边界，不生成该项目阶段2</b>；人工工程样板验证不受阻塞，继续完成本批。
+本卡不是替用户签字。</div>
+<div class="grid2">
+<figure><img src="basemap/00_原始平面图_正向.png" alt="阶段1底图 · 宁波 A3 原图转正（只读引用）"><figcaption>阶段1底图 · 宁波 A3 原图转正（只读引用）</figcaption></figure>
+<figure><img src="visual/plan-B-full-after.png" alt="本批人工样板 · B 平面（非用户项目阶段2成果）"><figcaption>本批人工样板 · B 平面（非用户项目阶段2成果）</figcaption></figure>
+</div>
+
+<h2>6. 仍然不像设计公司成果的地方</h2>
+<ol><li>效果图仍是内部评审级，不是设计公司给客户的交付图：无人物、软装细节少、无真实品牌内容。</li><li>布局 B 最左一扇窗仍有高亮近白区域（窗外本地渐变假设在该角度露出高亮段）；其余窗扇窗框/竖梃/玻璃/窗外层次可辨。未继续压暗参数掩盖它。</li><li>整体仍偏暗偏灰，天花占画面偏大（既有 1500mm 人眼机位 + 24mm 广角；为满足前后同机位未改机位）。</li><li>功能陈设仍偏稀疏，B 的大空地仍明显；品牌板只有抽象色块，几乎看不出品牌内容。</li><li>窗外是本地程序化天空/地平线渐变，不是真实外景；照明含假设补光，未做照度/配光计算。</li><li>材质分缝/收边是示意几何，不是施工排版；贴图 tile 为人工假设，不是材料规格。</li><li>A4 打印缩放后图内图例与索引小字仍偏小（已另出 plan-index-A.html / B.html 可打印索引页）。</li><li>平面无闭合施工尺寸链、柱网、洁具、构造节点；每布局仅 1 个机位 1 张人眼图，未做天花/立面/多视角/材料实物板/汇总客户 PDF（W4 范围，未授权启动）。</li><li>表达层全部是人工测试假设（`site_verified=false` / `not_ai_design=true`），不计入 AI 接替设计；AD01—AD08 与用户阶段确认不变。</li></ol>
+
+<h2>7. 做与未做、图片与费用</h2>
+<p><b>做：</b>V1—V3 全部检查点、<code>--no-render</code> 语义修正、底图确认卡、
+两布局完整源模型/表达输入/场景/平面/PNG/ZIP、四项受控变更与取消晚到/任务定位回归、
+专项断言、浏览器与全量回归、4 类真实缺陷修正。</p>
+<p><b>未做：</b>W3/W4、付费/外部调用、PG/NAS/账号/租约平台、全套天花/立面/多视角/
+材料实物板/汇总客户 PDF、柱网洁具与照度合规、现场实测、用户项目阶段2、
+AD 修改与用户设计确认、W2 放行宣告。</p>
+<p><b>图片与费用：</b>本机新生成人眼效果图 <b>2 张</b>；平面全图/局部/打印截图 <b>16 张</b>；
+人眼图前后与局部裁剪 <b>12 张</b>；浏览器桌面/移动与平面预览 <b>4 张</b>。
+外部模型调用 <b>0 次</b>、外发图片 <b>0 张</b>、tokens <b>0</b>、费用 <b>0</b>；密钥未使用、未落盘。</p>
+
+<div class="footer">执行者报告 · 架构师独立复核项待审 · 用户设计确认、阶段确认与 AD01—AD08 由用户给，不代签。
+工程检查与自动断言通过不代表 R4 设计通过、W2 放行或客户设计通过。
+详细文件：<code>review-packet.md</code>、<code>checks.json</code>、<code>code-diff.md</code>、
+<code>manifest.json</code>、<code>positive-negative-cases.md</code>、<code>asset-inventory.md</code>、
+<code>expression-input.md</code>、<code>manual-visual-review.md</code>、
+<code>basemap-confirmation-card.md</code>。</div>
+</body></html>

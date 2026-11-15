@@ -36,6 +36,9 @@ SAMPLES = int(arg("--samples", "48"))
 DATA = json.loads(SCENE_PATH.read_text(encoding="utf-8"))
 PRES = DATA["presentation"]
 ENC = DATA["enclosure"]
+EXPR = PRES.get("expression") or {}
+WINDOW_EXPR = EXPR.get("window_expression") or {}
+MATERIAL_FINISH = EXPR.get("material_finish") or {}
 ASSETS = ROOT / "tools" / "assets"
 MANIFEST = json.loads((ROOT / "assets" / "CC0-素材清单.json").read_text(encoding="utf-8"))
 OUT_PNG.parent.mkdir(parents=True, exist_ok=True)
@@ -143,12 +146,61 @@ for item in PRES["materials"]:
         item["normal_strength"], hex_rgb(item["hex"]))
 M_WALL = MATERIALS.get("wall_plaster") or simple_mat("wall", (0.88, 0.87, 0.85))
 M_FLOOR = MATERIALS.get("floor_microcement") or simple_mat("floor", (0.72, 0.70, 0.67))
-M_GLASS = simple_mat("window-glass-daylight", (0.78, 0.88, 0.98),
-                     emission=(0.80, 0.89, 1.0), strength=0.75)
+def glass_mat(name: str):
+    """V2: real transparent glazing — NOT an emissive white panel."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.88, 0.94, 0.98, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.06
+    for socket in ("Transmission Weight", "Transmission"):
+        if socket in bsdf.inputs:
+            bsdf.inputs[socket].default_value = 0.94
+            break
+    if "IOR" in bsdf.inputs:
+        bsdf.inputs["IOR"].default_value = 1.45
+    return mat
+
+
+def outside_mat(name: str):
+    """V2: labelled LOCAL sky/horizon gradient behind the glazing (assumption).
+
+    Low-strength emission, never a bright white板；透过透明玻璃看到的是柔和
+    天空与地平线色带，不是被发光板盖住的窗口细节。
+    """
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    output = nt.nodes.new("ShaderNodeOutputMaterial")
+    emit = nt.nodes.new("ShaderNodeEmission")
+    emit.inputs["Strength"].default_value = 0.34
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.0
+    ramp.color_ramp.elements[0].color = (0.33, 0.34, 0.36, 1.0)
+    ramp.color_ramp.elements[1].position = 1.0
+    ramp.color_ramp.elements[1].color = (0.50, 0.63, 0.78, 1.0)
+    band = ramp.color_ramp.elements.new(0.24)
+    band.color = (0.43, 0.49, 0.56, 1.0)
+    nt.links.new(coord.outputs["Generated"], sep.inputs["Vector"])
+    nt.links.new(sep.outputs["Z"], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], emit.inputs["Color"])
+    nt.links.new(emit.outputs["Emission"], output.inputs["Surface"])
+    return mat
+
+
+M_GLASS = glass_mat("window-glass-transparent-v2")
+M_OUTSIDE = outside_mat("labelled-local-sky-horizon-assumption")
+M_FRAME = simple_mat("window-frame-bronze", (0.17, 0.19, 0.21), rough=0.38, metal=0.6)
+M_JOINT = simple_mat("material-joint-line", (0.41, 0.40, 0.38), rough=0.9)
+M_SKIRT = simple_mat("skirting-edge-trim", (0.33, 0.31, 0.29), rough=0.75)
 M_STRIP = simple_mat("cove-emissive", (1.0, 0.86, 0.66),
-                     emission=(1.0, 0.84, 0.62), strength=2.6)
+                     emission=(1.0, 0.84, 0.62), strength=2.2)
 M_KEEP = simple_mat("keepout", (0.38, 0.40, 0.42), rough=0.9)
 M_PLACEHOLDER = simple_mat("placeholder", (0.86, 0.72, 0.42), rough=0.8)
+M_BRAND = simple_mat("brand-panel-abstract", (0.42, 0.30, 0.22), rough=0.6)
 
 
 def box(name: str, x: float, y: float, w: float, d: float, z0: float, z1: float,
@@ -238,6 +290,11 @@ def area_light(name, location, target, energy, size, color=(1.0, 0.95, 0.86)):
     bpy.context.collection.objects.link(ob)
     ob.location = location
     ob.rotation_euler = (Vector(target) - Vector(location)).to_track_quat("-Z", "Y").to_euler()
+    # 面光源本体不对相机可见，否则窗洞里会出现一整块纯白发光面（V2 目检发现）。
+    try:
+        ob.visible_camera = False
+    except AttributeError:
+        pass
     return ob
 
 
@@ -310,16 +367,52 @@ for wall in ENC["walls"] + ENC["partitions"]:
         if head < height - 0.01:
             box(f"head-{op['object_id']}", cx, cy, b - a, thickness, head, height, mat, angle)
         if op["kind"] == "window":
-            box(f"glass-{op['object_id']}", cx, cy, b - a, 0.02, sill, head, M_GLASS, angle)
+            # ---------------------------------------------------------- V2 窗表现
+            frame_w = mm(WINDOW_EXPR.get("frame_width_mm", 60))
+            mullions = max(0, int(WINDOW_EXPR.get("mullion_count", 1)))
+            opening_w, opening_h = b - a, head - sill
+            zc = (sill + head) / 2
             inward = Vector((W / 2 - cx, L / 2 - cy, 0.0))
             if inward.length < 1e-3:
                 inward = Vector((-uy, ux, 0.0))
             inward.normalize()
-            light_pos = Vector((cx, cy, (sill + head) / 2)) + inward * 0.25
-            target = Vector((cx, cy, (sill + head) / 2)) + inward * 4.0
-            energy = 180.0 * max(1.0, (b - a)) * max(0.8, head - sill)
+            outward = Vector((-inward.x, -inward.y, 0.0))
+            frame_d = thickness + 2 * frame_w
+            # 透明玻璃内移到墙外侧；发光板已移除，不再掩盖窗洞细节
+            gx = cx + outward.x * (thickness / 2 - 0.03)
+            gy = cy + outward.y * (thickness / 2 - 0.03)
+            box(f"glass-{op['object_id']}", gx, gy,
+                max(0.2, opening_w - 2 * frame_w), 0.012,
+                sill + frame_w, head - frame_w, M_GLASS, angle)
+            for suffix, z0, z1 in (("top", head - frame_w, head),
+                                  ("bottom", sill, sill + frame_w)):
+                box(f"frame-{suffix}-{op['object_id']}", cx, cy,
+                    opening_w, frame_d, z0, z1, M_FRAME, angle)
+            for side, sign in (("left", -1), ("right", 1)):
+                off = sign * (opening_w / 2 - frame_w / 2)
+                box(f"frame-{side}-{op['object_id']}", cx + ux * off, cy + uy * off,
+                    frame_w, frame_d, sill, head, M_FRAME, angle)
+            for k in range(1, mullions + 1):
+                off = -opening_w / 2 + k * opening_w / (mullions + 1)
+                box(f"mullion-{k}-{op['object_id']}", cx + ux * off, cy + uy * off,
+                    frame_w * 0.8, thickness * 0.7,
+                    sill + frame_w, head - frame_w, M_FRAME, angle)
+            # 窗台板让 200mm 墙厚形成的洞口深度可辨
+            box(f"reveal-sill-{op['object_id']}",
+                cx + inward.x * 0.05, cy + inward.y * 0.05,
+                opening_w, thickness * 0.9, sill - 0.03, sill + 0.02, M_WALL, angle)
+            # 窗外：明确标注的本地程序化天空/地平线渐变，不是现场照片
+            ex = cx + outward.x * (thickness / 2 + 1.8)
+            ey = cy + outward.y * (thickness / 2 + 1.8)
+            box(f"outside-{op['object_id']}", ex, ey, opening_w * 2.4, 0.02,
+                max(0.0, sill - 0.6), min(CEIL, head + 1.4), M_OUTSIDE, angle)
+            # 采光方向仍只来自这个已建模窗洞口；强度按版本化表达输入缩放
+            light_pos = Vector((cx, cy, zc)) + inward * 0.25
+            target = Vector((cx, cy, zc)) + inward * 4.0
+            energy_scale = float(WINDOW_EXPR.get("window_light_energy_scale", 0.5))
+            energy = 180.0 * energy_scale * max(1.0, opening_w) * max(0.8, opening_h)
             area_light(f"window-light-{op['object_id']}", light_pos, target,
-                       energy, max(1.2, (b - a)), color=(0.86, 0.92, 1.0))
+                       energy, max(1.2, opening_w), color=(0.86, 0.92, 1.0))
             window_lights += 1
         else:
             # 半开的门扇（oak/walnut 材质），让门洞在效果图里可辨认
@@ -328,12 +421,64 @@ for wall in ENC["walls"] + ENC["partitions"]:
                 cx - ux * (b - a) / 2, cy - uy * (b - a) / 2,
                 b - a, 0.045, 0.0, min(head, 2.3), leaf, angle + 78)
 
+# --------------------------------------------- V2 材质收边 / 接缝（版本化表达输入）
+floor_finish = MATERIAL_FINISH.get("mat-floor-microcement") or {}
+joint_spacing = mm(floor_finish.get("joint_spacing_mm", 1200))
+joint_width = mm(floor_finish.get("joint_width_mm", 4))
+skirt_h = mm(floor_finish.get("edge_trim_mm", 80))
+joint_count = 0
+panel_joint_count = 0
+if joint_spacing > 0.05:
+    gx = joint_spacing
+    while gx < W - 0.01:
+        box(f"floor-joint-x-{joint_count}", gx, L / 2, joint_width, L,
+            0.021, 0.023, M_JOINT)
+        joint_count += 1
+        gx += joint_spacing
+    gy = joint_spacing
+    while gy < L - 0.01:
+        box(f"floor-joint-y-{joint_count}", W / 2, gy, W, joint_width,
+            0.021, 0.023, M_JOINT)
+        joint_count += 1
+        gy += joint_spacing
+for wall in ENC["walls"] + ENC["partitions"]:
+    (x1, y1), (x2, y2) = [[mm(v) for v in p] for p in wall["segment_mm"]]
+    dx, dy = x2 - x1, y2 - y1
+    length = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / length, dy / length
+    nx, ny = -uy, ux
+    angle = math.degrees(math.atan2(uy, ux))
+    thickness = mm(wall["thickness_mm"])
+    height = mm(wall["height_mm"])
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+    inward = Vector((W / 2 - cx, L / 2 - cy, 0.0))
+    if inward.length < 1e-3:
+        inward = Vector((nx, ny, 0.0))
+    inward.normalize()
+    off = thickness / 2 + 0.008
+    if wall.get("kind") == "perimeter":
+        box(f"skirting-{wall['object_id']}", cx + inward.x * off, cy + inward.y * off,
+            length, 0.014, 0.0, skirt_h, M_SKIRT, angle)
+    if wall["material_slot"] in ("oak", "walnut"):
+        key = "mat-oak" if wall["material_slot"] == "oak" else "mat-walnut"
+        spec = MATERIAL_FINISH.get(key) or {}
+        spacing = mm(spec.get("joint_spacing_mm", 600))
+        width = mm(spec.get("joint_width_mm", 6))
+        t = spacing
+        while t < length - 0.05:
+            px, py = x1 + ux * t, y1 + uy * t
+            box(f"panel-joint-{wall['object_id']}-{int(t * 100)}",
+                px + inward.x * off, py + inward.y * off,
+                width, 0.005, 0.0, height, M_JOINT, angle)
+            panel_joint_count += 1
+            t += spacing
+
 # --------------------------------------------------------------- ceiling / light
 box("ceiling-slab", W / 2, L / 2, W, L, CEIL, CEIL + 0.12, M_WALL)
 for fx in DATA["lighting"]["fixtures"]:
     x, y = fx["position_m"]
     area_light(f"fixture-{fx['object_id']}", (x, y, CEIL - 0.18),
-               (x, y, 0.0), 150.0, 0.55, color=kelvin_rgb(fx["kelvin"]))
+               (x, y, 0.0), 120.0, 0.55, color=kelvin_rgb(fx["kelvin"]))
     box(f"fixture-body-{fx['object_id']}", x, y, 0.13, 0.13,
         CEIL - 0.09, CEIL - 0.02,
         simple_mat(f"fixture-emit-{fx['object_id']}", (1.0, 0.92, 0.78),
@@ -351,7 +496,7 @@ for cove in DATA["lighting"]["coves"]:
         cove_segments += 1
 # 弱室内补光：明确是假设照明，不冒充窗光或照度合规
 area_light("assumption-fill-light", (W * 0.5, L * 0.5, CEIL - 0.45),
-           (W * 0.5, L * 0.5, 0.0), 55.0, max(W, L) * 0.45,
+           (W * 0.5, L * 0.5, 0.0), 42.0, max(W, L) * 0.45,
            color=(1.0, 0.96, 0.90))
 
 # ------------------------------------------------------------------- CC0 models
@@ -397,17 +542,42 @@ def load_template(asset_id: str):
     return TEMPLATES[asset_id]
 
 
+origin_counts: dict[str, int] = {}
+procedural_names: list[str] = []
 for item in DATA["presentation_furniture"]:
     name = item["object_id"]
     x, y, z_offset = item["position_m"]
     rotation = float(item["rotation_deg"])
     asset_id = item.get("asset_id")
+    origin_kind = item.get("origin_kind") or "cc0_expression_asset"
+    origin_counts[origin_kind] = origin_counts.get(origin_kind, 0) + 1
     if not asset_id:
-        placeholders.append(name)
         dims = item.get("asset_dimensions_mm") or [600, 600, 750]
-        box(f"placeholder-{name}", x, y, mm(dims[0]), mm(dims[1]),
-            0.02 + z_offset, 0.02 + z_offset + mm(dims[2] or 750),
-            M_PLACEHOLDER, rotation)
+        w, d, h = mm(dims[0]), mm(dims[1]), mm(dims[2] or 750)
+        z0 = 0.02 + z_offset
+        if origin_kind == "procedural_expression":
+            # V3：程序化展墙 / 展台 / 品牌板，替代原来的黄色占位盒；
+            # 明确标为人工表达假设，不是 CC0 资产、不是源方案对象。
+            is_panel = ("BRAND" in name or "display-wing" in str(item.get("catalog_id"))
+                        or h > 1.2)
+            if is_panel:
+                box(f"expr-panel-{name}", x, y, w, max(d, 0.10),
+                    z0, z0 + h, M_BRAND, rotation)
+                box(f"expr-band-{name}", x, y, w * 0.62, max(d, 0.10) + 0.012,
+                    z0 + h * 0.44, z0 + h * 0.58,
+                    MATERIALS.get("stone") or M_WALL, rotation)
+                box(f"expr-base-{name}", x, y, w * 1.08, max(d, 0.10) * 1.15,
+                    z0, z0 + 0.07, MATERIALS.get("walnut") or M_WALL, rotation)
+            else:
+                box(f"expr-pedestal-{name}", x, y, w, d,
+                    z0, z0 + h - 0.05, MATERIALS.get("oak") or M_WALL, rotation)
+                box(f"expr-cap-{name}", x, y, w * 1.06, d * 1.06,
+                    z0 + h - 0.05, z0 + h, MATERIALS.get("stone") or M_WALL, rotation)
+            procedural_names.append(name)
+        else:
+            placeholders.append(name)
+            box(f"placeholder-{name}", x, y, w, d,
+                z0, z0 + h, M_PLACEHOLDER, rotation)
         continue
     template = load_template(asset_id)
     if template is None:
@@ -433,11 +603,11 @@ world = bpy.data.worlds.new("World")
 scene.world = world
 world.use_nodes = True
 world.node_tree.nodes["Background"].inputs[0].default_value = (0.72, 0.80, 0.90, 1.0)
-world.node_tree.nodes["Background"].inputs[1].default_value = 0.55
+world.node_tree.nodes["Background"].inputs[1].default_value = 0.45
 sun = DATA["lighting"]["sun"]
 bpy.ops.object.light_add(type="SUN", location=(W * 0.5, L + 8, 9))
 sun_ob = bpy.context.active_object
-sun_ob.data.energy = sun["energy"]
+sun_ob.data.energy = sun["energy"] * 0.6  # 主采光来自模型窗口，太阳只是弱的假设补光
 sun_ob.rotation_euler = (math.radians(90 - sun["elevation_deg"]), 0,
                          math.radians(sun["azimuth_deg"]))
 
@@ -463,7 +633,7 @@ scene.render.image_settings.file_format = "PNG"
 scene.render.filepath = str(OUT_PNG)
 scene.view_settings.view_transform = "AgX"
 scene.view_settings.look = "AgX - Medium High Contrast"
-scene.view_settings.exposure = -0.55
+scene.view_settings.exposure = float(WINDOW_EXPR.get("exposure_ev", -0.30))
 
 bpy.ops.render.render(write_still=True)
 meta = {
@@ -486,6 +656,32 @@ meta = {
     "enclosure": {"walls": len(ENC["walls"]), "partitions": len(ENC["partitions"]),
                   "openings": len(ENC["openings"])},
     "rounded_platforms": rounded_platforms,
+    "expression": {
+        "schema_version": EXPR.get("schema_version"),
+        "declared_by": EXPR.get("declared_by"),
+        "window_expression": {
+            "glass_kind": WINDOW_EXPR.get("glass_kind"),
+            "frame_width_mm": WINDOW_EXPR.get("frame_width_mm"),
+            "reveal_depth_mm": WINDOW_EXPR.get("reveal_depth_mm"),
+            "outside_environment": WINDOW_EXPR.get("outside_environment"),
+            "outside_note": WINDOW_EXPR.get("outside_note"),
+            "exposure_ev": scene.view_settings.exposure,
+            "window_light_energy_scale": WINDOW_EXPR.get("window_light_energy_scale"),
+            "outside_panels": window_lights,
+            "emissive_glass_panels": 0,
+        },
+        "material_finish_applied": {
+            "materials": sorted(MATERIAL_FINISH),
+            "floor_joint_lines": joint_count,
+            "wood_panel_joint_lines": panel_joint_count,
+            "skirting_segments": sum(1 for w in ENC["walls"]),
+            "note": "示意纹理比例/分缝/收边，参数来自版本化表达输入，不是材料规格或施工排版",
+        },
+        "origin_counts": origin_counts,
+        "procedural_expression_objects": procedural_names,
+        "engineering_quantity_effect": 0,
+        "note": "V2 窗光/材质与 V3 陈设均为人工表达假设；新增陈设不进入工程量",
+    },
     "assumptions": DATA.get("render_assumptions") or [],
     "disclaimer": DATA.get("presentation_disclaimer"),
 }

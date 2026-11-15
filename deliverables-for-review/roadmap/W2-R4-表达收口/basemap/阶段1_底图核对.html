@@ -1,0 +1,82 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width"><title>宁波协诚 · 阶段1 底图（第2版）</title>
+<style>
+@page{size:A3 landscape;margin:12mm}
+*{box-sizing:border-box}
+body{font:14px/1.65 "Microsoft YaHei","PingFang SC",sans-serif;color:#22303f;margin:0;background:#f4f6f8}
+.wrap{max-width:1280px;margin:0 auto;padding:24px}
+h1{font-size:23px;margin:0 0 4px} h2{font-size:17px;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid #d9e0e6}
+p{margin:7px 0} small{color:#6b7a8a}
+.hero{background:#fff;border-left:3px solid #1c6b48;padding:14px 18px;margin:14px 0 18px}
+.ok{color:#1c6b48;font-weight:600} .review{color:#c0701c;font-weight:600} .ref{color:#5a6b7a;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:#fff}
+th,td{padding:7px 9px;border-bottom:1px solid #e2e8ec;text-align:left;vertical-align:top}
+th{background:#eef2f4;color:#3a4a5c} td.src{color:#6b7a8a;font-size:11.5px;width:26%}
+.files{list-style:none;padding:0} .files li{background:#fff;border:1px solid #dfe6eb;padding:9px 12px;margin:6px 0}
+.files a{font-weight:600;color:#1a5c86;margin-right:10px} .files span{color:#5c6b79;font-size:12.5px}
+.plan{position:relative;width:100%;background:#fff;border:1px solid #dfe6eb;overflow:hidden;line-height:0}
+.plan>img.base{display:block;width:100%;height:auto}
+.overlay{position:absolute;opacity:.75;pointer-events:none}
+.controls{background:#fff;border:1px solid #dfe6eb;padding:10px 14px;margin:8px 0 14px;line-height:1.5}
+.controls label{display:inline-block;margin-right:18px;font-size:12.5px}
+.controls input[type=range]{vertical-align:middle;width:110px}
+.note{background:#fffaf0;border:1px solid #e8d5b0;padding:10px 14px;font-size:13px}
+ul{margin:6px 0 12px;padding-left:20px} li{margin-bottom:5px}
+footer{margin:26px 0 10px;color:#6b7a8a;font-size:12px;border-top:1px solid #d9e0de;padding-top:10px}
+@media print{body{background:#fff} .controls{display:none} .wrap{max-width:none}}
+</style></head><body><div class="wrap">
+<h1>宁波协诚集团样品展厅 · 阶段 1 底图（第 2 版）</h1>
+<p><small>2026-11-10 · 只改标注，不动几何 · 外轮廓 / 门 / 卫生间已由你核对认可</small></p>
+<div class="hero"><strong>这一版按你的三条意见改了：</strong>
+① 要素分成三组——建筑固有条件（必须保留）、奥创原设计（仅参考，可重做）、待现场复核；
+② 补上北墙 3 段 5400 窗带与东墙 2 段窗；
+③ 原「8 个疑似柱」核实为同一六边形展台内的圆环 + 圆心标记，<strong>未发现结构柱</strong>。
+</div>
+
+<h2>① 我能打开的文件</h2>
+<ul class="files"><li><a href="00_原始平面图_正向.png" target="_blank">00_原始平面图_正向.png</a><span>宁波项目原始 A3 平面布置图（已转正）</span></li><li><a href="01_真实场地底图.svg" target="_blank">01_真实场地底图.svg</a><span>第2版底图：三组要素分开标注，补北墙/东墙窗</span></li><li><a href="01b_几何叠加层.svg" target="_blank">01b_几何叠加层.svg</a><span>透明几何层，可叠在原始平面图上核对</span></li><li><a href="阶段1_底图核对.pdf" target="_blank">阶段1_底图核对.pdf</a><span>阶段 1 汇总 PDF，可直接发看</span></li><li><a href="底图数据.json" target="_blank">底图数据.json</a><span>三组要素的来源、数量与状态</span></li><li><a href="图像通道测试.json" target="_blank">图像通道测试.json</a><span>图像生成通道的测试结论（含未测原因）</span></li></ul>
+
+<h2>② 叠加核对：底图压在原始平面图上</h2>
+<div class="controls">
+<label>叠加透明度 <input id="op" type="range" min="0" max="100" value="72"></label>
+<label>水平微调 <input id="dx" type="range" min="-80" max="80" value="0"></label>
+<label>垂直微调 <input id="dy" type="range" min="-80" max="80" value="0"></label>
+<label>缩放 <input id="sc" type="range" min="90" max="110" value="100"></label>
+<label><input id="show" type="checkbox" checked> 显示标注层</label>
+</div>
+<div class="plan" id="plan">
+<img class="base" src="00_原始平面图_正向.png" alt="宁波原始平面布置图">
+<img class="overlay" id="ov" src="01b_几何叠加层.svg" alt="标注叠加层"
+ style="left:15.810%;top:18.159%;width:61.630%;height:61.504%">
+</div>
+<p><small>叠加层按原始图外轮廓像素矩形近似配准，可用滑块微调。只用于核对轮廓与元素位置，不作为测量依据。</small></p>
+
+<h2>③ 单独看底图（1:1 米制，含图例与尺寸）</h2>
+<div class="plan"><img class="base" src="01_真实场地底图.svg" alt="真实场地底图"></div>
+
+<h2>④ 第一组：建筑固有条件（必须保留）</h2>
+<table><thead><tr><th>要素</th><th>状态</th><th>说明</th><th>来源</th></tr></thead><tbody><tr><td>展厅外轮廓 / 外墙</td><td class='ok'>解析确认</td><td>26.17 × 17.92 m，与图纸尺寸链 26170 / 17920 一致；外墙按 200 mm 双线绘制</td><td class='src'>target_region.bounds + 定位图层锚点</td></tr><tr><td>窗（北墙）</td><td class='ok'>原图读取·待现场复核</td><td>3 段 5400 窗带，4 处 600 窗间垛；端部实墙 1910 / 3170</td><td class='src'>A3 平面图北墙尺寸链 1910-600-5400-600-5400-600-5400-600-1060-1170-3170-260</td></tr><tr><td>窗（东墙）</td><td class='ok'>原图读取·待现场复核</td><td>2 段三线窗符号：距南墙 0.23–3.04 m、5.74–8.27 m</td><td class='src'>A3 平面图东墙三线（墙-玻璃-墙）画法</td></tr><tr><td>楼梯</td><td class='ok'>解析确认</td><td>西南角 2.4 × 8.0 m，16 级踏步示意</td><td class='src'>A3 平面图 + DXF 几何</td></tr><tr><td>卫生间湿区</td><td class='ok'>解析确认</td><td>东南角 4.17 × 4.7 m，斜线填充范围</td><td class='src'>A3 平面图斜线填充区域</td></tr><tr><td>门</td><td class='ok'>解析确认（洞口配对待复核）</td><td>18 个门候选</td><td class='src'>cad-plan-candidates.json architecture.opening.door</td></tr><tr><td>柱</td><td class='ok'>未发现</td><td>原「8 个疑似柱」是同一六边形展台内的 1 个圆环 + 4 个 20 mm 圆心标记，不是结构柱</td><td class='src'>CIRCLE 候选复核：x 5610–6470 / y 1400–2260 全部落在同一展台范围内</td></tr></tbody></table>
+
+<h2>⑤ 第二组：奥创设计原布局（仅参考，新方案可全部重做）</h2>
+<table><thead><tr><th>要素</th><th>状态</th><th>说明</th><th>来源</th></tr></thead><tbody><tr><td>过道两侧 U 形展台墙</td><td class='ref'>原设计·可重做</td><td>沿东西向主通道布置，非承重，可整体拆除重排</td><td class='src'>A3 平面图 + DXF 墙体候选（仅作参考层）</td></tr><tr><td>两间洽谈室隔墙</td><td class='ref'>原设计·可重做</td><td>西北 19.8㎡ / 东北 5.08 m 进深；可保留改造或取消</td><td class='src'>A3 平面图</td></tr><tr><td>水吧</td><td class='ref'>原设计·可重做</td><td>约 1.8 × 3.0 m，位于楼梯东侧</td><td class='src'>A3 平面图</td></tr><tr><td>六边形展台</td><td class='ref'>原设计·可重做</td><td>中心 (6.04, 1.83) m，外接圆 R≈0.52 m，内含圆环与圆心标记</td><td class='src'>CIRCLE 候选聚类</td></tr><tr><td>家具（固定 + 活动）</td><td class='ref'>原设计·可重做</td><td>282 件家具候选，仅作参考，不进入新方案的保留清单</td><td class='src'>interior.furniture.fixed / loose</td></tr></tbody></table>
+
+<h2>⑥ 第三组：待现场复核</h2>
+<table><thead><tr><th>要素</th><th>状态</th><th>说明</th><th>来源</th></tr></thead><tbody><tr><td>主入口位置</td><td class='review'>待现场复核</td><td>推断在西门厅，宽度与门洞高度未核实</td><td class='src'>A3 平面图门厅 + 左侧外墙门候选</td></tr><tr><td>窗台高 / 窗洞高</td><td class='review'>待现场复核</td><td>平面图无法读出竖向尺寸，立面图未提供</td><td class='src'>—</td></tr><tr><td>卫生间内部隔断</td><td class='review'>待现场复核</td><td>仅确认湿区范围，洁具与隔断位置未提取</td><td class='src'>A3 平面图斜线区</td></tr><tr><td>133 项拓扑复核</td><td class='review'>待现场复核</td><td>本轮不清理，保持标记，不影响方案设计</td><td class='src'>cad-topology-review.json</td></tr></tbody></table>
+
+<h2>⑦ 这一版仍未解决的事（如实）</h2>
+<div class="note"><ul><li>本轮只改标注，不重做几何；外轮廓/门/卫生间已由用户核对认可</li><li>窗的平面位置按原图尺寸链与线型读取，窗台高/洞口高无法从平面图得出，必须现场复核</li><li>PDF 为 A3 排版图、DXF 为模型空间；叠加层按外轮廓像素矩形近似配准，可在入口页微调，不作为测量依据</li><li>图纸注明「具体尺寸以现场实际情况为准」；未经现场实测，所有尺寸待复核</li></ul></div>
+
+<h2>⑧ 图像生成通道</h2>
+<p>未测试</p>
+<p><small></small></p>
+
+<footer>底图部分到此为止。管理配套（PG / NAS / 账号 / 岗位审查 / 备份恢复）本阶段全部冻结。证据目录：var/deliverables/ningbo-xiecheng/2026-11-10/</footer>
+</div>
+<script>
+const ov=document.getElementById('ov');
+function sync(){ov.style.opacity=document.getElementById('op').value/100;
+ov.style.display=document.getElementById('show').checked?'block':'none';
+const dx=+document.getElementById('dx').value,dy=+document.getElementById('dy').value,sc=+document.getElementById('sc').value/100;
+ov.style.transform='translate('+dx+'px,'+dy+'px) scale('+sc+')';}
+['op','dx','dy','sc','show'].forEach(id=>document.getElementById(id).addEventListener('input',sync));sync();
+</script></body></html>

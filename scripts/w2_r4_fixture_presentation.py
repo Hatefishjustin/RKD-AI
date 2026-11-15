@@ -42,6 +42,12 @@ ASSUMPTIONS = [
     "未做照度/配光计算，不宣称照度合规。",
     "柱网、洁具、构造节点、消防/疏散/无障碍、实测标高、产品清单、现场照片均缺依据，"
     "一律不编造、不补 0、不在图上冒充。",
+    "V2：玻璃为透明透射材质 + 窗框/窗洞深度；窗外是明确标注的本地程序化天空渐变"
+    "（淡蓝天光 + 暖灰地平线带），不是现场照片或真实外景。",
+    "V2：木饰面与地面的纹理比例、分缝与踢脚收边是版本化表达输入里的示意参数，"
+    "不是材料规格、产品选型或施工排版。",
+    "V3：display-wing 占位件替换为程序化展墙；新增展台/器物/品牌板/配套座椅"
+    "是测试陈设（人工表达假设），保留对象 ID、位置与尺寸，不进工程量、不暗改源方案。",
 ]
 
 MISSING = [
@@ -150,18 +156,29 @@ def build_fixture_presentation(model: dict, layout: str) -> dict:
         "source": "manual_test_assumption:opening_in_explicit_partition",
     })
 
-    # 模型自带家具：保留原 object_id，映射到 CC0 资产（缺资产明确占位）
+    # 模型自带家具：保留原 object_id / 位置 / 朝向，映射到 CC0 资产。
+    # V3：display-wing 没有对应 CC0 资产，替换为明确标注的程序化展墙，
+    # 不再是黄色占位盒；对象 ID 与源模型位置一律不改，不暗改源方案。
     furniture: list[dict] = []
     for f in spatial["furniture"]:
         asset_id = CATALOG_TO_ASSET.get(str(f["catalog_id"]))
-        furniture.append({
+        item = {
             "object_id": f["object_id"], "catalog_id": f["catalog_id"],
             "asset_id": asset_id, "asset_dimensions_mm": dims(asset_id),
             "position_mm": [float(f["x_mm"]), float(f["y_mm"])],
             "rotation_deg": float(f.get("rot") or 0),
             "anchor": "center_floor", "kind": "model_furniture",
             "source": "manual_test_assumption:catalog_to_cc0_asset_mapping",
-        })
+            "origin_kind": "source_model",
+        }
+        if str(f["catalog_id"]) == "display-wing":
+            item.update({
+                "asset_dimensions_mm": [450.0, 2300.0, 2400.0],
+                "origin_kind": "procedural_expression",
+                "expression_note": "程序化展墙（木饰面展板 + 展品托板）：替代原占位盒；"
+                                   "人工表达假设，非 CC0 资产、非源方案对象，位置/ID 沿用源模型",
+            })
+        furniture.append(item)
 
     # 表达层道具：绿植 / 器物 / 补充桌椅，全部按分区中心加固定偏移，明确标注来源
     by_role: dict[str, list] = {}
@@ -193,7 +210,69 @@ def build_fixture_presentation(model: dict, layout: str) -> dict:
             "position_mm": position, "rotation_deg": rotation,
             "z_offset_m": z_offset,
             "anchor": "center_floor", "kind": "presentation_prop",
+            "origin_kind": "cc0_expression_asset",
             "source": "manual_test_assumption:presentation_prop_not_model_design",
+        })
+
+    # ---------------------------------------------------------------- V3 陈设
+    # 全部按本布局的动线/分区中心派生位置（不是复制固定样板坐标），
+    # 明确标为测试陈设或程序化表达，不进入工程量、不称 AI 设计。
+    by_role_local = by_role
+    route = (spatial["circulation"][0]["path_mm"]
+             if spatial.get("circulation") else [[W * 0.3, H * 0.5], [W * 0.7, H * 0.5]])
+    ped_specs = [
+        (route[min(1, len(route) - 1)], "ceramic_vase_01"),
+        (route[min(2, len(route) - 1)], "wooden_bowl_01"),
+        (route[min(3, len(route) - 1)], "ceramic_vase_01"),
+    ]
+    for i, (anchor_pt, obj_asset) in enumerate(ped_specs, start=1):
+        px = _clamp([float(anchor_pt[0]), float(anchor_pt[1]) - 2500], W, H)
+        furniture.append({
+            "object_id": f"R4-STG-PED-{i:02d}",
+            "catalog_id": "presentation:display_pedestal",
+            "asset_id": None, "asset_dimensions_mm": [900.0, 600.0, 750.0],
+            "origin_kind": "procedural_expression",
+            "expression_note": "程序化样板展台（石材台面 + 木饰面基座）；"
+                               "人工表达假设，不是源方案对象、不是产品选型",
+            "position_mm": px, "rotation_deg": 0.0, "z_offset_m": 0.0,
+            "anchor": "center_floor", "kind": "test_staging_pedestal",
+            "source": "manual_test_assumption:display_sequence_along_circulation",
+        })
+        furniture.append({
+            "object_id": f"R4-STG-OBJ-{i:02d}",
+            "catalog_id": f"presentation:{obj_asset}",
+            "asset_id": obj_asset, "asset_dimensions_mm": dims(obj_asset),
+            "origin_kind": "test_staging",
+            "position_mm": px, "rotation_deg": 0.0, "z_offset_m": 0.75,
+            "anchor": "center_floor", "kind": "test_staging_object",
+            "source": "manual_test_assumption:sample_exhibit_not_client_product",
+        })
+    arrival_zone = (by_role_local.get("arrival") or spatial["zones"][:1])[0]
+    ac = _zone_center(arrival_zone["polygon_mm"])
+    furniture.append({
+        "object_id": "R4-STG-BRAND-01", "catalog_id": "presentation:brand_panel",
+        "asset_id": None, "asset_dimensions_mm": [2400.0, 120.0, 1800.0],
+        "origin_kind": "procedural_expression",
+        "expression_note": "品牌标识板为占位表达（抽象色块，不含客户品牌、不含文字设计）；"
+                           "人工表达假设，不是 AI 自动设计成果",
+        "position_mm": _clamp([ac[0] + 300, ac[1] + 1500], W, H),
+        "rotation_deg": 0.0, "z_offset_m": 0.0,
+        "anchor": "center_floor", "kind": "test_staging_brand_panel",
+        "source": "manual_test_assumption:brand_content_placeholder",
+    })
+    gallery_zone = (by_role_local.get("gallery") or spatial["zones"][:1])[0]
+    gc = _zone_center(gallery_zone["polygon_mm"])
+    for i, (dx, seat_rot) in enumerate([(-1500, 90), (1500, -90)], start=1):
+        furniture.append({
+            "object_id": f"R4-STG-SEAT-{i:02d}",
+            "catalog_id": "presentation:modern_arm_chair_01",
+            "asset_id": "modern_arm_chair_01",
+            "asset_dimensions_mm": dims("modern_arm_chair_01"),
+            "origin_kind": "test_staging",
+            "position_mm": _clamp([gc[0] + dx, gc[1] - 300], W, H),
+            "rotation_deg": seat_rot, "z_offset_m": 0.0,
+            "anchor": "center_floor", "kind": "test_staging_seat",
+            "source": "manual_test_assumption:group_isolated_table_into_readable_setting",
         })
 
     materials = [
@@ -256,6 +335,60 @@ def build_fixture_presentation(model: dict, layout: str) -> dict:
         "sun": {"azimuth_deg": 200, "elevation_deg": 38, "energy": 2.0},
     }
 
+    # ------------------------------------------------ V2/V3 有版本的表达输入
+    # 材质纹理比例/分缝/收边、窗玻璃与窗外环境、陈设分类都在这里版本化，
+    # 渲染器只读该输入，不手工改像素、不把参数写死在渲染脚本里。
+    expression = {
+        "schema_version": "rkd-spatial-expression.v1",
+        "declared_by": "executor_manual_fixture_w2_r4_closeout",
+        "declaration": "V2 窗光/材质与 V3 陈设的表达输入；人工测试假设，"
+                       "非现场事实、非 AI 自动设计、非材料规格或施工排版",
+        "material_finish": {
+            "mat-oak": {
+                "tile": 1.60, "joint_spacing_mm": 600, "joint_width_mm": 6,
+                "edge_trim_mm": 80,
+                "note": "主要木饰面：按 600mm 板宽示意竖向板缝，贴图重复倍率 1.6（人工假设）",
+            },
+            "mat-walnut": {
+                "tile": 1.40, "joint_spacing_mm": 600, "joint_width_mm": 6,
+                "edge_trim_mm": 80,
+                "note": "次要木饰面：同尺度板缝，人工假设",
+            },
+            "mat-floor-microcement": {
+                "tile": 0.50, "joint_spacing_mm": 1200, "joint_width_mm": 4,
+                "edge_trim_mm": 80,
+                "note": "主要地面：按 1200mm 示意分缝网格与 80mm 踢脚收边，不是施工排版",
+            },
+            "mat-stone": {
+                "tile": 0.90, "joint_spacing_mm": 900, "joint_width_mm": 5,
+                "edge_trim_mm": 60,
+                "note": "石材台面/中岛：示意分缝，人工假设",
+            },
+        },
+        "window_expression": {
+            "glass_kind": "transparent",
+            "frame_width_mm": 60, "reveal_depth_mm": 200, "mullion_count": 1,
+            "outside_environment": "labelled_local_sky_gradient_assumption",
+            "outside_note": "窗外为本地程序化天空/远景渐变（淡蓝天光 + 暖灰地平线带），"
+                            "不是现场照片、不是真实外景，也不宣称照度合规",
+            "exposure_ev": -0.15,
+            "window_light_energy_scale": 0.62,
+        },
+        "staging_note": "V3 陈设按 furniture.origin_kind 分为 source_model / "
+                        "cc0_expression_asset / test_staging / procedural_expression；"
+                        "后两类只进入平面与场景表现，工程量与材料面切片恒为 0 影响",
+        "assumptions": [
+            "V2 玻璃改为透明透射材质，窗框/窗洞深度/窗外天空渐变均为本地程序化人工假设；"
+            "采光方向仍只来自已建模窗洞口，不再用发光板掩盖窗口细节。",
+            "V2 木饰面与地面分缝/收边为示意几何，参数是版本化表达输入，不是材料规格、"
+            "产品选型或施工排版。",
+            "V3 新增展台、器物、品牌板与配套座椅是测试陈设（人工表达假设），"
+            "位置由本布局动线/分区派生，不复制固定样板坐标，不计工程量、不称 AI 设计。",
+            "品牌板只放抽象色块，不含客户品牌、不含文字设计；展品为 CC0 器物示意，"
+            "不是协诚产品清单。",
+        ],
+    }
+
     return {
         "unit": "mm",
         "declared_by": "executor_manual_fixture_w2_r4",
@@ -267,5 +400,6 @@ def build_fixture_presentation(model: dict, layout: str) -> dict:
         "walls": walls, "partitions": partitions, "openings": openings,
         "furniture": furniture, "materials": materials, "cameras": cameras,
         "lighting": lighting,
+        "expression": expression,
         "assumptions": ASSUMPTIONS, "missing": MISSING,
     }

@@ -1,0 +1,338 @@
+{
+  "created_at": "2026-11-15T15:09:49.285Z",
+  "regions_mm": {
+    "A": {
+      "entry": [
+        0,
+        8200,
+        6200,
+        14000
+      ],
+      "meeting": [
+        18000,
+        6800,
+        26170,
+        14200
+      ]
+    },
+    "B": {
+      "entry": [
+        0,
+        8200,
+        5400,
+        14200
+      ],
+      "meeting": [
+        16800,
+        13400,
+        26170,
+        17920
+      ]
+    }
+  },
+  "screenshots": [
+    {
+      "layout": "A",
+      "phase": "before",
+      "kind": "full",
+      "file": "plan-A-full-before.png",
+      "bytes": 197899,
+      "metrics": {
+        "ox": 80,
+        "oy": 110,
+        "scale": 0.033626289644631255,
+        "w": 26170,
+        "h": 17920,
+        "layered": false
+      },
+      "scope": "正常屏幕缩放 1500px 视口"
+    },
+    {
+      "layout": "A",
+      "phase": "before",
+      "kind": "entry",
+      "file": "plan-A-entry-before.png",
+      "bytes": 14393,
+      "region_mm": [
+        0,
+        8200,
+        6200,
+        14000
+      ],
+      "clip_px": {
+        "x": 25,
+        "y": 186.8150554069545,
+        "width": 318.4829957967138,
+        "height": 305.0324799388613
+      }
+    },
+    {
+      "layout": "A",
+      "phase": "before",
+      "kind": "meeting",
+      "file": "plan-A-meeting-before.png",
+      "bytes": 11471,
+      "region_mm": [
+        18000,
+        6800,
+        26170,
+        14200
+      ],
+      "clip_px": {
+        "x": 630.2732136033626,
+        "y": 180.0897974780283,
+        "width": 384.7267863966373,
+        "height": 358.83454337027126
+      }
+    },
+    {
+      "layout": "A",
+      "phase": "before",
+      "kind": "print_a4_width",
+      "file": "plan-A-print-before.png",
+      "bytes": 186613,
+      "scope": "SVG 缩放到 A4 横向可用宽 270mm"
+    },
+    {
+      "layout": "A",
+      "phase": "after",
+      "kind": "full",
+      "file": "plan-A-full-after.png",
+      "bytes": 242654,
+      "metrics": {
+        "ox": 100,
+        "oy": 170,
+        "scale": 0.03362629,
+        "w": 26170,
+        "h": 17920,
+        "layered": true
+      },
+      "scope": "正常屏幕缩放 1500px 视口"
+    },
+    {
+      "layout": "A",
+      "phase": "after",
+      "kind": "entry",
+      "file": "plan-A-entry-after.png",
+      "bytes": 12102,
+      "region_mm": [
+        0,
+        8200,
+        6200,
+        14000
+      ],
+      "clip_px": {
+        "x": 45,
+        "y": 246.81505679999998,
+        "width": 318.482998,
+        "height": 305.0324820000001
+      }
+    },
+    {
+      "layout": "A",
+      "phase": "after",
+      "kind": "meeting",
+      "file": "plan-A-meeting-after.png",
+      "bytes": 11229,
+      "region_mm": [
+        18000,
+        6800,
+        26170,
+        14200
+      ],
+      "clip_px": {
+        "x": 650.27322,
+        "y": 240.08979880000004,
+        "width": 384.72678930000006,
+        "height": 358.83454599999993
+      }
+    },
+    {
+      "layout": "A",
+      "phase": "after",
+      "kind": "print_a4_width",
+      "file": "plan-A-print-after.png",
+      "bytes": 239547,
+      "scope": "SVG 缩放到 A4 横向可用宽 270mm"
+    },
+    {
+      "layout": "B",
+      "phase": "before",
+      "kind": "full",
+      "file": "plan-B-full-before.png",
+      "bytes": 195545,
+      "metrics": {
+        "ox": 80,
+        "oy": 110,
+        "scale": 0.033626289644631255,
+        "w": 26170,
+        "h": 17920,
+        "layered": false
+      },
+      "scope": "正常屏幕缩放 1500px 视口"
+    },
+    {
+      "layout": "B",
+      "phase": "before",
+      "kind": "entry",
+      "file": "plan-B-entry-before.png",
+      "bytes": 13053,
+      "region_mm": [
+        0,
+        8200,
+        5400,
+        14200
+      ],
+      "clip_px": {
+        "x": 25,
+        "y": 180.0897974780283,
+        "width": 291.5819640810088,
+        "height": 311.7577378677875
+      }
+    },
+    {
+      "layout": "B",
+      "phase": "before",
+      "kind": "meeting",
+      "file": "plan-B-meeting-before.png",
+      "bytes": 7267,
+      "region_mm": [
+        16800,
+        13400,
+        26170,
+        17920
+      ],
+      "clip_px": {
+        "x": 589.9216660298051,
+        "y": 55,
+        "width": 425.07833397019476,
+        "height": 261.99082919373325
+      }
+    },
+    {
+      "layout": "B",
+      "phase": "before",
+      "kind": "print_a4_width",
+      "file": "plan-B-print-before.png",
+      "bytes": 184057,
+      "scope": "SVG 缩放到 A4 横向可用宽 270mm"
+    },
+    {
+      "layout": "B",
+      "phase": "after",
+      "kind": "full",
+      "file": "plan-B-full-after.png",
+      "bytes": 239299,
+      "metrics": {
+        "ox": 100,
+        "oy": 170,
+        "scale": 0.03362629,
+        "w": 26170,
+        "h": 17920,
+        "layered": true
+      },
+      "scope": "正常屏幕缩放 1500px 视口"
+    },
+    {
+      "layout": "B",
+      "phase": "after",
+      "kind": "entry",
+      "file": "plan-B-entry-after.png",
+      "bytes": 12048,
+      "region_mm": [
+        0,
+        8200,
+        5400,
+        14200
+      ],
+      "clip_px": {
+        "x": 45,
+        "y": 240.08979880000004,
+        "width": 291.581966,
+        "height": 311.75774
+      }
+    },
+    {
+      "layout": "B",
+      "phase": "after",
+      "kind": "meeting",
+      "file": "plan-B-meeting-after.png",
+      "bytes": 6170,
+      "region_mm": [
+        16800,
+        13400,
+        26170,
+        17920
+      ],
+      "clip_px": {
+        "x": 609.9216720000001,
+        "y": 115,
+        "width": 425.07833730000004,
+        "height": 261.9908308
+      }
+    },
+    {
+      "layout": "B",
+      "phase": "after",
+      "kind": "print_a4_width",
+      "file": "plan-B-print-after.png",
+      "bytes": 237392,
+      "scope": "SVG 缩放到 A4 横向可用宽 270mm"
+    }
+  ],
+  "auto_geometry_check": {
+    "A-before": {
+      "annotation_count": 0,
+      "min_font_size": null,
+      "overlaps": [],
+      "overlap_count": 0,
+      "outside_count": 0,
+      "outside_samples": [],
+      "bounds": {
+        "w": 1290,
+        "h": 1043
+      },
+      "note": "自动几何检查只覆盖带 data-anno 的图面标注；不代表人工目检通过"
+    },
+    "A-after": {
+      "annotation_count": 62,
+      "min_font_size": 8.5,
+      "overlaps": [],
+      "overlap_count": 0,
+      "outside_count": 0,
+      "outside_samples": [],
+      "bounds": {
+        "w": 1370,
+        "h": 1393
+      },
+      "note": "自动几何检查只覆盖带 data-anno 的图面标注；不代表人工目检通过"
+    },
+    "B-before": {
+      "annotation_count": 0,
+      "min_font_size": null,
+      "overlaps": [],
+      "overlap_count": 0,
+      "outside_count": 0,
+      "outside_samples": [],
+      "bounds": {
+        "w": 1290,
+        "h": 1043
+      },
+      "note": "自动几何检查只覆盖带 data-anno 的图面标注；不代表人工目检通过"
+    },
+    "B-after": {
+      "annotation_count": 62,
+      "min_font_size": 8.5,
+      "overlaps": [],
+      "overlap_count": 0,
+      "outside_count": 0,
+      "outside_samples": [],
+      "bounds": {
+        "w": 1370,
+        "h": 1393
+      },
+      "note": "自动几何检查只覆盖带 data-anno 的图面标注；不代表人工目检通过"
+    }
+  },
+  "manual_visual_review": "见复核包 manual-visual-review.md（自动断言不代替人工目检）"
+}

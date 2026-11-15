@@ -1,0 +1,381 @@
+{
+  "task_id": "W2-R4 同源表达 / 表达收口",
+  "schema_version": "rkd-w2-r4-checks.v2",
+  "executed_at": "2026-11-15T22:20:59+08:00",
+  "code_head": "8fd7948e49ce8698806b484e8117b41011852f1d",
+  "render_enabled": false,
+  "environment": {
+    "python": "3.12.14",
+    "renderer": "not_run",
+    "isolated_main_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-表达收口\\no-render-runtime\\app.sqlite3",
+    "isolated_studio_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-表达收口\\no-render-runtime\\studio.db",
+    "model_channel": "labelled local fixtures only",
+    "presentation": "executor manual test assumptions",
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "R4-A-SUBMIT",
+      "name": "布局 A 由同一生成器产出完整成果",
+      "result": "observed_pass",
+      "layer": "http",
+      "evidence": {
+        "status": 202,
+        "job_status": "succeeded",
+        "job_error": null,
+        "message": null,
+        "artifacts": [
+          "cost.html",
+          "quantity.json",
+          "manifest.json",
+          "package.zip",
+          "plan.svg",
+          "quantity.csv"
+        ],
+        "generator": "rkd-spatial-outputs.v4"
+      }
+    },
+    {
+      "id": "R4-A-ZIP",
+      "name": "布局 A 完整 ZIP/下载 SHA 与 PNG 一致",
+      "result": "observed_pass",
+      "layer": "http",
+      "evidence": {
+        "zip_entries": [
+          "cost.html",
+          "manifest.json",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ],
+        "manifest_files": 5,
+        "problems": [],
+        "png_matches_zip": false
+      }
+    },
+    {
+      "id": "R4-B-SUBMIT",
+      "name": "布局 B 由同一生成器产出完整成果",
+      "result": "observed_pass",
+      "layer": "http",
+      "evidence": {
+        "status": 202,
+        "job_status": "succeeded",
+        "job_error": null,
+        "message": null,
+        "artifacts": [
+          "cost.html",
+          "quantity.json",
+          "manifest.json",
+          "package.zip",
+          "plan.svg",
+          "quantity.csv"
+        ],
+        "generator": "rkd-spatial-outputs.v4"
+      }
+    },
+    {
+      "id": "R4-B-ZIP",
+      "name": "布局 B 完整 ZIP/下载 SHA 与 PNG 一致",
+      "result": "observed_pass",
+      "layer": "http",
+      "evidence": {
+        "zip_entries": [
+          "cost.html",
+          "manifest.json",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ],
+        "manifest_files": 5,
+        "problems": [],
+        "png_matches_zip": false
+      }
+    },
+    {
+      "id": "R4-01",
+      "name": "两种不同布局由同一生成器出平面/场景/人眼图，模型哈希与净量不同",
+      "result": "observed_pass",
+      "layer": "http",
+      "evidence": {
+        "layout_a_net": 233.03,
+        "layout_b_net": 229.08,
+        "model_hashes": [
+          "de49cda5685c",
+          "8581557f3279"
+        ],
+        "generator": "rkd-spatial-outputs.v4",
+        "presentation_version": "rkd-spatial-presentation-fixture.v1"
+      }
+    },
+    {
+      "id": "R4-02-A",
+      "name": "布局 A 平面含墙/洞口/家具/材料/机位/尺寸链且文字可读",
+      "result": "observed_pass",
+      "layer": "contract",
+      "evidence": {
+        "bytes": 22257,
+        "missing": [],
+        "min_font_size": 8.0,
+        "too_small_count": 0,
+        "has_eye_level": true,
+        "has_dimension": true
+      }
+    },
+    {
+      "id": "R4-02-B",
+      "name": "布局 B 平面含墙/洞口/家具/材料/机位/尺寸链且文字可读",
+      "result": "observed_pass",
+      "layer": "contract",
+      "evidence": {
+        "bytes": 22256,
+        "missing": [],
+        "min_font_size": 8.0,
+        "too_small_count": 0,
+        "has_eye_level": true,
+        "has_dimension": true
+      }
+    },
+    {
+      "id": "R4-03-A",
+      "name": "布局 A 围合/开口/家具在平面与三维读同一 ID 与尺寸",
+      "result": "observed_pass",
+      "layer": "contract",
+      "evidence": {
+        "walls": 4,
+        "partitions": 2,
+        "openings": 7,
+        "furniture": 16,
+        "ids_ok": true,
+        "size_labels_ok": true,
+        "furniture_labels_ok": true,
+        "zone_material_slots": [
+          "fabric",
+          "floor_microcement",
+          "oak",
+          "stone",
+          "walnut"
+        ]
+      }
+    },
+    {
+      "id": "R4-03-B",
+      "name": "布局 B 围合/开口/家具在平面与三维读同一 ID 与尺寸",
+      "result": "observed_pass",
+      "layer": "contract",
+      "evidence": {
+        "walls": 4,
+        "partitions": 2,
+        "openings": 7,
+        "furniture": 16,
+        "ids_ok": true,
+        "size_labels_ok": true,
+        "furniture_labels_ok": true,
+        "zone_material_slots": [
+          "fabric",
+          "floor_microcement",
+          "oak",
+          "stone",
+          "walnut"
+        ]
+      }
+    },
+    {
+      "id": "R4-04-A",
+      "name": "布局 A 真实 CC0 材质/家具/窗光/人眼机位出图",
+      "result": "not_run",
+      "layer": "real_render",
+      "evidence": {
+        "reason": "--no-render 主动跳过真实 Blender 渲染",
+        "expected_artifact": "render.png + render.png.meta.json",
+        "note": "需运行不带 --no-render 的完整验证才能判定"
+      }
+    },
+    {
+      "id": "R4-04-B",
+      "name": "布局 B 真实 CC0 材质/家具/窗光/人眼机位出图",
+      "result": "not_run",
+      "layer": "real_render",
+      "evidence": {
+        "reason": "--no-render 主动跳过真实 Blender 渲染",
+        "expected_artifact": "render.png + render.png.meta.json",
+        "note": "需运行不带 --no-render 的完整验证才能判定"
+      }
+    },
+    {
+      "id": "R4-05",
+      "name": "四项受控变更：开口尺寸同步平面/场景且改几何不改量；换材质可追踪；只改相机不改量；只改单价不改几何",
+      "result": "observed_pass",
+      "layer": "function_level",
+      "evidence": {
+        "opening_width_mm": 3000.0,
+        "opening_quantity_unchanged": true,
+        "material_slot_after": "walnut",
+        "material_quantity_and_cost_unchanged": true,
+        "camera_quantity_unchanged": true,
+        "price_geometry_unchanged": true,
+        "trial_amount_before_after": [
+          233030.0,
+          279636.0
+        ]
+      }
+    },
+    {
+      "id": "R4-06",
+      "name": "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
+      "result": "missing_evidence",
+      "layer": "external_evidence",
+      "evidence": {
+        "status": "missing_evidence",
+        "missing_paths": [
+          "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-表达收口\\no-render-semantics\\after\\finish-conflict-after.json",
+          "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-表达收口\\no-render-semantics\\regression-second-closeout\\repro-r4-regression.json"
+        ],
+        "note": "这是外部证据未在本次输出目录提供，不是产品回归；可在完整输出目录复跑或复制前置证据后重判"
+      }
+    },
+    {
+      "id": "R4-07",
+      "name": "按 job_id 查询只返回该任务的 revision/artifacts，不串另一布局",
+      "result": "observed_pass",
+      "layer": "http",
+      "evidence": {
+        "job_a": "ai-spatial-job_a2eaf733aa94",
+        "job_b": "ai-spatial-job_476b569c508a",
+        "revision_a": "ai-production-revision_a91b1ec505a6",
+        "revision_b": "ai-production-revision_2951423c20c4"
+      }
+    },
+    {
+      "id": "R4-08",
+      "name": "同一 R4 服务代码：取消晚到不复活可显式重试；失败任务不借用他人成果",
+      "result": "observed_pass",
+      "layer": "http",
+      "evidence": {
+        "cancel_late": {
+          "status_in_gap": "queued",
+          "cancel_status": 200,
+          "cancel_body_status": "cancelled",
+          "final_status": "cancelled",
+          "registered": 0,
+          "retry_status_code": 202,
+          "retried_status": "succeeded",
+          "retry_of": "ai-spatial-job_0936320c0f70"
+        },
+        "job_isolation": {
+          "good_job": "ai-spatial-job_b19a1063542a",
+          "requested_job": "ai-spatial-job_34dc20953859",
+          "returned_job": "ai-spatial-job_34dc20953859",
+          "job_status": "failed",
+          "returned_revision": null,
+          "returned_revision_job": null,
+          "artifacts": 0,
+          "revision_source": "none",
+          "note": "显式查一个失败任务时，revision/artifacts 必须为空，不能拿别人的"
+        }
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 12,
+    "observed_fail": 0,
+    "not_run": 2,
+    "missing_evidence": 1
+  },
+  "verification_layers": {
+    "function_level": {
+      "status": "observed_pass",
+      "checks": [
+        "R4-05"
+      ],
+      "counts": {
+        "observed_pass": 1,
+        "observed_fail": 0,
+        "not_run": 0,
+        "missing_evidence": 0
+      }
+    },
+    "contract": {
+      "status": "observed_pass",
+      "checks": [
+        "R4-02-A",
+        "R4-02-B",
+        "R4-03-A",
+        "R4-03-B"
+      ],
+      "counts": {
+        "observed_pass": 4,
+        "observed_fail": 0,
+        "not_run": 0,
+        "missing_evidence": 0
+      }
+    },
+    "http": {
+      "status": "observed_pass",
+      "checks": [
+        "R4-A-SUBMIT",
+        "R4-A-ZIP",
+        "R4-B-SUBMIT",
+        "R4-B-ZIP",
+        "R4-01",
+        "R4-07",
+        "R4-08"
+      ],
+      "counts": {
+        "observed_pass": 7,
+        "observed_fail": 0,
+        "not_run": 0,
+        "missing_evidence": 0
+      }
+    },
+    "external_evidence": {
+      "status": "not_run_or_missing_evidence",
+      "checks": [
+        "R4-06"
+      ],
+      "counts": {
+        "observed_pass": 0,
+        "observed_fail": 0,
+        "not_run": 0,
+        "missing_evidence": 1
+      }
+    },
+    "real_render": {
+      "status": "not_run_or_missing_evidence",
+      "checks": [
+        "R4-04-A",
+        "R4-04-B"
+      ],
+      "counts": {
+        "observed_pass": 0,
+        "observed_fail": 0,
+        "not_run": 2,
+        "missing_evidence": 0
+      }
+    },
+    "browser": {
+      "status": "separate_script_not_run_here",
+      "evidence": "var/evidence/roadmap/<batch>/browser/verification.json",
+      "note": "本脚本不启动浏览器；真实 Edge 验收由 verify_w2_r4_browser.py 单独执行"
+    },
+    "manual_visual": {
+      "status": "reported_in_review_packet",
+      "evidence": "deliverables-for-review/roadmap/<batch>/manual-visual-review.md",
+      "note": "自动断言只做几何/编号/字符串对账，不代表人工目检；图面可读性、材质尺度与光照层次必须由人工看图判定并单独记录"
+    }
+  },
+  "semantics": {
+    "observed_fail": "真实产品断言失败，决定退出码",
+    "not_run": "本运行主动跳过（如 --no-render 的真实图像项），不计失败也不计通过",
+    "missing_evidence": "缺少前置/外部证据文件，不计产品回归",
+    "manual_visual": "人工目检在复核包单列，绝不由自动断言代签"
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "images_generated": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "not_customer_design_approval": true
+}

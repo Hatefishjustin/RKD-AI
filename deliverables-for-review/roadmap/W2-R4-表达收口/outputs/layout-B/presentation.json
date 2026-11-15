@@ -1,0 +1,1202 @@
+{
+  "schema_version": "rkd-spatial-presentation-fixture.v1",
+  "normalized": true,
+  "unit": "mm",
+  "declared_by": "executor_manual_fixture_w2_r4",
+  "declaration": "W2-R4 布局 B 表达层人工测试假设；用于平面与三维同源表达，不是设计成果、不是现场事实、不是 AI 自动设计",
+  "site_verified": false,
+  "not_ai_design": true,
+  "not_site_fact": true,
+  "asset_manifest_sha256": "593d84554d4778ad6b247a2206d5c6fd081e70f06dcefa3cd02108a6d83ee08d",
+  "asset_source": "Poly Haven (polyhaven.com)",
+  "asset_license": "CC0 1.0 (Poly Haven)",
+  "assets_root": "tools/assets",
+  "walls": [
+    {
+      "object_id": "R4-W-S",
+      "kind": "perimeter",
+      "segment_mm": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          26170.0,
+          0.0
+        ]
+      ],
+      "length_mm": 26170.0,
+      "thickness_mm": 200.0,
+      "height_mm": 3000.0,
+      "material_slot": "wall_plaster",
+      "source": "manual_test_assumption:perimeter_enclosure",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-W-E",
+      "kind": "perimeter",
+      "segment_mm": [
+        [
+          26170.0,
+          0.0
+        ],
+        [
+          26170.0,
+          17920.0
+        ]
+      ],
+      "length_mm": 17920.0,
+      "thickness_mm": 200.0,
+      "height_mm": 3000.0,
+      "material_slot": "wall_plaster",
+      "source": "manual_test_assumption:perimeter_enclosure",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-W-N",
+      "kind": "perimeter",
+      "segment_mm": [
+        [
+          26170.0,
+          17920.0
+        ],
+        [
+          0.0,
+          17920.0
+        ]
+      ],
+      "length_mm": 26170.0,
+      "thickness_mm": 200.0,
+      "height_mm": 3000.0,
+      "material_slot": "wall_plaster",
+      "source": "manual_test_assumption:perimeter_enclosure",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-W-W",
+      "kind": "perimeter",
+      "segment_mm": [
+        [
+          0.0,
+          17920.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "length_mm": 17920.0,
+      "thickness_mm": 200.0,
+      "height_mm": 3000.0,
+      "material_slot": "wall_plaster",
+      "source": "manual_test_assumption:perimeter_enclosure",
+      "assumption": true,
+      "site_verified": false
+    }
+  ],
+  "partitions": [
+    {
+      "object_id": "R4-P-GLASS",
+      "kind": "partition",
+      "segment_mm": [
+        [
+          18842.399999999998,
+          7884.8
+        ],
+        [
+          18842.399999999998,
+          12902.4
+        ]
+      ],
+      "length_mm": 5017.6,
+      "thickness_mm": 120.0,
+      "height_mm": 2700.0,
+      "material_slot": "stone",
+      "source": "manual_test_assumption:free_standing_partition",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-P-SCREEN",
+      "kind": "partition",
+      "segment_mm": [
+        [
+          7851.0,
+          3584.0
+        ],
+        [
+          13608.4,
+          3584.0
+        ]
+      ],
+      "length_mm": 5757.4,
+      "thickness_mm": 150.0,
+      "height_mm": 2400.0,
+      "material_slot": "oak",
+      "source": "manual_test_assumption:free_standing_partition",
+      "assumption": true,
+      "site_verified": false
+    }
+  ],
+  "openings": [
+    {
+      "object_id": "R4-D-ENTRY",
+      "kind": "door",
+      "wall_object_id": "R4-W-W",
+      "center_mm": [
+        0.0,
+        11200.0
+      ],
+      "width_mm": 1800.0,
+      "height_mm": 2400.0,
+      "sill_mm": 0.0,
+      "source": "model_boundary_entrance:test_parameter",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-WIN-N1",
+      "kind": "window",
+      "wall_object_id": "R4-W-N",
+      "center_mm": [
+        5421.0,
+        17920.0
+      ],
+      "width_mm": 5466.0,
+      "height_mm": 1800.0,
+      "sill_mm": 900.0,
+      "source": "manual_test_assumption:stage1_window_rhythm_as_pattern_only",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-WIN-N2",
+      "kind": "window",
+      "wall_object_id": "R4-W-N",
+      "center_mm": [
+        11503.0,
+        17920.0
+      ],
+      "width_mm": 5450.0,
+      "height_mm": 1800.0,
+      "sill_mm": 900.0,
+      "source": "manual_test_assumption:stage1_window_rhythm_as_pattern_only",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-WIN-N3",
+      "kind": "window",
+      "wall_object_id": "R4-W-N",
+      "center_mm": [
+        17592.0,
+        17920.0
+      ],
+      "width_mm": 5450.0,
+      "height_mm": 1800.0,
+      "sill_mm": 900.0,
+      "source": "manual_test_assumption:stage1_window_rhythm_as_pattern_only",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-WIN-E1",
+      "kind": "window",
+      "wall_object_id": "R4-W-E",
+      "center_mm": [
+        26170.0,
+        1634.0
+      ],
+      "width_mm": 2806.0,
+      "height_mm": 1800.0,
+      "sill_mm": 900.0,
+      "source": "manual_test_assumption:stage1_window_rhythm_as_pattern_only",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-WIN-E2",
+      "kind": "window",
+      "wall_object_id": "R4-W-E",
+      "center_mm": [
+        26170.0,
+        7007.5
+      ],
+      "width_mm": 2531.0,
+      "height_mm": 1800.0,
+      "sill_mm": 900.0,
+      "source": "manual_test_assumption:stage1_window_rhythm_as_pattern_only",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-D-PARTITION",
+      "kind": "door",
+      "wall_object_id": "R4-P-GLASS",
+      "center_mm": [
+        18842.4,
+        10393.6
+      ],
+      "width_mm": 900.0,
+      "height_mm": 2200.0,
+      "sill_mm": 0.0,
+      "source": "manual_test_assumption:opening_in_explicit_partition",
+      "assumption": true,
+      "site_verified": false
+    }
+  ],
+  "furniture": [
+    {
+      "object_id": "F1",
+      "catalog_id": "sofa-3p",
+      "asset_id": "sofa_02",
+      "asset_dimensions_mm": [
+        1807.167,
+        817.751,
+        709.489
+      ],
+      "origin_kind": "source_model",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        8400.0,
+        4050.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "model_furniture",
+      "source": "manual_test_assumption:catalog_to_cc0_asset_mapping",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "F2",
+      "catalog_id": "dining-table",
+      "asset_id": "dining_table",
+      "asset_dimensions_mm": [
+        2255.896,
+        1390.236,
+        876.989
+      ],
+      "origin_kind": "source_model",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        14400.0,
+        3300.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "model_furniture",
+      "source": "manual_test_assumption:catalog_to_cc0_asset_mapping",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "F3",
+      "catalog_id": "display-wing",
+      "asset_id": null,
+      "asset_dimensions_mm": [
+        450.0,
+        2300.0,
+        2400.0
+      ],
+      "origin_kind": "procedural_expression",
+      "placeholder": false,
+      "placeholder_note": "程序化展墙（木饰面展板 + 展品托板）：替代原占位盒；人工表达假设，非 CC0 资产、非源方案对象，位置/ID 沿用源模型",
+      "position_mm": [
+        9500.0,
+        16350.0
+      ],
+      "rotation_deg": -12.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "model_furniture",
+      "source": "manual_test_assumption:catalog_to_cc0_asset_mapping",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-01",
+      "catalog_id": "presentation:potted_plant_01",
+      "asset_id": "potted_plant_01",
+      "asset_dimensions_mm": [
+        588.919,
+        636.612,
+        1350.779
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        3120.0,
+        12200.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-02",
+      "catalog_id": "presentation:ceramic_vase_01",
+      "asset_id": "ceramic_vase_01",
+      "asset_dimensions_mm": [
+        204.872,
+        206.377,
+        401.38
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        19350.0,
+        9850.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.72,
+      "z_offset_note": "置于已建模台面/展台之上 0.72m（人工假设），避免与平台实体穿插",
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-03",
+      "catalog_id": "presentation:wooden_bowl_01",
+      "asset_id": "wooden_bowl_01",
+      "asset_dimensions_mm": [
+        313.082,
+        309.142,
+        93.693
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        22050.0,
+        9950.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.72,
+      "z_offset_note": "置于已建模台面/展台之上 0.72m（人工假设），避免与平台实体穿插",
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-04",
+      "catalog_id": "presentation:potted_plant_01",
+      "asset_id": "potted_plant_01",
+      "asset_dimensions_mm": [
+        588.919,
+        636.612,
+        1350.779
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        23350.0,
+        8750.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-05",
+      "catalog_id": "presentation:modern_arm_chair_01",
+      "asset_id": "modern_arm_chair_01",
+      "asset_dimensions_mm": [
+        820.344,
+        986.562,
+        1022.852
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        9250.0,
+        4700.0
+      ],
+      "rotation_deg": 20.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-06",
+      "catalog_id": "presentation:modern_arm_chair_01",
+      "asset_id": "modern_arm_chair_01",
+      "asset_dimensions_mm": [
+        820.344,
+        986.562,
+        1022.852
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        12450.0,
+        4700.0
+      ],
+      "rotation_deg": -20.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-07",
+      "catalog_id": "presentation:modern_coffee_table_01",
+      "asset_id": "modern_coffee_table_01",
+      "asset_dimensions_mm": [
+        1201.83,
+        600.0,
+        390.0
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        10850.0,
+        4400.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-08",
+      "catalog_id": "presentation:bar_chair_round_01",
+      "asset_id": "bar_chair_round_01",
+      "asset_dimensions_mm": [
+        483.15,
+        485.996,
+        750.548
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        2800.0,
+        3950.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-09",
+      "catalog_id": "presentation:bar_chair_round_01",
+      "asset_id": "bar_chair_round_01",
+      "asset_dimensions_mm": [
+        483.15,
+        485.996,
+        750.548
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        3800.0,
+        3950.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-10",
+      "catalog_id": "presentation:dining_chair_02",
+      "asset_id": "dining_chair_02",
+      "asset_dimensions_mm": [
+        433.571,
+        576.42,
+        973.378
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        20900.0,
+        15950.0
+      ],
+      "rotation_deg": 180.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-11",
+      "catalog_id": "presentation:dining_chair_02",
+      "asset_id": "dining_chair_02",
+      "asset_dimensions_mm": [
+        433.571,
+        576.42,
+        973.378
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        22700.0,
+        15950.0
+      ],
+      "rotation_deg": 180.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-12",
+      "catalog_id": "presentation:round_wooden_table_01",
+      "asset_id": "round_wooden_table_01",
+      "asset_dimensions_mm": [
+        1399.349,
+        1399.349,
+        1005.021
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        9650.0,
+        11750.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-PROP-13",
+      "catalog_id": "presentation:potted_plant_01",
+      "asset_id": "potted_plant_01",
+      "asset_dimensions_mm": [
+        588.919,
+        636.612,
+        1350.779
+      ],
+      "origin_kind": "cc0_expression_asset",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        12050.0,
+        11750.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "presentation_prop",
+      "source": "manual_test_assumption:presentation_prop_not_model_design",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-PED-01",
+      "catalog_id": "presentation:display_pedestal",
+      "asset_id": null,
+      "asset_dimensions_mm": [
+        900.0,
+        600.0,
+        750.0
+      ],
+      "origin_kind": "procedural_expression",
+      "placeholder": false,
+      "placeholder_note": "程序化样板展台（石材台面 + 木饰面基座）；人工表达假设，不是源方案对象、不是产品选型",
+      "position_mm": [
+        4200.0,
+        8500.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "test_staging_pedestal",
+      "source": "manual_test_assumption:display_sequence_along_circulation",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-OBJ-01",
+      "catalog_id": "presentation:ceramic_vase_01",
+      "asset_id": "ceramic_vase_01",
+      "asset_dimensions_mm": [
+        204.872,
+        206.377,
+        401.38
+      ],
+      "origin_kind": "test_staging",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        4200.0,
+        8500.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.75,
+      "z_offset_note": "置于已建模台面/展台之上 0.75m（人工假设），避免与平台实体穿插",
+      "anchor": "center_floor",
+      "kind": "test_staging_object",
+      "source": "manual_test_assumption:sample_exhibit_not_client_product",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-PED-02",
+      "catalog_id": "presentation:display_pedestal",
+      "asset_id": null,
+      "asset_dimensions_mm": [
+        900.0,
+        600.0,
+        750.0
+      ],
+      "origin_kind": "procedural_expression",
+      "placeholder": false,
+      "placeholder_note": "程序化样板展台（石材台面 + 木饰面基座）；人工表达假设，不是源方案对象、不是产品选型",
+      "position_mm": [
+        12000.0,
+        8500.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "test_staging_pedestal",
+      "source": "manual_test_assumption:display_sequence_along_circulation",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-OBJ-02",
+      "catalog_id": "presentation:wooden_bowl_01",
+      "asset_id": "wooden_bowl_01",
+      "asset_dimensions_mm": [
+        313.082,
+        309.142,
+        93.693
+      ],
+      "origin_kind": "test_staging",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        12000.0,
+        8500.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.75,
+      "z_offset_note": "置于已建模台面/展台之上 0.75m（人工假设），避免与平台实体穿插",
+      "anchor": "center_floor",
+      "kind": "test_staging_object",
+      "source": "manual_test_assumption:sample_exhibit_not_client_product",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-PED-03",
+      "catalog_id": "presentation:display_pedestal",
+      "asset_id": null,
+      "asset_dimensions_mm": [
+        900.0,
+        600.0,
+        750.0
+      ],
+      "origin_kind": "procedural_expression",
+      "placeholder": false,
+      "placeholder_note": "程序化样板展台（石材台面 + 木饰面基座）；人工表达假设，不是源方案对象、不是产品选型",
+      "position_mm": [
+        20000.0,
+        8500.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "test_staging_pedestal",
+      "source": "manual_test_assumption:display_sequence_along_circulation",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-OBJ-03",
+      "catalog_id": "presentation:ceramic_vase_01",
+      "asset_id": "ceramic_vase_01",
+      "asset_dimensions_mm": [
+        204.872,
+        206.377,
+        401.38
+      ],
+      "origin_kind": "test_staging",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        20000.0,
+        8500.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.75,
+      "z_offset_note": "置于已建模台面/展台之上 0.75m（人工假设），避免与平台实体穿插",
+      "anchor": "center_floor",
+      "kind": "test_staging_object",
+      "source": "manual_test_assumption:sample_exhibit_not_client_product",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-BRAND-01",
+      "catalog_id": "presentation:brand_panel",
+      "asset_id": null,
+      "asset_dimensions_mm": [
+        2400.0,
+        120.0,
+        1800.0
+      ],
+      "origin_kind": "procedural_expression",
+      "placeholder": false,
+      "placeholder_note": "品牌标识板为占位表达（抽象色块，不含客户品牌、不含文字设计）；人工表达假设，不是 AI 自动设计成果",
+      "position_mm": [
+        2220.0,
+        12800.0
+      ],
+      "rotation_deg": 0.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "test_staging_brand_panel",
+      "source": "manual_test_assumption:brand_content_placeholder",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-SEAT-01",
+      "catalog_id": "presentation:modern_arm_chair_01",
+      "asset_id": "modern_arm_chair_01",
+      "asset_dimensions_mm": [
+        820.344,
+        986.562,
+        1022.852
+      ],
+      "origin_kind": "test_staging",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        9350.0,
+        10950.0
+      ],
+      "rotation_deg": 90.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "test_staging_seat",
+      "source": "manual_test_assumption:group_isolated_table_into_readable_setting",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "object_id": "R4-STG-SEAT-02",
+      "catalog_id": "presentation:modern_arm_chair_01",
+      "asset_id": "modern_arm_chair_01",
+      "asset_dimensions_mm": [
+        820.344,
+        986.562,
+        1022.852
+      ],
+      "origin_kind": "test_staging",
+      "placeholder": false,
+      "placeholder_note": null,
+      "position_mm": [
+        12350.0,
+        10950.0
+      ],
+      "rotation_deg": -90.0,
+      "z_offset_m": 0.0,
+      "z_offset_note": null,
+      "anchor": "center_floor",
+      "kind": "test_staging_seat",
+      "source": "manual_test_assumption:group_isolated_table_into_readable_setting",
+      "assumption": true,
+      "site_verified": false
+    }
+  ],
+  "materials": [
+    {
+      "material_id": "mat-floor-microcement",
+      "slot": "floor_microcement",
+      "name": "微水泥地坪",
+      "hex": "#b9b3a8",
+      "tile": 0.5,
+      "tint": [
+        0.62,
+        0.6,
+        0.57
+      ],
+      "rough": 0.42,
+      "normal_strength": 0.22,
+      "zone_roles": [
+        "gallery"
+      ],
+      "source": "manual_test_assumption:material_intent",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "material_id": "mat-wall-plaster",
+      "slot": "wall_plaster",
+      "name": "乳胶漆墙面",
+      "hex": "#e6e2d9",
+      "tile": 0.5,
+      "tint": [
+        1.1,
+        1.08,
+        1.05
+      ],
+      "rough": 0.85,
+      "normal_strength": 0.22,
+      "zone_roles": [],
+      "source": "manual_test_assumption:material_intent",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "material_id": "mat-oak",
+      "slot": "oak",
+      "name": "白橡木饰面",
+      "hex": "#c8a06a",
+      "tile": 1.6,
+      "tint": [
+        1.22,
+        1.18,
+        1.12
+      ],
+      "rough": 0.58,
+      "normal_strength": 0.3,
+      "zone_roles": [
+        "arrival"
+      ],
+      "source": "manual_test_assumption:material_intent",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "material_id": "mat-walnut",
+      "slot": "walnut",
+      "name": "玫瑰木饰面",
+      "hex": "#7a5238",
+      "tile": 1.4,
+      "tint": [
+        0.52,
+        0.42,
+        0.35
+      ],
+      "rough": 0.52,
+      "normal_strength": 0.32,
+      "zone_roles": [
+        "scene"
+      ],
+      "source": "manual_test_assumption:material_intent",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "material_id": "mat-stone",
+      "slot": "stone",
+      "name": "石材",
+      "hex": "#d7d2c8",
+      "tile": 0.9,
+      "tint": [
+        1.05,
+        1.02,
+        0.98
+      ],
+      "rough": 0.3,
+      "normal_strength": 0.18,
+      "zone_roles": [
+        "island",
+        "service"
+      ],
+      "source": "manual_test_assumption:material_intent",
+      "assumption": true,
+      "site_verified": false
+    },
+    {
+      "material_id": "mat-fabric",
+      "slot": "fabric",
+      "name": "羊毛圈绒",
+      "hex": "#c8bba6",
+      "tile": 1.0,
+      "tint": [
+        1.0,
+        0.92,
+        0.8
+      ],
+      "rough": 0.7,
+      "normal_strength": 0.45,
+      "zone_roles": [
+        "meeting"
+      ],
+      "source": "manual_test_assumption:material_intent",
+      "assumption": true,
+      "site_verified": false
+    }
+  ],
+  "cameras": [
+    {
+      "object_id": "R4-CAM-01",
+      "position_mm": [
+        1200.0,
+        11200.0
+      ],
+      "target_mm": [
+        21150.0,
+        9650.0
+      ],
+      "eye_height_mm": 1500.0,
+      "lens_mm": 24.0,
+      "source": "manual_test_assumption:eye_level_review_camera",
+      "assumption": true,
+      "site_verified": false
+    }
+  ],
+  "lighting": {
+    "window_opening_ids": [
+      "R4-WIN-N1",
+      "R4-WIN-N2",
+      "R4-WIN-N3",
+      "R4-WIN-E1",
+      "R4-WIN-E2"
+    ],
+    "fixtures": [
+      {
+        "object_id": "L1",
+        "position_mm": [
+          10250.0,
+          7700.0
+        ],
+        "type": "spot",
+        "kelvin": 2700.0,
+        "source": "model_ceiling_fixtures:intent_only",
+        "assumption": true
+      },
+      {
+        "object_id": "L2",
+        "position_mm": [
+          14750.0,
+          7700.0
+        ],
+        "type": "spot",
+        "kelvin": 3000.0,
+        "source": "model_ceiling_fixtures:intent_only",
+        "assumption": true
+      },
+      {
+        "object_id": "L3",
+        "position_mm": [
+          13000.0,
+          14500.0
+        ],
+        "type": "downlight",
+        "kelvin": 3000.0,
+        "source": "model_ceiling_fixtures:intent_only",
+        "assumption": true
+      }
+    ],
+    "coves": [
+      {
+        "object_id": "CV1",
+        "polygon_mm": [
+          [
+            18100.0,
+            7400.0
+          ],
+          [
+            24200.0,
+            7400.0
+          ],
+          [
+            24200.0,
+            11700.0
+          ],
+          [
+            18100.0,
+            11700.0
+          ]
+        ],
+        "kelvin": 2700.0,
+        "source": "model_ceiling_coves:intent_only",
+        "assumption": true
+      }
+    ],
+    "sun": {
+      "azimuth_deg": 200.0,
+      "elevation_deg": 38.0,
+      "energy": 2.0,
+      "source": "manual_test_assumption"
+    },
+    "note": "假设照明：窗光来自已建模窗洞口，灯具/灯槽来自模型天花意向；未做照度/配光计算，不宣称合规"
+  },
+  "expression": {
+    "schema_version": "rkd-spatial-expression.v1",
+    "declared_by": "executor_manual_fixture_w2_r4_closeout",
+    "declaration": "V2 窗光/材质与 V3 陈设的表达输入；人工测试假设，非现场事实、非 AI 自动设计、非材料规格或施工排版",
+    "material_finish": {
+      "mat-oak": {
+        "tile": 1.6,
+        "joint_spacing_mm": 600.0,
+        "joint_width_mm": 6.0,
+        "edge_trim_mm": 80.0,
+        "note": "主要木饰面：按 600mm 板宽示意竖向板缝，贴图重复倍率 1.6（人工假设）"
+      },
+      "mat-walnut": {
+        "tile": 1.4,
+        "joint_spacing_mm": 600.0,
+        "joint_width_mm": 6.0,
+        "edge_trim_mm": 80.0,
+        "note": "次要木饰面：同尺度板缝，人工假设"
+      },
+      "mat-floor-microcement": {
+        "tile": 0.5,
+        "joint_spacing_mm": 1200.0,
+        "joint_width_mm": 4.0,
+        "edge_trim_mm": 80.0,
+        "note": "主要地面：按 1200mm 示意分缝网格与 80mm 踢脚收边，不是施工排版"
+      },
+      "mat-stone": {
+        "tile": 0.9,
+        "joint_spacing_mm": 900.0,
+        "joint_width_mm": 5.0,
+        "edge_trim_mm": 60.0,
+        "note": "石材台面/中岛：示意分缝，人工假设"
+      }
+    },
+    "window_expression": {
+      "glass_kind": "transparent",
+      "frame_width_mm": 60.0,
+      "reveal_depth_mm": 200.0,
+      "mullion_count": 1,
+      "outside_environment": "labelled_local_sky_gradient_assumption",
+      "outside_note": "窗外为本地程序化天空/远景渐变（淡蓝天光 + 暖灰地平线带），不是现场照片、不是真实外景，也不宣称照度合规",
+      "exposure_ev": -0.15,
+      "window_light_energy_scale": 0.62,
+      "source": "executor_manual_expression_assumption"
+    },
+    "staging_note": "V3 陈设按 furniture.origin_kind 分为 source_model / cc0_expression_asset / test_staging / procedural_expression；后两类只进入平面与场景表现，工程量与材料面切片恒为 0 影响",
+    "assumptions": [
+      "V2 玻璃改为透明透射材质，窗框/窗洞深度/窗外天空渐变均为本地程序化人工假设；采光方向仍只来自已建模窗洞口，不再用发光板掩盖窗口细节。",
+      "V2 木饰面与地面分缝/收边为示意几何，参数是版本化表达输入，不是材料规格、产品选型或施工排版。",
+      "V3 新增展台、器物、品牌板与配套座椅是测试陈设（人工表达假设），位置由本布局动线/分区派生，不复制固定样板坐标，不计工程量、不称 AI 设计。",
+      "品牌板只放抽象色块，不含客户品牌、不含文字设计；展品为 CC0 器物示意，不是协诚产品清单。"
+    ],
+    "site_verified": false,
+    "not_ai_design": true
+  },
+  "expression_version": "rkd-spatial-expression.v1",
+  "zone_material_map": {
+    "mat-floor-microcement": "floor_microcement",
+    "mat-wall-plaster": "wall_plaster",
+    "mat-oak": "oak",
+    "mat-walnut": "walnut",
+    "mat-stone": "stone",
+    "mat-fabric": "fabric"
+  },
+  "assumptions": [
+    "周界墙厚 200mm、高 3000mm 为人工测试假设；场地边界本身是标为 manual_boundary_not_site_verified 的测试参数，未现场复核。",
+    "没有从任何功能区多边形边界自动生成墙体；两段隔断是独立显式给出的样板假设。",
+    "北向/东向窗洞口的节奏只借用阶段1底图窗带的间距作示意，不作为本项目现场事实；窗台 900mm、窗高 1800mm、门高 2400mm 均为人工假设。",
+    "入口门洞位置与 1800mm 宽度来自模型 boundary.entrance（测试参数），门扇/门套构造未建模。",
+    "材质贴图来自 Poly Haven CC0 1.0 六套 1k PBR；贴图与分区 role 的对应是人工样板假设，只代表材质意向，不是材料规格、产品选型或价源。",
+    "家具从 CC0 glTF 目录引用，真实尺寸取 assets/CC0-素材清单.json 的 dimensions_mm；统一 anchor=center_floor、0° 沿 +X、rotation_deg 逆时针；无对应资产的目录条目明确留程序化占位。",
+    "绿植、器物、补充桌椅是表达层道具（presentation_prop），对象 ID 独立于模型家具，按分区中心加固定偏移摆放；不宣称是自动设计出的陈设。",
+    "机位为 1500mm 人眼高度、24mm 镜头的内部评审视点（人工假设），不是设计决定也不是实测。",
+    "中岛台面上的器物显式给出 z_offset_m=0.72（与平台 height_mm 一致），避免与平台实体穿插；该高度是表达层人工假设，不是展陈设计标高。",
+    "贴图 tile 按 1k 贴图约 0.6—2m 重复尺度设置（人工假设），不是材料规格或施工排版。",
+    "窗光只从已建模窗洞口发出；灯具点位/灯槽来自模型 ceiling 意向，太阳角度与强度是假设。未做照度/配光计算，不宣称照度合规。",
+    "柱网、洁具、构造节点、消防/疏散/无障碍、实测标高、产品清单、现场照片均缺依据，一律不编造、不补 0、不在图上冒充。",
+    "V2：玻璃为透明透射材质 + 窗框/窗洞深度；窗外是明确标注的本地程序化天空渐变（淡蓝天光 + 暖灰地平线带），不是现场照片或真实外景。",
+    "V2：木饰面与地面的纹理比例、分缝与踢脚收边是版本化表达输入里的示意参数，不是材料规格、产品选型或施工排版。",
+    "V3：display-wing 占位件替换为程序化展墙；新增展台/器物/品牌板/配套座椅是测试陈设（人工表达假设），保留对象 ID、位置与尺寸，不进工程量、不暗改源方案。"
+  ],
+  "missing": [
+    "柱网与结构构件（无依据，不编）",
+    "洁具与给排水（无依据，不编）",
+    "门窗产品与构造节点（只有洞口假设）",
+    "材料规格、产品选型与价源（贴图只是材质意向）",
+    "照度/配光计算与合规结论",
+    "消防、疏散、无障碍与施工图合规",
+    "现场实测标高与实测墙厚",
+    "客户可交付的多视角效果图、天花、立面、材料板与汇总 PDF（本批不做）"
+  ],
+  "counts": {
+    "walls": 4,
+    "partitions": 2,
+    "openings": 7,
+    "furniture": 25,
+    "furniture_placeholders": 0,
+    "materials": 6,
+    "cameras": 1,
+    "window_lights": 5,
+    "fixtures": 3,
+    "coves": 1,
+    "origin_source_model": 2,
+    "origin_procedural_expression": 5,
+    "origin_cc0_expression_asset": 13,
+    "origin_test_staging": 5
+  },
+  "disclaimer": "本表达层是人工编写的受控样板假设：墙厚/高度、门窗洞口、隔断、材质贴图、家具资产映射、绿植软装、机位与灯光均为人工测试假设，未现场复核，不是系统模型自动设计结果，不计入 AI 接替设计验收；照明为示意，不宣称照度合规；平面为内部评审图，不是施工图。"
+}

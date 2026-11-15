@@ -1,0 +1,288 @@
+{
+  "task_id": "W2-R4 同源表达",
+  "schema_version": "rkd-w2-r4-checks.v1",
+  "executed_at": "2026-11-15T21:57:37+08:00",
+  "code_head": "8fd7948e49ce8698806b484e8117b41011852f1d",
+  "render_enabled": false,
+  "environment": {
+    "python": "3.12.14",
+    "renderer": "not_run",
+    "isolated_main_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-architect\\runtime\\app.sqlite3",
+    "isolated_studio_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-architect\\runtime\\studio.db",
+    "model_channel": "labelled local fixtures only",
+    "presentation": "executor manual test assumptions",
+    "keys_used": false
+  },
+  "checks": [
+    {
+      "id": "R4-A-SUBMIT",
+      "name": "布局 A 由同一生成器产出完整成果",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 202,
+        "job_status": "succeeded",
+        "job_error": null,
+        "message": null,
+        "artifacts": [
+          "cost.html",
+          "quantity.json",
+          "manifest.json",
+          "package.zip",
+          "plan.svg",
+          "quantity.csv"
+        ],
+        "generator": "rkd-spatial-outputs.v4"
+      }
+    },
+    {
+      "id": "R4-A-ZIP",
+      "name": "布局 A 完整 ZIP/下载 SHA 与 PNG 一致",
+      "result": "observed_pass",
+      "evidence": {
+        "zip_entries": [
+          "cost.html",
+          "manifest.json",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ],
+        "manifest_files": 5,
+        "problems": [],
+        "png_matches_zip": false
+      }
+    },
+    {
+      "id": "R4-B-SUBMIT",
+      "name": "布局 B 由同一生成器产出完整成果",
+      "result": "observed_pass",
+      "evidence": {
+        "status": 202,
+        "job_status": "succeeded",
+        "job_error": null,
+        "message": null,
+        "artifacts": [
+          "cost.html",
+          "quantity.json",
+          "manifest.json",
+          "package.zip",
+          "plan.svg",
+          "quantity.csv"
+        ],
+        "generator": "rkd-spatial-outputs.v4"
+      }
+    },
+    {
+      "id": "R4-B-ZIP",
+      "name": "布局 B 完整 ZIP/下载 SHA 与 PNG 一致",
+      "result": "observed_pass",
+      "evidence": {
+        "zip_entries": [
+          "cost.html",
+          "manifest.json",
+          "plan.svg",
+          "quantity.csv",
+          "quantity.json",
+          "scene.json"
+        ],
+        "manifest_files": 5,
+        "problems": [],
+        "png_matches_zip": false
+      }
+    },
+    {
+      "id": "R4-01",
+      "name": "两种不同布局由同一生成器出平面/场景/人眼图，模型哈希与净量不同",
+      "result": "observed_pass",
+      "evidence": {
+        "layout_a_net": 233.03,
+        "layout_b_net": 229.08,
+        "model_hashes": [
+          "05389e0a636c",
+          "6d34745eae9e"
+        ],
+        "generator": "rkd-spatial-outputs.v4",
+        "presentation_version": "rkd-spatial-presentation-fixture.v1"
+      }
+    },
+    {
+      "id": "R4-02-A",
+      "name": "布局 A 平面含墙/洞口/家具/材料/机位/尺寸链且文字可读",
+      "result": "observed_pass",
+      "evidence": {
+        "bytes": 22257,
+        "missing": [],
+        "min_font_size": 8.0,
+        "too_small_count": 0,
+        "has_eye_level": true,
+        "has_dimension": true
+      }
+    },
+    {
+      "id": "R4-02-B",
+      "name": "布局 B 平面含墙/洞口/家具/材料/机位/尺寸链且文字可读",
+      "result": "observed_pass",
+      "evidence": {
+        "bytes": 22256,
+        "missing": [],
+        "min_font_size": 8.0,
+        "too_small_count": 0,
+        "has_eye_level": true,
+        "has_dimension": true
+      }
+    },
+    {
+      "id": "R4-03-A",
+      "name": "布局 A 围合/开口/家具在平面与三维读同一 ID 与尺寸",
+      "result": "observed_pass",
+      "evidence": {
+        "walls": 4,
+        "partitions": 2,
+        "openings": 7,
+        "furniture": 16,
+        "ids_ok": true,
+        "size_labels_ok": true,
+        "furniture_labels_ok": true,
+        "zone_material_slots": [
+          "fabric",
+          "floor_microcement",
+          "oak",
+          "stone",
+          "walnut"
+        ]
+      }
+    },
+    {
+      "id": "R4-03-B",
+      "name": "布局 B 围合/开口/家具在平面与三维读同一 ID 与尺寸",
+      "result": "observed_pass",
+      "evidence": {
+        "walls": 4,
+        "partitions": 2,
+        "openings": 7,
+        "furniture": 16,
+        "ids_ok": true,
+        "size_labels_ok": true,
+        "furniture_labels_ok": true,
+        "zone_material_slots": [
+          "fabric",
+          "floor_microcement",
+          "oak",
+          "stone",
+          "walnut"
+        ]
+      }
+    },
+    {
+      "id": "R4-04-A",
+      "name": "布局 A 真实 CC0 材质/家具/窗光/人眼机位出图",
+      "result": "observed_fail",
+      "evidence": {
+        "png_bytes": 0,
+        "textures_used": null,
+        "models_used": null,
+        "placeholders": null,
+        "window_area_lights": null,
+        "fixture_lights": null,
+        "cove_segments": null,
+        "camera": {},
+        "engine": null,
+        "seconds": null
+      }
+    },
+    {
+      "id": "R4-04-B",
+      "name": "布局 B 真实 CC0 材质/家具/窗光/人眼机位出图",
+      "result": "observed_fail",
+      "evidence": {
+        "png_bytes": 0,
+        "textures_used": null,
+        "models_used": null,
+        "placeholders": null,
+        "window_area_lights": null,
+        "fixture_lights": null,
+        "cove_segments": null,
+        "camera": {},
+        "engine": null,
+        "seconds": null
+      }
+    },
+    {
+      "id": "R4-05",
+      "name": "四项受控变更：开口尺寸同步平面/场景且改几何不改量；换材质可追踪；只改相机不改量；只改单价不改几何",
+      "result": "observed_pass",
+      "evidence": {
+        "opening_width_mm": 3000.0,
+        "opening_quantity_unchanged": true,
+        "material_slot_after": "walnut",
+        "material_quantity_and_cost_unchanged": true,
+        "camera_quantity_unchanged": true,
+        "price_geometry_unchanged": true,
+        "trial_amount_before_after": [
+          233030.0,
+          279636.0
+        ]
+      }
+    },
+    {
+      "id": "R4-06",
+      "name": "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
+      "result": "observed_fail",
+      "evidence": {
+        "conflict_after": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-architect\\checks\\after\\finish-conflict-after.json",
+        "conflict_all_as_expected": false,
+        "regression": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-architect\\checks\\regression-second-closeout\\repro-r4-regression.json",
+        "regression_15_of_15": false
+      }
+    },
+    {
+      "id": "R4-07",
+      "name": "按 job_id 查询只返回该任务的 revision/artifacts，不串另一布局",
+      "result": "observed_pass",
+      "evidence": {
+        "job_a": "ai-spatial-job_f0143a7fce1c",
+        "job_b": "ai-spatial-job_916ef06daf51",
+        "revision_a": "ai-production-revision_3d04be5856a0",
+        "revision_b": "ai-production-revision_eaa267b38c77"
+      }
+    },
+    {
+      "id": "R4-08",
+      "name": "同一 R4 服务代码：取消晚到不复活可显式重试；失败任务不借用他人成果",
+      "result": "observed_pass",
+      "evidence": {
+        "cancel_late": {
+          "status_in_gap": "queued",
+          "cancel_status": 200,
+          "cancel_body_status": "cancelled",
+          "final_status": "cancelled",
+          "registered": 0,
+          "retry_status_code": 202,
+          "retried_status": "succeeded",
+          "retry_of": "ai-spatial-job_07d3fba5ae61"
+        },
+        "job_isolation": {
+          "good_job": "ai-spatial-job_02676e83d4f6",
+          "requested_job": "ai-spatial-job_9fadd144b15c",
+          "returned_job": "ai-spatial-job_9fadd144b15c",
+          "job_status": "failed",
+          "returned_revision": null,
+          "returned_revision_job": null,
+          "artifacts": 0,
+          "revision_source": "none",
+          "note": "显式查一个失败任务时，revision/artifacts 必须为空，不能拿别人的"
+        }
+      }
+    }
+  ],
+  "totals": {
+    "observed_pass": 12,
+    "observed_fail": 3
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "images_generated": 0,
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "not_customer_design_approval": true
+}

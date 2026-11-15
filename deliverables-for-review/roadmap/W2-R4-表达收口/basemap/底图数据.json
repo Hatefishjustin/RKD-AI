@@ -1,0 +1,229 @@
+{
+  "boundary": {
+    "length_m": 17.92,
+    "note": "与 A3 平面图 26170 / 17920 尺寸链一致",
+    "source": "cad-plan-candidates.json target_region.bounds",
+    "status": "解析确认",
+    "width_m": 26.17
+  },
+  "contract_version": "rkd-site-basemap.v2",
+  "coordinate_space": "site-local millimetres, origin at SW corner, +x east, +y north",
+  "counts": {
+    "current_scope_candidates": 570,
+    "low_confidence_candidates": 16,
+    "structural_columns": 0,
+    "unresolved_topology_items": 133,
+    "windows": 5
+  },
+  "elements": [
+    {
+      "detail": "26.17 × 17.92 m，与图纸尺寸链 26170 / 17920 一致；外墙按 200 mm 双线绘制",
+      "element": "展厅外轮廓 / 外墙",
+      "source": "target_region.bounds + 定位图层锚点",
+      "status": "解析确认"
+    },
+    {
+      "detail": "3 段 5400 窗带，4 处 600 窗间垛；端部实墙 1910 / 3170",
+      "element": "窗（北墙）",
+      "source": "A3 平面图北墙尺寸链 1910-600-5400-600-5400-600-5400-600-1060-1170-3170-260",
+      "status": "原图读取·待现场复核"
+    },
+    {
+      "detail": "2 段三线窗符号：距南墙 0.23–3.04 m、5.74–8.27 m",
+      "element": "窗（东墙）",
+      "source": "A3 平面图东墙三线（墙-玻璃-墙）画法",
+      "status": "原图读取·待现场复核"
+    },
+    {
+      "detail": "西南角 2.4 × 8.0 m，16 级踏步示意",
+      "element": "楼梯",
+      "source": "A3 平面图 + DXF 几何",
+      "status": "解析确认"
+    },
+    {
+      "detail": "东南角 4.17 × 4.7 m，斜线填充范围",
+      "element": "卫生间湿区",
+      "source": "A3 平面图斜线填充区域",
+      "status": "解析确认"
+    },
+    {
+      "detail": "18 个门候选",
+      "element": "门",
+      "source": "cad-plan-candidates.json architecture.opening.door",
+      "status": "解析确认（洞口配对待复核）"
+    },
+    {
+      "detail": "原「8 个疑似柱」是同一六边形展台内的 1 个圆环 + 4 个 20 mm 圆心标记，不是结构柱",
+      "element": "柱",
+      "source": "CIRCLE 候选复核：x 5610–6470 / y 1400–2260 全部落在同一展台范围内",
+      "status": "未发现"
+    },
+    {
+      "detail": "沿东西向主通道布置，非承重，可整体拆除重排",
+      "element": "过道两侧 U 形展台墙",
+      "source": "A3 平面图 + DXF 墙体候选（仅作参考层）",
+      "status": "原设计·可重做"
+    },
+    {
+      "detail": "西北 19.8㎡ / 东北 5.08 m 进深；可保留改造或取消",
+      "element": "两间洽谈室隔墙",
+      "source": "A3 平面图",
+      "status": "原设计·可重做"
+    },
+    {
+      "detail": "约 1.8 × 3.0 m，位于楼梯东侧",
+      "element": "水吧",
+      "source": "A3 平面图",
+      "status": "原设计·可重做"
+    },
+    {
+      "detail": "中心 (6.04, 1.83) m，外接圆 R≈0.52 m，内含圆环与圆心标记",
+      "element": "六边形展台",
+      "source": "CIRCLE 候选聚类",
+      "status": "原设计·可重做"
+    },
+    {
+      "detail": "282 件家具候选，仅作参考，不进入新方案的保留清单",
+      "element": "家具（固定 + 活动）",
+      "source": "interior.furniture.fixed / loose",
+      "status": "原设计·可重做"
+    },
+    {
+      "detail": "推断在西门厅，宽度与门洞高度未核实",
+      "element": "主入口位置",
+      "source": "A3 平面图门厅 + 左侧外墙门候选",
+      "status": "待现场复核"
+    },
+    {
+      "detail": "平面图无法读出竖向尺寸，立面图未提供",
+      "element": "窗台高 / 窗洞高",
+      "source": "—",
+      "status": "待现场复核"
+    },
+    {
+      "detail": "仅确认湿区范围，洁具与隔断位置未提取",
+      "element": "卫生间内部隔断",
+      "source": "A3 平面图斜线区",
+      "status": "待现场复核"
+    },
+    {
+      "detail": "本轮不清理，保持标记，不影响方案设计",
+      "element": "133 项拓扑复核",
+      "source": "cad-topology-review.json",
+      "status": "待现场复核"
+    }
+  ],
+  "generated_at": "2026-11-10T03:11:17.973085+00:00",
+  "groups": {
+    "existing": [
+      {
+        "detail": "沿东西向主通道布置，非承重，可整体拆除重排",
+        "element": "过道两侧 U 形展台墙",
+        "source": "A3 平面图 + DXF 墙体候选（仅作参考层）",
+        "status": "原设计·可重做"
+      },
+      {
+        "detail": "西北 19.8㎡ / 东北 5.08 m 进深；可保留改造或取消",
+        "element": "两间洽谈室隔墙",
+        "source": "A3 平面图",
+        "status": "原设计·可重做"
+      },
+      {
+        "detail": "约 1.8 × 3.0 m，位于楼梯东侧",
+        "element": "水吧",
+        "source": "A3 平面图",
+        "status": "原设计·可重做"
+      },
+      {
+        "detail": "中心 (6.04, 1.83) m，外接圆 R≈0.52 m，内含圆环与圆心标记",
+        "element": "六边形展台",
+        "source": "CIRCLE 候选聚类",
+        "status": "原设计·可重做"
+      },
+      {
+        "detail": "282 件家具候选，仅作参考，不进入新方案的保留清单",
+        "element": "家具（固定 + 活动）",
+        "source": "interior.furniture.fixed / loose",
+        "status": "原设计·可重做"
+      }
+    ],
+    "fixed": [
+      {
+        "detail": "26.17 × 17.92 m，与图纸尺寸链 26170 / 17920 一致；外墙按 200 mm 双线绘制",
+        "element": "展厅外轮廓 / 外墙",
+        "source": "target_region.bounds + 定位图层锚点",
+        "status": "解析确认"
+      },
+      {
+        "detail": "3 段 5400 窗带，4 处 600 窗间垛；端部实墙 1910 / 3170",
+        "element": "窗（北墙）",
+        "source": "A3 平面图北墙尺寸链 1910-600-5400-600-5400-600-5400-600-1060-1170-3170-260",
+        "status": "原图读取·待现场复核"
+      },
+      {
+        "detail": "2 段三线窗符号：距南墙 0.23–3.04 m、5.74–8.27 m",
+        "element": "窗（东墙）",
+        "source": "A3 平面图东墙三线（墙-玻璃-墙）画法",
+        "status": "原图读取·待现场复核"
+      },
+      {
+        "detail": "西南角 2.4 × 8.0 m，16 级踏步示意",
+        "element": "楼梯",
+        "source": "A3 平面图 + DXF 几何",
+        "status": "解析确认"
+      },
+      {
+        "detail": "东南角 4.17 × 4.7 m，斜线填充范围",
+        "element": "卫生间湿区",
+        "source": "A3 平面图斜线填充区域",
+        "status": "解析确认"
+      },
+      {
+        "detail": "18 个门候选",
+        "element": "门",
+        "source": "cad-plan-candidates.json architecture.opening.door",
+        "status": "解析确认（洞口配对待复核）"
+      },
+      {
+        "detail": "原「8 个疑似柱」是同一六边形展台内的 1 个圆环 + 4 个 20 mm 圆心标记，不是结构柱",
+        "element": "柱",
+        "source": "CIRCLE 候选复核：x 5610–6470 / y 1400–2260 全部落在同一展台范围内",
+        "status": "未发现"
+      }
+    ],
+    "review": [
+      {
+        "detail": "推断在西门厅，宽度与门洞高度未核实",
+        "element": "主入口位置",
+        "source": "A3 平面图门厅 + 左侧外墙门候选",
+        "status": "待现场复核"
+      },
+      {
+        "detail": "平面图无法读出竖向尺寸，立面图未提供",
+        "element": "窗台高 / 窗洞高",
+        "source": "—",
+        "status": "待现场复核"
+      },
+      {
+        "detail": "仅确认湿区范围，洁具与隔断位置未提取",
+        "element": "卫生间内部隔断",
+        "source": "A3 平面图斜线区",
+        "status": "待现场复核"
+      },
+      {
+        "detail": "本轮不清理，保持标记，不影响方案设计",
+        "element": "133 项拓扑复核",
+        "source": "cad-topology-review.json",
+        "status": "待现场复核"
+      }
+    ]
+  },
+  "limits": [
+    "本轮只改标注，不重做几何；外轮廓/门/卫生间已由用户核对认可",
+    "窗的平面位置按原图尺寸链与线型读取，窗台高/洞口高无法从平面图得出，必须现场复核",
+    "PDF 为 A3 排版图、DXF 为模型空间；叠加层按外轮廓像素矩形近似配准，可在入口页微调，不作为测量依据",
+    "图纸注明「具体尺寸以现场实际情况为准」；未经现场实测，所有尺寸待复核"
+  ],
+  "project": "宁波协诚集团样品展厅",
+  "stage": "阶段1 · 真实场地底图（第2版 · 已按用户核对意见改标注）"
+}

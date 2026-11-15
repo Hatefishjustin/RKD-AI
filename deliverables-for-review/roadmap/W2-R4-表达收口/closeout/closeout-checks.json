@@ -1,0 +1,382 @@
+{
+  "task_id": "W2-R4 表达收口 V1—V3 专项自动断言",
+  "schema_version": "rkd-w2-r4-closeout-checks.v1",
+  "executed_at": "2026-11-15T23:09:55+08:00",
+  "automatic_assertions": {
+    "checks": [
+      {
+        "id": "V1-A-01",
+        "name": "平面几何/编号/注释三层分离，坐标度量可复核",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "layers_present": [
+            "id=\"layer-geometry\"",
+            "id=\"layer-ids\"",
+            "id=\"layer-annotations\""
+          ],
+          "svg_bytes": 44040
+        }
+      },
+      {
+        "id": "V1-A-02",
+        "name": "受控尺寸链 X/Y 从边界经开口/平台站点闭合到总尺寸",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "x": {
+            "total_mm": 26170.0,
+            "sum_delta_mm": 26170.0,
+            "closed": true
+          },
+          "y": {
+            "total_mm": 17920.0,
+            "sum_delta_mm": 17920.0,
+            "closed": true
+          },
+          "x_stations": 7,
+          "y_stations": 8,
+          "note": "受控尺寸链用于图面可读性对账：各段增量之和必须闭合到场地总尺寸。站点来自模型边界/平台多边形或人工测试假设的洞口定位，不是现场实测，也不是施工定位尺寸。"
+        }
+      },
+      {
+        "id": "V1-A-03",
+        "name": "编号索引覆盖墙体/开口/相机/分区/动线/家具，引用可对账",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "label_count": 48,
+          "kinds": [
+            "camera",
+            "circulation",
+            "furniture",
+            "keepout",
+            "opening",
+            "wall",
+            "zone"
+          ],
+          "expression_accounting": {
+            "engineering_quantity_effect": 0,
+            "expression_assets": 13,
+            "note": "表达资产/测试陈设/程序化表达对象只进入平面与场景表现，不进入 measure() 的工程量、材料面切片或试算金额。",
+            "procedural_expression": 5,
+            "source_model_objects": 9,
+            "test_staging": 5
+          }
+        }
+      },
+      {
+        "id": "V1-A-04",
+        "name": "自动几何检查：图面标注无互相压叠、无出界、字号不低于 8",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "source": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-表达收口\\full\\visual\\capture-observations.json",
+          "annotation_count": 62,
+          "overlaps": 0,
+          "outside": 0,
+          "min_font": 8.5,
+          "note": "自动几何检查不代替人工目检"
+        }
+      },
+      {
+        "id": "V2-A-01",
+        "name": "玻璃为透明透射，发光玻璃板为 0，窗外为标注的本地假设",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "glass_kind": "transparent",
+          "emissive_glass_panels": 0,
+          "outside_panels": 5,
+          "outside_environment": "labelled_local_sky_gradient_assumption",
+          "outside_note": "窗外为本地程序化天空/远景渐变（淡蓝天光 + 暖灰地平线带），不是现场照片、不是真实外景，也不宣称照度合规"
+        }
+      },
+      {
+        "id": "V2-A-02",
+        "name": "木饰面与地面的纹理比例/分缝/收边来自版本化表达输入",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "schema_version": "rkd-spatial-expression.v1",
+          "materials": [
+            "mat-floor-microcement",
+            "mat-oak",
+            "mat-stone",
+            "mat-walnut"
+          ],
+          "floor_joint_lines": 35,
+          "wood_panel_joint_lines": 9,
+          "skirting_segments": 4,
+          "exposure_ev": -0.15000000596046448,
+          "window_light_energy_scale": 0.62
+        }
+      },
+      {
+        "id": "V2-A-03",
+        "name": "场景保留模型来源与假设标识，采光仍只来自已建模窗口",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "window_lights": 5,
+          "window_ids": [
+            "R4-WIN-N1",
+            "R4-WIN-N2",
+            "R4-WIN-N3",
+            "R4-WIN-E1",
+            "R4-WIN-E2"
+          ],
+          "site_verified": false
+        }
+      },
+      {
+        "id": "V3-A-01",
+        "name": "对象分为源模型/CC0 表达资产/测试陈设/程序化表达四类",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "origin_counts": {
+            "source_model": 2,
+            "procedural_expression": 5,
+            "cc0_expression_asset": 13,
+            "test_staging": 5
+          },
+          "expression_accounting": {
+            "engineering_quantity_effect": 0,
+            "expression_assets": 13,
+            "note": "表达资产/测试陈设/程序化表达对象只进入平面与场景表现，不进入 measure() 的工程量、材料面切片或试算金额。",
+            "procedural_expression": 5,
+            "source_model_objects": 9,
+            "test_staging": 5
+          }
+        }
+      },
+      {
+        "id": "V3-A-02",
+        "name": "display-wing 占位件已替换为程序化展墙，黄色占位盒清零",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "procedural_objects": [
+            "F3",
+            "R4-STG-PED-01",
+            "R4-STG-PED-02",
+            "R4-STG-PED-03",
+            "R4-STG-BRAND-01"
+          ],
+          "placeholders": [],
+          "engineering_quantity_effect": 0
+        }
+      },
+      {
+        "id": "V3-A-03",
+        "name": "去掉全部测试陈设后：工程量/成本完全不变，平面与场景确实变化",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "full_furniture": 25,
+          "reduced_furniture": 15,
+          "quantities_identical": true,
+          "cost_identical": true,
+          "plan_changed": true,
+          "scene_changed": true
+        }
+      },
+      {
+        "id": "V1-B-01",
+        "name": "平面几何/编号/注释三层分离，坐标度量可复核",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "layers_present": [
+            "id=\"layer-geometry\"",
+            "id=\"layer-ids\"",
+            "id=\"layer-annotations\""
+          ],
+          "svg_bytes": 44039
+        }
+      },
+      {
+        "id": "V1-B-02",
+        "name": "受控尺寸链 X/Y 从边界经开口/平台站点闭合到总尺寸",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "x": {
+            "total_mm": 26170.0,
+            "sum_delta_mm": 26170.0,
+            "closed": true
+          },
+          "y": {
+            "total_mm": 17920.0,
+            "sum_delta_mm": 17920.0,
+            "closed": true
+          },
+          "x_stations": 7,
+          "y_stations": 8,
+          "note": "受控尺寸链用于图面可读性对账：各段增量之和必须闭合到场地总尺寸。站点来自模型边界/平台多边形或人工测试假设的洞口定位，不是现场实测，也不是施工定位尺寸。"
+        }
+      },
+      {
+        "id": "V1-B-03",
+        "name": "编号索引覆盖墙体/开口/相机/分区/动线/家具，引用可对账",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "label_count": 48,
+          "kinds": [
+            "camera",
+            "circulation",
+            "furniture",
+            "keepout",
+            "opening",
+            "wall",
+            "zone"
+          ],
+          "expression_accounting": {
+            "engineering_quantity_effect": 0,
+            "expression_assets": 13,
+            "note": "表达资产/测试陈设/程序化表达对象只进入平面与场景表现，不进入 measure() 的工程量、材料面切片或试算金额。",
+            "procedural_expression": 5,
+            "source_model_objects": 9,
+            "test_staging": 5
+          }
+        }
+      },
+      {
+        "id": "V1-B-04",
+        "name": "自动几何检查：图面标注无互相压叠、无出界、字号不低于 8",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "source": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-表达收口\\full\\visual\\capture-observations.json",
+          "annotation_count": 62,
+          "overlaps": 0,
+          "outside": 0,
+          "min_font": 8.5,
+          "note": "自动几何检查不代替人工目检"
+        }
+      },
+      {
+        "id": "V2-B-01",
+        "name": "玻璃为透明透射，发光玻璃板为 0，窗外为标注的本地假设",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "glass_kind": "transparent",
+          "emissive_glass_panels": 0,
+          "outside_panels": 5,
+          "outside_environment": "labelled_local_sky_gradient_assumption",
+          "outside_note": "窗外为本地程序化天空/远景渐变（淡蓝天光 + 暖灰地平线带），不是现场照片、不是真实外景，也不宣称照度合规"
+        }
+      },
+      {
+        "id": "V2-B-02",
+        "name": "木饰面与地面的纹理比例/分缝/收边来自版本化表达输入",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "schema_version": "rkd-spatial-expression.v1",
+          "materials": [
+            "mat-floor-microcement",
+            "mat-oak",
+            "mat-stone",
+            "mat-walnut"
+          ],
+          "floor_joint_lines": 35,
+          "wood_panel_joint_lines": 9,
+          "skirting_segments": 4,
+          "exposure_ev": -0.15000000596046448,
+          "window_light_energy_scale": 0.62
+        }
+      },
+      {
+        "id": "V2-B-03",
+        "name": "场景保留模型来源与假设标识，采光仍只来自已建模窗口",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "window_lights": 5,
+          "window_ids": [
+            "R4-WIN-N1",
+            "R4-WIN-N2",
+            "R4-WIN-N3",
+            "R4-WIN-E1",
+            "R4-WIN-E2"
+          ],
+          "site_verified": false
+        }
+      },
+      {
+        "id": "V3-B-01",
+        "name": "对象分为源模型/CC0 表达资产/测试陈设/程序化表达四类",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "origin_counts": {
+            "source_model": 2,
+            "procedural_expression": 5,
+            "cc0_expression_asset": 13,
+            "test_staging": 5
+          },
+          "expression_accounting": {
+            "engineering_quantity_effect": 0,
+            "expression_assets": 13,
+            "note": "表达资产/测试陈设/程序化表达对象只进入平面与场景表现，不进入 measure() 的工程量、材料面切片或试算金额。",
+            "procedural_expression": 5,
+            "source_model_objects": 9,
+            "test_staging": 5
+          }
+        }
+      },
+      {
+        "id": "V3-B-02",
+        "name": "display-wing 占位件已替换为程序化展墙，黄色占位盒清零",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "procedural_objects": [
+            "F3",
+            "R4-STG-PED-01",
+            "R4-STG-PED-02",
+            "R4-STG-PED-03",
+            "R4-STG-BRAND-01"
+          ],
+          "placeholders": [],
+          "engineering_quantity_effect": 0
+        }
+      },
+      {
+        "id": "V3-B-03",
+        "name": "去掉全部测试陈设后：工程量/成本完全不变，平面与场景确实变化",
+        "result": "observed_pass",
+        "layer": "automatic",
+        "evidence": {
+          "full_furniture": 25,
+          "reduced_furniture": 15,
+          "quantities_identical": true,
+          "cost_identical": true,
+          "plan_changed": true,
+          "scene_changed": true
+        }
+      }
+    ],
+    "observed_pass": 20,
+    "observed_fail": 0
+  },
+  "manual_visual_review": {
+    "status": "reported_in_review_packet",
+    "evidence": "deliverables-for-review/roadmap/W2-R4-表达收口/manual-visual-review.md",
+    "note": "前后全图/入口·洽谈区局部/打印缩放/窗区与功能区局部由人工看图判定；自动断言只做几何、编号、闭合、契约与工程量对账，绝不代表人工目检通过"
+  },
+  "not_run": [
+    "用户项目阶段2设计生成（阶段1具体版本确认前停止）",
+    "W3/W4",
+    "照度/配光合规计算",
+    "真实现场复核"
+  ],
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_amount_or_null": null,
+  "not_customer_design_approval": true
+}

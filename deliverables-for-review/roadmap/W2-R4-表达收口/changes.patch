@@ -1,0 +1,3517 @@
+diff --git a/deliverables-for-review/roadmap/W2-R4-architect/entry-independent.json b/deliverables-for-review/roadmap/W2-R4-architect/entry-independent.json
+new file mode 100644
+index 0000000..9824b2a
+--- /dev/null
++++ b/deliverables-for-review/roadmap/W2-R4-architect/entry-independent.json
+@@ -0,0 +1,407 @@
++{
++  "task_id": "W2-R4 入口小修：同层异材重叠冲突",
++  "schema_version": "rkd-w2-r4-finish-conflict.v1",
++  "label": "after",
++  "source_root": "D:\\Github\\RKD AI",
++  "executed_at": "2026-11-15T21:57:30+08:00",
++  "environment": {
++    "python": "3.12.14",
++    "stack": "isolated SQLite + real loopback HTTP + controllable render stub",
++    "external_calls": 0,
++    "keys_used": false
++  },
++  "expected_signatures": {
++    "R4F-01": "fixed_signature",
++    "R4F-02": "regression_guard",
++    "R4F-03": "regression_guard",
++    "R4F-04": "fixed_signature",
++    "R4F-05": "fixed_signature",
++    "R4F-06": "fixed_signature",
++    "R4F-07": "fixed_signature",
++    "R4F-08": "regression_guard"
++  },
++  "unexpected_cases": [],
++  "all_as_expected": true,
++  "checks": [
++    {
++      "id": "R4F-01",
++      "name": "同层异材完全重叠 + 声明文字：不得产出 known 重复工程量",
++      "signature": "fixed_signature",
++      "expected_before": "8㎡/known + 两笔试算（重复工程量）",
++      "expected_after": "conflict/None + 0 笔试算 + 冲突明细",
++      "observed": {
++        "finish_status": "conflict",
++        "finish_value": null,
++        "groups": [],
++        "conflicts": [
++          {
++            "layer": "floor_finish",
++            "objects": [
++              "F-WOOD",
++              "F-STONE"
++            ],
++            "material_ids": [
++              "wood",
++              "stone"
++            ],
++            "overlap_m2": 4.0,
++            "conflict_code": "SAME_LAYER_MIXED_MATERIAL_OVERLAP",
++            "declaration_is_not_disambiguation": true,
++            "resolution_required": "合并为单一材料面，或给出结构化互斥裁切；否则保持 conflict/待核"
++          }
++        ],
++        "quantity_kind": null,
++        "layer_scope_note": null,
++        "allocation_applied": null,
++        "known_items": [],
++        "assumption_trial_total_cny": null,
++        "basis": {
++          "area_basis": "same_layer_material_conflict",
++          "unit_prices": "unknown",
++          "loss_rate": "unknown",
++          "labor_and_process": "unknown",
++          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
++          "markup": "user_confirmed_but_not_applied_without_price_source",
++          "conflict_count": 1
++        }
++      }
++    },
++    {
++      "id": "R4F-02",
++      "name": "回归：同材同层重叠声明后仍按并集 4㎡",
++      "signature": "regression_guard",
++      "expected": "4㎡/known，按并集不重复相加，试算 4000 元",
++      "observed": {
++        "finish_status": "known",
++        "finish_value": 4.0,
++        "groups": [
++          {
++            "layer": "floor_finish",
++            "material_id": "wood",
++            "area_m2": 4.0
++          }
++        ],
++        "conflicts": null,
++        "quantity_kind": "single_layer_net",
++        "layer_scope_note": null,
++        "allocation_applied": null,
++        "known_items": [
++          {
++            "item": "wood（按输入假设单价试算）",
++            "material_id": "wood",
++            "layer": "floor_finish",
++            "quantity_ref": "Q-FLOOR-FINISH/wood",
++            "quantity_m2": 4.0,
++            "unit_price_cny": 1000,
++            "amount_cny": 4000.0,
++            "basis": "caller_provided_assumption_not_a_quote",
++            "area_basis_source": "w2_r4_finish_conflict_fixture",
++            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
++          }
++        ],
++        "assumption_trial_total_cny": 4000.0,
++        "basis": {
++          "area_basis": "w2_r4_finish_conflict_fixture",
++          "unit_prices": "partially_provided_by_caller_assumption",
++          "loss_rate": "unknown",
++          "labor_and_process": "unknown",
++          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
++          "markup": "user_confirmed_but_not_applied_without_price_source"
++        }
++      }
++    },
++    {
++      "id": "R4F-03",
++      "name": "正例：同层异材几何互斥 4+4=8㎡ 合法",
++      "signature": "regression_guard",
++      "expected": "8㎡/known，两组各 4㎡（几何互斥，不是重复工程量）",
++      "observed": {
++        "finish_status": "known",
++        "finish_value": 8.0,
++        "groups": [
++          {
++            "layer": "floor_finish",
++            "material_id": "stone",
++            "area_m2": 4.0
++          },
++          {
++            "layer": "floor_finish",
++            "material_id": "wood",
++            "area_m2": 4.0
++          }
++        ],
++        "conflicts": null,
++        "quantity_kind": "single_layer_net",
++        "layer_scope_note": null,
++        "allocation_applied": null,
++        "known_items": [
++          {
++            "item": "stone（按输入假设单价试算）",
++            "material_id": "stone",
++            "layer": "floor_finish",
++            "quantity_ref": "Q-FLOOR-FINISH/stone",
++            "quantity_m2": 4.0,
++            "unit_price_cny": 1000,
++            "amount_cny": 4000.0,
++            "basis": "caller_provided_assumption_not_a_quote",
++            "area_basis_source": "w2_r4_finish_conflict_fixture",
++            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
++          },
++          {
++            "item": "wood（按输入假设单价试算）",
++            "material_id": "wood",
++            "layer": "floor_finish",
++            "quantity_ref": "Q-FLOOR-FINISH/wood",
++            "quantity_m2": 4.0,
++            "unit_price_cny": 1000,
++            "amount_cny": 4000.0,
++            "basis": "caller_provided_assumption_not_a_quote",
++            "area_basis_source": "w2_r4_finish_conflict_fixture",
++            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
++          }
++        ],
++        "assumption_trial_total_cny": 8000.0,
++        "basis": {
++          "area_basis": "w2_r4_finish_conflict_fixture",
++          "unit_prices": "partially_provided_by_caller_assumption",
++          "loss_rate": "unknown",
++          "labor_and_process": "unknown",
++          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
++          "markup": "user_confirmed_but_not_applied_without_price_source"
++        }
++      }
++    },
++    {
++      "id": "R4F-04",
++      "name": "不同构造层分别计量，合计不得叫单层地坪净面积",
++      "signature": "fixed_signature",
++      "expected_after": "分组计量 + quantity_kind=multi_layer_sum + 非单层净面积标注",
++      "expected_before": "无多构造层口径标注（合计被当作单层净面积）",
++      "observed": {
++        "finish_status": "known",
++        "finish_value": 8.0,
++        "groups": [
++          {
++            "layer": "floor_finish",
++            "material_id": "wood",
++            "area_m2": 4.0
++          },
++          {
++            "layer": "wall_finish",
++            "material_id": "stone",
++            "area_m2": 4.0
++          }
++        ],
++        "conflicts": null,
++        "quantity_kind": "multi_layer_sum",
++        "layer_scope_note": "本切片包含 2 个不同构造层（floor_finish、wall_finish）；各层分别计量，合计是多构造层合计，不是单层地坪净面积",
++        "allocation_applied": null,
++        "known_items": [
++          {
++            "item": "wood（按输入假设单价试算）",
++            "material_id": "wood",
++            "layer": "floor_finish",
++            "quantity_ref": "Q-FLOOR-FINISH/wood",
++            "quantity_m2": 4.0,
++            "unit_price_cny": 1000,
++            "amount_cny": 4000.0,
++            "basis": "caller_provided_assumption_not_a_quote",
++            "area_basis_source": "w2_r4_finish_conflict_fixture",
++            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
++          },
++          {
++            "item": "stone（按输入假设单价试算）",
++            "material_id": "stone",
++            "layer": "wall_finish",
++            "quantity_ref": "Q-FLOOR-FINISH/stone@wall_finish",
++            "quantity_m2": 4.0,
++            "unit_price_cny": 1000,
++            "amount_cny": 4000.0,
++            "basis": "caller_provided_assumption_not_a_quote",
++            "area_basis_source": "w2_r4_finish_conflict_fixture",
++            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
++          }
++        ],
++        "assumption_trial_total_cny": 8000.0,
++        "basis": {
++          "area_basis": "w2_r4_finish_conflict_fixture",
++          "unit_prices": "partially_provided_by_caller_assumption",
++          "loss_rate": "unknown",
++          "labor_and_process": "unknown",
++          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
++          "markup": "user_confirmed_but_not_applied_without_price_source"
++        }
++      }
++    },
++    {
++      "id": "R4F-05",
++      "name": "结构化互斥分配并实际裁切 → 4㎡ known",
++      "signature": "fixed_signature",
++      "expected_after": "4㎡/known，wood 2㎡ + stone 2㎡，记录实际裁切",
++      "expected_before": "结构化裁切字段被忽略，仍按重叠算 8㎡",
++      "observed": {
++        "finish_status": "known",
++        "finish_value": 4.0,
++        "groups": [
++          {
++            "layer": "floor_finish",
++            "material_id": "stone",
++            "area_m2": 2.0
++          },
++          {
++            "layer": "floor_finish",
++            "material_id": "wood",
++            "area_m2": 2.0
++          }
++        ],
++        "conflicts": null,
++        "quantity_kind": "single_layer_net",
++        "layer_scope_note": null,
++        "allocation_applied": {
++          "declared_by": "w2_r4_finish_conflict_fixture",
++          "method": "explicit_disjoint_cut",
++          "declaration": "把 2×2m 面按 x=1000 裁成互斥的两块，几何可复核",
++          "cut_count": 2,
++          "cut_ids": [
++            "CUT-WOOD",
++            "CUT-STONE"
++          ],
++          "replaced_object_ids": [
++            "F-STONE",
++            "F-WOOD"
++          ],
++          "coverage_symmetric_difference_m2": 0.0,
++          "note": "裁切面已实际替换重叠原面，几何互斥且等价覆盖，不是文字声明"
++        },
++        "known_items": [
++          {
++            "item": "stone（按输入假设单价试算）",
++            "material_id": "stone",
++            "layer": "floor_finish",
++            "quantity_ref": "Q-FLOOR-FINISH/stone",
++            "quantity_m2": 2.0,
++            "unit_price_cny": 1000,
++            "amount_cny": 2000.0,
++            "basis": "caller_provided_assumption_not_a_quote",
++            "area_basis_source": "w2_r4_finish_conflict_fixture",
++            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
++          },
++          {
++            "item": "wood（按输入假设单价试算）",
++            "material_id": "wood",
++            "layer": "floor_finish",
++            "quantity_ref": "Q-FLOOR-FINISH/wood",
++            "quantity_m2": 2.0,
++            "unit_price_cny": 1000,
++            "amount_cny": 2000.0,
++            "basis": "caller_provided_assumption_not_a_quote",
++            "area_basis_source": "w2_r4_finish_conflict_fixture",
++            "note": "面积来自标注来源的材料面切片；单价由调用方作为假设输入，不是价源、不是报价、不含损耗与工艺"
++          }
++        ],
++        "assumption_trial_total_cny": 4000.0,
++        "basis": {
++          "area_basis": "w2_r4_finish_conflict_fixture",
++          "unit_prices": "partially_provided_by_caller_assumption",
++          "loss_rate": "unknown",
++          "labor_and_process": "unknown",
++          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
++          "markup": "user_confirmed_but_not_applied_without_price_source"
++        }
++      }
++    },
++    {
++      "id": "R4F-06",
++      "name": "裁切不互斥/不覆盖 → 仍为 conflict 待核",
++      "signature": "fixed_signature",
++      "expected_after": "重叠裁切面被拒，仍为 conflict/待核，不产 known 总量",
++      "expected_before": "裁切字段被忽略：要么按重叠算 8㎡，要么入口直接抛错",
++      "observed": {
++        "finish_status": "conflict",
++        "finish_value": null,
++        "groups": [],
++        "conflicts": [
++          {
++            "layer": "floor_finish",
++            "objects": [
++              "F-WOOD",
++              "F-STONE"
++            ],
++            "material_ids": [
++              "wood",
++              "stone"
++            ],
++            "overlap_m2": 4.0,
++            "conflict_code": "SAME_LAYER_MIXED_MATERIAL_OVERLAP",
++            "declaration_is_not_disambiguation": false,
++            "resolution_required": "合并为单一材料面，或给出结构化互斥裁切；否则保持 conflict/待核"
++          }
++        ],
++        "quantity_kind": null,
++        "layer_scope_note": null,
++        "allocation_applied": null,
++        "known_items": [],
++        "assumption_trial_total_cny": null,
++        "basis": {
++          "area_basis": "same_layer_material_conflict",
++          "unit_prices": "unknown",
++          "loss_rate": "unknown",
++          "labor_and_process": "unknown",
++          "tax_rate": "user_confirmed_but_not_applied_without_price_source",
++          "markup": "user_confirmed_but_not_applied_without_price_source",
++          "conflict_count": 1
++        }
++      }
++    },
++    {
++      "id": "R4F-07",
++      "name": "真实 HTTP 负例：冲突不产生 known 总量/试算（修复前为缺陷）",
++      "signature": "fixed_signature",
++      "expected_after": "任务成功但饰面量 conflict/None，CSV/HTML 标待核，0 笔试算",
++      "observed": {
++        "job_status": "succeeded",
++        "finish_status": "conflict",
++        "finish_value": null,
++        "conflicts": [
++          {
++            "conflict_code": "SAME_LAYER_MIXED_MATERIAL_OVERLAP",
++            "declaration_is_not_disambiguation": true,
++            "layer": "floor_finish",
++            "material_ids": [
++              "wood",
++              "stone"
++            ],
++            "objects": [
++              "F-WOOD",
++              "F-STONE"
++            ],
++            "overlap_m2": 4.0,
++            "resolution_required": "合并为单一材料面，或给出结构化互斥裁切；否则保持 conflict/待核"
++          }
++        ],
++        "known_items": 0,
++        "assumption_trial_total_cny": null,
++        "csv_has_conflict": true,
++        "html_has_pending": true,
++        "html_has_amount": false,
++        "manifest_conflict": true
++      }
++    },
++    {
++      "id": "R4F-08",
++      "name": "真实 HTTP 回归：同材声明后并集 4㎡/4000 元",
++      "signature": "regression_guard",
++      "expected": "同材声明后仍按并集 4㎡，真实入口试算 4000 元",
++      "observed": {
++        "job_status": "succeeded",
++        "finish_status": "known",
++        "finish_value": 4.0,
++        "amount": 4000.0
++      }
++    }
++  ],
++  "external_calls": 0,
++  "tokens": 0,
++  "cost_amount_or_null": null,
++  "cost_status": "no_external_calls_zero_cost"
++}
+\ No newline at end of file
+diff --git a/deliverables-for-review/roadmap/W2-R4-architect/no-render-checks.json b/deliverables-for-review/roadmap/W2-R4-architect/no-render-checks.json
+new file mode 100644
+index 0000000..3589df4
+--- /dev/null
++++ b/deliverables-for-review/roadmap/W2-R4-architect/no-render-checks.json
+@@ -0,0 +1,288 @@
++{
++  "task_id": "W2-R4 同源表达",
++  "schema_version": "rkd-w2-r4-checks.v1",
++  "executed_at": "2026-11-15T21:57:37+08:00",
++  "code_head": "8fd7948e49ce8698806b484e8117b41011852f1d",
++  "render_enabled": false,
++  "environment": {
++    "python": "3.12.14",
++    "renderer": "not_run",
++    "isolated_main_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-architect\\runtime\\app.sqlite3",
++    "isolated_studio_db": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-architect\\runtime\\studio.db",
++    "model_channel": "labelled local fixtures only",
++    "presentation": "executor manual test assumptions",
++    "keys_used": false
++  },
++  "checks": [
++    {
++      "id": "R4-A-SUBMIT",
++      "name": "布局 A 由同一生成器产出完整成果",
++      "result": "observed_pass",
++      "evidence": {
++        "status": 202,
++        "job_status": "succeeded",
++        "job_error": null,
++        "message": null,
++        "artifacts": [
++          "cost.html",
++          "quantity.json",
++          "manifest.json",
++          "package.zip",
++          "plan.svg",
++          "quantity.csv"
++        ],
++        "generator": "rkd-spatial-outputs.v4"
++      }
++    },
++    {
++      "id": "R4-A-ZIP",
++      "name": "布局 A 完整 ZIP/下载 SHA 与 PNG 一致",
++      "result": "observed_pass",
++      "evidence": {
++        "zip_entries": [
++          "cost.html",
++          "manifest.json",
++          "plan.svg",
++          "quantity.csv",
++          "quantity.json",
++          "scene.json"
++        ],
++        "manifest_files": 5,
++        "problems": [],
++        "png_matches_zip": false
++      }
++    },
++    {
++      "id": "R4-B-SUBMIT",
++      "name": "布局 B 由同一生成器产出完整成果",
++      "result": "observed_pass",
++      "evidence": {
++        "status": 202,
++        "job_status": "succeeded",
++        "job_error": null,
++        "message": null,
++        "artifacts": [
++          "cost.html",
++          "quantity.json",
++          "manifest.json",
++          "package.zip",
++          "plan.svg",
++          "quantity.csv"
++        ],
++        "generator": "rkd-spatial-outputs.v4"
++      }
++    },
++    {
++      "id": "R4-B-ZIP",
++      "name": "布局 B 完整 ZIP/下载 SHA 与 PNG 一致",
++      "result": "observed_pass",
++      "evidence": {
++        "zip_entries": [
++          "cost.html",
++          "manifest.json",
++          "plan.svg",
++          "quantity.csv",
++          "quantity.json",
++          "scene.json"
++        ],
++        "manifest_files": 5,
++        "problems": [],
++        "png_matches_zip": false
++      }
++    },
++    {
++      "id": "R4-01",
++      "name": "两种不同布局由同一生成器出平面/场景/人眼图，模型哈希与净量不同",
++      "result": "observed_pass",
++      "evidence": {
++        "layout_a_net": 233.03,
++        "layout_b_net": 229.08,
++        "model_hashes": [
++          "05389e0a636c",
++          "6d34745eae9e"
++        ],
++        "generator": "rkd-spatial-outputs.v4",
++        "presentation_version": "rkd-spatial-presentation-fixture.v1"
++      }
++    },
++    {
++      "id": "R4-02-A",
++      "name": "布局 A 平面含墙/洞口/家具/材料/机位/尺寸链且文字可读",
++      "result": "observed_pass",
++      "evidence": {
++        "bytes": 22257,
++        "missing": [],
++        "min_font_size": 8.0,
++        "too_small_count": 0,
++        "has_eye_level": true,
++        "has_dimension": true
++      }
++    },
++    {
++      "id": "R4-02-B",
++      "name": "布局 B 平面含墙/洞口/家具/材料/机位/尺寸链且文字可读",
++      "result": "observed_pass",
++      "evidence": {
++        "bytes": 22256,
++        "missing": [],
++        "min_font_size": 8.0,
++        "too_small_count": 0,
++        "has_eye_level": true,
++        "has_dimension": true
++      }
++    },
++    {
++      "id": "R4-03-A",
++      "name": "布局 A 围合/开口/家具在平面与三维读同一 ID 与尺寸",
++      "result": "observed_pass",
++      "evidence": {
++        "walls": 4,
++        "partitions": 2,
++        "openings": 7,
++        "furniture": 16,
++        "ids_ok": true,
++        "size_labels_ok": true,
++        "furniture_labels_ok": true,
++        "zone_material_slots": [
++          "fabric",
++          "floor_microcement",
++          "oak",
++          "stone",
++          "walnut"
++        ]
++      }
++    },
++    {
++      "id": "R4-03-B",
++      "name": "布局 B 围合/开口/家具在平面与三维读同一 ID 与尺寸",
++      "result": "observed_pass",
++      "evidence": {
++        "walls": 4,
++        "partitions": 2,
++        "openings": 7,
++        "furniture": 16,
++        "ids_ok": true,
++        "size_labels_ok": true,
++        "furniture_labels_ok": true,
++        "zone_material_slots": [
++          "fabric",
++          "floor_microcement",
++          "oak",
++          "stone",
++          "walnut"
++        ]
++      }
++    },
++    {
++      "id": "R4-04-A",
++      "name": "布局 A 真实 CC0 材质/家具/窗光/人眼机位出图",
++      "result": "observed_fail",
++      "evidence": {
++        "png_bytes": 0,
++        "textures_used": null,
++        "models_used": null,
++        "placeholders": null,
++        "window_area_lights": null,
++        "fixture_lights": null,
++        "cove_segments": null,
++        "camera": {},
++        "engine": null,
++        "seconds": null
++      }
++    },
++    {
++      "id": "R4-04-B",
++      "name": "布局 B 真实 CC0 材质/家具/窗光/人眼机位出图",
++      "result": "observed_fail",
++      "evidence": {
++        "png_bytes": 0,
++        "textures_used": null,
++        "models_used": null,
++        "placeholders": null,
++        "window_area_lights": null,
++        "fixture_lights": null,
++        "cove_segments": null,
++        "camera": {},
++        "engine": null,
++        "seconds": null
++      }
++    },
++    {
++      "id": "R4-05",
++      "name": "四项受控变更：开口尺寸同步平面/场景且改几何不改量；换材质可追踪；只改相机不改量；只改单价不改几何",
++      "result": "observed_pass",
++      "evidence": {
++        "opening_width_mm": 3000.0,
++        "opening_quantity_unchanged": true,
++        "material_slot_after": "walnut",
++        "material_quantity_and_cost_unchanged": true,
++        "camera_quantity_unchanged": true,
++        "price_geometry_unchanged": true,
++        "trial_amount_before_after": [
++          233030.0,
++          279636.0
++        ]
++      }
++    },
++    {
++      "id": "R4-06",
++      "name": "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
++      "result": "observed_fail",
++      "evidence": {
++        "conflict_after": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-architect\\checks\\after\\finish-conflict-after.json",
++        "conflict_all_as_expected": false,
++        "regression": "D:\\Github\\RKD AI\\var\\evidence\\roadmap\\W2-R4-architect\\checks\\regression-second-closeout\\repro-r4-regression.json",
++        "regression_15_of_15": false
++      }
++    },
++    {
++      "id": "R4-07",
++      "name": "按 job_id 查询只返回该任务的 revision/artifacts，不串另一布局",
++      "result": "observed_pass",
++      "evidence": {
++        "job_a": "ai-spatial-job_f0143a7fce1c",
++        "job_b": "ai-spatial-job_916ef06daf51",
++        "revision_a": "ai-production-revision_3d04be5856a0",
++        "revision_b": "ai-production-revision_eaa267b38c77"
++      }
++    },
++    {
++      "id": "R4-08",
++      "name": "同一 R4 服务代码：取消晚到不复活可显式重试；失败任务不借用他人成果",
++      "result": "observed_pass",
++      "evidence": {
++        "cancel_late": {
++          "status_in_gap": "queued",
++          "cancel_status": 200,
++          "cancel_body_status": "cancelled",
++          "final_status": "cancelled",
++          "registered": 0,
++          "retry_status_code": 202,
++          "retried_status": "succeeded",
++          "retry_of": "ai-spatial-job_07d3fba5ae61"
++        },
++        "job_isolation": {
++          "good_job": "ai-spatial-job_02676e83d4f6",
++          "requested_job": "ai-spatial-job_9fadd144b15c",
++          "returned_job": "ai-spatial-job_9fadd144b15c",
++          "job_status": "failed",
++          "returned_revision": null,
++          "returned_revision_job": null,
++          "artifacts": 0,
++          "revision_source": "none",
++          "note": "显式查一个失败任务时，revision/artifacts 必须为空，不能拿别人的"
++        }
++      }
++    }
++  ],
++  "totals": {
++    "observed_pass": 12,
++    "observed_fail": 3
++  },
++  "external_calls": 0,
++  "tokens": 0,
++  "images_generated": 0,
++  "cost_amount_or_null": null,
++  "cost_status": "no_external_calls_zero_cost",
++  "not_customer_design_approval": true
++}
+\ No newline at end of file
+diff --git a/deliverables-for-review/roadmap/W2-R4-architect/review-next.md b/deliverables-for-review/roadmap/W2-R4-architect/review-next.md
+new file mode 100644
+index 0000000..f640fde
+--- /dev/null
++++ b/deliverables-for-review/roadmap/W2-R4-architect/review-next.md
+@@ -0,0 +1,62 @@
++# W2-R4 复核与表达收口委托
++
++日期2026-11-15；审查HEAD 8fd7948，业务84a7719。工作区开始干净。本轮仅审查与隔离验证，不修改业务实现/动态状态。
++
++## 判定
++
++入口同层异材冲突修复在本批验证范围通过。R4已形成有价值的同源表达能力，实际图明显超出灰盒：家具、木饰面、绿植、圆角中岛、围合及开口可辨认。但W2整体不放行，不计客户成果或AI接替设计，AD及用户阶段确认不变。下一批只收口可见表达问题，不扩管理平台、不重做W1或重开生命周期工程。
++
++## 独立核实与限制
++
++查看两布局render.png及A平面预览，审读表达层契约、渲染器、材料对账及验证脚本。资产许可/尺寸依据是项目清单；本轮没有独立核实每个外部资产来源或把目录标称尺寸当现场实测。
++
++独立运行 verify_w2_r4_finish_conflict.py --label after --out var/evidence/roadmap/W2-R4-architect，8项全部符合预期，包含真实HTTP冲突与同材回归。第一次使用不支持的label=architect被参数校验拒绝，改用after成功，未修改脚本。
++
++独立运行 verify_w2_r4.py --no-render --out var/evidence/roadmap/W2-R4-architect/checks --runtime var/evidence/roadmap/W2-R4-architect/runtime，12 pass/3 fail、退出1：R4-04-A/B因主动不渲染没有PNG/渲染元数据；R4-06读取该新目录下尚未放入的前置冲突及15项回归JSON失败。不能称该脚本整体独立通过，也不是据此认定产品出现3个回归。12项支持本轮两布局提交、非渲染ZIP、围合映射、四种变化及任务定位/取消等检查。执行者报告的真实渲染15/15、浏览器、262单测/构建本轮未独立重跑。
++
++脚本改进随本批处理：--no-render的图像项应not_run；缺前置证据明确标缺证，不与产品断言混为一类。验证摘要必须区分函数/HTTP/真实渲染/浏览器/人工目检。
++
++## 需要完成的三个可见检查点
++
++### V1 平面可读性（先做）
++
++A图入口处门号、机位、红色动线及数值仍压叠；“北光廊”“南生活场景”等文字与对象框交叉；墙边白色文字及局部洞口文字对比不足。当前“文字可读”自动断言只能证明字符串存在，不能代表人工检查通过。
++
++处理：分开对象几何、编号、注释层；机位/动线仅保留必要短编号，完整说明移入索引表；对象文字按留白偏移并用引线，不靠缩小字号解决。墙体/开口/相机引用仍可对账。补总尺寸、关键空间与开口定位之间可闭合的受控尺寸链；缺现场依据标假设，不能画出未经验证的施工尺寸。
++
++退出：A/B各一份全图与入口/洽谈区局部截图；按目标打印尺寸与正常屏幕缩放检查，编号不遮挡、说明可读、不出界。每处旧重叠都给前后局部，不以非空SVG作为验收。
++
++### V2 窗光与材质表达
++
++B左侧窗带大片纯白；代码以发光材质充当玻璃，与真实透明玻璃表达有差距。图中光比偏平，木饰面和地面虽有纹理，但拼缝/收边与尺度仍弱。先改善曝光、窗框/窗洞深度及玻璃表现，窗外环境可用明确标注的本地假设；采光方向必须对应模型窗口，不再用发光板掩盖窗口细节。不要求照度合规或新付费通道。
++
++选择主要木饰面与地面两种材质补合理纹理比例、收边/接缝；变化保存为有版本的材质/表达输入，不手工改成片像素。保留模型来源及假设标识。
++
++退出：固定同一机位/模型做前后图，窗框与洞口可辨、主要材料尺度合理、功能区有光照层次。不是简单“亮度未过阈值”就通过。
++
++### V3 功能表达与资产缺项
++
++两图的展示/品牌内容明显不足，尤其B大面积空地、孤立圆桌与远处分散座椅，未充分表达展厅用途。不要通过随意堆家具或添加人物凑“设计公司”外观。人物并非本批单独硬门槛；可读功能组织、家具尺度、展品与真实材质才是核心。
++
++核对每个源功能区需要表达的对象与现有引用。替换可替换的display-wing占位件；补样板展品/品牌内容时标人工表达假设，并保留对象ID、位置和尺寸。若补齐需要改变空间设计而非表达，提出具体对象建议和前后图，不暗改源方案或称AI自动设计。平面/场景/数量应能区分源对象、表达资产和测试陈设，不能把新增陈设默默计成工程量。
++
++退出：每布局仍一张人眼图，清楚展示主要功能、陈设与尺度；同一生成器，不复制固定样板坐标充当所有方案答案。不得扩大成W4全套。
++
++## 用户阶段与后续路线
++
++这次是人工样板表达评审，不应把它直接提交为用户项目阶段2设计批准。执行者先查当前项目阶段1确认是否对应具体底图版本。若没有，准备“底图确认卡”：版本/边界/入口/保留区/已知与假设/待确认点及图面，由用户明确确认后才能生成该项目阶段2。不要重启需求访谈，也不把缺资料当上述工程样板改进的阻塞。
++
++V1—V3完成后提交架构复核及具体图面给用户判断；W2工程受限结论、用户设计接受与AD分别记录。W3只有届时明确范围及既有可核实的费用/资料授权后才可实施，当前不启动；W4仍等阶段2确认。
++
++## 交付及执行提示词
++
++新目录：D:\Github\RKD AI\deliverables-for-review\roadmap\W2-R4-表达收口\。保留原图，不回写历史。交index.html、两布局图与局部对比、完整源模型/表达输入/场景/ZIP、资产/假设清单、同源变化验证、前端截图、提交差异与未解决项。若需要阶段1用户确认，附具体版本确认卡；它不是替用户签字。
++
++```text
++读取 D:\Github\RKD AI\deliverables-for-review\roadmap\W2-R4-architect\review-next.md。
++入口异材冲突修复已受限通过，R4表达进展成立，但W2整体未放行。继续V1平面可读性与关键尺寸链→V2窗光/材质→V3功能表达与占位资产，保持同源、来源及假设边界。日常实现自行推进，不重做已通过工程，不扩PG/NAS/账号，不新增付费调用，不启动W3/W4。
++验收以真实前后图和局部可读性为主；自动断言与人工目检分列。修正--no-render验证报告语义。用户项目阶段1未对应版本确认时准备底图确认卡并停在该阶段边界，人工工程样板验证可以继续。
++交 D:\Github\RKD AI\deliverables-for-review\roadmap\W2-R4-表达收口\，报告完整路径、实际做与没做、仍不像设计公司成果的地方、图片数/费用。不得自行宣布客户设计通过、W2放行或修改AD。
++```
++
++本轮未新增设计成果或渲染图片，因为任务是复核。实际图仍有过曝窗带、稀疏陈设、标注压叠及构造/材料细节不足；未达到客户交付质量。外部模型/图片调用0、外发0、密钥使用0、费用0。
+diff --git a/mvp/rkd_mvp/ai_spatial_outputs.py b/mvp/rkd_mvp/ai_spatial_outputs.py
+index c567f07..8ebb088 100644
+--- a/mvp/rkd_mvp/ai_spatial_outputs.py
++++ b/mvp/rkd_mvp/ai_spatial_outputs.py
+@@ -32,6 +32,8 @@ COST_VERSION = "rkd-spatial-cost.v4"
+ MANIFEST_VERSION = "rkd-spatial-output-manifest.v3"
+ FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v3"
+ PRESENTATION_VERSION = "rkd-spatial-presentation-fixture.v1"
++# V2/V3 有版本的表达输入：材质收边/接缝比例、窗表现与窗外假设、陈设分类
++EXPRESSION_VERSION = "rkd-spatial-expression.v1"
+ 
+ MM2 = 1_000_000.0
+ 
+@@ -1139,7 +1141,16 @@ def _plan_furniture_parts(presentation: dict, X, Y, pts) -> list[str]:
+ def build_plan_svg(model: dict, camera: dict, quantities: dict,
+                    presentation: dict | None = None) -> bytes:
+     """A readable concept plan: polygons, furniture, circulation, dimensions,
+-    legend, area table, camera marker and explicit missing items."""
++    legend, area table, camera marker and explicit missing items.
++
++    V1 (W2-R4 表达收口): with an explicit presentation fixture the layered
++    generator in ``plan_layers`` is used instead — geometry / short ids /
++    annotations are separate, labels are placed with collision avoidance, and a
++    closed controlled dimension chain is added. The legacy path is untouched.
++    """
++    if presentation:
++        from .plan_layers import build_layered_plan_svg
++        return build_layered_plan_svg(model, camera, quantities, presentation)
+     spatial = model["spatial"]
+     width = float(spatial["origin"]["boundary_mm"][0])
+     height = float(spatial["origin"]["boundary_mm"][1])
+@@ -1554,6 +1565,10 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
+     cost = build_cost(quantities, settings=settings)
+     plan = build_plan_svg(model, camera, quantities, presentation)
+     scene = build_scene(model, camera, presentation)
++    plan_index = None
++    if presentation:
++        from .plan_layers import build_plan_index
++        plan_index = build_plan_index(model, camera, quantities, presentation)
+     files = {
+         "plan.svg": ("plan_svg", "image/svg+xml", plan),
+         "quantity.json": ("development_json", "application/json", _json(quantities)),
+@@ -1563,6 +1578,9 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
+                       cost_html(cost, quantities)),
+         "scene.json": ("development_json", "application/json", _json(scene)),
+     }
++    if plan_index:
++        files["plan-index.json"] = ("development_json", "application/json",
++                                    _json(plan_index))
+     manifest = {
+         "schema_version": MANIFEST_VERSION,
+         "baseline": frozen,
+@@ -1583,6 +1601,14 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
+             "assumptions": presentation["assumptions"],
+             "disclaimer": presentation["disclaimer"],
+         } if presentation else None),
++        "plan_index": ({
++            "schema_version": plan_index["schema_version"],
++            "label_count": len(plan_index["labels"]),
++            "dimension_chain_closed": bool(
++                plan_index["dimension_chain"]["x"]["closed"]
++                and plan_index["dimension_chain"]["y"]["closed"]),
++            "expression_accounting": plan_index["expression_accounting"],
++        } if plan_index else None),
+         "files": [],
+     }
+     return {"frozen": frozen, "camera": camera, "quantities": quantities,
+diff --git a/mvp/rkd_mvp/plan_layers.py b/mvp/rkd_mvp/plan_layers.py
+new file mode 100644
+index 0000000..1a559c9
+--- /dev/null
++++ b/mvp/rkd_mvp/plan_layers.py
+@@ -0,0 +1,676 @@
++"""W2-R4 表达收口 V1：分层可读平面（几何 / 短编号 / 注释与索引）。
++
++架构师 review-next.md V1 指出：入口处门号、机位、红色动线及数值压叠；
++"北光廊""南生活场景"等文字与对象框交叉；墙边白色文字与洞口文字对比不足；
++"文字可读"自动断言只证明字符串存在。
++
++本模块把三类内容分开：
++  * layer-geometry   纯几何：分区面、墙、洞口、平台、保留区、家具轮廓、动线、灯位、视锥
++  * layer-ids        短编号徽标（白底深字、带引线、自动避让），不再压在几何线上
++  * layer-annotations 留白处的名称标签 + 图内精简索引 + 完整说明移到 plan-index.json
++
++并补一条可闭合的受控尺寸链（总尺寸 → 关键空间 → 开口定位），站表与闭合校验
++写进 plan-index.json。全部尺寸标注明确为人工测试假设，不是施工定位尺寸。
++
++旧路径（presentation=None）仍走 ai_spatial_outputs.build_plan_svg 的原逻辑，
++不受本模块影响。
++"""
++from __future__ import annotations
++
++import math
++from html import escape
++from typing import Any
++
++from shapely.geometry import Polygon
++
++from .ai_spatial_outputs import (
++    GENERATOR_VERSION, PRESENTATION_VERSION, _fmt_mm, model_hash,
++    rounded_polygon_2d,
++)
++
++PLAN_LAYERS_VERSION = "rkd-spatial-plan-layers.v1"
++PLAN_INDEX_VERSION = "rkd-spatial-plan-index.v1"
++
++# 图面文字对比：不再使用白字压深色墙；所有徽标/标签为白底深字
++INK = "#1f2937"
++MUTED = "#475569"
++ACCENT = "#1e3a8a"
++WARN = "#9a3412"
++CELL = 16.0
++
++
++class LabelPlacer:
++    """按留白格避让标签；所有标签中心间距至少 CELL，避免互相压叠。"""
++
++    def __init__(self, bounds: tuple[float, float, float, float] | None = None) -> None:
++        self.occupied: set[tuple[int, int]] = set()
++        self.forced: list[str] = []
++        # 标签不得跑出绘图区，避免压到顶部尺寸链或右侧信息栏
++        self.bounds = bounds
++
++    def place(self, ax: float, ay: float, width_px: float, *, key: str = "",
++              height_px: float = 14.0) -> tuple[float, float, bool]:
++        span = max(1, math.ceil(width_px / CELL))
++        offsets = [
++            (0, 0), (0, -22), (0, 22), (-26, 0), (26, 0),
++            (-30, -24), (30, -24), (-30, 24), (30, 24),
++            (0, -46), (0, 46), (-52, -34), (52, -34), (-52, 34), (52, 34),
++            (0, -70), (0, 70), (-76, 0), (76, 0),
++            (-70, -56), (70, -56), (-70, 56), (70, 56),
++            (0, -94), (0, 94), (-98, -70), (98, -70), (-98, 70), (98, 70),
++            (-120, 0), (120, 0), (-120, -92), (120, -92), (-120, 92), (120, 92),
++            (-46, -78), (46, -78), (-46, 78), (46, 78),
++        ]
++        for dx, dy in offsets:
++            px, py = ax + dx, ay + dy
++            if self.bounds:
++                x0, y0, x1, y1 = self.bounds
++                half_w = width_px / 2 + 3
++                half_h = height_px / 2 + 3
++                if (px - half_w < x0 or px + half_w > x1
++                        or py - half_h < y0 or py + half_h > y1):
++                    continue
++            gx, gy = int(px // CELL), int(py // CELL)
++            cells = [(gx + i, gy + j)
++                     for i in range(-1, span + 1) for j in (-1, 0, 1)]
++            if any(c in self.occupied for c in cells):
++                continue
++            self.occupied.update(cells)
++            return px, py, False
++        px, py = ax + offsets[-1][0], ay + offsets[-1][1]
++        gx, gy = int(px // CELL), int(py // CELL)
++        self.occupied.update((gx + i, gy + j)
++                             for i in range(-1, span + 1) for j in (-1, 0, 1))
++        self.forced.append(key)
++        return px, py, True
++
++
++def _short(object_id: str, prefix: str, index: int) -> str:
++    return f"{prefix}{index}"
++
++
++def furniture_codes(presentation: dict) -> dict[str, str]:
++    """object_id → 全局唯一短码。
++
++    V3 新增陈设后 `R4-PROP-03` / `R4-STG-PED-03` / `R4-STG-OBJ-03` 若都取
++    尾号会得到同一个 P03，既造成图面标签重叠，也会让 plan-index.json 的
++    labels 互相覆盖。这里按对象类别给不同前缀并全局去重，平面与索引共用。
++    """
++    prefixes = (("R4-STG-PED", "D"), ("R4-STG-OBJ", "E"),
++                ("R4-STG-SEAT", "S"), ("R4-STG-BRAND", "B"),
++                ("R4-PROP", "P"))
++    used: set[str] = set()
++    out: dict[str, str] = {}
++    for f in presentation["furniture"]:
++        oid = f["object_id"]
++        if len(oid) <= 5:
++            code = oid
++        else:
++            prefix = "T"
++            for key, value in prefixes:
++                if oid.startswith(key):
++                    prefix = value
++                    break
++            code = f"{prefix}{oid.split('-')[-1]}"
++        base, suffix = code, 2
++        while code in used:
++            code = f"{base}{suffix}"
++            suffix += 1
++        used.add(code)
++        out[oid] = code
++    return out
++
++
++def _dim_stations(model: dict, presentation: dict) -> dict:
++    """总尺寸 → 关键空间 → 开口定位 的受控尺寸链站点（mm，西南原点）。"""
++    width = float(model["spatial"]["origin"]["boundary_mm"][0])
++    height = float(model["spatial"]["origin"]["boundary_mm"][1])
++    x_points: list[tuple[float, str, str]] = [(0.0, "boundary", "场地西边界（模型边界参数）"),
++                                              (width, "boundary", "场地东边界（模型边界参数）")]
++    y_points: list[tuple[float, str, str]] = [(0.0, "boundary", "场地南边界（模型边界参数）"),
++                                              (height, "boundary", "场地北边界（模型边界参数）")]
++    walls = {w["object_id"]: w for w in presentation["walls"] + presentation["partitions"]}
++    for op in presentation["openings"]:
++        host = walls.get(op["wall_object_id"])
++        if host is None:
++            continue
++        seg = host["segment_mm"]
++        horizontal = abs(seg[1][1] - seg[0][1]) < abs(seg[1][0] - seg[0][0])
++        cx, cy = op["center_mm"]
++        basis = "manual_test_assumption:opening_position"
++        if horizontal:
++            x_points.append((float(cx), f"opening:{op['object_id']}", basis))
++        else:
++            y_points.append((float(cy), f"opening:{op['object_id']}", basis))
++    for platform in model["spatial"].get("platforms") or []:
++        poly = platform.get("polygon_mm") or []
++        if len(poly) < 3:
++            continue
++        xs, ys = [float(p[0]) for p in poly], [float(p[1]) for p in poly]
++        label = f"platform:{platform['object_id']}"
++        x_points += [(min(xs), label, "source_model:platform_polygon"),
++                     (max(xs), label, "source_model:platform_polygon")]
++        y_points += [(min(ys), label, "source_model:platform_polygon"),
++                     (max(ys), label, "source_model:platform_polygon")]
++
++    def chain(points: list[tuple[float, str, str]], total: float, axis: str) -> dict:
++        # 同一坐标可能来自多个依据：合并依据，不重复站点
++        merged: dict[float, list[str]] = {}
++        for value, kind, basis in points:
++            value = round(min(max(value, 0.0), total), 1)
++            merged.setdefault(value, []).append(f"{kind}｜{basis}")
++        ordered = sorted(merged)
++        stations = []
++        for i, value in enumerate(ordered):
++            delta = round(value - ordered[i - 1], 1) if i else 0.0
++            stations.append({
++                "id": f"{axis.upper()}{i + 1}",
++                "coordinate_mm": value,
++                "delta_from_previous_mm": delta,
++                "basis": sorted(set(merged[value])),
++                "source_kind": ("boundary" if i == 0 or i == len(ordered) - 1
++                                else "model_or_manual_assumption"),
++            })
++        total_delta = round(sum(s["delta_from_previous_mm"] for s in stations), 1)
++        return {"stations": stations, "total_mm": round(total, 1),
++                "sum_delta_mm": total_delta,
++                "closed": abs(total_delta - total) < 0.2,
++                "axis": axis}
++
++    return {"x": chain(x_points, width, "x"), "y": chain(y_points, height, "y"),
++            "note": "受控尺寸链用于图面可读性对账：各段增量之和必须闭合到场地总尺寸。"
++                    "站点来自模型边界/平台多边形或人工测试假设的洞口定位，"
++                    "不是现场实测，也不是施工定位尺寸。"}
++
++
++def build_plan_index(model: dict, camera: dict, quantities: dict,
++                     presentation: dict) -> dict:
++    """完整编号索引（与 SVG 用同一份标签字典），供对账与自动断言使用。"""
++    spatial = model["spatial"]
++    labels: dict[str, dict] = {}
++
++    def put(code: str, kind: str, object_id: str, name: str, **extra) -> None:
++        labels[code] = {"code": code, "kind": kind, "object_id": object_id,
++                        "name": name, **extra}
++
++    for i, z in enumerate(spatial["zones"], 1):
++        xs = [float(p[0]) for p in z["polygon_mm"]]
++        ys = [float(p[1]) for p in z["polygon_mm"]]
++        put(f"Z{i}", "zone", z["object_id"], z["name"],
++            size_mm=[_fmt_mm(max(xs) - min(xs)), _fmt_mm(max(ys) - min(ys))],
++            area_sqm=z.get("area_sqm"), source="source_model:spatial.zones")
++    for i, w in enumerate(presentation["walls"] + presentation["partitions"], 1):
++        put(f"W{i}", "wall", w["object_id"], w["kind"],
++            thickness_mm=w["thickness_mm"], height_mm=w["height_mm"],
++            material_slot=w["material_slot"], source=w["source"])
++    for i, op in enumerate(presentation["openings"], 1):
++        put(f"O{i}", "opening", op["object_id"], op["kind"],
++            width_mm=op["width_mm"], height_mm=op["height_mm"],
++            sill_mm=op["sill_mm"], wall_object_id=op["wall_object_id"],
++            center_mm=op["center_mm"], source=op["source"])
++    codes = furniture_codes(presentation)
++    for f in presentation["furniture"]:
++        put(codes[f["object_id"]],
++            "furniture", f["object_id"], f.get("catalog_id") or "",
++            asset_id=f.get("asset_id"),
++            asset_dimensions_mm=f.get("asset_dimensions_mm"),
++            origin_kind=f.get("origin_kind") or "cc0_expression_asset",
++            source=f.get("source"))
++    put("C1", "camera", camera["camera_id"], "人眼机位（人工假设）",
++        eye_height_mm=camera["eye_height_mm"], lens_mm=camera["lens_mm"],
++        position_mm=camera["position_mm"], target_mm=camera["target_mm"],
++        source="manual_test_assumption")
++    for i, c in enumerate(spatial["circulation"], 1):
++        put(f"R{i}", "circulation", c["object_id"], "主动线（意向）",
++            width_mm=c.get("width_mm"), source="source_model:spatial.circulation")
++    for i, o in enumerate(model["boundary"]["obstacles"], 1):
++        put(f"K{i}", "keepout", o["object_id"], o.get("name") or o["object_id"],
++            source="source_model:boundary.obstacles")
++
++    expression_accounting = {
++        "source_model_objects": sum(1 for v in labels.values()
++                                    if v["kind"] in {"zone", "keepout", "circulation"}),
++        "expression_assets": sum(1 for v in labels.values()
++                                 if v["kind"] == "furniture"
++                                 and v.get("origin_kind") == "cc0_expression_asset"),
++        "test_staging": sum(1 for v in labels.values()
++                            if v["kind"] == "furniture"
++                            and v.get("origin_kind") == "test_staging"),
++        "procedural_expression": sum(1 for v in labels.values()
++                                     if v["kind"] == "furniture"
++                                     and v.get("origin_kind") == "procedural_expression"),
++        "engineering_quantity_effect": 0,
++        "note": "表达资产/测试陈设/程序化表达对象只进入平面与场景表现，"
++                "不进入 measure() 的工程量、材料面切片或试算金额。",
++    }
++    return {
++        "schema_version": PLAN_INDEX_VERSION,
++        "plan_layers_version": PLAN_LAYERS_VERSION,
++        "presentation_version": PRESENTATION_VERSION,
++        "generator_version": GENERATOR_VERSION,
++        "option_id": model["option_id"], "revision_no": model["revision_no"],
++        "model_hash": model_hash(model),
++        "labels": labels,
++        "dimension_chain": _dim_stations(model, presentation),
++        "expression_accounting": expression_accounting,
++        "disclaimer": presentation.get("disclaimer"),
++        "note": "编号索引与平面 SVG 由同一份标签字典生成；完整说明在此，"
++                "图面只保留短编号与必要引线，避免文字压叠。",
++    }
++
++
++def _badge(out: list[str], placer: LabelPlacer, ax: float, ay: float,
++           code: str, color: str, *, key: str, width: float = 22.0) -> None:
++    px, py, forced = placer.place(ax, ay, width, key=key)
++    out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{px:.1f}" y2="{py:.1f}" '
++               f'stroke="{color}" stroke-width="0.7" opacity="0.75"/>')
++    out.append(f'<rect x="{px - width/2:.1f}" y="{py - 7:.1f}" width="{width:.1f}" '
++               f'height="14" rx="3" fill="#ffffff" stroke="{color}" '
++               f'stroke-width="1" opacity="0.97"/>')
++    out.append(f'<text data-anno="1" x="{px:.1f}" y="{py + 3.4:.1f}" '
++               f'text-anchor="middle" font-size="9" font-weight="600" '
++               f'fill="{INK}">{escape(code)}</text>')
++    if forced:
++        out.append(f'<!-- forced-label: {escape(key)} -->')
++
++
++def _name_label(out: list[str], placer: LabelPlacer, ax: float, ay: float,
++                text: str, color: str, *, key: str) -> None:
++    width = min(150.0, max(46.0, len(text) * 11.0 + 10))
++    px, py, _forced = placer.place(ax, ay, width, key=key)
++    out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{px:.1f}" y2="{py:.1f}" '
++               f'stroke="{color}" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.8"/>')
++    out.append(f'<rect x="{px - width/2:.1f}" y="{py - 8.5:.1f}" width="{width:.1f}" '
++               f'height="17" rx="2" fill="#ffffff" fill-opacity="0.94" '
++               f'stroke="{color}" stroke-width="0.6"/>')
++    out.append(f'<text data-anno="1" x="{px:.1f}" y="{py + 3.6:.1f}" '
++               f'text-anchor="middle" font-size="11" font-weight="600" '
++               f'fill="{INK}">{escape(text)}</text>')
++
++
++def build_layered_plan_svg(model: dict, camera: dict, quantities: dict,
++                           presentation: dict) -> bytes:
++    """分层平面：几何 / 短编号 / 注释索引，带可闭合受控尺寸链。"""
++    spatial = model["spatial"]
++    width = float(spatial["origin"]["boundary_mm"][0])
++    height = float(spatial["origin"]["boundary_mm"][1])
++    scale = min(880.0 / width, 640.0 / height)
++    ox, oy = 100.0, 170.0
++    draw_w, draw_h = width * scale, height * scale
++    lx = ox + draw_w + 60
++    W = lx + 330
++    H = oy + draw_h + 620
++
++    def X(mm: float) -> float:
++        return ox + mm * scale
++
++    def Y(mm: float) -> float:
++        return oy + (height - mm) * scale
++
++    def pts(poly: list) -> str:
++        return " ".join(f"{X(float(p[0])):.2f},{Y(float(p[1])):.2f}" for p in poly)
++
++    index = build_plan_index(model, camera, quantities, presentation)
++    labels = index["labels"]
++    chains = index["dimension_chain"]
++    placer = LabelPlacer(bounds=(ox + 8, oy + 8, ox + draw_w - 8, oy + draw_h - 8))
++    geom: list[str] = []
++    ids: list[str] = []
++    anno: list[str] = []
++
++    palette = ["#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#e0e7ff", "#ccfbf1",
++               "#fee2e2", "#ede9fe"]
++
++    # ------------------------------------------------------------ layer-geometry
++    geom.append(f'<rect x="{ox}" y="{Y(height):.2f}" width="{draw_w:.2f}" '
++                f'height="{draw_h:.2f}" fill="#ffffff" stroke="#1f2937" stroke-width="3"/>')
++    zone_anchors: list[tuple[float, float, str, int]] = []
++    for i, z in enumerate(spatial["zones"]):
++        poly = z["polygon_mm"]
++        fill = (z.get("finish_material") or {}).get("hex") or palette[i % len(palette)]
++        geom.append(f'<polygon points="{pts(poly)}" fill="{fill}" fill-opacity="0.72" '
++                    f'stroke="#334155" stroke-width="1.4"/>')
++        shape = Polygon([(float(p[0]), float(p[1])) for p in poly])
++        point = shape.representative_point()
++        zone_anchors.append((X(point.x), Y(point.y), z["name"], i + 1))
++
++    walls = presentation["walls"] + presentation["partitions"]
++    wall_by_id = {w["object_id"]: w for w in walls}
++    for w in walls:
++        (x1, y1), (x2, y2) = w["segment_mm"]
++        dx, dy = x2 - x1, y2 - y1
++        length = math.hypot(dx, dy) or 1.0
++        ux, uy = dx / length, dy / length
++        nx, ny = -uy, ux
++        half = w["thickness_mm"] / 2
++        poly = [[x1 + nx * half, y1 + ny * half], [x2 + nx * half, y2 + ny * half],
++                [x2 - nx * half, y2 - ny * half], [x1 - nx * half, y1 - ny * half]]
++        colour = "#3f3f46" if w["kind"] == "perimeter" else "#78716c"
++        geom.append(f'<polygon points="{pts(poly)}" fill="{colour}" fill-opacity="0.90" '
++                    f'stroke="#1c1917" stroke-width="0.7"/>')
++
++    openings_by_wall: dict[str, list] = {}
++    for op in presentation["openings"]:
++        openings_by_wall.setdefault(op["wall_object_id"], []).append(op)
++    for w in walls:
++        (x1, y1), (x2, y2) = w["segment_mm"]
++        dx, dy = x2 - x1, y2 - y1
++        length = math.hypot(dx, dy) or 1.0
++        ux, uy = dx / length, dy / length
++        nx, ny = -uy, ux
++        half_t = w["thickness_mm"] / 2 + 30
++        for op in openings_by_wall.get(w["object_id"], []):
++            cx, cy = op["center_mm"]
++            half_w = op["width_mm"] / 2
++            a = [cx - ux * half_w - nx * half_t, cy - uy * half_w - ny * half_t]
++            b = [cx + ux * half_w - nx * half_t, cy + uy * half_w - ny * half_t]
++            c = [cx + ux * half_w + nx * half_t, cy + uy * half_w + ny * half_t]
++            d = [cx - ux * half_w + nx * half_t, cy - uy * half_w + ny * half_t]
++            geom.append(f'<polygon points="{pts([a, b, c, d])}" fill="#ffffff" '
++                        f'stroke="#1c1917" stroke-width="0.6"/>')
++            if op["kind"] == "window":
++                for off in (-half_t * 0.35, half_t * 0.35):
++                    p1 = [cx - ux * half_w + nx * off, cy - uy * half_w + ny * off]
++                    p2 = [cx + ux * half_w + nx * off, cy + uy * half_w + ny * off]
++                    geom.append(f'<line x1="{X(p1[0]):.1f}" y1="{Y(p1[1]):.1f}" '
++                                f'x2="{X(p2[0]):.1f}" y2="{Y(p2[1]):.1f}" '
++                                f'stroke="#0369a1" stroke-width="1.3"/>')
++            else:
++                hinge = [cx - ux * half_w, cy - uy * half_w]
++                leaf = [hinge[0] + nx * op["width_mm"], hinge[1] + ny * op["width_mm"]]
++                geom.append(f'<line x1="{X(hinge[0]):.1f}" y1="{Y(hinge[1]):.1f}" '
++                            f'x2="{X(leaf[0]):.1f}" y2="{Y(leaf[1]):.1f}" '
++                            f'stroke="#a16207" stroke-width="1.5"/>')
++
++    for o in model["boundary"]["obstacles"]:
++        s = o["shape"]
++        x, y = float(s["x"]) * 1000, float(s["y"]) * 1000
++        w, l = float(s["width"]) * 1000, float(s["length"]) * 1000
++        geom.append(f'<rect x="{X(x):.1f}" y="{Y(y+l):.1f}" width="{w*scale:.1f}" '
++                    f'height="{l*scale:.1f}" fill="url(#keepout)" stroke="#64748b" '
++                    f'stroke-width="1.3"/>')
++    for p in spatial.get("platforms") or []:
++        if len(p.get("polygon_mm") or []) < 3:
++            continue
++        outline = (rounded_polygon_2d(p["polygon_mm"], float(p.get("corner_radius_mm") or 0))
++                   if p.get("corner_radius_mm") else p["polygon_mm"])
++        geom.append(f'<polygon points="{pts(outline)}" fill="#f8fafc" fill-opacity="0.55" '
++                    f'stroke="#b45309" stroke-width="1.8" stroke-dasharray="5 3"/>')
++
++    furniture_anchors: list[tuple[float, float, str, dict]] = []
++    furniture_code_map = furniture_codes(presentation)
++    for f in presentation["furniture"]:
++        dims = f.get("asset_dimensions_mm") or [600.0, 600.0, 750.0]
++        w, d = float(dims[0]), float(dims[1])
++        x, y = f["position_mm"]
++        rot = math.radians(f["rotation_deg"])
++        corners = []
++        for dx, dy in ((-w/2, -d/2), (w/2, -d/2), (w/2, d/2), (-w/2, d/2)):
++            corners.append([x + dx*math.cos(rot) - dy*math.sin(rot),
++                            y + dx*math.sin(rot) + dy*math.cos(rot)])
++        origin_kind = f.get("origin_kind") or "cc0_expression_asset"
++        stroke = {"cc0_expression_asset": "#0f766e", "test_staging": "#7c3aed",
++                  "procedural_expression": "#b45309", "source_model": "#334155"}.get(
++                      origin_kind, "#334155")
++        fill = {"cc0_expression_asset": "#d1fae5", "test_staging": "#ede9fe",
++                "procedural_expression": "#fef3c7", "source_model": "#cbd5e1"}.get(
++                    origin_kind, "#cbd5e1")
++        geom.append(f'<polygon points="{pts(corners)}" fill="{fill}" fill-opacity="0.82" '
++                    f'stroke="{stroke}" stroke-width="1" '
++                    f'data-origin="{escape(origin_kind)}"/>')
++        code = furniture_code_map[f["object_id"]]
++        furniture_anchors.append((X(x), Y(y), code, f))
++
++    for c in spatial["circulation"]:
++        geom.append('<polyline points="' + pts(c["path_mm"]) + '" fill="none" '
++                    'stroke="#dc2626" stroke-width="2.6" stroke-dasharray="9 5" '
++                    'opacity="0.85"/>')
++    for fx in (spatial["ceiling"].get("fixtures") or []):
++        geom.append(f'<circle cx="{X(float(fx.get("x") or 0)):.1f}" '
++                    f'cy="{Y(float(fx.get("y") or 0)):.1f}" r="4" fill="#f59e0b" '
++                    f'stroke="#92400e" stroke-width="0.8"/>')
++
++    # 机位视锥（几何层，极淡，不再叠长说明文字）
++    ex, ey = camera["position_mm"]
++    tx, ty = camera["target_mm"]
++    angle0 = math.atan2(ty - ey, tx - ex)
++    half_angle = math.degrees(math.atan(18.0 / max(camera["lens_mm"], 1)))
++    reach = min(width, height) * 0.5
++    for sign in (-1, 1):
++        ang = angle0 + math.radians(sign * half_angle)
++        geom.append(f'<line x1="{X(ex):.1f}" y1="{Y(ey):.1f}" '
++                    f'x2="{X(ex + reach*math.cos(ang)):.1f}" '
++                    f'y2="{Y(ey + reach*math.sin(ang)):.1f}" '
++                    f'stroke="#7c3aed" stroke-width="0.9" stroke-dasharray="5 4" '
++                    f'opacity="0.55"/>')
++
++    # --------------------------------------------------------------- layer-ids
++    for ax, ay, name, i in zone_anchors:
++        _badge(ids, placer, ax, ay, f"Z{i}", "#334155", key=f"Z{i}")
++        _name_label(anno, placer, ax, ay, name, "#64748b", key=f"zone-name-{i}")
++    for i, w in enumerate(walls, 1):
++        (x1, y1), (x2, y2) = w["segment_mm"]
++        ax, ay = X((x1 + x2) / 2), Y((y1 + y2) / 2)
++        _badge(ids, placer, ax, ay, f"W{i}", "#3f3f46", key=f"W{i}")
++    for i, op in enumerate(presentation["openings"], 1):
++        cx, cy = op["center_mm"]
++        host = wall_by_id[op["wall_object_id"]]
++        (x1, y1), (x2, y2) = host["segment_mm"]
++        dx, dy = x2 - x1, y2 - y1
++        n = math.hypot(dx, dy) or 1.0
++        nx, ny = -dy / n, dx / n
++        off = host["thickness_mm"] + 330
++        _badge(ids, placer, X(cx + nx * off), Y(cy + ny * off), f"O{i}",
++               "#0369a1" if op["kind"] == "window" else "#a16207", key=f"O{i}")
++    for ax, ay, code, f in furniture_anchors:
++        colour = {"cc0_expression_asset": "#0f766e", "test_staging": "#7c3aed",
++                  "procedural_expression": "#b45309", "source_model": "#334155"}.get(
++                      f.get("origin_kind") or "cc0_expression_asset", "#334155")
++        _badge(ids, placer, ax, ay, code, colour, key=f"furn-{code}", width=24.0)
++    _badge(ids, placer, X(ex), Y(ey), "C1", "#7c3aed", key="C1")
++    for i, c in enumerate(spatial["circulation"], 1):
++        path = c["path_mm"]
++        mid = path[len(path) // 2]
++        _badge(ids, placer, X(float(mid[0])), Y(float(mid[1])), f"R{i}",
++               "#dc2626", key=f"R{i}")
++    for i, o in enumerate(model["boundary"]["obstacles"], 1):
++        s = o["shape"]
++        cx = float(s["x"]) * 1000 + float(s["width"]) * 500
++        cy = float(s["y"]) * 1000 + float(s["length"]) * 500
++        _badge(ids, placer, X(cx), Y(cy), f"K{i}", "#64748b", key=f"K{i}")
++
++    # -------------------------------------------- 受控尺寸链（几何 + 站号标注）
++    chain_y = oy - 34
++    x_chain = chains["x"]
++    geom.append(f'<line x1="{X(0):.1f}" y1="{chain_y}" x2="{X(width):.1f}" '
++                f'y2="{chain_y}" stroke="#334155" stroke-width="0.9"/>')
++    for st in x_chain["stations"]:
++        sx = X(st["coordinate_mm"])
++        geom.append(f'<line x1="{sx:.1f}" y1="{chain_y-5}" x2="{sx:.1f}" '
++                    f'y2="{chain_y+5}" stroke="#334155" stroke-width="1"/>')
++        geom.append(f'<line x1="{sx:.1f}" y1="{chain_y}" x2="{sx:.1f}" '
++                    f'y2="{Y(0):.1f}" stroke="#94a3b8" stroke-width="0.5" '
++                    f'stroke-dasharray="3 6" opacity="0.55"/>')
++    for i, st in enumerate(x_chain["stations"][1:], 1):
++        prev = x_chain["stations"][i - 1]
++        a, b = X(prev["coordinate_mm"]), X(st["coordinate_mm"])
++        if b - a < 62:
++            continue
++        delta = st["delta_from_previous_mm"]
++        anno.append(f'<rect x="{(a+b)/2-30:.1f}" y="{chain_y-16:.1f}" width="60" '
++                    f'height="12" fill="#ffffff" opacity="0.92"/>')
++        anno.append(f'<text data-anno="1" x="{(a+b)/2:.1f}" y="{chain_y-7:.1f}" '
++                    f'text-anchor="middle" font-size="8.5" fill="{MUTED}">'
++                    f'{_fmt_mm(delta)}</text>')
++    chain_x = ox - 56
++    y_chain = chains["y"]
++    geom.append(f'<line x1="{chain_x}" y1="{Y(0):.1f}" x2="{chain_x}" '
++                f'y2="{Y(height):.1f}" stroke="#334155" stroke-width="0.9"/>')
++    for st in y_chain["stations"]:
++        sy = Y(st["coordinate_mm"])
++        geom.append(f'<line x1="{chain_x-5}" y1="{sy:.1f}" x2="{chain_x+5}" '
++                    f'y2="{sy:.1f}" stroke="#334155" stroke-width="1"/>')
++    for i, st in enumerate(y_chain["stations"][1:], 1):
++        prev = y_chain["stations"][i - 1]
++        a, b = Y(prev["coordinate_mm"]), Y(st["coordinate_mm"])
++        if abs(b - a) < 62:
++            continue
++        anno.append(f'<text data-anno="1" x="{chain_x-8:.1f}" y="{(a+b)/2:.1f}" '
++                    f'text-anchor="middle" font-size="8.5" fill="{MUTED}" '
++                    f'transform="rotate(-90 {chain_x-8:.1f} {(a+b)/2:.1f})">'
++                    f'{_fmt_mm(st["delta_from_previous_mm"])}</text>')
++    anno.append(f'<text x="{ox}" y="102" font-size="10" fill="{MUTED}">'
++                f'X / Y 向受控尺寸链：总宽 {_fmt_mm(width)} mm、总长 {_fmt_mm(height)} mm；'
++                f'站点与闭合校验见图下方站表与 plan-index.json（人工测试假设，非施工定位）</text>')
++
++    # ------------------------------------------------------------ 标题与右侧栏
++    head: list[str] = [
++        f'<text x="{ox}" y="26" font-size="18" font-weight="700" fill="#111827">'
++        f'{escape(model["strategy"]["statement"][:56])}</text>',
++        f'<text x="{ox}" y="46" font-size="11" fill="{MUTED}">'
++        f'候选 {escape(model["option_id"])} v{model["revision_no"]} · '
++        f'源 {escape(spatial["source"]["artifact_id"])} · '
++        f'模型 {model_hash(model)[:12]} · {GENERATOR_VERSION} · {PLAN_LAYERS_VERSION}</text>',
++        f'<text x="{ox}" y="64" font-size="11" fill="#b91c1c">'
++        f'概念平面（内部评审）：不是施工图，不宣称消防/无障碍/门洞净宽合规</text>',
++        f'<text x="{ox}" y="82" font-size="10.5" fill="{WARN}">'
++        f'表达层：墙/门窗/隔断/材质/家具/机位/灯光均为人工测试假设，'
++        f'非现场事实、非 AI 自动设计；编号索引见 plan-index.json</text>',
++    ]
++
++    legend = [
++        ("#dbeafe", "功能分区（源模型多边形，非墙体）"),
++        ("#3f3f46", "周界墙 / 隔断（人工假设厚度）"),
++        ("#0284c7", "窗洞口 + 窗光方向（假设）"),
++        ("#a16207", "门洞 + 门扇弧线"),
++        ("#d1fae5", "CC0 家具（真实目录尺寸）"),
++        ("#ede9fe", "测试陈设（不计工程量）"),
++        ("#fef3c7", "程序化表达 / 明确占位"),
++        ("#dc2626", "主动线（净宽见索引）"),
++        ("#7c3aed", "人眼机位 + 视锥（假设）"),
++        ("#f59e0b", "灯具点位（模型天花意向）"),
++        ("url(#keepout)", "保留区（源模型扣除）"),
++    ]
++    for mat in presentation["materials"]:
++        legend.append((mat["hex"],
++                       f'材质 {mat["name"]}（{mat["slot"]}，CC0 贴图意向）'))
++    right: list[str] = [f'<text x="{lx}" y="{oy+4}" font-size="13" font-weight="700" '
++                        f'fill="#111827">图例（编号见索引表）</text>']
++    for i, (fill, label) in enumerate(legend):
++        yy = oy + 26 + i * 21
++        right.append(f'<rect x="{lx}" y="{yy-10}" width="17" height="11" fill="{fill}" '
++                     f'stroke="#64748b" stroke-width="0.7"/>')
++        right.append(f'<text x="{lx+24}" y="{yy}" font-size="9.5" fill="{MUTED}">'
++                     f'{escape(label)}</text>')
++    ty = oy + 26 + len(legend) * 21 + 18
++    right.append(f'<text x="{lx}" y="{ty}" font-size="13" font-weight="700" '
++                 f'fill="#111827">面积表</text>')
++    right.append(f'<text x="{lx}" y="{ty+16}" font-size="9.5" fill="{MUTED}">'
++                 f'（精确多边形复算，非模型自报）</text>')
++    for i, z in enumerate(spatial["zones"]):
++        yy = ty + 34 + i * 16
++        right.append(f'<text x="{lx}" y="{yy}" font-size="9.5" fill="#334155">'
++                     f'{escape(z["name"])}</text>')
++        right.append(f'<text x="{lx+250}" y="{yy}" font-size="9.5" text-anchor="end" '
++                     f'fill="#0f172a">{z.get("area_sqm")} ㎡</text>')
++    net_item = next(q for q in quantities["items"]
++                    if q["quantity_id"] == "Q-FLOOR-GEOMETRIC-NET")
++    base_y = ty + 34 + len(spatial["zones"]) * 16 + 10
++    right.append(f'<text x="{lx}" y="{base_y}" font-size="9.5" font-weight="600">'
++                 f'功能分区几何净面积</text>')
++    right.append(f'<text x="{lx+250}" y="{base_y}" font-size="9.5" text-anchor="end" '
++                 f'font-weight="600">{net_item["value"]} ㎡</text>')
++    finish_item = next(q for q in quantities["items"]
++                       if q["quantity_id"] == "Q-FLOOR-FINISH")
++    conflict = finish_item.get("known_status") == "conflict"
++    right.append(f'<text x="{lx}" y="{base_y+16}" font-size="9.5">地坪完成面饰面净面积</text>')
++    right.append(f'<text x="{lx+250}" y="{base_y+16}" font-size="9.5" text-anchor="end">'
++                 f'{"conflict/待核" if conflict else finish_item["value"] if finish_item["value"] is not None else "unknown"}'
++                 f'{" ㎡" if finish_item["value"] is not None else ""}</text>')
++    my = base_y + 44
++    right.append(f'<text x="{lx}" y="{my}" font-size="12" font-weight="700" '
++                 f'fill="#b91c1c">未建模 / 缺项</text>')
++    missing = (["墙体/门窗/隔断/材质/家具/机位为人工测试假设，非现场事实"]
++               + list(presentation["missing"])[:7])
++    for i, text in enumerate(missing):
++        right.append(f'<text x="{lx}" y="{my+17+i*15}" font-size="9" fill="#7f1d1d">'
++                     f'· {escape(text)}</text>')
++
++    # ------------------------------------------- 图下方：精简索引 / 门窗 / 站表
++    table_y = oy + draw_h + 34
++    lower: list[str] = []
++    lower.append(f'<text x="{ox}" y="{table_y}" font-size="12" font-weight="700" '
++                 f'fill="#111827">编号索引（图面只留短编号；完整尺寸与来源见 plan-index.json）</text>')
++    priority = [v for v in labels.values()
++                if v["kind"] in {"zone", "wall", "opening", "camera",
++                                 "circulation", "keepout"}]
++    for i, item in enumerate(priority):
++        col, row = i % 2, i // 2
++        tx = ox + col * 440
++        ty2 = table_y + 20 + row * 15
++        detail = item.get("object_id") or ""
++        if item["kind"] == "zone":
++            extra = f'{item.get("size_mm", ["", ""])[0]}×{item.get("size_mm", ["", ""])[1]} mm · {item.get("area_sqm")}㎡'
++        elif item["kind"] == "wall":
++            extra = (f'厚 {_fmt_mm(item.get("thickness_mm") or 0)}mm · '
++                     f'高 {_fmt_mm(item.get("height_mm") or 0)}mm')
++        elif item["kind"] == "opening":
++            extra = f'{_fmt_mm(item.get("width_mm") or 0)}×{_fmt_mm(item.get("height_mm") or 0)} · 窗台 {_fmt_mm(item.get("sill_mm") or 0)}'
++        elif item["kind"] == "camera":
++            extra = f'人眼 {item.get("eye_height_mm")}mm · {item.get("lens_mm")}mm'
++        elif item["kind"] == "circulation":
++            extra = f'净宽 {item.get("width_mm")}mm'
++        else:
++            extra = item.get("name") or ""
++        # 图内索引只放短编号与核心尺寸；完整来源/依据在 plan-index.json，
++        # 避免长字符串横向压到第二列（V1 人工目检发现并修正）。
++        lower.append(f'<text x="{tx}" y="{ty2}" font-size="9" fill="{MUTED}">'
++                     f'{escape(item["code"])} = {escape(detail)}｜{escape(str(extra))}</text>')
++    doors_y = table_y + 20 + ((len(priority) + 1) // 2) * 15 + 18
++    lower.append(f'<text x="{ox}" y="{doors_y}" font-size="12" font-weight="700" '
++                 f'fill="#111827">门窗洞口表与尺寸链站表（人工测试假设，单位 mm）</text>')
++    for i, op in enumerate(presentation["openings"]):
++        col, row = i % 2, i // 2
++        lower.append(f'<text x="{ox + col*440}" y="{doors_y + 20 + row*15}" '
++                     f'font-size="9" fill="#334155">'
++                     f'{escape(op["object_id"])} · {op["kind"]} · '
++                     f'{_fmt_mm(op["width_mm"])}×{_fmt_mm(op["height_mm"])} · '
++                     f'窗台 {_fmt_mm(op["sill_mm"])}</text>')
++    station_y = doors_y + 20 + ((len(presentation["openings"]) + 1) // 2) * 15 + 14
++    stations = ([("X", s) for s in chains["x"]["stations"]]
++                + [("Y", s) for s in chains["y"]["stations"]])
++    for i, (axis, st) in enumerate(stations):
++        col, row = i % 2, i // 2
++        kind = (st["basis"][0].split("｜")[0].split(":")[0]
++                if st["basis"] else "unknown")
++        lower.append(f'<text x="{ox + col*440}" y="{station_y + 20 + row*15}" '
++                     f'font-size="9" fill="{MUTED}">'
++                     f'{axis}{st["id"]} @ {_fmt_mm(st["coordinate_mm"])} · '
++                     f'Δ{_fmt_mm(st["delta_from_previous_mm"])} · '
++                     f'{escape(kind[:18])}</text>')
++    note_y = station_y + 20 + ((len(stations) + 1) // 2) * 15 + 12
++    lower.append(f'<text x="{ox}" y="{note_y}" font-size="9.5" fill="#b91c1c">'
++                 f'尺寸链闭合：ΣΔx={_fmt_mm(chains["x"]["sum_delta_mm"])} / '
++                 f'总宽 {_fmt_mm(width)}；ΣΔy={_fmt_mm(chains["y"]["sum_delta_mm"])} / '
++                 f'总长 {_fmt_mm(height)}（站点依据见 plan-index.json）</text>')
++    lower.append(f'<text x="{ox}" y="{note_y+15}" font-size="9.5" fill="#b91c1c">'
++                 f'均为受控人工测试假设，不是现场实测或施工定位尺寸；'
++                 f'粗线为围合示意，不是施工墙体。</text>')
++
++    svg = [
++        f'<svg xmlns="http://www.w3.org/2000/svg" width="{W:.0f}" height="{H:.0f}" '
++        f'viewBox="0 0 {W:.0f} {H:.0f}" '
++        f'font-family="Microsoft YaHei, Noto Sans SC, sans-serif" '
++        f'data-plan-layers-version="{PLAN_LAYERS_VERSION}" '
++        f'data-plan-metrics="{ox},{oy},{scale:.9f},{width:.1f},{height:.1f}">',
++        '<defs><pattern id="keepout" width="8" height="8" patternUnits="userSpaceOnUse" '
++        'patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" '
++        'stroke="#94a3b8" stroke-width="2"/></pattern></defs>',
++        '<rect width="100%" height="100%" fill="#fbfaf7"/>',
++        *head,
++        f'<g id="layer-geometry">', *geom, '</g>',
++        f'<g id="layer-ids">', *ids, '</g>',
++        f'<g id="layer-annotations">', *anno, *right, *lower, '</g>',
++        '</svg>',
++    ]
++    return "".join(svg).encode("utf-8")
+diff --git a/mvp/rkd_mvp/spatial_presentation.py b/mvp/rkd_mvp/spatial_presentation.py
+index 22567c0..14adf13 100644
+--- a/mvp/rkd_mvp/spatial_presentation.py
++++ b/mvp/rkd_mvp/spatial_presentation.py
+@@ -24,7 +24,12 @@ import math
+ from pathlib import Path
+ from typing import Any
+ 
+-from .ai_spatial_outputs import PRESENTATION_VERSION
++from .ai_spatial_outputs import EXPRESSION_VERSION, PRESENTATION_VERSION
++
++# 对象来源分类：源模型 / CC0 表达资产 / 测试陈设 / 程序化表达。
++# 后两类只进入平面与场景表现，绝不进入 measure() 的工程量或材料面切片。
++ORIGIN_KINDS = {"source_model", "cc0_expression_asset",
++                "test_staging", "procedural_expression"}
+ 
+ ROOT = Path(__file__).resolve().parents[2]
+ ASSET_MANIFEST = ROOT / "assets" / "CC0-素材清单.json"
+@@ -207,6 +212,12 @@ def normalize_presentation(raw: dict | None,
+             raise PresentationError(f"furniture[{index}].anchor 只支持 center_floor")
+         z_offset = _finite_number(item.get("z_offset_m", 0),
+                                   f"furniture[{index}].z_offset_m", low=0, high=2.0)
++        origin_kind = str(item.get("origin_kind") or
++                          ("source_model" if str(item.get("kind") or "") == "model_furniture"
++                           else "cc0_expression_asset"))
++        if origin_kind not in ORIGIN_KINDS:
++            raise PresentationError(
++                f"furniture[{index}].origin_kind 必须是 {sorted(ORIGIN_KINDS)}")
+         asset_id = item.get("asset_id")
+         dims = None
+         if asset_id is not None:
+@@ -220,14 +231,25 @@ def normalize_presentation(raw: dict | None,
+                 if any(abs(float(a) - b) > 1.0 for a, b in zip(given, dims)):
+                     raise PresentationError(
+                         f"furniture[{index}].asset_dimensions_mm 与资产清单真实尺寸不符")
++        elif origin_kind == "procedural_expression":
++            given = item.get("asset_dimensions_mm")
++            if not isinstance(given, list) or len(given) != 3:
++                raise PresentationError(
++                    "程序化表达对象必须显式给出 asset_dimensions_mm（人工假设尺寸）")
++            dims = [float(v) for v in given]
++        is_placeholder = asset_id is None and origin_kind != "procedural_expression"
+         furniture.append({
+             "object_id": oid,
+             "catalog_id": str(item.get("catalog_id") or ""),
+             "asset_id": asset_id,
+             "asset_dimensions_mm": [round(v, 3) for v in dims] if dims else None,
+-            "placeholder": asset_id is None,
+-            "placeholder_note": (None if asset_id is not None else
+-                                 "目录没有对应 CC0 家具资产，明确留程序化占位，不冒充真实家具"),
++            "origin_kind": origin_kind,
++            "placeholder": is_placeholder,
++            "placeholder_note": (str(item.get("expression_note") or
++                                     "程序化表达对象：人工假设几何，非 CC0 资产、非源方案对象")
++                                 if origin_kind == "procedural_expression" else
++                                 None if asset_id is not None else
++                                 "目录没有对应 CC0 家具资产，明确留占位，不冒充真实家具"),
+             "position_mm": position, "rotation_deg": rotation,
+             "z_offset_m": z_offset,
+             "z_offset_note": (f"置于已建模台面/展台之上 {z_offset:.2f}m（人工假设），"
+@@ -331,6 +353,78 @@ def normalize_presentation(raw: dict | None,
+                 "未做照度/配光计算，不宣称合规",
+     }
+ 
++    # ------------------------------------------------ V2/V3 有版本的表达输入
++    raw_expression = raw.get("expression")
++    expression = None
++    if raw_expression is not None:
++        if not isinstance(raw_expression, dict):
++            raise PresentationError("presentation.expression 必须是对象")
++        if raw_expression.get("schema_version") != EXPRESSION_VERSION:
++            raise PresentationError(
++                f"presentation.expression.schema_version 必须是 {EXPRESSION_VERSION}")
++        declared = raw_expression.get("declared_by")
++        if not isinstance(declared, str) or not declared.strip():
++            raise PresentationError("expression.declared_by 必须标明人工假设来源")
++        finishes = raw_expression.get("material_finish")
++        if not isinstance(finishes, dict) or not finishes:
++            raise PresentationError("expression.material_finish 必须是非空对象")
++        known_material_ids = {m["material_id"] for m in materials}
++        clean_finishes = {}
++        for material_id, spec in finishes.items():
++            if material_id not in known_material_ids:
++                raise PresentationError(f"expression.material_finish 引用未知材料 {material_id!r}")
++            if not isinstance(spec, dict):
++                raise PresentationError(f"material_finish[{material_id}] 必须是对象")
++            clean_finishes[material_id] = {
++                "tile": _finite_number(spec.get("tile", 0.5), f"{material_id}.tile",
++                                       low=0.05, high=5.0),
++                "joint_spacing_mm": _finite_number(spec.get("joint_spacing_mm", 1200),
++                                                   f"{material_id}.joint_spacing_mm",
++                                                   low=100, high=6000),
++                "joint_width_mm": _finite_number(spec.get("joint_width_mm", 4),
++                                                 f"{material_id}.joint_width_mm",
++                                                 low=1, high=40),
++                "edge_trim_mm": _finite_number(spec.get("edge_trim_mm", 80),
++                                               f"{material_id}.edge_trim_mm",
++                                               low=0, high=300),
++                "note": str(spec.get("note") or "示意纹理比例/分缝/收边，不是材料规格或施工排版"),
++            }
++        window_expr = raw_expression.get("window_expression")
++        if not isinstance(window_expr, dict):
++            raise PresentationError("expression.window_expression 必须是对象")
++        glass_kind = str(window_expr.get("glass_kind") or "transparent")
++        if glass_kind != "transparent":
++            raise PresentationError("V2 不允许再用发光板充当玻璃：glass_kind 必须为 transparent")
++        clean_window = {
++            "glass_kind": glass_kind,
++            "frame_width_mm": _finite_number(window_expr.get("frame_width_mm", 60),
++                                             "window.frame_width_mm", low=20, high=200),
++            "reveal_depth_mm": _finite_number(window_expr.get("reveal_depth_mm", 200),
++                                              "window.reveal_depth_mm", low=50, high=500),
++            "mullion_count": int(window_expr.get("mullion_count") or 1),
++            "outside_environment": str(window_expr.get("outside_environment")
++                                       or "labelled_local_sky_gradient_assumption"),
++            "outside_note": str(window_expr.get("outside_note")
++                                or "窗外为本地程序化天空/远景渐变假设，不是现场照片或真实外景"),
++            "exposure_ev": _finite_number(window_expr.get("exposure_ev", -0.3),
++                                          "window.exposure_ev", low=-3.0, high=2.0),
++            "window_light_energy_scale": _finite_number(
++                window_expr.get("window_light_energy_scale", 0.5),
++                "window.window_light_energy_scale", low=0.05, high=2.0),
++            "source": "executor_manual_expression_assumption",
++        }
++        expression = {
++            "schema_version": EXPRESSION_VERSION,
++            "declared_by": declared,
++            "declaration": str(raw_expression.get("declaration") or ""),
++            "material_finish": clean_finishes,
++            "window_expression": clean_window,
++            "staging_note": str(raw_expression.get("staging_note") or ""),
++            "assumptions": [str(v) for v in raw_expression.get("assumptions") or []],
++            "site_verified": False,
++            "not_ai_design": True,
++        }
++
+     assumptions = [str(v) for v in raw.get("assumptions") or []]
+     missing = [str(v) for v in raw.get("missing") or []]
+     counts = {"walls": len(walls), "partitions": len(partitions),
+@@ -339,6 +433,9 @@ def normalize_presentation(raw: dict | None,
+               "materials": len(materials), "cameras": len(cameras),
+               "window_lights": len(window_ids), "fixtures": len(fixtures),
+               "coves": len(coves)}
++    for kind in ORIGIN_KINDS:
++        counts[f"origin_{kind}"] = sum(1 for f in furniture
++                                       if f["origin_kind"] == kind)
+     return {
+         "schema_version": PRESENTATION_VERSION,
+         "normalized": True,
+@@ -355,6 +452,8 @@ def normalize_presentation(raw: dict | None,
+         "walls": walls, "partitions": partitions, "openings": openings,
+         "furniture": furniture, "materials": materials, "cameras": cameras,
+         "lighting": lighting_out,
++        "expression": expression,
++        "expression_version": (expression or {}).get("schema_version"),
+         "zone_material_map": {
+             m["material_id"]: m["slot"] for m in materials},
+         "assumptions": assumptions, "missing": missing,
+diff --git a/scripts/build_w2_r4_closeout_review.py b/scripts/build_w2_r4_closeout_review.py
+new file mode 100644
+index 0000000..8155a51
+--- /dev/null
++++ b/scripts/build_w2_r4_closeout_review.py
+@@ -0,0 +1,619 @@
++"""组装 W2-R4-表达收口 复核包（docs/26 第 6 节 + review-next.md 交付项）。
++
++用法：PYTHONPATH="mvp;scripts;." ./.venv/Scripts/python.exe scripts/build_w2_r4_closeout_review.py
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import shutil
++import subprocess
++from datetime import datetime, timezone
++from html import escape
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++EVID = ROOT / "var/evidence/roadmap/W2-R4-表达收口/full"
++PACKET = ROOT / "deliverables-for-review/roadmap/W2-R4-表达收口"
++PREV = ROOT / "deliverables-for-review/roadmap/W2-R4-同源表达"
++BASEMAP = ROOT / "deliverables-for-review/ningbo-xiecheng/2026-11-10"
++BASE_COMMIT = "8fd7948"          # 架构师 review-next.md 审查 HEAD
++PACKET.mkdir(parents=True, exist_ok=True)
++
++
++def sha(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def jload(path: Path):
++    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
++
++
++def copy(src: Path, dst: Path) -> bool:
++    if not src.is_file():
++        return False
++    dst.parent.mkdir(parents=True, exist_ok=True)
++    shutil.copy2(src, dst)
++    return True
++
++
++def copy_tree(src: Path, dst: Path, *, skip: set[str] | None = None) -> int:
++    if not src.is_dir():
++        return 0
++    n = 0
++    for path in sorted(src.rglob("*")):
++        if not path.is_file() or (skip and path.name in skip):
++            continue
++        if copy(path, dst / path.relative_to(src)):
++            n += 1
++    return n
++
++
++now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
++checks = jload(EVID / "checks.json")
++closeout = jload(EVID / "closeout" / "closeout-checks.json")
++visual = jload(EVID / "visual" / "capture-observations.json")
++browser = jload(EVID / "browser" / "verification.json")
++conflict_before = jload(EVID / "before" / "finish-conflict-before.json")
++conflict_after = jload(EVID / "after" / "finish-conflict-after.json")
++regression = jload(EVID / "regression-second-closeout" / "repro-r4-regression.json")
++no_render = jload(ROOT / "var/evidence/roadmap/W2-R4-表达收口/no-render-semantics/checks.json")
++metas = {L: jload(EVID / "outputs" / f"layout-{L}" / "render-meta.json")
++         for L in ("A", "B")}
++indexes = {L: jload(EVID / "outputs" / f"layout-{L}" / "plan-index.json")
++           for L in ("A", "B")}
++presentations = {L: jload(EVID / "outputs" / f"layout-{L}" / "presentation.json")
++                 for L in ("A", "B")}
++
++# ------------------------------------------------------------------ 复制产物
++for letter in ("A", "B"):
++    src = EVID / "outputs" / f"layout-{letter}"
++    dst = PACKET / "outputs" / f"layout-{letter}"
++    copy_tree(src, dst)
++    expr = (presentations[letter].get("expression") or {})
++    (PACKET / "outputs" / f"expression-input-{letter}.json").write_text(
++        json.dumps(expr, ensure_ascii=False, indent=2), encoding="utf-8")
++copy_tree(PREV / "outputs" / "layout-A", PACKET / "outputs" / "previous-layout-A",
++          skip={"render.png"})
++copy_tree(PREV / "outputs" / "layout-B", PACKET / "outputs" / "previous-layout-B",
++          skip={"render.png"})
++copy_tree(EVID / "visual", PACKET / "visual")
++copy_tree(EVID / "render-compare", PACKET / "render-compare")
++copy_tree(EVID / "browser", PACKET / "browser")
++copy_tree(EVID / "closeout", PACKET / "closeout")
++copy_tree(EVID / "runtime", PACKET / "runtime",
++          skip={"app.sqlite3", "studio.db"})
++copy(EVID / "checks.json", PACKET / "checks-source.json")
++copy(EVID / "before" / "finish-conflict-before.json", PACKET / "entry-fix" / "before.json")
++copy(EVID / "after" / "finish-conflict-after.json", PACKET / "entry-fix" / "after.json")
++copy(EVID / "regression-second-closeout" / "repro-r4-regression.json",
++     PACKET / "entry-fix" / "regression-15.json")
++(PACKET / "no-render-semantics").mkdir(exist_ok=True)
++copy(ROOT / "var/evidence/roadmap/W2-R4-表达收口/no-render-semantics/checks.json",
++     PACKET / "no-render-semantics" / "checks.json")
++(PACKET / "no-render-semantics" / "README.md").write_text(
++    "# --no-render 报告语义修正\n\n"
++    "架构师独立运行 `verify_w2_r4.py --no-render` 曾得 12 pass / 3 fail（退出 1）。"
++    "本批把图像项改为 `not_run`、缺前置证据改为 `missing_evidence`，两者都不计入产品失败；"
++    "验证摘要按 function_level / contract / http / external_evidence / real_render / "
++    "browser / manual_visual 分层。\n\n"
++    "在同一空目录复现结果：`" + json.dumps(no_render.get("totals"), ensure_ascii=False) +
++    "`、退出码 0。完整渲染运行（本包 checks-source.json）为 15/15、0 not_run、0 缺证。\n",
++    encoding="utf-8")
++for name in ("阶段1_底图核对.html", "阶段1_底图核对.pdf", "01_真实场地底图.svg",
++             "底图数据.json", "00_原始平面图_正向.png"):
++    copy(BASEMAP / name, PACKET / "basemap" / name)
++
++# ------------------------------------------------------- 可打印完整编号索引
++for letter in ("A", "B"):
++    idx = indexes[letter]
++    rows = []
++    for item in idx["labels"].values():
++        detail = item.get("object_id") or ""
++        bits = [f'{k}={v}' for k, v in item.items()
++                if k not in ("code", "kind", "object_id", "name", "source")
++                and v is not None]
++        rows.append(
++            f'<tr><td>{escape(item["code"])}</td><td>{escape(item["kind"])}</td>'
++            f'<td>{escape(detail)}</td><td>{escape(item.get("name") or "")}</td>'
++            f'<td>{escape(" · ".join(bits)[:180])}</td>'
++            f'<td>{escape(str(item.get("source") or ""))}</td></tr>')
++    chain = idx["dimension_chain"]
++    stations = []
++    for axis in ("x", "y"):
++        for st in chain[axis]["stations"]:
++            stations.append(
++                f'<tr><td>{axis.upper()}{st["id"]}</td><td>{st["coordinate_mm"]}</td>'
++                f'<td>{st["delta_from_previous_mm"]}</td>'
++                f'<td>{escape("; ".join(st["basis"]))}</td></tr>')
++    html = f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
++<title>布局 {letter} · 平面编号索引与尺寸链（可打印）</title>
++<style>@page{{size:A4;margin:12mm}}body{{font:12px/1.55 "Microsoft YaHei",sans-serif;color:#1f2937}}
++h1{{font-size:18px}}h2{{font-size:14px;margin-top:18px;border-bottom:1px solid #cbd5e1;padding-bottom:4px}}
++table{{border-collapse:collapse;width:100%;font-size:10.5px}}th,td{{border:1px solid #d7dee6;padding:4px 6px;text-align:left;vertical-align:top}}
++th{{background:#f1f5f9}}tr{{page-break-inside:avoid}}thead{{display:table-header-group}}
++.note{{background:#fff7ed;border-left:3px solid #c2410c;padding:8px 10px;font-size:11px}}
++@media print{{body{{font-size:10.5px}}}}</style></head><body>
++<h1>布局 {letter} · 平面编号索引与受控尺寸链</h1>
++<p>本页把平面图上放不下的完整编号说明按正常字号单独打印，解决 A4 缩放后图内索引小字偏小的问题。
++索引与平面 SVG 由同一份标签字典生成（{escape(idx["plan_layers_version"])}）。</p>
++<div class="note">全部墙厚/高度、门窗洞口、材质贴图、家具、机位与陈设均为人工测试假设，
++未现场复核、非 AI 自动设计；尺寸链是图面可读性对账用的受控假设，不是施工定位尺寸。</div>
++<h2>编号索引（{len(idx["labels"])} 项）</h2>
++<table><thead><tr><th>编号</th><th>类别</th><th>对象 ID</th><th>名称</th><th>尺寸/参数</th><th>来源</th></tr></thead>
++<tbody>{''.join(rows)}</tbody></table>
++<h2>尺寸链站表（X 闭合 {chain["x"]["sum_delta_mm"]}/{chain["x"]["total_mm"]} mm，
++Y 闭合 {chain["y"]["sum_delta_mm"]}/{chain["y"]["total_mm"]} mm）</h2>
++<table><thead><tr><th>站点</th><th>坐标 mm</th><th>Δ mm</th><th>依据</th></tr></thead>
++<tbody>{''.join(stations)}</tbody></table>
++<h2>表达对象与工程量</h2>
++<pre>{escape(json.dumps(idx["expression_accounting"], ensure_ascii=False, indent=2))}</pre>
++<p>{escape(chain["note"])}</p></body></html>"""
++    (PACKET / f"plan-index-{letter}.html").write_text(html, encoding="utf-8")
++
++# ------------------------------------------------------------------ 文档
++gaps = [
++    "效果图仍是内部评审级，不是设计公司给客户的交付图：无人物、软装细节少、无真实品牌内容。",
++    "布局 B 最左一扇窗仍有高亮近白区域（窗外本地渐变假设在该角度露出高亮段）；"
++    "其余窗扇窗框/竖梃/玻璃/窗外层次可辨。未继续压暗参数掩盖它。",
++    "整体仍偏暗偏灰，天花占画面偏大（既有 1500mm 人眼机位 + 24mm 广角；"
++    "为满足前后同机位未改机位）。",
++    "功能陈设仍偏稀疏，B 的大空地仍明显；品牌板只有抽象色块，几乎看不出品牌内容。",
++    "窗外是本地程序化天空/地平线渐变，不是真实外景；照明含假设补光，未做照度/配光计算。",
++    "材质分缝/收边是示意几何，不是施工排版；贴图 tile 为人工假设，不是材料规格。",
++    "A4 打印缩放后图内图例与索引小字仍偏小（已另出 plan-index-A.html / B.html 可打印索引页）。",
++    "平面无闭合施工尺寸链、柱网、洁具、构造节点；每布局仅 1 个机位 1 张人眼图，"
++    "未做天花/立面/多视角/材料实物板/汇总客户 PDF（W4 范围，未授权启动）。",
++    "表达层全部是人工测试假设（`site_verified=false` / `not_ai_design=true`），"
++    "不计入 AI 接替设计；AD01—AD08 与用户阶段确认不变。",
++]
++(PACKET / "design-gaps.md").write_text(
++    "# 仍然不像设计公司成果的地方（逐条，不自行降低验收标准）\n\n"
++    + "\n".join(f"{i}. {g}" for i, g in enumerate(gaps, 1))
++    + "\n\n本批是同源表达能力的工程与图面收口；工程检查与自动断言通过不代表 R4 设计通过、"
++      "W2 整体完成或客户设计通过。\n", encoding="utf-8")
++
++expr0 = presentations["A"].get("expression") or {}
++asset_lines = [
++    "# 资产、来源与人工假设清单（V2/V3 更新）",
++    "",
++    "本批**未下载任何新资产、未新增外部调用**。资产仍来自项目既有 `tools/assets/`"
++    "（Poly Haven，CC0 1.0）。渲染器只读版本化表达输入，不手工改像素。",
++    "",
++    "## 可复用资产",
++    "",
++    "| 类别 | 内容 | 来源/许可 | 本批用法 |",
++    "| --- | --- | --- | --- |",
++    "| 渲染器 | Blender 4.2.9 LTS 免安装版 | 项目既有，GPL | Cycles CPU，两布局各 1 张人眼图 |",
++    "| PBR 贴图 | 6 套 1k：floor_microcement / wall_plaster / oak / walnut / stone / fabric | "
++    "Poly Haven CC0 1.0，清单 `assets/CC0-素材清单.json` | 真实贴图 + 版本化 tile |",
++    "| glTF 家具/器物 | 10 件，尺寸取清单 `dimensions_mm` | Poly Haven CC0 1.0 | "
++    "统一 anchor=center_floor、0° 沿 +X、rotation_deg 逆时针 |",
++    "| 窗外环境 | 本地程序化天空/地平线渐变 | **执行者人工假设**，非外部素材 | "
++    "透过透明玻璃可见，明确标 `labelled_local_sky_gradient_assumption` |",
++    "| 程序化表达 | 展墙 / 展台 / 品牌板 | **执行者人工假设几何**，非 CC0 资产 | "
++    "替代 display-wing 占位盒，保留对象 ID/位置/尺寸 |",
++    "",
++    "## V2/V3 版本化表达输入",
++    "",
++    f"- 契约：`{expr0.get('schema_version')}`；声明来源 `{expr0.get('declared_by')}`。",
++    f"- 材质收边/接缝：{', '.join(sorted((expr0.get('material_finish') or {})))} "
++    "（tile / joint_spacing_mm / joint_width_mm / edge_trim_mm，均为人工假设）。",
++    "- 窗表现：`glass_kind=transparent`，发光玻璃板 0，窗框宽 "
++    f"{(expr0.get('window_expression') or {}).get('frame_width_mm')} mm，"
++    f"洞口深度 {(expr0.get('window_expression') or {}).get('reveal_depth_mm')} mm，"
++    "窗外为标注的本地天空渐变。",
++    "- 完整输入见 `outputs/expression-input-A.json` / `-B.json` 与 `expression-input.md`。",
++    "",
++    "## 对象来源分类（不计工程量）",
++    "",
++]
++for letter in ("A", "B"):
++    counts = (metas[letter].get("expression") or {}).get("origin_counts") or {}
++    asset_lines.append(f"- 布局 {letter}：`{json.dumps(counts, ensure_ascii=False)}`；"
++                       f"`engineering_quantity_effect="
++                       f'{(metas[letter].get("expression") or {}).get("engineering_quantity_effect")}`')
++asset_lines += [
++    "",
++    "源模型对象、CC0 表达资产、测试陈设、程序化表达在 `plan-index.json` 的 "
++    "`expression_accounting` 与场景 `origin_kind` 中分列；"
++    "**新增陈设不进入 measure() 的工程量、材料面切片或试算金额**（专项断言 V3-*-03 证明）。",
++    "",
++    "## 明确假设（不编现场事实）",
++    "",
++]
++for text in (presentations["A"].get("assumptions") or []):
++    asset_lines.append(f"- {text}")
++(PACKET / "asset-inventory.md").write_text("\n".join(asset_lines) + "\n", encoding="utf-8")
++
++(PACKET / "expression-input.md").write_text(
++    "# 版本化表达输入（V2 窗光/材质 · V3 陈设分类）\n\n"
++    f"契约 `{expr0.get('schema_version')}`，由 `scripts/w2_r4_fixture_presentation.py` 生成、"
++    "`mvp/rkd_mvp/spatial_presentation.py` 校验、`scripts/render_spatial_scene_r4.py` 只读消费。"
++    "参数不写死在渲染器，也不手工改像素。\n\n"
++    "## 窗表现\n\n"
++    + "\n".join(f"- `{k}` = `{v}`" for k, v in
++                (expr0.get("window_expression") or {}).items())
++    + "\n\n## 材质收边/接缝\n\n"
++    + "\n".join(f"- **{k}**：`{json.dumps(v, ensure_ascii=False)}`"
++                for k, v in (expr0.get("material_finish") or {}).items())
++    + "\n\n## 调参留痕（人工目检驱动，非放宽检查）\n\n"
++    "1. 首版：透明玻璃 + 窗框 + 窗外渐变；曝光 -0.30、窗光系数 0.50、补光 32 → "
++    "人工看图判定偏暗、地面分缝过抢、展台基座突兀。\n"
++    "2. 二版：曝光 -0.15、窗光系数 0.62、补光 42、分缝调浅、展台基座改浅木 → "
++    "亮度与材质尺度改善；仍见 B 最左窗高亮。\n"
++    "3. 三版：面光源 `visible_camera=False`、窗外渐变整体压暗（emission 0.34）→ "
++    "窗框/玻璃/窗外层次可辨，最左窗扇仍有高亮残留，如实列为未解决项，未继续压暗掩盖。\n\n"
++    "## 陈设分类\n\n"
++    "`furniture[].origin_kind ∈ {source_model, cc0_expression_asset, test_staging, "
++    "procedural_expression}`；后两类只进入平面与场景表现，工程量恒为 0 影响。"
++    "位置由本布局动线/分区派生，不复制固定样板坐标；不暗改源方案、不称 AI 自动设计。\n",
++    encoding="utf-8")
++
++cases = [
++    "# 关键正负例与复跑结果",
++    "",
++    "## A. 入口小修（上一批已受限通过，本批不重做）",
++    "",
++    f"- 整改前 `all_as_expected={conflict_before.get('all_as_expected')}`、"
++    f"整改后 `all_as_expected={conflict_after.get('all_as_expected')}`；"
++    "证据 `entry-fix/`。",
++    f"- 原 15 项回归 `{regression.get('totals', {}).get('observed_pass')}/15` "
++    "（`entry-fix/regression-15.json`）。",
++    "",
++    "## B. --no-render 报告语义（架构师点名）",
++    "",
++    f"- 空目录复现：`{json.dumps(no_render.get('totals'), ensure_ascii=False)}`、退出码 0；"
++    "图像项 `not_run`、缺前置证据 `missing_evidence`，均不计产品失败。",
++    "- 完整渲染运行：15/15 observed_pass、0 not_run、0 缺证（`checks-source.json`）。",
++    "- 摘要分层：`verification_layers` = function_level / contract / http / "
++    "external_evidence / real_render / browser / manual_visual。",
++    "",
++    "## C. V1—V3 专项自动断言（与人工目检分列）",
++    "",
++]
++for c in (closeout.get("automatic_assertions") or {}).get("checks") or []:
++    cases.append(f"- `{c['id']}` {c['name']} → **{c['result']}**")
++cases += [
++    "",
++    "## D. 真实缺陷修正（先复现再修）",
++    "",
++    "1. 短编号撞号：V3 新增 `R4-STG-PED-03` / `R4-STG-OBJ-03` 与 `R4-PROP-03` "
++    "旧算法都生成 `P03`，导致图面标签重叠且 `plan-index.json` 的 labels 互相覆盖。"
++    "改为按类别前缀全局唯一分配（`plan_layers.furniture_codes`），并把 R4-03 断言改为按索引对账。"
++    "修正后 A/B 自动几何检查均 0 重叠、0 出界。",
++    "2. 局部裁剪黑屏：`<img src=file://…>` 在 `setContent` 的 about:blank 源下被阻止加载，"
++    "改用 base64 data URL，裁剪后为真实像素。",
++    "3. 图下方索引首版长字符串横向压到第二列：去掉图内冗余来源字段，完整说明移到 "
++    "`plan-index-*.html` / `plan-index.json`。",
++    "4. 顶部标题与尺寸链说明重叠：合并为一行提示，链线下移。",
++    "",
++    "## E. 浏览器与全量回归",
++    "",
++    f"- 真实 Edge：`passed={browser.get('passed')}`、390px 无溢出、"
++    "下载 SHA 与 manifest/ZIP 一致（`browser/verification.json`）。",
++    "- 全量单测与前端构建：`runtime/full-unittest.log` / `tsc.log` / `frontend-build.log`。",
++]
++(PACKET / "positive-negative-cases.md").write_text("\n".join(cases) + "\n", encoding="utf-8")
++
++# ------------------------------------------------------------------ 汇总 checks.json
++auto = closeout.get("automatic_assertions") or {}
++summary = {
++    "task_id": "W2-R4 表达收口 V1—V3",
++    "schema_version": "rkd-w2-r4-closeout-review-checks.v1",
++    "compiled_at": now,
++    "source_baseline": BASE_COMMIT,
++    "automatic_assertions": {
++        "http_and_render": {"observed_pass": (checks.get("totals") or {}).get("observed_pass"),
++                            "observed_fail": (checks.get("totals") or {}).get("observed_fail"),
++                            "evidence": "checks-source.json"},
++        "v1_v3_special": {"observed_pass": auto.get("observed_pass"),
++                          "observed_fail": auto.get("observed_fail"),
++                          "evidence": "closeout/closeout-checks.json"},
++        "plan_geometry": {"overlaps": {k: v.get("overlap_count")
++                                       for k, v in (visual.get("auto_geometry_check") or {}).items()},
++                          "evidence": "visual/capture-observations.json"},
++        "browser": {"passed": browser.get("passed"), "evidence": "browser/verification.json"},
++        "no_render_semantics": {"totals": no_render.get("totals"),
++                                "evidence": "no-render-semantics/checks.json"},
++        "entry_fix_regression": (regression.get("totals") or {}),
++        "full_unittest": {"evidence": "runtime/full-unittest.log"},
++        "note": "自动断言只做几何/编号/闭合/契约/工程量/HTTP/渲染发生与浏览器下载对账",
++    },
++    "manual_visual_review": {
++        "status": "reported_separately",
++        "evidence": "manual-visual-review.md",
++        "note": "前后全图、入口/洽谈区局部、窗区/功能区局部、A4 打印缩放由人工逐处看图判定；"
++                "自动断言不代替人工目检，也不宣布客户设计通过",
++    },
++    "totals": {"automatic_pass": (checks.get("totals") or {}).get("observed_pass", 0)
++               + auto.get("observed_pass", 0),
++               "automatic_fail": (checks.get("totals") or {}).get("observed_fail", 0)
++               + auto.get("observed_fail", 0),
++               "not_run_in_complete_run": (checks.get("totals") or {}).get("not_run", 0)},
++    "external_calls": 0, "tokens": 0,
++    "images_generated_this_batch": {
++        "human_eye_renders": 2,
++        "plan_full_and_local_screenshots": len(visual.get("screenshots") or []),
++        "render_compare_crops": 12,
++        "browser_screenshots": 4,
++        "note": "均为本机 Blender/浏览器派生；before 图只读引用上一批，未重新生成",
++    },
++    "cost_amount_or_null": None, "cost_status": "no_external_calls_zero_cost",
++    "boundaries": ["W2 整体未放行", "AD01—AD08 与用户阶段确认不变",
++                   "阶段1具体版本确认前停在阶段1边界", "W3/W4 未启动",
++                   "不扩 PG/NAS/账号/租约平台"],
++    "not_customer_design_approval": True,
++}
++(PACKET / "checks.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2),
++                                    encoding="utf-8")
++
++# ------------------------------------------------------------------ code-diff
++def git(*args: str) -> str:
++    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True,
++                          text=True, errors="replace").stdout.strip()
++
++
++(PACKET / "code-diff.md").write_text(
++    "# 提交差异\n\n"
++    f"- 稳定基线：`{BASE_COMMIT}`（架构师 `review-next.md` 审查 HEAD）。"
++    "补丁由 `git diff 8fd7948`（配合 `git add -N` 纳入新文件）生成，覆盖业务代码、"
++    "脚本、状态表与复核输入；不含 `changes.patch` / `manifest.json` / `index.html` 自身，避免自引用。\n"
++    "- 最终提交号见 `commit-reference.md`（单独提交补记，不写死易变 HEAD）。\n\n"
++    "## `git diff --stat 8fd7948`\n\n```\n"
++    + (git("diff", "--stat", BASE_COMMIT) or "(未取到)") + "\n```\n\n"
++    "## 改动摘要（不按行数衡量工作价值）\n\n"
++    "| 文件 | 改动 |\n| --- | --- |\n"
++    "| `mvp/rkd_mvp/plan_layers.py` | 新增：分层平面、避让引线、短编号全局唯一、"
++    "闭合尺寸链、完整索引 |\n"
++    "| `mvp/rkd_mvp/ai_spatial_outputs.py` | presentation 时委托分层平面；"
++    "新增 `plan-index.json` 成果与清单摘要；表达式版本常量 |\n"
++    "| `mvp/rkd_mvp/spatial_presentation.py` | 新增 `expression` 契约校验、"
++    "`origin_kind` 四类分类与计数 |\n"
++    "| `scripts/w2_r4_fixture_presentation.py` | 新增版本化表达输入、V3 测试陈设、"
++    "display-wing 程序化替换 |\n"
++    "| `scripts/render_spatial_scene_r4.py` | V2 透明玻璃/窗框/窗外假设/分缝收边/曝光；"
++    "V3 程序化表达对象与来源分组 |\n"
++    "| `scripts/verify_w2_r4.py` | `--no-render` 语义修正、验证分层、索引对账、"
++    "下载 `plan-index.json` |\n"
++    "| `scripts/verify_w2_r4_closeout.py` | 新增：V1—V3 专项断言，自动与人工分列 |\n"
++    "| `scripts/capture_w2_r4_visual.cjs` | 新增：前后全图/局部/打印缩放与自动几何检查 |\n"
++    "| `scripts/capture_render_crops.cjs` | 新增：人眼图前后全图与窗区/功能区局部 |\n"
++    "| `scripts/build_w2_r4_closeout_review.py` | 新增：复核包组装 |\n"
++    "| `PROJECT_STATUS.md` | 追加本批受限结论与交付记录 |\n",
++    encoding="utf-8")
++
++# ------------------------------------------------------------------ review-packet
++(PACKET / "review-packet.md").write_text(
++    "# W2-R4 表达收口 · 复核包\n\n"
++    f"编制 {now}；审查基线 `{BASE_COMMIT}`。"
++    "运行证据 `var/evidence/roadmap/W2-R4-表达收口/full/`；上一批 `W2-R4-同源表达` 原图只读引用，未回写。\n\n"
++    "## 1. 需求映射\n\n"
++    "| 委托项 | 落地 | 证据 |\n| --- | --- | --- |\n"
++    "| 修正 `--no-render` 报告语义 | 图像项 `not_run`、缺前置证据 `missing_evidence`、"
++    "摘要分层；空目录复现 12 pass / 0 fail / 2 not_run / 1 缺证 / 退出 0 | `no-render-semantics/` |\n"
++    "| V1 平面可读性与关键尺寸链 | 几何/编号/注释三层、避让引线、短编号全局唯一、"
++    "X/Y 闭合尺寸链、完整索引与可打印索引页 | `visual/`、`outputs/layout-*/plan-index.json`、`plan-index-*.html` |\n"
++    "| V2 窗光/材质 | 透明玻璃替代发光板、窗框/竖梃/洞口深度、窗外本地渐变假设、"
++    "地面分缝/木饰面竖缝/踢脚收边、版本化表达输入 | `expression-input.md`、`render-compare/` |\n"
++    "| V3 功能表达与占位资产 | display-wing 程序化展墙、测试陈设分四类、"
++    "位置由本布局派生、工程量恒 0 影响 | `asset-inventory.md`、`closeout/closeout-checks.json` |\n"
++    "| 自动断言与人工目检分列 | 专项断言 20/20 与逐张看图结论分别成文 | `checks.json`、`manual-visual-review.md` |\n"
++    "| 阶段1底图确认卡 | 查得历史认可未绑定具体版本 → 出确认卡并停在阶段边界，"
++    "人工工程样板验证继续 | `basemap-confirmation-card.md`、`basemap/` |\n"
++    "| 真实前后图与局部可读性 | 16 张平面前后/局部/打印 + 12 张人眼图前后/局部 | `visual/`、`render-compare/` |\n\n"
++    "## 2. 做与未做\n\n"
++    "**做了**：上述 V1—V3 全部检查点、`--no-render` 语义、底图确认卡、"
++    "两布局完整源模型/表达输入/场景/平面/PNG/ZIP、四项受控变更与取消晚到/任务定位回归、"
++    "专项断言 20/20、完整验证 15/15、浏览器、全量单测与前端构建、"
++    "修 4 类真实缺陷（短码撞号、索引溢出、顶部重叠、局部裁剪黑屏）。\n\n"
++    "**没做**：W3/W4 未启动；未新增付费/外部调用；未扩 PG/NAS/账号/租约平台；"
++    "未做天花/立面/多视角/材料实物板/汇总客户 PDF；未做柱网/洁具/构造节点/照度合规/现场实测；"
++    "未生成用户项目阶段2（阶段1具体版本确认前停止）；未改 AD、未代用户确认设计、"
++    "未宣布 W2 放行或客户设计通过。\n\n"
++    "## 3. 结果与设计差距\n\n"
++    f"- 自动断言：完整验证 `{json.dumps(checks.get('totals'), ensure_ascii=False)}`；"
++    f"V1—V3 专项 `{auto.get('observed_pass')}/{auto.get('observed_pass', 0) + auto.get('observed_fail', 0)}`；"
++    f"浏览器 `passed={browser.get('passed')}`；原 15 项回归 15/15。\n"
++    "- 人工目检：逐处结论与未解决项见 `manual-visual-review.md`；"
++    "**主体改善成立，但 B 最左窗高亮、整体偏暗、天花占比大、陈设偏稀疏、"
++    "打印小字偏小仍未解决**。\n"
++    "- 图片与费用：本机新生成人眼图 **2 张**、平面/局部/打印截图 **16 张**、"
++    "人眼图前后局部 **12 张**、浏览器截图 **4 张**；外部调用 0、外发 0、tokens 0、费用 0，"
++    "密钥未使用未落盘。\n\n"
++    "## 4. 风险与后续\n\n"
++    "- 表达层仍是人工测试假设；若要计入自动设计，须由系统模型从需求生成墙/门窗/材质/陈设"
++    "并保留来源，本批不计入 AD。\n"
++    "- 单实例 SQLite 边界不变；W2 整体未放行；W3 须另获费用/资料授权；"
++    "阶段 1→2 只接受用户对具体版本的明确确认。\n"
++    "- 本批**不请求用户决定**：确认卡是待用户填写的边界文件，不是新待决闸口，"
++    "未新增 `decision-request.md`。\n\n"
++    "## 5. 文件索引\n\n"
++    "见 `index.html` 首页与 `manifest.json` 全量清单（含字节与 SHA）。\n",
++    encoding="utf-8")
++
++# ------------------------------------------------------------------ index.html
++def fig(rel: str, caption: str) -> str:
++    return (f'<figure><img src="{rel}" alt="{escape(caption)}">'
++            f'<figcaption>{escape(caption)}</figcaption></figure>')
++
++
++gap_html = "".join(f"<li>{escape(g)}</li>" for g in gaps)
++layer_rows = "".join(
++    f'<tr><td>{escape(k)}</td><td>{escape(json.dumps(v, ensure_ascii=False)[:220])}</td></tr>'
++    for k, v in (checks.get("verification_layers") or {}).items())
++html = f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
++<title>W2-R4 表达收口 · 复核入口</title><style>
++@page{{size:A4;margin:10mm}}*{{box-sizing:border-box}}
++body{{font:13px/1.65 "Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
++margin:0 auto;max-width:1180px;padding:28px 32px 60px;color:#1f2937;background:#fff}}
++h1{{font-size:25px;margin:0 0 6px;color:#0f172a}}
++h2{{font-size:17px;margin:26px 0 10px;padding-bottom:6px;border-bottom:2px solid #1e3a5f;color:#1e3a5f}}
++h3{{font-size:14px;margin:16px 0 6px;color:#334155}}
++.meta{{color:#64748b;font-size:12px;margin-bottom:14px}}
++.banner{{background:#f1f5f9;border-left:4px solid #1e3a5f;padding:12px 16px;margin:14px 0}}
++.warn{{background:#fff7ed;border-left:4px solid #c2410c;padding:12px 16px;margin:14px 0}}
++.grid2{{display:grid;grid-template-columns:1fr 1fr;gap:16px}}
++figure{{margin:0;border:1px solid #dbe3ea;background:#fff}}
++figure img{{display:block;width:100%;height:auto}}
++figcaption{{font-size:11px;color:#475569;padding:6px 9px;border-top:1px solid #eef2f6}}
++table{{border-collapse:collapse;width:100%;font-size:12px;margin:10px 0}}
++th,td{{border:1px solid #d7dee6;padding:5px 8px;text-align:left;vertical-align:top}}
++th{{background:#f1f5f9}}ul{{margin:6px 0 6px 18px;padding:0}}li{{margin:4px 0}}
++code{{background:#f1f5f9;padding:1px 4px;font-size:11.5px}}
++.tag{{display:inline-block;background:#e2e8f0;border-radius:3px;padding:1px 7px;font-size:11px;margin:0 4px 4px 0}}
++.footer{{margin-top:30px;border-top:1px solid #d7dee6;padding-top:12px;font-size:11.5px;color:#64748b}}
++@media print{{body{{font-size:11px;line-height:1.5;padding:0;max-width:none}}
++h2{{page-break-after:avoid}}table{{page-break-inside:auto}}tr,th,td{{page-break-inside:avoid}}
++figure{{page-break-inside:avoid}}.grid2{{page-break-inside:auto}}thead{{display:table-header-group}}
++img{{max-height:100mm;object-fit:contain}}-webkit-print-color-adjust:exact;print-color-adjust:exact}}
++</style></head><body>
++<h1>W2-R4 表达收口 · 内部复核入口</h1>
++<div class="meta">编制 {now} · 审查基线 <code>{BASE_COMMIT}</code> ·
++运行证据 <code>var/evidence/roadmap/W2-R4-表达收口/full/</code> ·
++上一批原图只读引用，未回写历史</div>
++<div class="banner"><b>受限结论：</b>架构复核确认入口异材冲突修复受限通过、R4 表达进展成立；
++<b>W2 整体未放行</b>，AD01—AD08 与用户阶段确认不变，W3/W4 未启动。
++本批只收口可见表达问题，<b>不得自评客户设计通过、不得宣布 W2 放行、不得修改 AD</b>。</div>
++<p>
++<span class="tag">完整验证 {json.dumps(checks.get('totals'), ensure_ascii=False)}</span>
++<span class="tag">V1—V3 专项 {auto.get('observed_pass')}/20</span>
++<span class="tag">浏览器 passed={browser.get('passed')}</span>
++<span class="tag">--no-render 语义已修正</span>
++<span class="tag">人眼图 2 张 · 外部费用 0</span>
++</p>
++
++<h2>0. 本批按 V1 → V2 → V3 连续推进</h2>
++<table><thead><tr><th>检查点</th><th>实际改动</th><th>真实前后图</th></tr></thead><tbody>
++<tr><td>V1 平面可读性 / 尺寸链</td><td>几何·编号·注释三层分离；短编号带引线避让；
++X/Y 受控尺寸链闭合到总尺寸；完整索引与 A4 可打印索引页</td>
++<td>入口区、洽谈区局部前后 + 全图 + 打印缩放</td></tr>
++<tr><td>V2 窗光 / 材质</td><td>透明玻璃替代发光板；窗框/竖梃/洞口深度；
++窗外本地天空渐变假设；地面分缝、木饰面竖缝、踢脚收边；版本化表达输入</td>
++<td>同一机位/模型的窗区局部前后</td></tr>
++<tr><td>V3 功能表达 / 占位</td><td>display-wing 换程序化展墙；测试陈设分四类；
++位置由本布局动线/分区派生；工程量恒 0 影响</td>
++<td>功能区局部前后 + 两布局最终人眼图</td></tr>
++</tbody></table>
++
++<h2>1. 自动断言与人工目检（严格分列）</h2>
++<table><thead><tr><th>类别</th><th>结果 / 证据</th></tr></thead><tbody>
++<tr><td><b>自动断言</b></td><td>完整验证 {json.dumps(checks.get('totals'), ensure_ascii=False)}；
++V1—V3 专项 {auto.get('observed_pass')}/20；图面标注 0 重叠 / 0 出界 / 最小字号 8.5；
++浏览器下载 SHA 一致；原 15 项回归 15/15。见 <code>checks.json</code>、<code>closeout/</code>、
++<code>visual/capture-observations.json</code>。</td></tr>
++<tr><td><b>人工目检</b></td><td>逐张看前后全图、入口/洽谈区局部、窗区/功能区局部、
++A4 打印缩放，逐处结论与未解决项见 <code>manual-visual-review.md</code>。
++自动断言不代替人工看图，不以非空 SVG 或亮度阈值宣布通过。</td></tr>
++</tbody></table>
++<p class="meta">验证分层（来自 checks-source.json 的 verification_layers）：</p>
++<table><thead><tr><th>层</th><th>状态</th></tr></thead><tbody>{layer_rows}</tbody></table>
++
++<h2>2. V1 前后：入口区与洽谈区局部</h2>
++<div class="grid2">
++{fig('visual/plan-A-entry-before.png','V1 前 · A 入口区：门号/机位/动线数值压叠')}
++{fig('visual/plan-A-entry-after.png','V1 后 · A 入口区：短编号带引线，压叠消除')}
++{fig('visual/plan-A-meeting-before.png','V1 前 · A 洽谈区：三行文字压框、洞口字压线')}
++{fig('visual/plan-A-meeting-after.png','V1 后 · A 洽谈区：短徽标 + 引线名称')}
++</div>
++<div class="grid2">
++{fig('visual/plan-A-full-after.png','V1 后 · A 全图（含闭合尺寸链与索引表）')}
++{fig('visual/plan-A-print-after.png','V1 后 · A4 打印缩放 270mm（小字偏小，另见 plan-index-A.html）')}
++</div>
++
++<h2>3. V2 前后：窗区与材质</h2>
++<div class="grid2">
++{fig('render-compare/render-B-window-before.png','V2 前 · B 窗区：3 块纯白发光板')}
++{fig('render-compare/render-B-window-after.png','V2 后 · B 窗区：窗框/竖梃/玻璃/窗外渐变可辨；最左扇仍高亮')}
++{fig('render-compare/render-A-window-before.png','V2 前 · A 窗区')}
++{fig('render-compare/render-A-window-after.png','V2 后 · A 窗区：地面分缝与木饰面竖缝可见')}
++</div>
++
++<h2>4. V3 前后：功能表达与最终两布局图</h2>
++<div class="grid2">
++{fig('render-compare/render-B-function-before.png','V3 前 · B 功能区：孤立圆桌、大空地、分散座椅')}
++{fig('render-compare/render-B-function-after.png','V3 后 · B 功能区：成组座椅、样板展台与器物')}
++{fig('outputs/layout-A/render.png','最终 · 布局 A 人眼图（同一生成器 / 同一假设机位）')}
++{fig('outputs/layout-B/render.png','最终 · 布局 B 人眼图（同一生成器 / 同一假设机位）')}
++</div>
++
++<h2>5. 阶段1边界：底图确认卡</h2>
++<div class="warn"><b>历史「阶段1已由用户核对认可」在台账中未绑定到具体底图版本标识/哈希/边界快照；</b>
++W2 与本批的场地边界是 <code>manual_boundary_not_site_verified</code> 测试参数，
++表达层墙/门窗/材质/陈设全部 <code>site_verified=false</code>。
++按 docs/26 硬节点 3，不能外推为「当前具体版本已确认」。
++已准备 <code>basemap-confirmation-card.md</code>（版本/边界/入口/保留区/已知与假设/待确认点/图面），
++<b>用户明确确认前停在阶段1边界，不生成该项目阶段2</b>；人工工程样板验证不受阻塞，继续完成本批。
++本卡不是替用户签字。</div>
++<div class="grid2">
++{fig('basemap/00_原始平面图_正向.png','阶段1底图 · 宁波 A3 原图转正（只读引用）')}
++{fig('visual/plan-B-full-after.png','本批人工样板 · B 平面（非用户项目阶段2成果）')}
++</div>
++
++<h2>6. 仍然不像设计公司成果的地方</h2>
++<ol>{gap_html}</ol>
++
++<h2>7. 做与未做、图片与费用</h2>
++<p><b>做：</b>V1—V3 全部检查点、<code>--no-render</code> 语义修正、底图确认卡、
++两布局完整源模型/表达输入/场景/平面/PNG/ZIP、四项受控变更与取消晚到/任务定位回归、
++专项断言、浏览器与全量回归、4 类真实缺陷修正。</p>
++<p><b>未做：</b>W3/W4、付费/外部调用、PG/NAS/账号/租约平台、全套天花/立面/多视角/
++材料实物板/汇总客户 PDF、柱网洁具与照度合规、现场实测、用户项目阶段2、
++AD 修改与用户设计确认、W2 放行宣告。</p>
++<p><b>图片与费用：</b>本机新生成人眼效果图 <b>2 张</b>；平面全图/局部/打印截图 <b>16 张</b>；
++人眼图前后与局部裁剪 <b>12 张</b>；浏览器桌面/移动与平面预览 <b>4 张</b>。
++外部模型调用 <b>0 次</b>、外发图片 <b>0 张</b>、tokens <b>0</b>、费用 <b>0</b>；密钥未使用、未落盘。</p>
++
++<div class="footer">执行者报告 · 架构师独立复核项待审 · 用户设计确认、阶段确认与 AD01—AD08 由用户给，不代签。
++工程检查与自动断言通过不代表 R4 设计通过、W2 放行或客户设计通过。
++详细文件：<code>review-packet.md</code>、<code>checks.json</code>、<code>code-diff.md</code>、
++<code>manifest.json</code>、<code>positive-negative-cases.md</code>、<code>asset-inventory.md</code>、
++<code>expression-input.md</code>、<code>manual-visual-review.md</code>、
++<code>basemap-confirmation-card.md</code>。</div>
++</body></html>"""
++(PACKET / "index.html").write_text(html, encoding="utf-8")
++
++# ------------------------------------------------------------------ manifest.json
++def classify(rel: str) -> str:
++    if rel.startswith("outputs/layout-"):
++        return "derived_output"
++    if rel.startswith("outputs/previous-"):
++        return "previous_batch_reference"
++    if rel.startswith(("visual/", "render-compare/", "browser/", "runtime/",
++                       "closeout/", "entry-fix/", "no-render-semantics/")):
++        return "running_evidence"
++    if rel.startswith("basemap/"):
++        return "stage1_source_reference"
++    return "review_document"
++
++
++entries = []
++for path in sorted(PACKET.rglob("*")):
++    if not path.is_file() or path.name == "manifest.json":
++        continue
++    rel = path.relative_to(PACKET).as_posix()
++    entries.append({"path": rel, "bytes": path.stat().st_size,
++                    "sha256": sha(path), "kind": classify(rel)})
++(PACKET / "manifest.json").write_text(json.dumps({
++    "schema_version": "rkd-w2-r4-closeout-review-manifest.v1",
++    "compiled_at": now, "source_baseline": BASE_COMMIT,
++    "code_head_at_compile": git("rev-parse", "HEAD"),
++    "versions": {"generator": "rkd-spatial-outputs.v4",
++                 "plan_layers": "rkd-spatial-plan-layers.v1",
++                 "plan_index": "rkd-spatial-plan-index.v1",
++                 "expression": "rkd-spatial-expression.v1",
++                 "presentation": "rkd-spatial-presentation-fixture.v1"},
++    "design_origin": "labelled local fixture + executor manual test assumptions; NOT AI design",
++    "site_verified": False,
++    "images_generated_this_batch": summary["images_generated_this_batch"],
++    "external_calls": 0, "cost_amount_or_null": None,
++    "files": entries,
++    "note": "source/ 原件只读；var/ 为运行数据；basemap/ 是阶段1既有文件只读引用；"
++            "上一批 PNG 只读引用未回写；manifest.json 自身不计入清单。",
++}, ensure_ascii=False, indent=2), encoding="utf-8")
++
++print(json.dumps({"packet": str(PACKET), "files": len(entries) + 1,
++                  "bytes": sum(e["bytes"] for e in entries),
++                  "automatic_pass": summary["totals"]["automatic_pass"],
++                  "automatic_fail": summary["totals"]["automatic_fail"]},
++                 ensure_ascii=False, indent=2))
+diff --git a/scripts/capture_render_crops.cjs b/scripts/capture_render_crops.cjs
+new file mode 100644
+index 0000000..c5a047f
+--- /dev/null
++++ b/scripts/capture_render_crops.cjs
+@@ -0,0 +1,81 @@
++/* W2-R4 表达收口 V2/V3 人眼图前后证据：同一机位/模型的前后全图与窗区、功能区局部。
++   before 为上一批 W2-R4 成果（不重新生成、不回写历史），after 为本批最终图。
++   0 外部调用。自动只负责裁剪与字节记录；可读性由人工目检判定。 */
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { pathToFileURL } = require('node:url');
++const { chromium } = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
++
++const out = process.env.RKD_RENDER_OUT;
++const inputs = {
++  A: { before: process.env.RKD_RENDER_BEFORE_A, after: process.env.RKD_RENDER_AFTER_A },
++  B: { before: process.env.RKD_RENDER_BEFORE_B, after: process.env.RKD_RENDER_AFTER_B },
++};
++assert(out && inputs.A.before && inputs.A.after && inputs.B.before && inputs.B.after,
++  'RKD_RENDER_OUT / BEFORE_A / AFTER_A / BEFORE_B / AFTER_B required');
++fs.mkdirSync(out, { recursive: true });
++
++// 相对图幅的局部区域：窗带（左侧）与主要功能区（中右）
++const REGIONS = {
++  window: { x: 0.00, y: 0.20, w: 0.36, h: 0.58 },
++  function: { x: 0.26, y: 0.26, w: 0.66, h: 0.64 },
++};
++
++function pngSize(buf) {
++  assert(buf.slice(1, 4).toString() === 'PNG', 'not a PNG');
++  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
++}
++
++(async () => {
++  const browser = await chromium.launch({ channel: 'msedge', headless: true });
++  const observations = { created_at: new Date().toISOString(), regions: REGIONS, files: [] };
++  try {
++    for (const letter of ['A', 'B']) {
++      for (const phase of ['before', 'after']) {
++        const src = path.resolve(inputs[letter][phase]);
++        assert(fs.existsSync(src), `missing ${src}`);
++        const buf = fs.readFileSync(src);
++        const size = pngSize(buf);
++        const fullName = `render-${letter}-full-${phase}.png`;
++        fs.copyFileSync(src, path.join(out, fullName));
++        observations.files.push({ layout: letter, phase, kind: 'full',
++          file: fullName, bytes: buf.length, size,
++          note: phase === 'before' ? '上一批 W2-R4 原图，只读引用' : '本批最终渲染' });
++
++        // file:// 图片在 setContent 的 about:blank 源下会被浏览器阻止加载，
++        // 用 base64 data URL 内联，保证裁剪出来的是真实像素而不是黑屏。
++        const dataUrl = `data:image/png;base64,${buf.toString('base64')}`;
++        const page = await browser.newPage({ viewport: { width: size.w, height: size.h } });
++        await page.setContent(
++          `<!doctype html><html><head><meta charset="utf-8"><style>` +
++          `html,body{margin:0;padding:0;background:#000}img{display:block;width:${size.w}px;height:${size.h}px}` +
++          `</style></head><body><img src="${dataUrl}"></body></html>`,
++          { waitUntil: 'load' });
++        await page.waitForTimeout(260);
++        for (const [region, r] of Object.entries(REGIONS)) {
++          const clip = {
++            x: Math.round(r.x * size.w), y: Math.round(r.y * size.h),
++            width: Math.round(r.w * size.w), height: Math.round(r.h * size.h),
++          };
++          const name = `render-${letter}-${region}-${phase}.png`;
++          await page.screenshot({ path: path.join(out, name), clip, timeout: 60000 });
++          observations.files.push({ layout: letter, phase, kind: region,
++            file: name, bytes: fs.statSync(path.join(out, name)).size, clip });
++        }
++        await page.close();
++      }
++    }
++    fs.writeFileSync(path.join(out, 'render-crop-observations.json'),
++      JSON.stringify(observations, null, 2));
++    console.log(JSON.stringify({ files: observations.files.length,
++      note: '自动裁剪完成；窗框/材质/陈设可读性由人工目检在 manual-visual-review.md 判定' }, null, 2));
++    await browser.close();
++    process.exit(0);
++  } catch (e) {
++    console.error(String((e && e.stack) || e));
++    await browser.close();
++    process.exit(1);
++  }
++})();
+diff --git a/scripts/capture_w2_r4_visual.cjs b/scripts/capture_w2_r4_visual.cjs
+new file mode 100644
+index 0000000..e3e29c1
+--- /dev/null
++++ b/scripts/capture_w2_r4_visual.cjs
+@@ -0,0 +1,169 @@
++/* W2-R4 表达收口 V1 图面证据：真实前后全图 / 入口·洽谈区局部 / 打印缩放。
++   自动几何检查（编号重叠、出界、最小字号）与人工目检分列，不互相代替。
++   0 外部调用。由 build_w2_r4_closeout_review.py 或手工调用。 */
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const assert = require('node:assert/strict');
++const { pathToFileURL } = require('node:url');
++const { chromium } = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
++
++const out = process.env.RKD_VISUAL_OUT;
++const before = {
++  A: process.env.RKD_VISUAL_BEFORE_A,
++  B: process.env.RKD_VISUAL_BEFORE_B,
++};
++const after = {
++  A: process.env.RKD_VISUAL_AFTER_A,
++  B: process.env.RKD_VISUAL_AFTER_B,
++};
++assert(out && before.A && before.B && after.A && after.B,
++  'RKD_VISUAL_OUT / BEFORE_A / BEFORE_B / AFTER_A / AFTER_B required');
++fs.mkdirSync(out, { recursive: true });
++
++// 与 ai_spatial_outputs / plan_layers 同一坐标系：西南原点，+X 东 +Y 北
++const REGIONS = {
++  A: {
++    entry: [0, 8200, 6200, 14000],
++    meeting: [18000, 6800, 26170, 14200],
++  },
++  B: {
++    entry: [0, 8200, 5400, 14200],
++    meeting: [16800, 13400, 26170, 17920],
++  },
++};
++const LEGACY_METRICS = { ox: 80, oy: 110, scale: 880 / 26170, w: 26170, h: 17920 };
++
++function metrics(svgText) {
++  const m = /data-plan-metrics="([^"]+)"/.exec(svgText);
++  if (m) {
++    const [ox, oy, scale, w, h] = m[1].split(',').map(Number);
++    return { ox, oy, scale, w, h, layered: true };
++  }
++  return { ...LEGACY_METRICS, layered: false };
++}
++
++function clipFor(rect, mt, pad = 55) {
++  const [x0, y0, x1, y1] = rect;
++  const px0 = mt.ox + x0 * mt.scale;
++  const px1 = mt.ox + x1 * mt.scale;
++  const py0 = mt.oy + (mt.h - y1) * mt.scale;
++  const py1 = mt.oy + (mt.h - y0) * mt.scale;
++  return {
++    x: Math.max(0, px0 - pad), y: Math.max(0, py0 - pad),
++    width: Math.min(2000, px1 - px0 + pad * 2),
++    height: Math.min(2000, py1 - py0 + pad * 2),
++  };
++}
++
++function autoGeometryCheck(svgText, mt) {
++  // 只检查图面标注层（data-anno=1）：表格文字按行列排布不参与互相遮挡判定
++  const sizeMatch = /<svg[^>]*width="([\d.]+)"[^>]*height="([\d.]+)"/.exec(svgText);
++  const bounds = sizeMatch ? { w: Number(sizeMatch[1]), h: Number(sizeMatch[2]) }
++    : { w: 1500, h: 1500 };
++  const items = [];
++  const re = /<text([^>]*)>([\s\S]*?)<\/text>/g;
++  let m;
++  while ((m = re.exec(svgText)) !== null) {
++    if (!m[1].includes('data-anno="1"')) continue;
++    const x = Number((/x="([\d.-]+)"/.exec(m[1]) || [])[1] || 0);
++    const y = Number((/y="([\d.-]+)"/.exec(m[1]) || [])[1] || 0);
++    const fs = Number((/font-size="([\d.]+)"/.exec(m[1]) || [])[1] || 10);
++    const text = m[2].replace(/<[^>]+>/g, '').trim();
++    const middle = /text-anchor="middle"/.test(m[1]);
++    const width = Math.max(12, text.length * fs * 0.62);
++    const left = middle ? x - width / 2 : x;
++    items.push({ text, x, y, fs, left, right: left + width, top: y - fs, bottom: y + 3 });
++  }
++  const overlaps = [];
++  for (let i = 0; i < items.length; i += 1) {
++    for (let j = i + 1; j < items.length; j += 1) {
++      const a = items[i], b = items[j];
++      const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
++      const oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
++      if (ox > 3 && oy > 3) overlaps.push({ a: a.text, b: b.text, overlap_px: [Math.round(ox), Math.round(oy)] });
++    }
++  }
++  const outside = items.filter(t => t.left < 0 || t.right > bounds.w || t.top < 0 || t.bottom > bounds.h)
++    .map(t => t.text);
++  return {
++    annotation_count: items.length,
++    min_font_size: items.length ? Math.min(...items.map(t => t.fs)) : null,
++    overlaps, overlap_count: overlaps.length,
++    outside_count: outside.length, outside_samples: outside.slice(0, 8),
++    bounds,
++    note: '自动几何检查只覆盖带 data-anno 的图面标注；不代表人工目检通过',
++  };
++}
++
++(async () => {
++  const browser = await chromium.launch({ channel: 'msedge', headless: true });
++  const observations = {
++    created_at: new Date().toISOString(),
++    regions_mm: REGIONS,
++    screenshots: [],
++    auto_geometry_check: {},
++    manual_visual_review: '见复核包 manual-visual-review.md（自动断言不代替人工目检）',
++  };
++  const page = await browser.newPage({ viewport: { width: 1500, height: 1550 } });
++  try {
++    for (const letter of ['A', 'B']) {
++      for (const [phase, svgPath] of [['before', before[letter]], ['after', after[letter]]]) {
++        assert(fs.existsSync(svgPath), `missing ${svgPath}`);
++        const svgText = fs.readFileSync(svgPath, 'utf-8');
++        const mt = metrics(svgText);
++        await page.goto(pathToFileURL(path.resolve(svgPath)).href, { waitUntil: 'load' });
++        await page.waitForTimeout(320);
++
++        // 全图（正常屏幕缩放）
++        const full = path.join(out, `plan-${letter}-full-${phase}.png`);
++        await page.screenshot({ path: full, timeout: 60000 });
++        observations.screenshots.push({ layout: letter, phase, kind: 'full',
++          file: path.basename(full), bytes: fs.statSync(full).size,
++          metrics: mt, scope: '正常屏幕缩放 1500px 视口' });
++
++        // 局部：入口 / 洽谈区，前后用同一 mm 区域换算，不靠目测裁剪
++        for (const [region, rect] of Object.entries(REGIONS[letter])) {
++          const clip = clipFor(rect, mt);
++          const target = path.join(out, `plan-${letter}-${region}-${phase}.png`);
++          await page.screenshot({ path: target, clip, timeout: 60000 });
++          observations.screenshots.push({ layout: letter, phase, kind: region,
++            file: path.basename(target), bytes: fs.statSync(target).size,
++            region_mm: rect, clip_px: clip });
++        }
++
++        // 打印目标尺寸：A4 横向可用宽 270mm，检查缩放后小字是否仍可读
++        const printPage = await browser.newPage({ viewport: { width: 1200, height: 1700 } });
++        const scaled = svgText.replace(/<svg([^>]*)>/,
++          (all, attrs) => `<svg${attrs} style="width:270mm;height:auto;display:block">`);
++        await printPage.setContent(
++          `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:8mm;background:#fff}</style></head>` +
++          `<body>${scaled}</body></html>`, { waitUntil: 'load' });
++        await printPage.waitForTimeout(300);
++        const printTarget = path.join(out, `plan-${letter}-print-${phase}.png`);
++        await printPage.screenshot({ path: printTarget, timeout: 60000 });
++        observations.screenshots.push({ layout: letter, phase, kind: 'print_a4_width',
++          file: path.basename(printTarget), bytes: fs.statSync(printTarget).size,
++          scope: 'SVG 缩放到 A4 横向可用宽 270mm' });
++        await printPage.close();
++
++        observations.auto_geometry_check[`${letter}-${phase}`] = autoGeometryCheck(svgText, mt);
++      }
++    }
++    fs.writeFileSync(path.join(out, 'capture-observations.json'),
++      JSON.stringify(observations, null, 2));
++    console.log(JSON.stringify({
++      screenshots: observations.screenshots.length,
++      auto_geometry: Object.fromEntries(Object.entries(observations.auto_geometry_check)
++        .map(([k, v]) => [k, { annotations: v.annotation_count,
++          overlaps: v.overlap_count, outside: v.outside_count,
++          min_font: v.min_font_size }])),
++    }, null, 2));
++    await browser.close();
++    process.exit(0);
++  } catch (e) {
++    console.error(String((e && e.stack) || e));
++    await browser.close();
++    process.exit(1);
++  }
++})();
+diff --git a/scripts/render_spatial_scene_r4.py b/scripts/render_spatial_scene_r4.py
+index e2e221b..f3026d0 100644
+--- a/scripts/render_spatial_scene_r4.py
++++ b/scripts/render_spatial_scene_r4.py
+@@ -36,6 +36,9 @@ SAMPLES = int(arg("--samples", "48"))
+ DATA = json.loads(SCENE_PATH.read_text(encoding="utf-8"))
+ PRES = DATA["presentation"]
+ ENC = DATA["enclosure"]
++EXPR = PRES.get("expression") or {}
++WINDOW_EXPR = EXPR.get("window_expression") or {}
++MATERIAL_FINISH = EXPR.get("material_finish") or {}
+ ASSETS = ROOT / "tools" / "assets"
+ MANIFEST = json.loads((ROOT / "assets" / "CC0-素材清单.json").read_text(encoding="utf-8"))
+ OUT_PNG.parent.mkdir(parents=True, exist_ok=True)
+@@ -143,12 +146,61 @@ for item in PRES["materials"]:
+         item["normal_strength"], hex_rgb(item["hex"]))
+ M_WALL = MATERIALS.get("wall_plaster") or simple_mat("wall", (0.88, 0.87, 0.85))
+ M_FLOOR = MATERIALS.get("floor_microcement") or simple_mat("floor", (0.72, 0.70, 0.67))
+-M_GLASS = simple_mat("window-glass-daylight", (0.78, 0.88, 0.98),
+-                     emission=(0.80, 0.89, 1.0), strength=0.75)
++def glass_mat(name: str):
++    """V2: real transparent glazing — NOT an emissive white panel."""
++    mat = bpy.data.materials.new(name)
++    mat.use_nodes = True
++    bsdf = mat.node_tree.nodes["Principled BSDF"]
++    bsdf.inputs["Base Color"].default_value = (0.88, 0.94, 0.98, 1.0)
++    bsdf.inputs["Roughness"].default_value = 0.06
++    for socket in ("Transmission Weight", "Transmission"):
++        if socket in bsdf.inputs:
++            bsdf.inputs[socket].default_value = 0.94
++            break
++    if "IOR" in bsdf.inputs:
++        bsdf.inputs["IOR"].default_value = 1.45
++    return mat
++
++
++def outside_mat(name: str):
++    """V2: labelled LOCAL sky/horizon gradient behind the glazing (assumption).
++
++    Low-strength emission, never a bright white板；透过透明玻璃看到的是柔和
++    天空与地平线色带，不是被发光板盖住的窗口细节。
++    """
++    mat = bpy.data.materials.new(name)
++    mat.use_nodes = True
++    nt = mat.node_tree
++    nt.nodes.clear()
++    output = nt.nodes.new("ShaderNodeOutputMaterial")
++    emit = nt.nodes.new("ShaderNodeEmission")
++    emit.inputs["Strength"].default_value = 0.34
++    coord = nt.nodes.new("ShaderNodeTexCoord")
++    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
++    ramp = nt.nodes.new("ShaderNodeValToRGB")
++    ramp.color_ramp.elements[0].position = 0.0
++    ramp.color_ramp.elements[0].color = (0.33, 0.34, 0.36, 1.0)
++    ramp.color_ramp.elements[1].position = 1.0
++    ramp.color_ramp.elements[1].color = (0.50, 0.63, 0.78, 1.0)
++    band = ramp.color_ramp.elements.new(0.24)
++    band.color = (0.43, 0.49, 0.56, 1.0)
++    nt.links.new(coord.outputs["Generated"], sep.inputs["Vector"])
++    nt.links.new(sep.outputs["Z"], ramp.inputs["Fac"])
++    nt.links.new(ramp.outputs["Color"], emit.inputs["Color"])
++    nt.links.new(emit.outputs["Emission"], output.inputs["Surface"])
++    return mat
++
++
++M_GLASS = glass_mat("window-glass-transparent-v2")
++M_OUTSIDE = outside_mat("labelled-local-sky-horizon-assumption")
++M_FRAME = simple_mat("window-frame-bronze", (0.17, 0.19, 0.21), rough=0.38, metal=0.6)
++M_JOINT = simple_mat("material-joint-line", (0.41, 0.40, 0.38), rough=0.9)
++M_SKIRT = simple_mat("skirting-edge-trim", (0.33, 0.31, 0.29), rough=0.75)
+ M_STRIP = simple_mat("cove-emissive", (1.0, 0.86, 0.66),
+-                     emission=(1.0, 0.84, 0.62), strength=2.6)
++                     emission=(1.0, 0.84, 0.62), strength=2.2)
+ M_KEEP = simple_mat("keepout", (0.38, 0.40, 0.42), rough=0.9)
+ M_PLACEHOLDER = simple_mat("placeholder", (0.86, 0.72, 0.42), rough=0.8)
++M_BRAND = simple_mat("brand-panel-abstract", (0.42, 0.30, 0.22), rough=0.6)
+ 
+ 
+ def box(name: str, x: float, y: float, w: float, d: float, z0: float, z1: float,
+@@ -238,6 +290,11 @@ def area_light(name, location, target, energy, size, color=(1.0, 0.95, 0.86)):
+     bpy.context.collection.objects.link(ob)
+     ob.location = location
+     ob.rotation_euler = (Vector(target) - Vector(location)).to_track_quat("-Z", "Y").to_euler()
++    # 面光源本体不对相机可见，否则窗洞里会出现一整块纯白发光面（V2 目检发现）。
++    try:
++        ob.visible_camera = False
++    except AttributeError:
++        pass
+     return ob
+ 
+ 
+@@ -310,16 +367,52 @@ for wall in ENC["walls"] + ENC["partitions"]:
+         if head < height - 0.01:
+             box(f"head-{op['object_id']}", cx, cy, b - a, thickness, head, height, mat, angle)
+         if op["kind"] == "window":
+-            box(f"glass-{op['object_id']}", cx, cy, b - a, 0.02, sill, head, M_GLASS, angle)
++            # ---------------------------------------------------------- V2 窗表现
++            frame_w = mm(WINDOW_EXPR.get("frame_width_mm", 60))
++            mullions = max(0, int(WINDOW_EXPR.get("mullion_count", 1)))
++            opening_w, opening_h = b - a, head - sill
++            zc = (sill + head) / 2
+             inward = Vector((W / 2 - cx, L / 2 - cy, 0.0))
+             if inward.length < 1e-3:
+                 inward = Vector((-uy, ux, 0.0))
+             inward.normalize()
+-            light_pos = Vector((cx, cy, (sill + head) / 2)) + inward * 0.25
+-            target = Vector((cx, cy, (sill + head) / 2)) + inward * 4.0
+-            energy = 180.0 * max(1.0, (b - a)) * max(0.8, head - sill)
++            outward = Vector((-inward.x, -inward.y, 0.0))
++            frame_d = thickness + 2 * frame_w
++            # 透明玻璃内移到墙外侧；发光板已移除，不再掩盖窗洞细节
++            gx = cx + outward.x * (thickness / 2 - 0.03)
++            gy = cy + outward.y * (thickness / 2 - 0.03)
++            box(f"glass-{op['object_id']}", gx, gy,
++                max(0.2, opening_w - 2 * frame_w), 0.012,
++                sill + frame_w, head - frame_w, M_GLASS, angle)
++            for suffix, z0, z1 in (("top", head - frame_w, head),
++                                  ("bottom", sill, sill + frame_w)):
++                box(f"frame-{suffix}-{op['object_id']}", cx, cy,
++                    opening_w, frame_d, z0, z1, M_FRAME, angle)
++            for side, sign in (("left", -1), ("right", 1)):
++                off = sign * (opening_w / 2 - frame_w / 2)
++                box(f"frame-{side}-{op['object_id']}", cx + ux * off, cy + uy * off,
++                    frame_w, frame_d, sill, head, M_FRAME, angle)
++            for k in range(1, mullions + 1):
++                off = -opening_w / 2 + k * opening_w / (mullions + 1)
++                box(f"mullion-{k}-{op['object_id']}", cx + ux * off, cy + uy * off,
++                    frame_w * 0.8, thickness * 0.7,
++                    sill + frame_w, head - frame_w, M_FRAME, angle)
++            # 窗台板让 200mm 墙厚形成的洞口深度可辨
++            box(f"reveal-sill-{op['object_id']}",
++                cx + inward.x * 0.05, cy + inward.y * 0.05,
++                opening_w, thickness * 0.9, sill - 0.03, sill + 0.02, M_WALL, angle)
++            # 窗外：明确标注的本地程序化天空/地平线渐变，不是现场照片
++            ex = cx + outward.x * (thickness / 2 + 1.8)
++            ey = cy + outward.y * (thickness / 2 + 1.8)
++            box(f"outside-{op['object_id']}", ex, ey, opening_w * 2.4, 0.02,
++                max(0.0, sill - 0.6), min(CEIL, head + 1.4), M_OUTSIDE, angle)
++            # 采光方向仍只来自这个已建模窗洞口；强度按版本化表达输入缩放
++            light_pos = Vector((cx, cy, zc)) + inward * 0.25
++            target = Vector((cx, cy, zc)) + inward * 4.0
++            energy_scale = float(WINDOW_EXPR.get("window_light_energy_scale", 0.5))
++            energy = 180.0 * energy_scale * max(1.0, opening_w) * max(0.8, opening_h)
+             area_light(f"window-light-{op['object_id']}", light_pos, target,
+-                       energy, max(1.2, (b - a)), color=(0.86, 0.92, 1.0))
++                       energy, max(1.2, opening_w), color=(0.86, 0.92, 1.0))
+             window_lights += 1
+         else:
+             # 半开的门扇（oak/walnut 材质），让门洞在效果图里可辨认
+@@ -328,12 +421,64 @@ for wall in ENC["walls"] + ENC["partitions"]:
+                 cx - ux * (b - a) / 2, cy - uy * (b - a) / 2,
+                 b - a, 0.045, 0.0, min(head, 2.3), leaf, angle + 78)
+ 
++# --------------------------------------------- V2 材质收边 / 接缝（版本化表达输入）
++floor_finish = MATERIAL_FINISH.get("mat-floor-microcement") or {}
++joint_spacing = mm(floor_finish.get("joint_spacing_mm", 1200))
++joint_width = mm(floor_finish.get("joint_width_mm", 4))
++skirt_h = mm(floor_finish.get("edge_trim_mm", 80))
++joint_count = 0
++panel_joint_count = 0
++if joint_spacing > 0.05:
++    gx = joint_spacing
++    while gx < W - 0.01:
++        box(f"floor-joint-x-{joint_count}", gx, L / 2, joint_width, L,
++            0.021, 0.023, M_JOINT)
++        joint_count += 1
++        gx += joint_spacing
++    gy = joint_spacing
++    while gy < L - 0.01:
++        box(f"floor-joint-y-{joint_count}", W / 2, gy, W, joint_width,
++            0.021, 0.023, M_JOINT)
++        joint_count += 1
++        gy += joint_spacing
++for wall in ENC["walls"] + ENC["partitions"]:
++    (x1, y1), (x2, y2) = [[mm(v) for v in p] for p in wall["segment_mm"]]
++    dx, dy = x2 - x1, y2 - y1
++    length = math.hypot(dx, dy) or 1.0
++    ux, uy = dx / length, dy / length
++    nx, ny = -uy, ux
++    angle = math.degrees(math.atan2(uy, ux))
++    thickness = mm(wall["thickness_mm"])
++    height = mm(wall["height_mm"])
++    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
++    inward = Vector((W / 2 - cx, L / 2 - cy, 0.0))
++    if inward.length < 1e-3:
++        inward = Vector((nx, ny, 0.0))
++    inward.normalize()
++    off = thickness / 2 + 0.008
++    if wall.get("kind") == "perimeter":
++        box(f"skirting-{wall['object_id']}", cx + inward.x * off, cy + inward.y * off,
++            length, 0.014, 0.0, skirt_h, M_SKIRT, angle)
++    if wall["material_slot"] in ("oak", "walnut"):
++        key = "mat-oak" if wall["material_slot"] == "oak" else "mat-walnut"
++        spec = MATERIAL_FINISH.get(key) or {}
++        spacing = mm(spec.get("joint_spacing_mm", 600))
++        width = mm(spec.get("joint_width_mm", 6))
++        t = spacing
++        while t < length - 0.05:
++            px, py = x1 + ux * t, y1 + uy * t
++            box(f"panel-joint-{wall['object_id']}-{int(t * 100)}",
++                px + inward.x * off, py + inward.y * off,
++                width, 0.005, 0.0, height, M_JOINT, angle)
++            panel_joint_count += 1
++            t += spacing
++
+ # --------------------------------------------------------------- ceiling / light
+ box("ceiling-slab", W / 2, L / 2, W, L, CEIL, CEIL + 0.12, M_WALL)
+ for fx in DATA["lighting"]["fixtures"]:
+     x, y = fx["position_m"]
+     area_light(f"fixture-{fx['object_id']}", (x, y, CEIL - 0.18),
+-               (x, y, 0.0), 150.0, 0.55, color=kelvin_rgb(fx["kelvin"]))
++               (x, y, 0.0), 120.0, 0.55, color=kelvin_rgb(fx["kelvin"]))
+     box(f"fixture-body-{fx['object_id']}", x, y, 0.13, 0.13,
+         CEIL - 0.09, CEIL - 0.02,
+         simple_mat(f"fixture-emit-{fx['object_id']}", (1.0, 0.92, 0.78),
+@@ -351,7 +496,7 @@ for cove in DATA["lighting"]["coves"]:
+         cove_segments += 1
+ # 弱室内补光：明确是假设照明，不冒充窗光或照度合规
+ area_light("assumption-fill-light", (W * 0.5, L * 0.5, CEIL - 0.45),
+-           (W * 0.5, L * 0.5, 0.0), 55.0, max(W, L) * 0.45,
++           (W * 0.5, L * 0.5, 0.0), 42.0, max(W, L) * 0.45,
+            color=(1.0, 0.96, 0.90))
+ 
+ # ------------------------------------------------------------------- CC0 models
+@@ -397,17 +542,42 @@ def load_template(asset_id: str):
+     return TEMPLATES[asset_id]
+ 
+ 
++origin_counts: dict[str, int] = {}
++procedural_names: list[str] = []
+ for item in DATA["presentation_furniture"]:
+     name = item["object_id"]
+     x, y, z_offset = item["position_m"]
+     rotation = float(item["rotation_deg"])
+     asset_id = item.get("asset_id")
++    origin_kind = item.get("origin_kind") or "cc0_expression_asset"
++    origin_counts[origin_kind] = origin_counts.get(origin_kind, 0) + 1
+     if not asset_id:
+-        placeholders.append(name)
+         dims = item.get("asset_dimensions_mm") or [600, 600, 750]
+-        box(f"placeholder-{name}", x, y, mm(dims[0]), mm(dims[1]),
+-            0.02 + z_offset, 0.02 + z_offset + mm(dims[2] or 750),
+-            M_PLACEHOLDER, rotation)
++        w, d, h = mm(dims[0]), mm(dims[1]), mm(dims[2] or 750)
++        z0 = 0.02 + z_offset
++        if origin_kind == "procedural_expression":
++            # V3：程序化展墙 / 展台 / 品牌板，替代原来的黄色占位盒；
++            # 明确标为人工表达假设，不是 CC0 资产、不是源方案对象。
++            is_panel = ("BRAND" in name or "display-wing" in str(item.get("catalog_id"))
++                        or h > 1.2)
++            if is_panel:
++                box(f"expr-panel-{name}", x, y, w, max(d, 0.10),
++                    z0, z0 + h, M_BRAND, rotation)
++                box(f"expr-band-{name}", x, y, w * 0.62, max(d, 0.10) + 0.012,
++                    z0 + h * 0.44, z0 + h * 0.58,
++                    MATERIALS.get("stone") or M_WALL, rotation)
++                box(f"expr-base-{name}", x, y, w * 1.08, max(d, 0.10) * 1.15,
++                    z0, z0 + 0.07, MATERIALS.get("walnut") or M_WALL, rotation)
++            else:
++                box(f"expr-pedestal-{name}", x, y, w, d,
++                    z0, z0 + h - 0.05, MATERIALS.get("oak") or M_WALL, rotation)
++                box(f"expr-cap-{name}", x, y, w * 1.06, d * 1.06,
++                    z0 + h - 0.05, z0 + h, MATERIALS.get("stone") or M_WALL, rotation)
++            procedural_names.append(name)
++        else:
++            placeholders.append(name)
++            box(f"placeholder-{name}", x, y, w, d,
++                z0, z0 + h, M_PLACEHOLDER, rotation)
+         continue
+     template = load_template(asset_id)
+     if template is None:
+@@ -433,11 +603,11 @@ world = bpy.data.worlds.new("World")
+ scene.world = world
+ world.use_nodes = True
+ world.node_tree.nodes["Background"].inputs[0].default_value = (0.72, 0.80, 0.90, 1.0)
+-world.node_tree.nodes["Background"].inputs[1].default_value = 0.55
++world.node_tree.nodes["Background"].inputs[1].default_value = 0.45
+ sun = DATA["lighting"]["sun"]
+ bpy.ops.object.light_add(type="SUN", location=(W * 0.5, L + 8, 9))
+ sun_ob = bpy.context.active_object
+-sun_ob.data.energy = sun["energy"]
++sun_ob.data.energy = sun["energy"] * 0.6  # 主采光来自模型窗口，太阳只是弱的假设补光
+ sun_ob.rotation_euler = (math.radians(90 - sun["elevation_deg"]), 0,
+                          math.radians(sun["azimuth_deg"]))
+ 
+@@ -463,7 +633,7 @@ scene.render.image_settings.file_format = "PNG"
+ scene.render.filepath = str(OUT_PNG)
+ scene.view_settings.view_transform = "AgX"
+ scene.view_settings.look = "AgX - Medium High Contrast"
+-scene.view_settings.exposure = -0.55
++scene.view_settings.exposure = float(WINDOW_EXPR.get("exposure_ev", -0.30))
+ 
+ bpy.ops.render.render(write_still=True)
+ meta = {
+@@ -486,6 +656,32 @@ meta = {
+     "enclosure": {"walls": len(ENC["walls"]), "partitions": len(ENC["partitions"]),
+                   "openings": len(ENC["openings"])},
+     "rounded_platforms": rounded_platforms,
++    "expression": {
++        "schema_version": EXPR.get("schema_version"),
++        "declared_by": EXPR.get("declared_by"),
++        "window_expression": {
++            "glass_kind": WINDOW_EXPR.get("glass_kind"),
++            "frame_width_mm": WINDOW_EXPR.get("frame_width_mm"),
++            "reveal_depth_mm": WINDOW_EXPR.get("reveal_depth_mm"),
++            "outside_environment": WINDOW_EXPR.get("outside_environment"),
++            "outside_note": WINDOW_EXPR.get("outside_note"),
++            "exposure_ev": scene.view_settings.exposure,
++            "window_light_energy_scale": WINDOW_EXPR.get("window_light_energy_scale"),
++            "outside_panels": window_lights,
++            "emissive_glass_panels": 0,
++        },
++        "material_finish_applied": {
++            "materials": sorted(MATERIAL_FINISH),
++            "floor_joint_lines": joint_count,
++            "wood_panel_joint_lines": panel_joint_count,
++            "skirting_segments": sum(1 for w in ENC["walls"]),
++            "note": "示意纹理比例/分缝/收边，参数来自版本化表达输入，不是材料规格或施工排版",
++        },
++        "origin_counts": origin_counts,
++        "procedural_expression_objects": procedural_names,
++        "engineering_quantity_effect": 0,
++        "note": "V2 窗光/材质与 V3 陈设均为人工表达假设；新增陈设不进入工程量",
++    },
+     "assumptions": DATA.get("render_assumptions") or [],
+     "disclaimer": DATA.get("presentation_disclaimer"),
+ }
+diff --git a/scripts/verify_w2_r4.py b/scripts/verify_w2_r4.py
+index 8f844f2..c5d68b6 100644
+--- a/scripts/verify_w2_r4.py
++++ b/scripts/verify_w2_r4.py
+@@ -60,11 +60,28 @@ CHECKS: list[dict] = []
+ PORT = 0
+ 
+ 
+-def check(cid: str, name: str, ok: bool, evidence: dict) -> None:
+-    CHECKS.append({"id": cid, "name": name,
+-                   "result": "observed_pass" if ok else "observed_fail",
++# 验证分层：函数级 / 真实 HTTP / 真实渲染 / 浏览器 / 人工目检 必须分列，
++# 不能把 not_run 或 missing_evidence 混进 observed_fail 当作产品回归。
++LAYER_MAP = {
++    "R4-A-SUBMIT": "http", "R4-A-ZIP": "http", "R4-B-SUBMIT": "http", "R4-B-ZIP": "http",
++    "R4-01": "http", "R4-02-A": "contract", "R4-02-B": "contract",
++    "R4-03-A": "contract", "R4-03-B": "contract",
++    "R4-04-A": "real_render", "R4-04-B": "real_render",
++    "R4-05": "function_level", "R4-06": "external_evidence",
++    "R4-07": "http", "R4-08": "http",
++}
++
++
++def check(cid: str, name: str, ok: bool, evidence: dict,
++          *, result: str | None = None, layer: str | None = None) -> None:
++    """result 可显式给 not_run / missing_evidence —— 两者都不得计为产品失败。"""
++    status = result or ("observed_pass" if ok else "observed_fail")
++    CHECKS.append({"id": cid, "name": name, "result": status,
++                   "layer": layer or LAYER_MAP.get(cid, "contract"),
+                    "evidence": evidence})
+-    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++    label = {"observed_pass": "PASS", "observed_fail": "FAIL",
++             "not_run": "NOT_RUN", "missing_evidence": "NO_EVIDENCE"}[status]
++    print(f"{label:<11} {cid} {name}", flush=True)
+ 
+ 
+ def http(method: str, path: str, body=None, extra=None):
+@@ -253,8 +270,9 @@ def main() -> int:
+                 continue
+             rid = revision["production_revision_id"]
+             downloaded = {}
+-            for name in ("plan.svg", "scene.json", "quantity.json", "quantity.csv",
+-                         "cost.html", "manifest.json", "render.png", "package.zip"):
++            for name in ("plan.svg", "plan-index.json", "scene.json", "quantity.json",
++                         "quantity.csv", "cost.html", "manifest.json", "render.png",
++                         "package.zip"):
+                 sc, _meta, raw = http("GET", f"{base}/spatial-outputs/{rid}/files/{name}")
+                 if sc == 200:
+                     downloaded[name] = raw
+@@ -381,9 +399,19 @@ def main() -> int:
+                 ids_ok.append(opening["object_id"] in plan_text)
+                 size_ok.append(f'{opening["width_mm"]:.0f}×' in plan_text)
+             furn = scene.get("presentation_furniture") or []
+-            furn_ok = all((f["object_id"] if len(f["object_id"]) <= 5
+-                           else "P" + f["object_id"].split("-")[-1]) in plan_text
+-                          for f in furn)
++            plan_index_path = outdir / "plan-index.json"
++            if plan_index_path.is_file():
++                # V1 起短编号由 plan-index.json 全局唯一分配；按索引对账，
++                # 不再靠调用方猜短码前缀（V3 新增陈设后旧算法会撞号）。
++                pidx = json.loads(plan_index_path.read_text(encoding="utf-8"))
++                codes = [v["code"] for v in pidx["labels"].values()
++                         if v["kind"] == "furniture"]
++                furn_ok = bool(codes) and len(codes) == len(furn) \
++                    and all(code in plan_text for code in codes)
++            else:
++                furn_ok = all((f["object_id"] if len(f["object_id"]) <= 5
++                               else "P" + f["object_id"].split("-")[-1]) in plan_text
++                              for f in furn)
+             zone_mat_ok = all(z.get("material_slot") for z in scene.get("zones") or [])
+             check(f"R4-03-{letter}", f"布局 {letter} 围合/开口/家具在平面与三维读同一 ID 与尺寸",
+                   bool(all(ids_ok) and all(size_ok) and furn_ok and zone_mat_ok
+@@ -398,6 +426,15 @@ def main() -> int:
+ 
+         # --------------------------------------------- 真实材质/家具/灯光/机位
+         for letter in meta_all:
++            if args.no_render:
++                # 主动不渲染：图像项为 not_run，不是产品失败，也不得算通过。
++                check(f"R4-04-{letter}",
++                      f"布局 {letter} 真实 CC0 材质/家具/窗光/人眼机位出图",
++                      False, {"reason": "--no-render 主动跳过真实 Blender 渲染",
++                              "expected_artifact": "render.png + render.png.meta.json",
++                              "note": "需运行不带 --no-render 的完整验证才能判定"},
++                      result="not_run", layer="real_render")
++                continue
+             meta = meta_all[letter]
+             png = evidence / "outputs" / f"layout-{letter}" / "render.png"
+             assets = meta.get("assets") or {}
+@@ -520,19 +557,28 @@ def main() -> int:
+         conflict_evidence = evidence / "after" / "finish-conflict-after.json"
+         regression_evidence = (evidence / "regression-second-closeout"
+                                / "repro-r4-regression.json")
+-        conflict_ok = False
+-        if conflict_evidence.is_file():
+-            payload = json.loads(conflict_evidence.read_text(encoding="utf-8"))
+-            conflict_ok = bool(payload.get("all_as_expected") and payload.get("label") == "after")
+-        regression_ok = False
+-        if regression_evidence.is_file():
+-            payload = json.loads(regression_evidence.read_text(encoding="utf-8"))
+-            regression_ok = (payload.get("totals", {}).get("observed_pass") == 15
+-                             and payload.get("totals", {}).get("observed_fail") == 0)
+-        check("R4-06", "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
+-              bool(conflict_ok and regression_ok),
+-              {"conflict_after": str(conflict_evidence), "conflict_all_as_expected": conflict_ok,
+-               "regression": str(regression_evidence), "regression_15_of_15": regression_ok})
++        missing_inputs = [str(p) for p in (conflict_evidence, regression_evidence)
++                          if not p.is_file()]
++        if missing_inputs:
++            # 前置证据未随本次 --out 目录提供：明确标「缺证」，不与产品断言混为一类。
++            check("R4-06", "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
++                  False, {"status": "missing_evidence", "missing_paths": missing_inputs,
++                          "note": "这是外部证据未在本次输出目录提供，不是产品回归；"
++                                  "可在完整输出目录复跑或复制前置证据后重判"},
++                  result="missing_evidence", layer="external_evidence")
++        else:
++            conflict_ok = bool(
++                json.loads(conflict_evidence.read_text(encoding="utf-8")).get("all_as_expected"))
++            regression = json.loads(regression_evidence.read_text(encoding="utf-8"))
++            regression_ok = (regression.get("totals", {}).get("observed_pass") == 15
++                             and regression.get("totals", {}).get("observed_fail") == 0)
++            check("R4-06", "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
++                  bool(conflict_ok and regression_ok),
++                  {"conflict_after": str(conflict_evidence),
++                   "conflict_all_as_expected": conflict_ok,
++                   "regression": str(regression_evidence),
++                   "regression_15_of_15": regression_ok},
++                  layer="external_evidence")
+ 
+         # ------------------------------------------ 按 ID 任务定位（不串成果）
+         if a and b:
+@@ -570,13 +616,45 @@ def main() -> int:
+           bool(ok_cancel and ok_locate),
+           {"cancel_late": ev_cancel, "job_isolation": ev_locate})
+ 
+-    failed = sum(1 for c in CHECKS if c["result"] != "observed_pass")
++    passed = sum(1 for c in CHECKS if c["result"] == "observed_pass")
++    failed = sum(1 for c in CHECKS if c["result"] == "observed_fail")
++    not_run = sum(1 for c in CHECKS if c["result"] == "not_run")
++    missing_evidence = sum(1 for c in CHECKS if c["result"] == "missing_evidence")
+     code_head = __import__("subprocess").run(
+         ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+         capture_output=True, text=True).stdout.strip()
++
++    def layer_status(items: list[dict]) -> str:
++        results = {c["result"] for c in items}
++        if "observed_fail" in results:
++            return "observed_fail"
++        if results == {"observed_pass"}:
++            return "observed_pass"
++        if results <= {"not_run", "missing_evidence"}:
++            return "not_run_or_missing_evidence"
++        return "mixed"
++
++    verification_layers = {}
++    for layer in ("function_level", "contract", "http", "external_evidence",
++                  "real_render"):
++        items = [c for c in CHECKS if c.get("layer") == layer]
++        verification_layers[layer] = {
++            "status": layer_status(items), "checks": [c["id"] for c in items],
++            "counts": {key: sum(1 for c in items if c["result"] == key)
++                       for key in ("observed_pass", "observed_fail", "not_run",
++                                   "missing_evidence")}}
++    verification_layers["browser"] = {
++        "status": "separate_script_not_run_here",
++        "evidence": "var/evidence/roadmap/<batch>/browser/verification.json",
++        "note": "本脚本不启动浏览器；真实 Edge 验收由 verify_w2_r4_browser.py 单独执行"}
++    verification_layers["manual_visual"] = {
++        "status": "reported_in_review_packet",
++        "evidence": "deliverables-for-review/roadmap/<batch>/manual-visual-review.md",
++        "note": "自动断言只做几何/编号/字符串对账，不代表人工目检；"
++                "图面可读性、材质尺度与光照层次必须由人工看图判定并单独记录"}
+     out = {
+-        "task_id": "W2-R4 同源表达",
+-        "schema_version": "rkd-w2-r4-checks.v1",
++        "task_id": "W2-R4 同源表达 / 表达收口",
++        "schema_version": "rkd-w2-r4-checks.v2",
+         "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
+         "code_head": code_head,
+         "render_enabled": not args.no_render,
+@@ -589,7 +667,15 @@ def main() -> int:
+                         "presentation": "executor manual test assumptions",
+                         "keys_used": False},
+         "checks": CHECKS,
+-        "totals": {"observed_pass": len(CHECKS) - failed, "observed_fail": failed},
++        "totals": {"observed_pass": passed, "observed_fail": failed,
++                   "not_run": not_run, "missing_evidence": missing_evidence},
++        "verification_layers": verification_layers,
++        "semantics": {
++            "observed_fail": "真实产品断言失败，决定退出码",
++            "not_run": "本运行主动跳过（如 --no-render 的真实图像项），不计失败也不计通过",
++            "missing_evidence": "缺少前置/外部证据文件，不计产品回归",
++            "manual_visual": "人工目检在复核包单列，绝不由自动断言代签",
++        },
+         "external_calls": 0, "tokens": 0, "images_generated": (0 if args.no_render
+                                                                else len(meta_all)),
+         "cost_amount_or_null": None,
+@@ -598,7 +684,9 @@ def main() -> int:
+     }
+     (evidence / "checks.json").write_text(json.dumps(out, ensure_ascii=False, indent=2),
+                                           encoding="utf-8")
+-    print(json.dumps({"passed": len(CHECKS) - failed, "failed": failed,
++    print(json.dumps({"observed_pass": passed, "observed_fail": failed,
++                      "not_run": not_run, "missing_evidence": missing_evidence,
++                      "exit_on": "observed_fail_only",
+                       "out": str(evidence / "checks.json")}, ensure_ascii=False))
+     return 0 if failed == 0 else 1
+ 
+diff --git a/scripts/verify_w2_r4_closeout.py b/scripts/verify_w2_r4_closeout.py
+new file mode 100644
+index 0000000..40b7e23
+--- /dev/null
++++ b/scripts/verify_w2_r4_closeout.py
+@@ -0,0 +1,216 @@
++"""W2-R4 表达收口 V1—V3 专项自动断言（与人工目检严格分列）。
++
++用法：PYTHONPATH="mvp;scripts;." ./.venv/Scripts/python.exe \
++        scripts/verify_w2_r4_closeout.py --evidence <完整验证目录> --out <输出目录>
++
++只读取完整验证产物做几何/契约对账，并做一次生成器级「去掉测试陈设后工程量不变」
++的受控对比。人工目检（前后图与局部可读性）在复核包 manual-visual-review.md 单列，
++本脚本绝不代替人工看图，也不以非空 SVG / 亮度阈值宣布通过。
++"""
++from __future__ import annotations
++
++import argparse
++import copy
++import json
++import sys
++from datetime import datetime, timezone
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT / "mvp"))
++sys.path.insert(0, str(ROOT / "scripts"))
++sys.path.insert(0, str(ROOT))
++
++from rkd_mvp.ai_spatial_outputs import build_package  # noqa: E402
++
++CHECKS: list[dict] = []
++
++
++def check(cid: str, name: str, ok: bool, detail: dict, *, layer: str = "automatic") -> None:
++    CHECKS.append({"id": cid, "name": name, "result": "observed_pass" if ok else "observed_fail",
++                   "layer": layer, "evidence": detail})
++    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
++
++
++def jload(path: Path):
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--evidence", required=True)
++    parser.add_argument("--out", required=True)
++    parser.add_argument("--visual-observations", default=None)
++    args = parser.parse_args()
++    evidence = Path(args.evidence).resolve()
++    out = Path(args.out).resolve()
++    out.mkdir(parents=True, exist_ok=True)
++    visual = (Path(args.visual_observations).resolve() if args.visual_observations
++              else evidence / "visual" / "capture-observations.json")
++
++    for letter in ("A", "B"):
++        base = evidence / "outputs" / f"layout-{letter}"
++        svg = (base / "plan.svg").read_text(encoding="utf-8")
++        index = jload(base / "plan-index.json")
++        scene = jload(base / "scene.json")
++        qty = jload(base / "quantity.json")
++        pres = jload(base / "presentation.json")
++        scope = jload(base / "finish-scope.json")
++        model = jload(base / "model.json")
++        meta = jload(base / "render-meta.json")
++
++        # ------------------------------------------------------------- V1 平面
++        layers = [f'id="layer-{name}"' for name in
++                  ("geometry", "ids", "annotations")]
++        check(f"V1-{letter}-01", "平面几何/编号/注释三层分离，坐标度量可复核",
++              all(token in svg for token in layers)
++              and "data-plan-metrics=" in svg
++              and "data-plan-layers-version=" in svg,
++              {"layers_present": [t for t in layers if t in svg],
++               "svg_bytes": len(svg)})
++
++        chain = index["dimension_chain"]
++        x_closed = chain["x"]["closed"] and abs(
++            chain["x"]["sum_delta_mm"] - chain["x"]["total_mm"]) < 0.2
++        y_closed = chain["y"]["closed"] and abs(
++            chain["y"]["sum_delta_mm"] - chain["y"]["total_mm"]) < 0.2
++        check(f"V1-{letter}-02", "受控尺寸链 X/Y 从边界经开口/平台站点闭合到总尺寸",
++              bool(x_closed and y_closed),
++              {"x": {k: chain["x"][k] for k in ("total_mm", "sum_delta_mm", "closed")},
++               "y": {k: chain["y"][k] for k in ("total_mm", "sum_delta_mm", "closed")},
++               "x_stations": len(chain["x"]["stations"]),
++               "y_stations": len(chain["y"]["stations"]),
++               "note": chain["note"]})
++
++        required_kinds = {"zone", "wall", "opening", "camera", "circulation",
++                          "keepout", "furniture"}
++        got_kinds = {v["kind"] for v in index["labels"].values()}
++        check(f"V1-{letter}-03", "编号索引覆盖墙体/开口/相机/分区/动线/家具，引用可对账",
++              required_kinds <= got_kinds
++              and all(v.get("object_id") for v in index["labels"].values()),
++              {"label_count": len(index["labels"]),
++               "kinds": sorted(got_kinds),
++               "expression_accounting": index["expression_accounting"]})
++
++        geo = {}
++        if visual.is_file():
++            obs = jload(visual)
++            geo = (obs.get("auto_geometry_check") or {}).get(f"{letter}-after") or {}
++        check(f"V1-{letter}-04", "自动几何检查：图面标注无互相压叠、无出界、字号不低于 8",
++              bool(geo and geo.get("overlap_count") == 0
++                   and geo.get("outside_count") == 0
++                   and (geo.get("min_font_size") or 0) >= 8
++                   and (geo.get("annotation_count") or 0) > 20),
++              {"source": str(visual), "annotation_count": geo.get("annotation_count"),
++               "overlaps": geo.get("overlap_count"), "outside": geo.get("outside_count"),
++               "min_font": geo.get("min_font_size"),
++               "note": "自动几何检查不代替人工目检"})
++
++        # ------------------------------------------------------- V2 窗光 / 材质
++        expr_meta = meta.get("expression") or {}
++        win = expr_meta.get("window_expression") or {}
++        finish = expr_meta.get("material_finish_applied") or {}
++        check(f"V2-{letter}-01", "玻璃为透明透射，发光玻璃板为 0，窗外为标注的本地假设",
++              bool(win.get("glass_kind") == "transparent"
++                   and win.get("emissive_glass_panels") == 0
++                   and (win.get("outside_panels") or 0) >= 5
++                   and "assumption" in str(win.get("outside_environment") or "")),
++              {"glass_kind": win.get("glass_kind"),
++               "emissive_glass_panels": win.get("emissive_glass_panels"),
++               "outside_panels": win.get("outside_panels"),
++               "outside_environment": win.get("outside_environment"),
++               "outside_note": win.get("outside_note")})
++        check(f"V2-{letter}-02", "木饰面与地面的纹理比例/分缝/收边来自版本化表达输入",
++              bool(expr_meta.get("schema_version") == "rkd-spatial-expression.v1"
++                   and len(finish.get("materials") or []) >= 2
++                   and (finish.get("floor_joint_lines") or 0) > 0
++                   and (finish.get("wood_panel_joint_lines") or 0) > 0
++                   and (finish.get("skirting_segments") or 0) > 0
++                   and abs(float(win.get("exposure_ev") or 0)
++                           - float(pres["expression"]["window_expression"]["exposure_ev"])) < 1e-4),
++              {"schema_version": expr_meta.get("schema_version"),
++               "materials": finish.get("materials"),
++               "floor_joint_lines": finish.get("floor_joint_lines"),
++               "wood_panel_joint_lines": finish.get("wood_panel_joint_lines"),
++               "skirting_segments": finish.get("skirting_segments"),
++               "exposure_ev": win.get("exposure_ev"),
++               "window_light_energy_scale": win.get("window_light_energy_scale")})
++        check(f"V2-{letter}-03", "场景保留模型来源与假设标识，采光仍只来自已建模窗口",
++              bool(scene.get("presentation_disclaimer")
++                   and scene["presentation"].get("site_verified") is False
++                   and scene["presentation"].get("not_ai_design") is True
++                   and meta.get("lights", {}).get("window_area_lights", 0) >= 5
++                   and set(scene["lighting"]["window_opening_ids"])
++                   <= {o["object_id"] for o in scene["enclosure"]["openings"]
++                       if o["kind"] == "window"}),
++              {"window_lights": meta.get("lights", {}).get("window_area_lights"),
++               "window_ids": scene["lighting"]["window_opening_ids"],
++               "site_verified": scene["presentation"].get("site_verified")})
++
++        # ---------------------------------------------- V3 功能表达 / 陈设分类
++        origins = expr_meta.get("origin_counts") or {}
++        placeholder_list = (meta.get("assets") or {}).get("placeholders") or []
++        check(f"V3-{letter}-01", "对象分为源模型/CC0 表达资产/测试陈设/程序化表达四类",
++              all(origins.get(k, 0) > 0 for k in
++                  ("source_model", "cc0_expression_asset", "test_staging",
++                   "procedural_expression")),
++              {"origin_counts": origins,
++               "expression_accounting": index["expression_accounting"]})
++        check(f"V3-{letter}-02", "display-wing 占位件已替换为程序化展墙，黄色占位盒清零",
++              bool("F3" in (expr_meta.get("procedural_expression_objects") or [])
++                   and "F3" not in placeholder_list
++                   and expr_meta.get("engineering_quantity_effect") == 0),
++              {"procedural_objects": expr_meta.get("procedural_expression_objects"),
++               "placeholders": placeholder_list,
++               "engineering_quantity_effect": expr_meta.get("engineering_quantity_effect")})
++
++        # 生成器级受控对比：拿掉全部测试陈设/程序化表达，工程量与成本必须完全不变
++        full = build_package(model, project_id="closeout", option_revision_id="r",
++                             settings={"presentation": pres}, finish_scope=scope)
++        reduced_pres = copy.deepcopy(pres)
++        reduced_pres["furniture"] = [
++            f for f in pres["furniture"]
++            if f.get("origin_kind") in ("source_model", "cc0_expression_asset")]
++        reduced = build_package(model, project_id="closeout", option_revision_id="r",
++                                settings={"presentation": reduced_pres}, finish_scope=scope)
++        check(f"V3-{letter}-03", "去掉全部测试陈设后：工程量/成本完全不变，平面与场景确实变化",
++              bool(full["quantities"] == reduced["quantities"]
++                   and full["cost"] == reduced["cost"]
++                   and full["plan"] != reduced["plan"]
++                   and full["scene"] != reduced["scene"]
++                   and qty == reduced["quantities"]),
++              {"full_furniture": len(pres["furniture"]),
++               "reduced_furniture": len(reduced_pres["furniture"]),
++               "quantities_identical": full["quantities"] == reduced["quantities"],
++               "cost_identical": full["cost"] == reduced["cost"],
++               "plan_changed": full["plan"] != reduced["plan"],
++               "scene_changed": full["scene"] != reduced["scene"]})
++
++    passed = sum(1 for c in CHECKS if c["result"] == "observed_pass")
++    failed = sum(1 for c in CHECKS if c["result"] == "observed_fail")
++    payload = {
++        "task_id": "W2-R4 表达收口 V1—V3 专项自动断言",
++        "schema_version": "rkd-w2-r4-closeout-checks.v1",
++        "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
++        "automatic_assertions": {"checks": CHECKS,
++                                 "observed_pass": passed, "observed_fail": failed},
++        "manual_visual_review": {
++            "status": "reported_in_review_packet",
++            "evidence": "deliverables-for-review/roadmap/W2-R4-表达收口/manual-visual-review.md",
++            "note": "前后全图/入口·洽谈区局部/打印缩放/窗区与功能区局部由人工看图判定；"
++                    "自动断言只做几何、编号、闭合、契约与工程量对账，绝不代表人工目检通过",
++        },
++        "not_run": ["用户项目阶段2设计生成（阶段1具体版本确认前停止）",
++                    "W3/W4", "照度/配光合规计算", "真实现场复核"],
++        "external_calls": 0, "tokens": 0, "cost_amount_or_null": None,
++        "not_customer_design_approval": True,
++    }
++    (out / "closeout-checks.json").write_text(
++        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
++    print(json.dumps({"observed_pass": passed, "observed_fail": failed,
++                      "out": str(out / "closeout-checks.json")}, ensure_ascii=False))
++    return 0 if failed == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/w2_r4_fixture_presentation.py b/scripts/w2_r4_fixture_presentation.py
+index 0108896..7c28ac7 100644
+--- a/scripts/w2_r4_fixture_presentation.py
++++ b/scripts/w2_r4_fixture_presentation.py
+@@ -42,6 +42,12 @@ ASSUMPTIONS = [
+     "未做照度/配光计算，不宣称照度合规。",
+     "柱网、洁具、构造节点、消防/疏散/无障碍、实测标高、产品清单、现场照片均缺依据，"
+     "一律不编造、不补 0、不在图上冒充。",
++    "V2：玻璃为透明透射材质 + 窗框/窗洞深度；窗外是明确标注的本地程序化天空渐变"
++    "（淡蓝天光 + 暖灰地平线带），不是现场照片或真实外景。",
++    "V2：木饰面与地面的纹理比例、分缝与踢脚收边是版本化表达输入里的示意参数，"
++    "不是材料规格、产品选型或施工排版。",
++    "V3：display-wing 占位件替换为程序化展墙；新增展台/器物/品牌板/配套座椅"
++    "是测试陈设（人工表达假设），保留对象 ID、位置与尺寸，不进工程量、不暗改源方案。",
+ ]
+ 
+ MISSING = [
+@@ -150,18 +156,29 @@ def build_fixture_presentation(model: dict, layout: str) -> dict:
+         "source": "manual_test_assumption:opening_in_explicit_partition",
+     })
+ 
+-    # 模型自带家具：保留原 object_id，映射到 CC0 资产（缺资产明确占位）
++    # 模型自带家具：保留原 object_id / 位置 / 朝向，映射到 CC0 资产。
++    # V3：display-wing 没有对应 CC0 资产，替换为明确标注的程序化展墙，
++    # 不再是黄色占位盒；对象 ID 与源模型位置一律不改，不暗改源方案。
+     furniture: list[dict] = []
+     for f in spatial["furniture"]:
+         asset_id = CATALOG_TO_ASSET.get(str(f["catalog_id"]))
+-        furniture.append({
++        item = {
+             "object_id": f["object_id"], "catalog_id": f["catalog_id"],
+             "asset_id": asset_id, "asset_dimensions_mm": dims(asset_id),
+             "position_mm": [float(f["x_mm"]), float(f["y_mm"])],
+             "rotation_deg": float(f.get("rot") or 0),
+             "anchor": "center_floor", "kind": "model_furniture",
+             "source": "manual_test_assumption:catalog_to_cc0_asset_mapping",
+-        })
++            "origin_kind": "source_model",
++        }
++        if str(f["catalog_id"]) == "display-wing":
++            item.update({
++                "asset_dimensions_mm": [450.0, 2300.0, 2400.0],
++                "origin_kind": "procedural_expression",
++                "expression_note": "程序化展墙（木饰面展板 + 展品托板）：替代原占位盒；"
++                                   "人工表达假设，非 CC0 资产、非源方案对象，位置/ID 沿用源模型",
++            })
++        furniture.append(item)
+ 
+     # 表达层道具：绿植 / 器物 / 补充桌椅，全部按分区中心加固定偏移，明确标注来源
+     by_role: dict[str, list] = {}
+@@ -193,9 +210,71 @@ def build_fixture_presentation(model: dict, layout: str) -> dict:
+             "position_mm": position, "rotation_deg": rotation,
+             "z_offset_m": z_offset,
+             "anchor": "center_floor", "kind": "presentation_prop",
++            "origin_kind": "cc0_expression_asset",
+             "source": "manual_test_assumption:presentation_prop_not_model_design",
+         })
+ 
++    # ---------------------------------------------------------------- V3 陈设
++    # 全部按本布局的动线/分区中心派生位置（不是复制固定样板坐标），
++    # 明确标为测试陈设或程序化表达，不进入工程量、不称 AI 设计。
++    by_role_local = by_role
++    route = (spatial["circulation"][0]["path_mm"]
++             if spatial.get("circulation") else [[W * 0.3, H * 0.5], [W * 0.7, H * 0.5]])
++    ped_specs = [
++        (route[min(1, len(route) - 1)], "ceramic_vase_01"),
++        (route[min(2, len(route) - 1)], "wooden_bowl_01"),
++        (route[min(3, len(route) - 1)], "ceramic_vase_01"),
++    ]
++    for i, (anchor_pt, obj_asset) in enumerate(ped_specs, start=1):
++        px = _clamp([float(anchor_pt[0]), float(anchor_pt[1]) - 2500], W, H)
++        furniture.append({
++            "object_id": f"R4-STG-PED-{i:02d}",
++            "catalog_id": "presentation:display_pedestal",
++            "asset_id": None, "asset_dimensions_mm": [900.0, 600.0, 750.0],
++            "origin_kind": "procedural_expression",
++            "expression_note": "程序化样板展台（石材台面 + 木饰面基座）；"
++                               "人工表达假设，不是源方案对象、不是产品选型",
++            "position_mm": px, "rotation_deg": 0.0, "z_offset_m": 0.0,
++            "anchor": "center_floor", "kind": "test_staging_pedestal",
++            "source": "manual_test_assumption:display_sequence_along_circulation",
++        })
++        furniture.append({
++            "object_id": f"R4-STG-OBJ-{i:02d}",
++            "catalog_id": f"presentation:{obj_asset}",
++            "asset_id": obj_asset, "asset_dimensions_mm": dims(obj_asset),
++            "origin_kind": "test_staging",
++            "position_mm": px, "rotation_deg": 0.0, "z_offset_m": 0.75,
++            "anchor": "center_floor", "kind": "test_staging_object",
++            "source": "manual_test_assumption:sample_exhibit_not_client_product",
++        })
++    arrival_zone = (by_role_local.get("arrival") or spatial["zones"][:1])[0]
++    ac = _zone_center(arrival_zone["polygon_mm"])
++    furniture.append({
++        "object_id": "R4-STG-BRAND-01", "catalog_id": "presentation:brand_panel",
++        "asset_id": None, "asset_dimensions_mm": [2400.0, 120.0, 1800.0],
++        "origin_kind": "procedural_expression",
++        "expression_note": "品牌标识板为占位表达（抽象色块，不含客户品牌、不含文字设计）；"
++                           "人工表达假设，不是 AI 自动设计成果",
++        "position_mm": _clamp([ac[0] + 300, ac[1] + 1500], W, H),
++        "rotation_deg": 0.0, "z_offset_m": 0.0,
++        "anchor": "center_floor", "kind": "test_staging_brand_panel",
++        "source": "manual_test_assumption:brand_content_placeholder",
++    })
++    gallery_zone = (by_role_local.get("gallery") or spatial["zones"][:1])[0]
++    gc = _zone_center(gallery_zone["polygon_mm"])
++    for i, (dx, seat_rot) in enumerate([(-1500, 90), (1500, -90)], start=1):
++        furniture.append({
++            "object_id": f"R4-STG-SEAT-{i:02d}",
++            "catalog_id": "presentation:modern_arm_chair_01",
++            "asset_id": "modern_arm_chair_01",
++            "asset_dimensions_mm": dims("modern_arm_chair_01"),
++            "origin_kind": "test_staging",
++            "position_mm": _clamp([gc[0] + dx, gc[1] - 300], W, H),
++            "rotation_deg": seat_rot, "z_offset_m": 0.0,
++            "anchor": "center_floor", "kind": "test_staging_seat",
++            "source": "manual_test_assumption:group_isolated_table_into_readable_setting",
++        })
++
+     materials = [
+         {"material_id": "mat-floor-microcement", "slot": "floor_microcement",
+          "name": "微水泥地坪", "hex": "#b9b3a8", "tile": 0.50,
+@@ -256,6 +335,60 @@ def build_fixture_presentation(model: dict, layout: str) -> dict:
+         "sun": {"azimuth_deg": 200, "elevation_deg": 38, "energy": 2.0},
+     }
+ 
++    # ------------------------------------------------ V2/V3 有版本的表达输入
++    # 材质纹理比例/分缝/收边、窗玻璃与窗外环境、陈设分类都在这里版本化，
++    # 渲染器只读该输入，不手工改像素、不把参数写死在渲染脚本里。
++    expression = {
++        "schema_version": "rkd-spatial-expression.v1",
++        "declared_by": "executor_manual_fixture_w2_r4_closeout",
++        "declaration": "V2 窗光/材质与 V3 陈设的表达输入；人工测试假设，"
++                       "非现场事实、非 AI 自动设计、非材料规格或施工排版",
++        "material_finish": {
++            "mat-oak": {
++                "tile": 1.60, "joint_spacing_mm": 600, "joint_width_mm": 6,
++                "edge_trim_mm": 80,
++                "note": "主要木饰面：按 600mm 板宽示意竖向板缝，贴图重复倍率 1.6（人工假设）",
++            },
++            "mat-walnut": {
++                "tile": 1.40, "joint_spacing_mm": 600, "joint_width_mm": 6,
++                "edge_trim_mm": 80,
++                "note": "次要木饰面：同尺度板缝，人工假设",
++            },
++            "mat-floor-microcement": {
++                "tile": 0.50, "joint_spacing_mm": 1200, "joint_width_mm": 4,
++                "edge_trim_mm": 80,
++                "note": "主要地面：按 1200mm 示意分缝网格与 80mm 踢脚收边，不是施工排版",
++            },
++            "mat-stone": {
++                "tile": 0.90, "joint_spacing_mm": 900, "joint_width_mm": 5,
++                "edge_trim_mm": 60,
++                "note": "石材台面/中岛：示意分缝，人工假设",
++            },
++        },
++        "window_expression": {
++            "glass_kind": "transparent",
++            "frame_width_mm": 60, "reveal_depth_mm": 200, "mullion_count": 1,
++            "outside_environment": "labelled_local_sky_gradient_assumption",
++            "outside_note": "窗外为本地程序化天空/远景渐变（淡蓝天光 + 暖灰地平线带），"
++                            "不是现场照片、不是真实外景，也不宣称照度合规",
++            "exposure_ev": -0.15,
++            "window_light_energy_scale": 0.62,
++        },
++        "staging_note": "V3 陈设按 furniture.origin_kind 分为 source_model / "
++                        "cc0_expression_asset / test_staging / procedural_expression；"
++                        "后两类只进入平面与场景表现，工程量与材料面切片恒为 0 影响",
++        "assumptions": [
++            "V2 玻璃改为透明透射材质，窗框/窗洞深度/窗外天空渐变均为本地程序化人工假设；"
++            "采光方向仍只来自已建模窗洞口，不再用发光板掩盖窗口细节。",
++            "V2 木饰面与地面分缝/收边为示意几何，参数是版本化表达输入，不是材料规格、"
++            "产品选型或施工排版。",
++            "V3 新增展台、器物、品牌板与配套座椅是测试陈设（人工表达假设），"
++            "位置由本布局动线/分区派生，不复制固定样板坐标，不计工程量、不称 AI 设计。",
++            "品牌板只放抽象色块，不含客户品牌、不含文字设计；展品为 CC0 器物示意，"
++            "不是协诚产品清单。",
++        ],
++    }
++
+     return {
+         "unit": "mm",
+         "declared_by": "executor_manual_fixture_w2_r4",
+@@ -267,5 +400,6 @@ def build_fixture_presentation(model: dict, layout: str) -> dict:
+         "walls": walls, "partitions": partitions, "openings": openings,
+         "furniture": furniture, "materials": materials, "cameras": cameras,
+         "lighting": lighting,
++        "expression": expression,
+         "assumptions": ASSUMPTIONS, "missing": MISSING,
+     }

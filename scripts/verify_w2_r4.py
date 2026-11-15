@@ -60,11 +60,28 @@ CHECKS: list[dict] = []
 PORT = 0
 
 
-def check(cid: str, name: str, ok: bool, evidence: dict) -> None:
-    CHECKS.append({"id": cid, "name": name,
-                   "result": "observed_pass" if ok else "observed_fail",
+# 验证分层：函数级 / 真实 HTTP / 真实渲染 / 浏览器 / 人工目检 必须分列，
+# 不能把 not_run 或 missing_evidence 混进 observed_fail 当作产品回归。
+LAYER_MAP = {
+    "R4-A-SUBMIT": "http", "R4-A-ZIP": "http", "R4-B-SUBMIT": "http", "R4-B-ZIP": "http",
+    "R4-01": "http", "R4-02-A": "contract", "R4-02-B": "contract",
+    "R4-03-A": "contract", "R4-03-B": "contract",
+    "R4-04-A": "real_render", "R4-04-B": "real_render",
+    "R4-05": "function_level", "R4-06": "external_evidence",
+    "R4-07": "http", "R4-08": "http",
+}
+
+
+def check(cid: str, name: str, ok: bool, evidence: dict,
+          *, result: str | None = None, layer: str | None = None) -> None:
+    """result 可显式给 not_run / missing_evidence —— 两者都不得计为产品失败。"""
+    status = result or ("observed_pass" if ok else "observed_fail")
+    CHECKS.append({"id": cid, "name": name, "result": status,
+                   "layer": layer or LAYER_MAP.get(cid, "contract"),
                    "evidence": evidence})
-    print(("PASS " if ok else "FAIL ") + cid + " " + name, flush=True)
+    label = {"observed_pass": "PASS", "observed_fail": "FAIL",
+             "not_run": "NOT_RUN", "missing_evidence": "NO_EVIDENCE"}[status]
+    print(f"{label:<11} {cid} {name}", flush=True)
 
 
 def http(method: str, path: str, body=None, extra=None):
@@ -253,8 +270,9 @@ def main() -> int:
                 continue
             rid = revision["production_revision_id"]
             downloaded = {}
-            for name in ("plan.svg", "scene.json", "quantity.json", "quantity.csv",
-                         "cost.html", "manifest.json", "render.png", "package.zip"):
+            for name in ("plan.svg", "plan-index.json", "scene.json", "quantity.json",
+                         "quantity.csv", "cost.html", "manifest.json", "render.png",
+                         "package.zip"):
                 sc, _meta, raw = http("GET", f"{base}/spatial-outputs/{rid}/files/{name}")
                 if sc == 200:
                     downloaded[name] = raw
@@ -381,9 +399,19 @@ def main() -> int:
                 ids_ok.append(opening["object_id"] in plan_text)
                 size_ok.append(f'{opening["width_mm"]:.0f}×' in plan_text)
             furn = scene.get("presentation_furniture") or []
-            furn_ok = all((f["object_id"] if len(f["object_id"]) <= 5
-                           else "P" + f["object_id"].split("-")[-1]) in plan_text
-                          for f in furn)
+            plan_index_path = outdir / "plan-index.json"
+            if plan_index_path.is_file():
+                # V1 起短编号由 plan-index.json 全局唯一分配；按索引对账，
+                # 不再靠调用方猜短码前缀（V3 新增陈设后旧算法会撞号）。
+                pidx = json.loads(plan_index_path.read_text(encoding="utf-8"))
+                codes = [v["code"] for v in pidx["labels"].values()
+                         if v["kind"] == "furniture"]
+                furn_ok = bool(codes) and len(codes) == len(furn) \
+                    and all(code in plan_text for code in codes)
+            else:
+                furn_ok = all((f["object_id"] if len(f["object_id"]) <= 5
+                               else "P" + f["object_id"].split("-")[-1]) in plan_text
+                              for f in furn)
             zone_mat_ok = all(z.get("material_slot") for z in scene.get("zones") or [])
             check(f"R4-03-{letter}", f"布局 {letter} 围合/开口/家具在平面与三维读同一 ID 与尺寸",
                   bool(all(ids_ok) and all(size_ok) and furn_ok and zone_mat_ok
@@ -398,6 +426,15 @@ def main() -> int:
 
         # --------------------------------------------- 真实材质/家具/灯光/机位
         for letter in meta_all:
+            if args.no_render:
+                # 主动不渲染：图像项为 not_run，不是产品失败，也不得算通过。
+                check(f"R4-04-{letter}",
+                      f"布局 {letter} 真实 CC0 材质/家具/窗光/人眼机位出图",
+                      False, {"reason": "--no-render 主动跳过真实 Blender 渲染",
+                              "expected_artifact": "render.png + render.png.meta.json",
+                              "note": "需运行不带 --no-render 的完整验证才能判定"},
+                      result="not_run", layer="real_render")
+                continue
             meta = meta_all[letter]
             png = evidence / "outputs" / f"layout-{letter}" / "render.png"
             assets = meta.get("assets") or {}
@@ -520,19 +557,28 @@ def main() -> int:
         conflict_evidence = evidence / "after" / "finish-conflict-after.json"
         regression_evidence = (evidence / "regression-second-closeout"
                                / "repro-r4-regression.json")
-        conflict_ok = False
-        if conflict_evidence.is_file():
-            payload = json.loads(conflict_evidence.read_text(encoding="utf-8"))
-            conflict_ok = bool(payload.get("all_as_expected") and payload.get("label") == "after")
-        regression_ok = False
-        if regression_evidence.is_file():
-            payload = json.loads(regression_evidence.read_text(encoding="utf-8"))
-            regression_ok = (payload.get("totals", {}).get("observed_pass") == 15
-                             and payload.get("totals", {}).get("observed_fail") == 0)
-        check("R4-06", "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
-              bool(conflict_ok and regression_ok),
-              {"conflict_after": str(conflict_evidence), "conflict_all_as_expected": conflict_ok,
-               "regression": str(regression_evidence), "regression_15_of_15": regression_ok})
+        missing_inputs = [str(p) for p in (conflict_evidence, regression_evidence)
+                          if not p.is_file()]
+        if missing_inputs:
+            # 前置证据未随本次 --out 目录提供：明确标「缺证」，不与产品断言混为一类。
+            check("R4-06", "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
+                  False, {"status": "missing_evidence", "missing_paths": missing_inputs,
+                          "note": "这是外部证据未在本次输出目录提供，不是产品回归；"
+                                  "可在完整输出目录复跑或复制前置证据后重判"},
+                  result="missing_evidence", layer="external_evidence")
+        else:
+            conflict_ok = bool(
+                json.loads(conflict_evidence.read_text(encoding="utf-8")).get("all_as_expected"))
+            regression = json.loads(regression_evidence.read_text(encoding="utf-8"))
+            regression_ok = (regression.get("totals", {}).get("observed_pass") == 15
+                             and regression.get("totals", {}).get("observed_fail") == 0)
+            check("R4-06", "入口小修：同层异材冲突不产 known 总量/试算；原 15 项回归保留",
+                  bool(conflict_ok and regression_ok),
+                  {"conflict_after": str(conflict_evidence),
+                   "conflict_all_as_expected": conflict_ok,
+                   "regression": str(regression_evidence),
+                   "regression_15_of_15": regression_ok},
+                  layer="external_evidence")
 
         # ------------------------------------------ 按 ID 任务定位（不串成果）
         if a and b:
@@ -570,13 +616,45 @@ def main() -> int:
           bool(ok_cancel and ok_locate),
           {"cancel_late": ev_cancel, "job_isolation": ev_locate})
 
-    failed = sum(1 for c in CHECKS if c["result"] != "observed_pass")
+    passed = sum(1 for c in CHECKS if c["result"] == "observed_pass")
+    failed = sum(1 for c in CHECKS if c["result"] == "observed_fail")
+    not_run = sum(1 for c in CHECKS if c["result"] == "not_run")
+    missing_evidence = sum(1 for c in CHECKS if c["result"] == "missing_evidence")
     code_head = __import__("subprocess").run(
         ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
         capture_output=True, text=True).stdout.strip()
+
+    def layer_status(items: list[dict]) -> str:
+        results = {c["result"] for c in items}
+        if "observed_fail" in results:
+            return "observed_fail"
+        if results == {"observed_pass"}:
+            return "observed_pass"
+        if results <= {"not_run", "missing_evidence"}:
+            return "not_run_or_missing_evidence"
+        return "mixed"
+
+    verification_layers = {}
+    for layer in ("function_level", "contract", "http", "external_evidence",
+                  "real_render"):
+        items = [c for c in CHECKS if c.get("layer") == layer]
+        verification_layers[layer] = {
+            "status": layer_status(items), "checks": [c["id"] for c in items],
+            "counts": {key: sum(1 for c in items if c["result"] == key)
+                       for key in ("observed_pass", "observed_fail", "not_run",
+                                   "missing_evidence")}}
+    verification_layers["browser"] = {
+        "status": "separate_script_not_run_here",
+        "evidence": "var/evidence/roadmap/<batch>/browser/verification.json",
+        "note": "本脚本不启动浏览器；真实 Edge 验收由 verify_w2_r4_browser.py 单独执行"}
+    verification_layers["manual_visual"] = {
+        "status": "reported_in_review_packet",
+        "evidence": "deliverables-for-review/roadmap/<batch>/manual-visual-review.md",
+        "note": "自动断言只做几何/编号/字符串对账，不代表人工目检；"
+                "图面可读性、材质尺度与光照层次必须由人工看图判定并单独记录"}
     out = {
-        "task_id": "W2-R4 同源表达",
-        "schema_version": "rkd-w2-r4-checks.v1",
+        "task_id": "W2-R4 同源表达 / 表达收口",
+        "schema_version": "rkd-w2-r4-checks.v2",
         "executed_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
         "code_head": code_head,
         "render_enabled": not args.no_render,
@@ -589,7 +667,15 @@ def main() -> int:
                         "presentation": "executor manual test assumptions",
                         "keys_used": False},
         "checks": CHECKS,
-        "totals": {"observed_pass": len(CHECKS) - failed, "observed_fail": failed},
+        "totals": {"observed_pass": passed, "observed_fail": failed,
+                   "not_run": not_run, "missing_evidence": missing_evidence},
+        "verification_layers": verification_layers,
+        "semantics": {
+            "observed_fail": "真实产品断言失败，决定退出码",
+            "not_run": "本运行主动跳过（如 --no-render 的真实图像项），不计失败也不计通过",
+            "missing_evidence": "缺少前置/外部证据文件，不计产品回归",
+            "manual_visual": "人工目检在复核包单列，绝不由自动断言代签",
+        },
         "external_calls": 0, "tokens": 0, "images_generated": (0 if args.no_render
                                                                else len(meta_all)),
         "cost_amount_or_null": None,
@@ -598,7 +684,9 @@ def main() -> int:
     }
     (evidence / "checks.json").write_text(json.dumps(out, ensure_ascii=False, indent=2),
                                           encoding="utf-8")
-    print(json.dumps({"passed": len(CHECKS) - failed, "failed": failed,
+    print(json.dumps({"observed_pass": passed, "observed_fail": failed,
+                      "not_run": not_run, "missing_evidence": missing_evidence,
+                      "exit_on": "observed_fail_only",
                       "out": str(evidence / "checks.json")}, ensure_ascii=False))
     return 0 if failed == 0 else 1
 

@@ -1,0 +1,171 @@
+{
+  "created_at": "2026-11-15T15:10:02.892Z",
+  "regions": {
+    "window": {
+      "x": 0,
+      "y": 0.2,
+      "w": 0.36,
+      "h": 0.58
+    },
+    "function": {
+      "x": 0.26,
+      "y": 0.26,
+      "w": 0.66,
+      "h": 0.64
+    }
+  },
+  "files": [
+    {
+      "layout": "A",
+      "phase": "before",
+      "kind": "full",
+      "file": "render-A-full-before.png",
+      "bytes": 1058689,
+      "size": {
+        "w": 1120,
+        "h": 700
+      },
+      "note": "上一批 W2-R4 原图，只读引用"
+    },
+    {
+      "layout": "A",
+      "phase": "before",
+      "kind": "window",
+      "file": "render-A-window-before.png",
+      "bytes": 176855,
+      "clip": {
+        "x": 0,
+        "y": 140,
+        "width": 403,
+        "height": 406
+      }
+    },
+    {
+      "layout": "A",
+      "phase": "before",
+      "kind": "function",
+      "file": "render-A-function-before.png",
+      "bytes": 310406,
+      "clip": {
+        "x": 291,
+        "y": 182,
+        "width": 739,
+        "height": 448
+      }
+    },
+    {
+      "layout": "A",
+      "phase": "after",
+      "kind": "full",
+      "file": "render-A-full-after.png",
+      "bytes": 1080937,
+      "size": {
+        "w": 1120,
+        "h": 700
+      },
+      "note": "本批最终渲染"
+    },
+    {
+      "layout": "A",
+      "phase": "after",
+      "kind": "window",
+      "file": "render-A-window-after.png",
+      "bytes": 185677,
+      "clip": {
+        "x": 0,
+        "y": 140,
+        "width": 403,
+        "height": 406
+      }
+    },
+    {
+      "layout": "A",
+      "phase": "after",
+      "kind": "function",
+      "file": "render-A-function-after.png",
+      "bytes": 327036,
+      "clip": {
+        "x": 291,
+        "y": 182,
+        "width": 739,
+        "height": 448
+      }
+    },
+    {
+      "layout": "B",
+      "phase": "before",
+      "kind": "full",
+      "file": "render-B-full-before.png",
+      "bytes": 1060577,
+      "size": {
+        "w": 1120,
+        "h": 700
+      },
+      "note": "上一批 W2-R4 原图，只读引用"
+    },
+    {
+      "layout": "B",
+      "phase": "before",
+      "kind": "window",
+      "file": "render-B-window-before.png",
+      "bytes": 161604,
+      "clip": {
+        "x": 0,
+        "y": 140,
+        "width": 403,
+        "height": 406
+      }
+    },
+    {
+      "layout": "B",
+      "phase": "before",
+      "kind": "function",
+      "file": "render-B-function-before.png",
+      "bytes": 314469,
+      "clip": {
+        "x": 291,
+        "y": 182,
+        "width": 739,
+        "height": 448
+      }
+    },
+    {
+      "layout": "B",
+      "phase": "after",
+      "kind": "full",
+      "file": "render-B-full-after.png",
+      "bytes": 1083792,
+      "size": {
+        "w": 1120,
+        "h": 700
+      },
+      "note": "本批最终渲染"
+    },
+    {
+      "layout": "B",
+      "phase": "after",
+      "kind": "window",
+      "file": "render-B-window-after.png",
+      "bytes": 165540,
+      "clip": {
+        "x": 0,
+        "y": 140,
+        "width": 403,
+        "height": 406
+      }
+    },
+    {
+      "layout": "B",
+      "phase": "after",
+      "kind": "function",
+      "file": "render-B-function-after.png",
+      "bytes": 333352,
+      "clip": {
+        "x": 291,
+        "y": 182,
+        "width": 739,
+        "height": 448
+      }
+    }
+  ]
+}

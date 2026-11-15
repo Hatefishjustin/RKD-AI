@@ -24,7 +24,12 @@ import math
 from pathlib import Path
 from typing import Any
 
-from .ai_spatial_outputs import PRESENTATION_VERSION
+from .ai_spatial_outputs import EXPRESSION_VERSION, PRESENTATION_VERSION
+
+# 对象来源分类：源模型 / CC0 表达资产 / 测试陈设 / 程序化表达。
+# 后两类只进入平面与场景表现，绝不进入 measure() 的工程量或材料面切片。
+ORIGIN_KINDS = {"source_model", "cc0_expression_asset",
+                "test_staging", "procedural_expression"}
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSET_MANIFEST = ROOT / "assets" / "CC0-素材清单.json"
@@ -207,6 +212,12 @@ def normalize_presentation(raw: dict | None,
             raise PresentationError(f"furniture[{index}].anchor 只支持 center_floor")
         z_offset = _finite_number(item.get("z_offset_m", 0),
                                   f"furniture[{index}].z_offset_m", low=0, high=2.0)
+        origin_kind = str(item.get("origin_kind") or
+                          ("source_model" if str(item.get("kind") or "") == "model_furniture"
+                           else "cc0_expression_asset"))
+        if origin_kind not in ORIGIN_KINDS:
+            raise PresentationError(
+                f"furniture[{index}].origin_kind 必须是 {sorted(ORIGIN_KINDS)}")
         asset_id = item.get("asset_id")
         dims = None
         if asset_id is not None:
@@ -220,14 +231,25 @@ def normalize_presentation(raw: dict | None,
                 if any(abs(float(a) - b) > 1.0 for a, b in zip(given, dims)):
                     raise PresentationError(
                         f"furniture[{index}].asset_dimensions_mm 与资产清单真实尺寸不符")
+        elif origin_kind == "procedural_expression":
+            given = item.get("asset_dimensions_mm")
+            if not isinstance(given, list) or len(given) != 3:
+                raise PresentationError(
+                    "程序化表达对象必须显式给出 asset_dimensions_mm（人工假设尺寸）")
+            dims = [float(v) for v in given]
+        is_placeholder = asset_id is None and origin_kind != "procedural_expression"
         furniture.append({
             "object_id": oid,
             "catalog_id": str(item.get("catalog_id") or ""),
             "asset_id": asset_id,
             "asset_dimensions_mm": [round(v, 3) for v in dims] if dims else None,
-            "placeholder": asset_id is None,
-            "placeholder_note": (None if asset_id is not None else
-                                 "目录没有对应 CC0 家具资产，明确留程序化占位，不冒充真实家具"),
+            "origin_kind": origin_kind,
+            "placeholder": is_placeholder,
+            "placeholder_note": (str(item.get("expression_note") or
+                                     "程序化表达对象：人工假设几何，非 CC0 资产、非源方案对象")
+                                 if origin_kind == "procedural_expression" else
+                                 None if asset_id is not None else
+                                 "目录没有对应 CC0 家具资产，明确留占位，不冒充真实家具"),
             "position_mm": position, "rotation_deg": rotation,
             "z_offset_m": z_offset,
             "z_offset_note": (f"置于已建模台面/展台之上 {z_offset:.2f}m（人工假设），"
@@ -331,6 +353,78 @@ def normalize_presentation(raw: dict | None,
                 "未做照度/配光计算，不宣称合规",
     }
 
+    # ------------------------------------------------ V2/V3 有版本的表达输入
+    raw_expression = raw.get("expression")
+    expression = None
+    if raw_expression is not None:
+        if not isinstance(raw_expression, dict):
+            raise PresentationError("presentation.expression 必须是对象")
+        if raw_expression.get("schema_version") != EXPRESSION_VERSION:
+            raise PresentationError(
+                f"presentation.expression.schema_version 必须是 {EXPRESSION_VERSION}")
+        declared = raw_expression.get("declared_by")
+        if not isinstance(declared, str) or not declared.strip():
+            raise PresentationError("expression.declared_by 必须标明人工假设来源")
+        finishes = raw_expression.get("material_finish")
+        if not isinstance(finishes, dict) or not finishes:
+            raise PresentationError("expression.material_finish 必须是非空对象")
+        known_material_ids = {m["material_id"] for m in materials}
+        clean_finishes = {}
+        for material_id, spec in finishes.items():
+            if material_id not in known_material_ids:
+                raise PresentationError(f"expression.material_finish 引用未知材料 {material_id!r}")
+            if not isinstance(spec, dict):
+                raise PresentationError(f"material_finish[{material_id}] 必须是对象")
+            clean_finishes[material_id] = {
+                "tile": _finite_number(spec.get("tile", 0.5), f"{material_id}.tile",
+                                       low=0.05, high=5.0),
+                "joint_spacing_mm": _finite_number(spec.get("joint_spacing_mm", 1200),
+                                                   f"{material_id}.joint_spacing_mm",
+                                                   low=100, high=6000),
+                "joint_width_mm": _finite_number(spec.get("joint_width_mm", 4),
+                                                 f"{material_id}.joint_width_mm",
+                                                 low=1, high=40),
+                "edge_trim_mm": _finite_number(spec.get("edge_trim_mm", 80),
+                                               f"{material_id}.edge_trim_mm",
+                                               low=0, high=300),
+                "note": str(spec.get("note") or "示意纹理比例/分缝/收边，不是材料规格或施工排版"),
+            }
+        window_expr = raw_expression.get("window_expression")
+        if not isinstance(window_expr, dict):
+            raise PresentationError("expression.window_expression 必须是对象")
+        glass_kind = str(window_expr.get("glass_kind") or "transparent")
+        if glass_kind != "transparent":
+            raise PresentationError("V2 不允许再用发光板充当玻璃：glass_kind 必须为 transparent")
+        clean_window = {
+            "glass_kind": glass_kind,
+            "frame_width_mm": _finite_number(window_expr.get("frame_width_mm", 60),
+                                             "window.frame_width_mm", low=20, high=200),
+            "reveal_depth_mm": _finite_number(window_expr.get("reveal_depth_mm", 200),
+                                              "window.reveal_depth_mm", low=50, high=500),
+            "mullion_count": int(window_expr.get("mullion_count") or 1),
+            "outside_environment": str(window_expr.get("outside_environment")
+                                       or "labelled_local_sky_gradient_assumption"),
+            "outside_note": str(window_expr.get("outside_note")
+                                or "窗外为本地程序化天空/远景渐变假设，不是现场照片或真实外景"),
+            "exposure_ev": _finite_number(window_expr.get("exposure_ev", -0.3),
+                                          "window.exposure_ev", low=-3.0, high=2.0),
+            "window_light_energy_scale": _finite_number(
+                window_expr.get("window_light_energy_scale", 0.5),
+                "window.window_light_energy_scale", low=0.05, high=2.0),
+            "source": "executor_manual_expression_assumption",
+        }
+        expression = {
+            "schema_version": EXPRESSION_VERSION,
+            "declared_by": declared,
+            "declaration": str(raw_expression.get("declaration") or ""),
+            "material_finish": clean_finishes,
+            "window_expression": clean_window,
+            "staging_note": str(raw_expression.get("staging_note") or ""),
+            "assumptions": [str(v) for v in raw_expression.get("assumptions") or []],
+            "site_verified": False,
+            "not_ai_design": True,
+        }
+
     assumptions = [str(v) for v in raw.get("assumptions") or []]
     missing = [str(v) for v in raw.get("missing") or []]
     counts = {"walls": len(walls), "partitions": len(partitions),
@@ -339,6 +433,9 @@ def normalize_presentation(raw: dict | None,
               "materials": len(materials), "cameras": len(cameras),
               "window_lights": len(window_ids), "fixtures": len(fixtures),
               "coves": len(coves)}
+    for kind in ORIGIN_KINDS:
+        counts[f"origin_{kind}"] = sum(1 for f in furniture
+                                       if f["origin_kind"] == kind)
     return {
         "schema_version": PRESENTATION_VERSION,
         "normalized": True,
@@ -355,6 +452,8 @@ def normalize_presentation(raw: dict | None,
         "walls": walls, "partitions": partitions, "openings": openings,
         "furniture": furniture, "materials": materials, "cameras": cameras,
         "lighting": lighting_out,
+        "expression": expression,
+        "expression_version": (expression or {}).get("schema_version"),
         "zone_material_map": {
             m["material_id"]: m["slot"] for m in materials},
         "assumptions": assumptions, "missing": missing,

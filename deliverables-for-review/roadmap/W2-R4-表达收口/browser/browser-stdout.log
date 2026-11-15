@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "quantities": 8,
+  "downloads": [
+    "plan.svg",
+    "render.png",
+    "package.zip"
+  ],
+  "previews": 2
+}

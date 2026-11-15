@@ -1,0 +1,132 @@
+{
+  "schema_version": "rkd-w2-r4-browser-verification.v1",
+  "checked_at": "2026-11-15T23:10:01+08:00",
+  "passed": true,
+  "node_returncode": 0,
+  "duration_seconds": 5.74,
+  "browser_observations": {
+    "job_status": "succeeded",
+    "production_revision_id": "ai-production-revision_10dd20fda122",
+    "artifact_names": [
+      "cost.html",
+      "quantity.json",
+      "manifest.json",
+      "package.zip",
+      "plan.svg",
+      "quantity.csv"
+    ],
+    "baseline_generator": "rkd-spatial-outputs.v4",
+    "baseline_presentation_assumption": true,
+    "package_missing_head": [
+      "柱网与结构构件（无依据，不编）",
+      "洁具与给排水（无依据，不编）",
+      "门窗产品与构造节点（只有洞口假设）"
+    ],
+    "plan_is_blob": true,
+    "render_is_blob": true,
+    "quantity_rows": 8,
+    "panel_has_missing": true,
+    "panel_has_unknown": true,
+    "panel_has_trial": true,
+    "panel_has_boundary": true,
+    "downloads": {
+      "plan.svg": {
+        "status": 200,
+        "bytes": 45769,
+        "sha256": "554c9c6d0f0f0ba21eacb22ed9bc5598013ab4844756b585560a46195f86cc0e"
+      },
+      "render.png": {
+        "status": 200,
+        "bytes": 1083792,
+        "sha256": "08e183139268a2672990f96853f3df4d7ef69a21a3646ea8fc1d4d829bd653c6"
+      },
+      "package.zip": {
+        "status": 200,
+        "bytes": 1117672,
+        "sha256": "bb6b63bd3c3ee29ace50b8180d387fb13b5f3399b3baed48b5c3b88ff5119605"
+      }
+    },
+    "manifest_sha_match": true,
+    "zip_sha_match": true,
+    "mobile_scroll_width": 390,
+    "mobile_overflow_elements": [
+      {
+        "tag": "BUTTON",
+        "cls": "",
+        "text": "预算与试算 0",
+        "right": 481,
+        "width": 82
+      },
+      {
+        "tag": "SPAN",
+        "cls": "",
+        "text": "0",
+        "right": 479,
+        "width": 6
+      },
+      {
+        "tag": "BUTTON",
+        "cls": "",
+        "text": "空间与工程量 0",
+        "right": 588,
+        "width": 95
+      },
+      {
+        "tag": "SPAN",
+        "cls": "",
+        "text": "0",
+        "right": 586,
+        "width": 6
+      },
+      {
+        "tag": "BUTTON",
+        "cls": "",
+        "text": "采购施工 0",
+        "right": 669,
+        "width": 69
+      },
+      {
+        "tag": "SPAN",
+        "cls": "",
+        "text": "0",
+        "right": 667,
+        "width": 6
+      },
+      {
+        "tag": "BUTTON",
+        "cls": "",
+        "text": "成果与任务 0",
+        "right": 763,
+        "width": 82
+      },
+      {
+        "tag": "SPAN",
+        "cls": "",
+        "text": "0",
+        "right": 761,
+        "width": 6
+      }
+    ],
+    "plan_previews": [
+      {
+        "layout": "A",
+        "file": "plan-preview-A.png",
+        "bytes": 215161
+      },
+      {
+        "layout": "B",
+        "file": "plan-preview-B.png",
+        "bytes": 212364
+      }
+    ],
+    "page_errors": [],
+    "passed": true
+  },
+  "external_calls": 0,
+  "keys_used": false,
+  "boundaries": [
+    "复用 W2-R4 完整验证的隔离库，未重新生成或覆盖历史",
+    "页面展示的是已登记成果；成果是内部评审，不是施工图/报价/发布",
+    "表达层为人工测试假设，非 AI 自动设计"
+  ]
+}

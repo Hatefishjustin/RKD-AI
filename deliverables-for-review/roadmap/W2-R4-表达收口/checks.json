@@ -1,0 +1,77 @@
+{
+  "task_id": "W2-R4 表达收口 V1—V3",
+  "schema_version": "rkd-w2-r4-closeout-review-checks.v1",
+  "compiled_at": "2026-11-15T23:19:35+08:00",
+  "source_baseline": "8fd7948",
+  "automatic_assertions": {
+    "http_and_render": {
+      "observed_pass": 15,
+      "observed_fail": 0,
+      "evidence": "checks-source.json"
+    },
+    "v1_v3_special": {
+      "observed_pass": 20,
+      "observed_fail": 0,
+      "evidence": "closeout/closeout-checks.json"
+    },
+    "plan_geometry": {
+      "overlaps": {
+        "A-before": 0,
+        "A-after": 0,
+        "B-before": 0,
+        "B-after": 0
+      },
+      "evidence": "visual/capture-observations.json"
+    },
+    "browser": {
+      "passed": true,
+      "evidence": "browser/verification.json"
+    },
+    "no_render_semantics": {
+      "totals": {
+        "observed_pass": 12,
+        "observed_fail": 0,
+        "not_run": 2,
+        "missing_evidence": 1
+      },
+      "evidence": "no-render-semantics/checks.json"
+    },
+    "entry_fix_regression": {
+      "observed_pass": 15,
+      "observed_fail": 0
+    },
+    "full_unittest": {
+      "evidence": "runtime/full-unittest.log"
+    },
+    "note": "自动断言只做几何/编号/闭合/契约/工程量/HTTP/渲染发生与浏览器下载对账"
+  },
+  "manual_visual_review": {
+    "status": "reported_separately",
+    "evidence": "manual-visual-review.md",
+    "note": "前后全图、入口/洽谈区局部、窗区/功能区局部、A4 打印缩放由人工逐处看图判定；自动断言不代替人工目检，也不宣布客户设计通过"
+  },
+  "totals": {
+    "automatic_pass": 35,
+    "automatic_fail": 0,
+    "not_run_in_complete_run": 0
+  },
+  "external_calls": 0,
+  "tokens": 0,
+  "images_generated_this_batch": {
+    "human_eye_renders": 2,
+    "plan_full_and_local_screenshots": 16,
+    "render_compare_crops": 12,
+    "browser_screenshots": 4,
+    "note": "均为本机 Blender/浏览器派生；before 图只读引用上一批，未重新生成"
+  },
+  "cost_amount_or_null": null,
+  "cost_status": "no_external_calls_zero_cost",
+  "boundaries": [
+    "W2 整体未放行",
+    "AD01—AD08 与用户阶段确认不变",
+    "阶段1具体版本确认前停在阶段1边界",
+    "W3/W4 未启动",
+    "不扩 PG/NAS/账号/租约平台"
+  ],
+  "not_customer_design_approval": true
+}

@@ -1,0 +1,55 @@
+{
+  "schema_version": "rkd-spatial-expression.v1",
+  "declared_by": "executor_manual_fixture_w2_r4_closeout",
+  "declaration": "V2 窗光/材质与 V3 陈设的表达输入；人工测试假设，非现场事实、非 AI 自动设计、非材料规格或施工排版",
+  "material_finish": {
+    "mat-oak": {
+      "tile": 1.6,
+      "joint_spacing_mm": 600.0,
+      "joint_width_mm": 6.0,
+      "edge_trim_mm": 80.0,
+      "note": "主要木饰面：按 600mm 板宽示意竖向板缝，贴图重复倍率 1.6（人工假设）"
+    },
+    "mat-walnut": {
+      "tile": 1.4,
+      "joint_spacing_mm": 600.0,
+      "joint_width_mm": 6.0,
+      "edge_trim_mm": 80.0,
+      "note": "次要木饰面：同尺度板缝，人工假设"
+    },
+    "mat-floor-microcement": {
+      "tile": 0.5,
+      "joint_spacing_mm": 1200.0,
+      "joint_width_mm": 4.0,
+      "edge_trim_mm": 80.0,
+      "note": "主要地面：按 1200mm 示意分缝网格与 80mm 踢脚收边，不是施工排版"
+    },
+    "mat-stone": {
+      "tile": 0.9,
+      "joint_spacing_mm": 900.0,
+      "joint_width_mm": 5.0,
+      "edge_trim_mm": 60.0,
+      "note": "石材台面/中岛：示意分缝，人工假设"
+    }
+  },
+  "window_expression": {
+    "glass_kind": "transparent",
+    "frame_width_mm": 60.0,
+    "reveal_depth_mm": 200.0,
+    "mullion_count": 1,
+    "outside_environment": "labelled_local_sky_gradient_assumption",
+    "outside_note": "窗外为本地程序化天空/远景渐变（淡蓝天光 + 暖灰地平线带），不是现场照片、不是真实外景，也不宣称照度合规",
+    "exposure_ev": -0.15,
+    "window_light_energy_scale": 0.62,
+    "source": "executor_manual_expression_assumption"
+  },
+  "staging_note": "V3 陈设按 furniture.origin_kind 分为 source_model / cc0_expression_asset / test_staging / procedural_expression；后两类只进入平面与场景表现，工程量与材料面切片恒为 0 影响",
+  "assumptions": [
+    "V2 玻璃改为透明透射材质，窗框/窗洞深度/窗外天空渐变均为本地程序化人工假设；采光方向仍只来自已建模窗洞口，不再用发光板掩盖窗口细节。",
+    "V2 木饰面与地面分缝/收边为示意几何，参数是版本化表达输入，不是材料规格、产品选型或施工排版。",
+    "V3 新增展台、器物、品牌板与配套座椅是测试陈设（人工表达假设），位置由本布局动线/分区派生，不复制固定样板坐标，不计工程量、不称 AI 设计。",
+    "品牌板只放抽象色块，不含客户品牌、不含文字设计；展品为 CC0 器物示意，不是协诚产品清单。"
+  ],
+  "site_verified": false,
+  "not_ai_design": true
+}

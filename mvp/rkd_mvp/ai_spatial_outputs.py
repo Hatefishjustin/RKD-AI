@@ -32,6 +32,8 @@ COST_VERSION = "rkd-spatial-cost.v4"
 MANIFEST_VERSION = "rkd-spatial-output-manifest.v3"
 FINISH_SCOPE_VERSION = "rkd-spatial-finish-scope.v3"
 PRESENTATION_VERSION = "rkd-spatial-presentation-fixture.v1"
+# V2/V3 有版本的表达输入：材质收边/接缝比例、窗表现与窗外假设、陈设分类
+EXPRESSION_VERSION = "rkd-spatial-expression.v1"
 
 MM2 = 1_000_000.0
 
@@ -1139,7 +1141,16 @@ def _plan_furniture_parts(presentation: dict, X, Y, pts) -> list[str]:
 def build_plan_svg(model: dict, camera: dict, quantities: dict,
                    presentation: dict | None = None) -> bytes:
     """A readable concept plan: polygons, furniture, circulation, dimensions,
-    legend, area table, camera marker and explicit missing items."""
+    legend, area table, camera marker and explicit missing items.
+
+    V1 (W2-R4 表达收口): with an explicit presentation fixture the layered
+    generator in ``plan_layers`` is used instead — geometry / short ids /
+    annotations are separate, labels are placed with collision avoidance, and a
+    closed controlled dimension chain is added. The legacy path is untouched.
+    """
+    if presentation:
+        from .plan_layers import build_layered_plan_svg
+        return build_layered_plan_svg(model, camera, quantities, presentation)
     spatial = model["spatial"]
     width = float(spatial["origin"]["boundary_mm"][0])
     height = float(spatial["origin"]["boundary_mm"][1])
@@ -1554,6 +1565,10 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
     cost = build_cost(quantities, settings=settings)
     plan = build_plan_svg(model, camera, quantities, presentation)
     scene = build_scene(model, camera, presentation)
+    plan_index = None
+    if presentation:
+        from .plan_layers import build_plan_index
+        plan_index = build_plan_index(model, camera, quantities, presentation)
     files = {
         "plan.svg": ("plan_svg", "image/svg+xml", plan),
         "quantity.json": ("development_json", "application/json", _json(quantities)),
@@ -1563,6 +1578,9 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
                       cost_html(cost, quantities)),
         "scene.json": ("development_json", "application/json", _json(scene)),
     }
+    if plan_index:
+        files["plan-index.json"] = ("development_json", "application/json",
+                                    _json(plan_index))
     manifest = {
         "schema_version": MANIFEST_VERSION,
         "baseline": frozen,
@@ -1583,6 +1601,14 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
             "assumptions": presentation["assumptions"],
             "disclaimer": presentation["disclaimer"],
         } if presentation else None),
+        "plan_index": ({
+            "schema_version": plan_index["schema_version"],
+            "label_count": len(plan_index["labels"]),
+            "dimension_chain_closed": bool(
+                plan_index["dimension_chain"]["x"]["closed"]
+                and plan_index["dimension_chain"]["y"]["closed"]),
+            "expression_accounting": plan_index["expression_accounting"],
+        } if plan_index else None),
         "files": [],
     }
     return {"frozen": frozen, "camera": camera, "quantities": quantities,

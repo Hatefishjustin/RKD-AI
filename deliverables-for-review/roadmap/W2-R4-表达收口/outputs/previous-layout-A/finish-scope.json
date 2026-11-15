@@ -1,0 +1,187 @@
+{
+  "kind": "material_face_slice",
+  "declared_by": "executor_manual_fixture_w2_r4",
+  "declaration": "材料面按精确分区多边形切片，材料编号与表达层材质映射同源；人工夹具，未经现场复核",
+  "unit": "mm",
+  "deduction_basis": "keepouts_within_scope",
+  "areas": [
+    {
+      "object_id": "FA-ZA1",
+      "name": "品牌序厅 材料面（样板假设）",
+      "polygon_mm": [
+        [
+          0.0,
+          8600.0
+        ],
+        [
+          5400.0,
+          8600.0
+        ],
+        [
+          5400.0,
+          13500.0
+        ],
+        [
+          1600.0,
+          13500.0
+        ],
+        [
+          0.0,
+          11900.0
+        ]
+      ],
+      "unit": "m2",
+      "layer": "floor_finish",
+      "material_ref": {
+        "material_id": "mat-oak",
+        "name": "白橡木饰面",
+        "spec_status": "assumption"
+      }
+    },
+    {
+      "object_id": "FA-ZA2",
+      "name": "中央中岛 材料面（样板假设）",
+      "polygon_mm": [
+        [
+          9000.0,
+          6200.0
+        ],
+        [
+          16000.0,
+          6200.0
+        ],
+        [
+          16000.0,
+          11000.0
+        ],
+        [
+          9000.0,
+          11000.0
+        ]
+      ],
+      "unit": "m2",
+      "layer": "floor_finish",
+      "material_ref": {
+        "material_id": "mat-stone",
+        "name": "石材",
+        "spec_status": "assumption"
+      }
+    },
+    {
+      "object_id": "FA-ZA3",
+      "name": "北光廊 材料面（样板假设）",
+      "polygon_mm": [
+        [
+          5400.0,
+          13300.0
+        ],
+        [
+          21800.0,
+          13300.0
+        ],
+        [
+          21800.0,
+          17700.0
+        ],
+        [
+          5400.0,
+          17700.0
+        ]
+      ],
+      "unit": "m2",
+      "layer": "floor_finish",
+      "material_ref": {
+        "material_id": "mat-floor-microcement",
+        "name": "微水泥地坪",
+        "spec_status": "assumption"
+      }
+    },
+    {
+      "object_id": "FA-ZA4",
+      "name": "南生活场景 材料面（样板假设）",
+      "polygon_mm": [
+        [
+          5400.0,
+          1800.0
+        ],
+        [
+          20400.0,
+          1800.0
+        ],
+        [
+          20400.0,
+          5200.0
+        ],
+        [
+          5400.0,
+          5200.0
+        ]
+      ],
+      "unit": "m2",
+      "layer": "floor_finish",
+      "material_ref": {
+        "material_id": "mat-walnut",
+        "name": "玫瑰木饰面",
+        "spec_status": "assumption"
+      }
+    },
+    {
+      "object_id": "FA-ZA5",
+      "name": "东洽谈 材料面（样板假设）",
+      "polygon_mm": [
+        [
+          19400.0,
+          7600.0
+        ],
+        [
+          26100.0,
+          7600.0
+        ],
+        [
+          26100.0,
+          13300.0
+        ],
+        [
+          19400.0,
+          13300.0
+        ]
+      ],
+      "unit": "m2",
+      "layer": "floor_finish",
+      "material_ref": {
+        "material_id": "mat-fabric",
+        "name": "羊毛圈绒",
+        "spec_status": "assumption"
+      }
+    },
+    {
+      "object_id": "FA-ZA6",
+      "name": "水吧服务 材料面（样板假设）",
+      "polygon_mm": [
+        [
+          2400.0,
+          1800.0
+        ],
+        [
+          5400.0,
+          1800.0
+        ],
+        [
+          5400.0,
+          6100.0
+        ],
+        [
+          2400.0,
+          6100.0
+        ]
+      ],
+      "unit": "m2",
+      "layer": "floor_finish",
+      "material_ref": {
+        "material_id": "mat-stone",
+        "name": "石材",
+        "spec_status": "assumption"
+      }
+    }
+  ]
+}
