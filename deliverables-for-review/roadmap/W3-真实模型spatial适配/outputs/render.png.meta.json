@@ -1,0 +1,9 @@
+{
+  "engine": "CYCLES-CPU",
+  "samples": 48,
+  "width": 1280,
+  "height": 800,
+  "seconds": 122.04,
+  "scene": "scene.json",
+  "assumption": "机位/材质/家具高度为渲染假设，非实测"
+}

@@ -1,0 +1,152 @@
+{
+  "schema_version": "rkd-roadmap-review-manifest.v1",
+  "batch": "W3-真实模型spatial适配",
+  "compiled_at_local": "2026-11-16",
+  "purpose": "W3 前置工程适配切片：真实模型输出形状 -> 版本化 spatial -> 同一冻结模型的平面/人眼图/受支持净量。交架构复核，不是设计批准，不是客户成果。",
+  "code_baseline": {
+    "base_commit": "5823cf74d91fe18aefa1881e47483035086775f4",
+    "base_commit_subject": "docs: bind confirmed stage1 basemap version and local runtime scope",
+    "code_head": "工作区新增文件（尚未提交；见 code-diff.md / changes.patch）",
+    "note": "本批新增 4 个源码/契约文件；没有修改任何既有业务程序、数据库迁移、AD 或旧证据。基准提交只用于定位起点，不代表全部工作区历史。"
+  },
+  "versions": {
+    "adapter": "rkd-realmodel-spatial-adapter.v1",
+    "spatial": "rkd-realmodel-spatial.v1",
+    "mapping": "realmodel-output-to-spatial.v1",
+    "vocab": "rkd-design-vocab.v1",
+    "geometry_rule": "rkd-realmodel-adapter-geometry.v1",
+    "basemap": "rkd-site-basemap.v2",
+    "output_generator": "rkd-spatial-outputs.v4",
+    "scene": "rkd-spatial-scene.v2",
+    "renderer": "blender-4.2.9 Cycles CPU (local, deterministic)"
+  },
+  "confirmed_basemap_input": {
+    "path": "deliverables-for-review/roadmap/W2-R4-表达收口/basemap/",
+    "files_verified": 5,
+    "byte_for_byte_against": "W2-stage1-binding-architect/stage1-binding-and-next.md",
+    "boundary_mm": [
+      26170,
+      17920
+    ]
+  },
+  "artifacts": [
+    {
+      "path": "contracts/v1/realmodel-spatial-adaptation.schema.json",
+      "role": "adaptation_contract_schema",
+      "bytes": 3710,
+      "sha256": "a6a85e1ddfa28ac38955dc5e811dd23996a93a4dc61aa377562a8b08d74bf548"
+    },
+    {
+      "path": "contracts/v1/realmodel-spatial-option.schema.json",
+      "role": "additive_output_document_schema",
+      "bytes": 33868,
+      "sha256": "af66e47da6acbd384a6ddfe99adcd7295c73974f0c661507e08ace62b52c9ba1"
+    },
+    {
+      "path": "mvp/rkd_mvp/realmodel_spatial_adapter.py",
+      "role": "adapter_implementation",
+      "bytes": 39178,
+      "sha256": "a4fcc3d13b79abcddcb5e77b64ec000a0c7ab989277cbf8fb38eb338d365a853"
+    },
+    {
+      "path": "scripts/verify_realmodel_spatial.py",
+      "role": "verification_harness",
+      "bytes": 26909,
+      "sha256": "89444e59fe4f3bc1cb76c6a6afec46d94c1acd1936c972fd28f11182b373e110"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-真实模型spatial适配/checks.json",
+      "role": "checks",
+      "bytes": 21096,
+      "sha256": "5168f6fa24be03dcae049799072abf17b18d7cab38621529516560bd7222c528"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-真实模型spatial适配/adaptation-contract.json",
+      "role": "contract_instance_generated_from_code",
+      "bytes": 2958,
+      "sha256": "64e90b8cd7846e8d1a16cf790831c30da6b056fc5fe2a8e02a1bd6583549a6ec"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-真实模型spatial适配/field-source-loss.json",
+      "role": "field_source_loss_inventory",
+      "bytes": 7697,
+      "sha256": "96ff628d1e261d988d789b040730a3ed46fadf8a3e594bcbcc47c39e91a03bd8"
+    },
+    {
+      "path": "var/evidence/roadmap/W3-真实模型spatial适配/after/verification.json",
+      "role": "run_evidence",
+      "bytes": 20640,
+      "sha256": "55826230c36e47c56a455db6dd551768e51b68352b5bd613c2e648d7ebaf2599"
+    }
+  ],
+  "stage2_engineering_samples": [
+    {
+      "path": "outputs/model.json",
+      "bytes": 21377,
+      "sha256": "7997be66181c169965635650c6881006f922794563657215934601697132ac5a",
+      "note": "冻结候选（离线夹具，design_origin=fixture）"
+    },
+    {
+      "path": "outputs/plan.svg",
+      "bytes": 8798,
+      "sha256": "927d1c673cbb968c30150eba80cf989badc2146818e90b0eb423243e7e93fbc8",
+      "note": "可读平面：来自 spatial.zones 精确多边形；非施工图"
+    },
+    {
+      "path": "outputs/scene.json",
+      "bytes": 2003,
+      "sha256": "2d5ba01ebf161a4575a39cc12e64492ebc06fa531d622693dd3e9435fb69bc79",
+      "note": "同一冻结模型的场景规格；机位/家具高度为假设"
+    },
+    {
+      "path": "outputs/render.png",
+      "bytes": 1024095,
+      "sha256": "b3f09811516131963921e2e70682beac33e5492598e5ee8ca0733b4871ceb116",
+      "note": "本机 Blender 人眼图，内部工程样张，明显达不到客户交付级"
+    },
+    {
+      "path": "outputs/quantity.json",
+      "bytes": 3143,
+      "sha256": "f1376cd50d5481f7bd3867e11ee2c772a1f514b29af078a647feab6146ddd916",
+      "note": "受支持净量；无价源项 value=null"
+    },
+    {
+      "path": "outputs/quantity.csv",
+      "bytes": 1366,
+      "sha256": "200f3d063b304c286dc41b709bfcddfbaf51fd45b67861efe79b813698c5a257",
+      "note": "净量 CSV"
+    },
+    {
+      "path": "outputs/cost.html",
+      "bytes": 2596,
+      "sha256": "b0745fe300aa90cba43a68686b1464a88c86bc37d0eb8e547a222e9171f947f9",
+      "note": "成本草稿；formal_quote=false"
+    },
+    {
+      "path": "outputs/manifest.json",
+      "bytes": 8973,
+      "sha256": "b8329b3a72db977bb8f1e076827f18ebe66a4c738f8458c12e61b7cab3ca810c",
+      "note": "同源成果清单"
+    },
+    {
+      "path": "outputs/package.zip",
+      "bytes": 10950,
+      "sha256": "220a7f2b38b4f749d4e1494bbcc0e32d1d1abb62e43687b77f5d529aa735bf7a",
+      "note": "同源成果包；ZIP 与清单逐项复核通过"
+    }
+  ],
+  "separation": {
+    "original_sources_read_only": true,
+    "old_review_packets_untouched": true,
+    "old_evidence_untouched": true,
+    "external_model_calls": 0,
+    "external_images_sent": 0,
+    "tokens": 0,
+    "cost_cny": 0,
+    "keys_used": false,
+    "keys_written": false,
+    "ad_modified": false,
+    "pg_nas_account_expanded": false,
+    "w4_started": false
+  }
+}
