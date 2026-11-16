@@ -1,0 +1,169 @@
+{
+  "schema_version": "rkd-roadmap-review-manifest.v1",
+  "batch": "W3-adapter-remediation",
+  "compiled_at_local": "2026-11-16",
+  "base_commit": "dcc11f7",
+  "head": "工作区新增未提交",
+  "purpose": "R01-R06 整改复核包；交架构复核；不是设计批准/客户成果/正式候选",
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_cny": 0,
+  "keys_used": false,
+  "regression": {
+    "full_unit_suite": {
+      "tests": 262,
+      "result": "OK",
+      "duration_seconds": 185.634
+    }
+  },
+  "artifacts": [
+    {
+      "path": "scripts/repro_w3_adapter_negatives.py",
+      "role": "shared_before_after_repro",
+      "bytes": 11423,
+      "sha256": "2f442a497f0f59f3fd5bccd070a1ccdf37f506c5353b6d3223f5f797f0d96fee"
+    },
+    {
+      "path": "scripts/verify_w3_adapter_remediation.py",
+      "role": "verification_harness",
+      "bytes": 33087,
+      "sha256": "3598aaa4dfa5158cb9235f8678808e7f1328452565881c614b9dc91f6bff348b"
+    },
+    {
+      "path": "mvp/rkd_mvp/realmodel_spatial_adapter.py",
+      "role": "adapter_v2",
+      "bytes": 59892,
+      "sha256": "d209a49dfe74a95ae9993888363aef101755def48551706cc34d8727739a39b7"
+    },
+    {
+      "path": "contracts/v1/realmodel-spatial-adaptation.v2.schema.json",
+      "role": "contract_schema_v2",
+      "bytes": 5514,
+      "sha256": "80a4a26fe64d034c758a3ccb5a63bb5717ce53ff93485ff9c2e6b46aa129fd10"
+    },
+    {
+      "path": "contracts/v1/realmodel-spatial-option.v2.schema.json",
+      "role": "output_schema_v2",
+      "bytes": 34336,
+      "sha256": "0a824df57115211ed7442b67a4a3e47ccfe8cc19b744999b4f8dddee5b7efbe2"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-adapter-remediation/review-packet.md",
+      "role": "review_packet",
+      "bytes": 5979,
+      "sha256": "f5e2cb7214ec706b22737c043a4bafbce9cc294d5000daceabff6ac9c2603bd7"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-adapter-remediation/checks.json",
+      "role": "checks",
+      "bytes": 15478,
+      "sha256": "429309a020f3314927de2c1de3f2c0b8db301f8f404f2a940d993759cfcfdf33"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-adapter-remediation/code-diff.md",
+      "role": "code_diff",
+      "bytes": 1448,
+      "sha256": "49267388e7ff5fcf9b0057047302744706afe3390b1ad7b875d8d8c76c1504e2"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-adapter-remediation/changes.patch",
+      "role": "changes_patch",
+      "bytes": 147426,
+      "sha256": "684c543246390cb8e934fe98fddb6f1554ffc9c2e5c976e015fe66ec371b0d9e"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-adapter-remediation/adaptation-contract.json",
+      "role": "contract_instance_v2",
+      "bytes": 4631,
+      "sha256": "a1e2e5248ad6f929b2a0f5ce19cac84167e6315c8a7859754c9a2fc18301bce7"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-adapter-remediation/contract-evolution.md",
+      "role": "contract_evolution_decision",
+      "bytes": 4065,
+      "sha256": "8dbfff2cbd40e1fea2cd1b8db2339c800519ed9f9f844a547aa9f88b68985312"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-adapter-remediation/positive-negative-cases.md",
+      "role": "positive_negative_cases",
+      "bytes": 3810,
+      "sha256": "b807039363ac86f8eb78368eea3ee7cd12c7be8f1373b941bf66dfc4a1fc9ef3"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-adapter-remediation/decision-request.md",
+      "role": "decision_request",
+      "bytes": 2125,
+      "sha256": "583b3bce40d86729b87135fe26c2fc0eac1cfdf8f76e4779fa0f574c1437321d"
+    },
+    {
+      "path": "var/evidence/roadmap/W3-adapter-remediation/before/repro/repro.json",
+      "role": "before_repro",
+      "bytes": 177844,
+      "sha256": "3a8fd65d5efdc325d80898a3edfd95d2ee0d548e25084aa2cac14939613e98ea"
+    },
+    {
+      "path": "var/evidence/roadmap/W3-adapter-remediation/after/repro/repro.json",
+      "role": "after_repro",
+      "bytes": 3725,
+      "sha256": "3486b66d6cba9e0799904a3d415a3cb6c4169b597996316273bbb56d5b940ae2"
+    },
+    {
+      "path": "var/evidence/roadmap/W3-adapter-remediation/after/verification.json",
+      "role": "run_evidence",
+      "bytes": 15245,
+      "sha256": "52dce53851456d163aa5dac0891b8e38e4954e97b176c205a17eb0ed0d1523c8"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "outputs/cost.html",
+      "bytes": 2593,
+      "sha256": "800f7efd5f601c4f4e866bd8db6f3898b1968f2cc619b3f3d18d434a3410f5e4"
+    },
+    {
+      "path": "outputs/manifest.json",
+      "bytes": 9776,
+      "sha256": "37e1b38ad0863e6b553d8e2b4e23d7b50f51c4646c4ac1955b339d8a6ecc6945"
+    },
+    {
+      "path": "outputs/model.json",
+      "bytes": 76079,
+      "sha256": "1d072c5e283ee3f2ebdc960f5fa69bc606c5aae625cb1a1dd47fbd59cbe89757"
+    },
+    {
+      "path": "outputs/package.zip",
+      "bytes": 1044353,
+      "sha256": "f0a55cb1573f9a4b7e7493b200e72707bc963aa8cbe8889f11ad31824bff2816"
+    },
+    {
+      "path": "outputs/plan.svg",
+      "bytes": 8306,
+      "sha256": "65f63db5c3d06703702c310b61d03b8f7d12d303303343e7964042b40b9ff62f"
+    },
+    {
+      "path": "outputs/quantity.csv",
+      "bytes": 1363,
+      "sha256": "5117eab7db5975bb424c65b068b423bdbee1ab7a3db0bd215ac33d499618d0a9"
+    },
+    {
+      "path": "outputs/quantity.json",
+      "bytes": 3123,
+      "sha256": "6d6710e46c4bf14c80516bd317bce0c5b7a168fb064ebf2cb92979531f2951d9"
+    },
+    {
+      "path": "outputs/render.png",
+      "bytes": 1032769,
+      "sha256": "0bfe0457624fd571b3f0f1579d44dd0752c3a94bfa230e7d53f7b65b4419899b"
+    },
+    {
+      "path": "outputs/render.png.meta.json",
+      "bytes": 316,
+      "sha256": "48b145cfdabc1403dcd8210a3a53feb13d5f45b7f8c2864c5db61e0da2a1e3c6"
+    },
+    {
+      "path": "outputs/scene.json",
+      "bytes": 1641,
+      "sha256": "50f4524dc9312019791e801c9c24a687c657b76106ca1c10eafea1112677a19a"
+    }
+  ]
+}

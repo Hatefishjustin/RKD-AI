@@ -1,0 +1,148 @@
+{
+  "contract_version": "rkd-realmodel-spatial-adaptation.v2",
+  "adapter_version": "rkd-realmodel-spatial-adapter.v2",
+  "spatial_version": "rkd-realmodel-spatial.v2",
+  "mapping_version": "realmodel-output-to-spatial.v2",
+  "vocab_version": "rkd-design-vocab.v1",
+  "basemap": {
+    "contract_version": "rkd-site-basemap.v2",
+    "boundary_mm": [
+      26170,
+      17920
+    ],
+    "files": [
+      {
+        "name": "阶段1_底图核对.pdf",
+        "bytes": 3346417,
+        "sha256": "7a8c212b84d1c01001291fc62145a729f6a90d293c8fe92bb3213fd221aad35b"
+      },
+      {
+        "name": "阶段1_底图核对.html",
+        "bytes": 9890,
+        "sha256": "7a927286ad003af1afd1c2ace678dc8d4485004e5d711e2d6280d6a8cca46d1c"
+      },
+      {
+        "name": "01_真实场地底图.svg",
+        "bytes": 45225,
+        "sha256": "bfa02621c86f300e51c3a88669b45a2c730cda5071eb80f0f37b1b7ff0fc3023"
+      },
+      {
+        "name": "底图数据.json",
+        "bytes": 8894,
+        "sha256": "195a2a78d7400e019c3b64043eaf2736810c80cc648299ec3e51c725a6ff31e7"
+      },
+      {
+        "name": "00_原始平面图_正向.png",
+        "bytes": 363414,
+        "sha256": "6a3840dfc731848694c972c30c9209a2f855dadd54555c6349afc448e459488b"
+      }
+    ]
+  },
+  "vocabularies": {
+    "zone_role": {
+      "foyer": "arrival",
+      "primary_display": "primary_display",
+      "deep_talk": "negotiation",
+      "buffer": "transition",
+      "service": "service"
+    },
+    "furniture_type": {
+      "reception_desk": "reception_desk",
+      "island": "island",
+      "table_chairs": "table_chairs",
+      "sofa": "sofa",
+      "plant": "plant",
+      "display_case": "display_case",
+      "storage": "storage",
+      "pantry": "pantry",
+      "service_counter": "service_counter",
+      "light_feature": "light_feature"
+    },
+    "wall_type": [
+      "curved_intent",
+      "feature",
+      "screen",
+      "solid"
+    ],
+    "sequence_role": [
+      "climax",
+      "closing",
+      "development",
+      "opening",
+      "rest"
+    ]
+  },
+  "rules": {
+    "object_identity": "模型 object_id 稳定保留，重复/空拒绝",
+    "coordinate_units": "m->mm ×1000 精确，亚毫米拒绝",
+    "geometry_mode": "矩形四角化 same_rectangle，non_rectangular_capability=false",
+    "curved_intent": "仅语义，arc_geometry_generated=false，不生成弧墙",
+    "parent_chain": "intended_parent 仅语义，伪父链需可核验证据否则拒绝",
+    "source_separation": "transport origin 与 design_origin 分离，run_refs 必须解析到哈希记录",
+    "unknown_policy": "未知 value=null 不填 0",
+    "version_reconciliation": "稳定 ID 逐字段 diff，父链变化显式记录",
+    "expression_separation": "W2 人工表达不导入真实来源",
+    "structured_basemap_binding": "保留区/入口/未核项从 SHA 验证的 JSON+SVG 提取并逐项对账",
+    "verifiable_source": "real_model 声明需真实运行记录且哈希/模型/提示/输入/项目一致；fixture 标夹具",
+    "axis_fidelity": "动线按矩形主轴，近方标 unknown；branch/loop 保真",
+    "final_package_render": "渲染后再以单一文件集生成清单+ZIP，render.png 为必需文件，下载字节校验"
+  },
+  "negative_cases": [
+    {
+      "id": "R01a",
+      "name": "空保留区",
+      "expect": "KEEPOUT_SET_MISMATCH",
+      "before": "接受",
+      "after": "拒绝"
+    },
+    {
+      "id": "R01b",
+      "name": "改入口未声明假设",
+      "expect": "ENTRANCE_ASSUMPTION_UNDECLARED",
+      "before": "接受",
+      "after": "拒绝"
+    },
+    {
+      "id": "R02a",
+      "name": "伪 run_refs",
+      "expect": "RUN_RECORD_MISSING",
+      "before": "接受且矛盾",
+      "after": "拒绝"
+    },
+    {
+      "id": "R02b",
+      "name": "错候选哈希",
+      "expect": "CANDIDATE_SHA_MISMATCH",
+      "before": "接受",
+      "after": "拒绝"
+    },
+    {
+      "id": "R02c",
+      "name": "伪父链",
+      "expect": "PARENT_UNVERIFIED",
+      "before": "接受",
+      "after": "拒绝"
+    },
+    {
+      "id": "R04a",
+      "name": "纵向动线横线",
+      "expect": "N/A",
+      "before": "horizontal",
+      "after": "vertical"
+    },
+    {
+      "id": "R04b",
+      "name": "branch 被改 loop",
+      "expect": "N/A",
+      "before": "loop",
+      "after": "branch"
+    },
+    {
+      "id": "R06",
+      "name": "diff 字段覆盖",
+      "expect": "N/A",
+      "before": "0 fields",
+      "after": ">=6 groups"
+    }
+  ]
+}
