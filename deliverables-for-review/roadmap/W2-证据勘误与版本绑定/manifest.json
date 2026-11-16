@@ -1,0 +1,64 @@
+{
+  "schema_version": "rkd-w2-evidence-erratum-manifest.v1",
+  "compiled_at": "2026-11-16T21:10:00+08:00",
+  "review_head": "86e08b02e00e886cb43f6961bd2dad46398894fd",
+  "scope": "仅校验本批次新文件；不对旧包 W2-R4-表达收口 作出全量当前校验通过结论",
+  "external_calls": 0,
+  "cost_amount_or_null": null,
+  "old_pack_exception": {
+    "pack": "deliverables-for-review/roadmap/W2-R4-表达收口/manifest.json",
+    "entry": "basemap-confirmation-card.md",
+    "registered_bytes": 4761,
+    "registered_sha256": "4b7cb1d76d3c6f88d78df5f7d51a03f5989abe92ba5e1595f752cf01aece42f5",
+    "snapshot_of_commit": "f6b8145",
+    "current_head": "86e08b0",
+    "current_bytes": 7778,
+    "current_sha256": "9ef6aa30986ed30af54338bfbbb9ac998eea55b0f8e1bf71a91c636cfb7729c4",
+    "result": "该项与 HEAD 当前卡片失配；旧包与运行证据未改字节、保持现状",
+    "rule": "引用旧包须标明此例外，不得称其全部文件当前校验通过"
+  },
+  "portable_card_copy": {
+    "path": "basemap-confirmation-card.md",
+    "bytes": 7778,
+    "sha256": "9ef6aa30986ed30af54338bfbbb9ac998eea55b0f8e1bf71a91c636cfb7729c4",
+    "matches_head_current": true
+  },
+  "stage1_version_binding": {
+    "status": "unproven_needs_user_short_binding",
+    "user_project_stage": 1,
+    "external_model_calls": 0
+  },
+  "files": [
+    {
+      "path": "README-勘误说明.md",
+      "bytes": 4145,
+      "sha256": "d87c2dce5056a2c9448d5ac9a0cb6863aaa5d527e14d6dbe9a0e6700845ac453",
+      "kind": "review_document"
+    },
+    {
+      "path": "basemap-confirmation-card.md",
+      "bytes": 7778,
+      "sha256": "9ef6aa30986ed30af54338bfbbb9ac998eea55b0f8e1bf71a91c636cfb7729c4",
+      "kind": "review_document"
+    },
+    {
+      "path": "stage1-recognition-trace.md",
+      "bytes": 6952,
+      "sha256": "27834dd09778c98a7a145e3aa9cb542d2e4ee65d922a63a61d4409b27bdb0c7b",
+      "kind": "review_document"
+    },
+    {
+      "path": "field-coverage-erratum.md",
+      "bytes": 5756,
+      "sha256": "b6862b02fa3f04efa321d6f0fe946336ec7ab3b1416a290bda21bd328075657d",
+      "kind": "review_document"
+    },
+    {
+      "path": "handoff-to-architect.md",
+      "bytes": 4019,
+      "sha256": "b638327b64cd428a3217259e39226bd411a8ff091a1b4da8e099e3dd127e0f2c",
+      "kind": "review_document"
+    }
+  ],
+  "note": "manifest.json 自身不计入清单。旧包 manifest/运行证据、source/ 原件、var/ 均保持现状未改。"
+}
