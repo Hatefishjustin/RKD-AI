@@ -1,0 +1,181 @@
+{
+  "schema_version": "rkd-roadmap-review-manifest.v1",
+  "batch": "W3-control-trust-remediation",
+  "compiled_at_local": "2026-11-16",
+  "base_commit": "4d2ac76",
+  "head": "工作区新增未提交",
+  "purpose": "六项整改复核包；交架构复核；不是设计批准/客户成果/正式采用",
+  "external_calls": 0,
+  "tokens": 0,
+  "cost_cny": 0,
+  "keys_used": false,
+  "regression": {
+    "full_unit_suite": {
+      "tests": 262,
+      "result": "OK",
+      "duration_seconds": 170.206
+    }
+  },
+  "not_run": [
+    "HTTP 下载",
+    "真实模型调用",
+    "浏览器 UI 可操作链",
+    "正式采用/发布"
+  ],
+  "artifacts": [
+    {
+      "path": "mvp/rkd_mvp/controlled_run_ledger.py",
+      "role": "controlled_run_ledger",
+      "bytes": 7281,
+      "sha256": "7a258567c13bb0e509bd69b20c751b0e3cd920e0ed8751cb91bc38a8557e7d33"
+    },
+    {
+      "path": "mvp/rkd_mvp/realmodel_spatial_adapter.py",
+      "role": "adapter_v3",
+      "bytes": 72156,
+      "sha256": "e1d302bd943850bbf4b96c03837b1f00d4f9505949d4005947f9eef00d17953b"
+    },
+    {
+      "path": "mvp/rkd_mvp/ai_design_option_provider.py",
+      "role": "provider_site_entrance_fix",
+      "bytes": 85041,
+      "sha256": "da48878f0ba1f5d35ec7198a189417bb9a5836efeb7223571a0dd61871262b1e"
+    },
+    {
+      "path": "mvp/rkd_mvp/ai_spatial_outputs.py",
+      "role": "plan_legend_fix",
+      "bytes": 95169,
+      "sha256": "e050a6bf160df2490698ffc7878010f53187b9d64509a71b242ec08c53bd3284"
+    },
+    {
+      "path": "scripts/repro_w3_control_trust_negatives.py",
+      "role": "six_case_repro",
+      "bytes": 12914,
+      "sha256": "26ad7304595a3118f3cec9bd0b2cb209cb0b8943c6f4eb3a7faa34366a95ed97"
+    },
+    {
+      "path": "scripts/verify_w3_control_trust.py",
+      "role": "verification_harness",
+      "bytes": 31517,
+      "sha256": "1f5a91b7901d0960b0de604b47702551e5a5ab2ca3f35f69e54c48e9d949da59"
+    },
+    {
+      "path": "contracts/v2/ai-design-option.schema.json",
+      "role": "authoritative_top_level_v2_schema",
+      "bytes": 35174,
+      "sha256": "7227682eeffa92def00e50362a017c986f2fcc89bfca4e8521ee4a6c97ca9a0b"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-control-trust-remediation/review-packet.md",
+      "role": "review_packet",
+      "bytes": 5857,
+      "sha256": "476ed9532ebab711936741ee5a5e8c0634a2481a4f5e868bd2f3c35d494f2f8e"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-control-trust-remediation/checks.json",
+      "role": "checks",
+      "bytes": 8188,
+      "sha256": "353e479771cc0d3987d5b1d749ffdb5934277a790ad3760a51051b095638887f"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-control-trust-remediation/code-diff.md",
+      "role": "code_diff",
+      "bytes": 1447,
+      "sha256": "6fd283000a5f1030a4e4217600da9ba6d4103f77420d13528b48da22bb5b36c5"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-control-trust-remediation/changes.patch",
+      "role": "changes_patch",
+      "bytes": 131812,
+      "sha256": "44e51d40b62d73d7621b59e09dc281ae99b38c4b8c2e2faaff4ea7eecc36ab3f"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-control-trust-remediation/contract-evolution.md",
+      "role": "contract_evolution",
+      "bytes": 3226,
+      "sha256": "3d6cd5cfd73ce29b14ed6eb7521ebb68c273425e398bd3f059a5f1133faadd44"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-control-trust-remediation/positive-negative-cases.md",
+      "role": "positive_negative_cases",
+      "bytes": 4195,
+      "sha256": "b45eb4d9a628b5051baf89835bf99ef9df19398d9c7e38cc42c63a7562d212f2"
+    },
+    {
+      "path": "deliverables-for-review/roadmap/W3-control-trust-remediation/decision-request.md",
+      "role": "decision_request",
+      "bytes": 2178,
+      "sha256": "21f9c6abca4528ceb4f868f137361d98c6b5a066bc769f1bc0aad8c6cc9bee60"
+    },
+    {
+      "path": "var/evidence/roadmap/W3-control-trust-remediation/before/repro/repro.json",
+      "role": "before_repro",
+      "bytes": 2599,
+      "sha256": "589014e9e25cebe73309a524eb8db2da43aa6055130383c1cb6320c12ed43df4"
+    },
+    {
+      "path": "var/evidence/roadmap/W3-control-trust-remediation/after/repro/repro.json",
+      "role": "after_repro",
+      "bytes": 2578,
+      "sha256": "8d0043a2f3d4e77350a8cc802379a4a6b22a2e86604ae6e4681eb987979baf73"
+    },
+    {
+      "path": "var/evidence/roadmap/W3-control-trust-remediation/after/verification.json",
+      "role": "run_evidence",
+      "bytes": 7949,
+      "sha256": "0d92ab1d2adf9c165373c888871ded6244efc54ecb6295d643ac7de1af277911"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "outputs/cost.html",
+      "bytes": 2596,
+      "sha256": "896b7153c1c7d3ad4e3d050a11f71399e7e66b9de7c80c5a27774b6e0c90545a"
+    },
+    {
+      "path": "outputs/manifest.json",
+      "bytes": 10277,
+      "sha256": "3e8c25c47d79b45d34abbe45bbf54beecaeaa40be3e61d663ad0c929cd653659"
+    },
+    {
+      "path": "outputs/model.json",
+      "bytes": 81909,
+      "sha256": "aed06a8b6a2f444fba279b0be91d9c462676bd2cbc23b6c9c9ea6354b59c3f6d"
+    },
+    {
+      "path": "outputs/package.zip",
+      "bytes": 1053354,
+      "sha256": "5fea402b3aa92a165f975360a2b358ada028d6c58382efcc06c8de794f57a62d"
+    },
+    {
+      "path": "outputs/plan.svg",
+      "bytes": 8459,
+      "sha256": "0b510c575d4c0bf41d8736791e24a3fad7e5a9f7ad67cac33b7a5dd9364aa3fd"
+    },
+    {
+      "path": "outputs/quantity.csv",
+      "bytes": 1366,
+      "sha256": "56be207689d309d486b074a695b6cac234b51949037ebbbcd3eaf186abb6bad6"
+    },
+    {
+      "path": "outputs/quantity.json",
+      "bytes": 3143,
+      "sha256": "3f01e56b976412e67ab8b09e97b3cf1ea130b18014ce476820997d8f474f861f"
+    },
+    {
+      "path": "outputs/render.png",
+      "bytes": 1041510,
+      "sha256": "06819b0474ddba00e8a70a6ecc59215d7e007349a9d7f8b90c772d5a4a0544f2"
+    },
+    {
+      "path": "outputs/render.png.meta.json",
+      "bytes": 220,
+      "sha256": "2fe3c5daf5be8fa9e75dda2224297f1d5451004b8abe10cca3d8adaf20895876"
+    },
+    {
+      "path": "outputs/scene.json",
+      "bytes": 1814,
+      "sha256": "afbc964f061f5627bff20f66541af80381538850d8ca3c8ab33a7eeca2f0b822"
+    }
+  ]
+}

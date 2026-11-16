@@ -802,10 +802,20 @@ class RealModelDesignOptionProvider:
         side = str(candidate.get("entrance_side") or "left")
         if side not in {"left", "right", "top", "bottom"}:
             side = "left"
-        point = {"left": [_decimal(Decimal("0")), _decimal(length * Decimal("0.125"))],
-                 "right": [_decimal(width), _decimal(length * Decimal("0.125"))],
-                 "bottom": [_decimal(width * Decimal("0.125")), _decimal(Decimal("0"))],
-                 "top": [_decimal(width * Decimal("0.125")), _decimal(length)]}[side]
+        # Entrance is part of the SITE SNAPSHOT: when the caller supplies a
+        # source-bound entrance point (a declared concept assumption), the model
+        # must be generated and validated on that same point.  Never silently
+        # fall back to a side-derived default while the site declares another.
+        site_entrance = site.get("entrance") if isinstance(site.get("entrance"), dict) else {}
+        site_point = site_entrance.get("point")
+        if isinstance(site_point, (list, tuple)) and len(site_point) == 2:
+            point = [_decimal(_num(site_point[0], "site.entrance.point.x")),
+                     _decimal(_num(site_point[1], "site.entrance.point.y"))]
+        else:
+            point = {"left": [_decimal(Decimal("0")), _decimal(length * Decimal("0.125"))],
+                     "right": [_decimal(width), _decimal(length * Decimal("0.125"))],
+                     "bottom": [_decimal(width * Decimal("0.125")), _decimal(Decimal("0"))],
+                     "top": [_decimal(width * Decimal("0.125")), _decimal(length)]}[side]
         path_width = min(Decimal("1.2"), length * Decimal("0.15"))
         obstacles = []
         for item in site.get("obstacles", []):

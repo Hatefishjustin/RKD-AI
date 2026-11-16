@@ -1243,14 +1243,23 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict,
                          f'font-size="9" fill="#0f172a">{escape(f["object_id"])}</text>')
     for c in spatial["circulation"]:
         path = c["path_mm"]
-        parts.append('<polyline points="' + pts(path) + '" fill="none" stroke="#dc2626" '
-                     'stroke-width="3" stroke-dasharray="10 5"/>')
+        ambiguous = str(c.get("axis") or "") == "ambiguous_unknown"
+        # An ambiguous/zero-length centreline is NOT drawn as a connection: draw
+        # its declared footprint outline and label it unverified instead.
+        if ambiguous and c.get("footprint_polygon_mm"):
+            parts.append('<polygon points="' + pts(c["footprint_polygon_mm"]) + '" fill="none" '
+                         'stroke="#dc2626" stroke-width="2" stroke-dasharray="4 4"/>')
+        else:
+            parts.append('<polyline points="' + pts(path) + '" fill="none" stroke="#dc2626" '
+                         'stroke-width="3" stroke-dasharray="10 5"/>')
         if not presentation:
-            mx, my = (float(path[0][0]) + float(path[1][0])) / 2, \
-                     (float(path[0][1]) + float(path[1][1])) / 2
+            mx, my = (float(path[0][0]) + float(path[-1][0])) / 2, \
+                     (float(path[0][1]) + float(path[-1][1])) / 2
+            status = ("主轴未定/连通未验证" if ambiguous else
+                      "模型声明宽度·非实测净宽")
             parts.append(f'<text x="{X(mx):.1f}" y="{Y(my)-6:.1f}" font-size="10" '
                          f'fill="#b91c1c">动线 {escape(c["object_id"])} · '
-                         f'{c["width_mm"]}mm</text>')
+                         f'声明 {c["width_mm"]}mm · {status}</text>')
     for fx in (spatial["ceiling"].get("fixtures") or []):
         x, y = float(fx.get("x") or 0), float(fx.get("y") or 0)
         parts.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="4.5" fill="#f59e0b" '
@@ -1320,13 +1329,13 @@ def build_plan_svg(model: dict, camera: dict, quantities: dict,
     lx = ox + width * scale + 60
     ly = oy + 10
     parts.append(f'<text x="{lx}" y="{ly}" font-size="13" font-weight="700" fill="#111827">图例</text>')
+    # Width shown on the plan is the MODEL-DECLARED rectangle width, never a
+    # measured net passage width.  Unverified main axes are labelled as such.
     legend = [("#dbeafe", "功能分区（多边形，非墙体）"), ("#cbd5e1", "家具（目录尺寸）"),
-              ("#dc2626", "主动线（净宽 mm）"), ("#f59e0b", "灯具点位（意向）"),
+              ("#dc2626", "主动线（模型声明宽度，非实测净宽）"),
+              ("#f59e0b", "灯具点位（意向）"),
               ("#7c3aed", "人眼机位（推导）"), ("url(#keepout)", "保留区（扣除）")]
     if presentation:
-        circulation_width = (spatial["circulation"][0]["width_mm"]
-                             if spatial.get("circulation") else "unknown")
-        legend[2] = ("#dc2626", f"主动线（净宽 {circulation_width}mm）")
         legend[4] = ("#7c3aed", "人眼机位（人工假设视点）")
         legend += [("#3f3f46", "周界墙（人工假设厚度/高度）"),
                    ("#78716c", "隔断（显式对象，非分区边界）"),

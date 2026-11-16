@@ -29,8 +29,10 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-ADAPTER_VERSION = "rkd-realmodel-spatial-adapter.v2"
-SPATIAL_VERSION = "rkd-realmodel-spatial.v2"
+ADAPTER_VERSION = "rkd-realmodel-spatial-adapter.v3"
+TOP_LEVEL_VERSION = "rkd-ai-design-option.v2"   # unique authoritative contract revision
+OUTPUT_SPATIAL_VERSION = "rkd-realmodel-spatial.v2"
+SPATIAL_VERSION = OUTPUT_SPATIAL_VERSION  # backwards alias for prior verifiers
 MAPPING_VERSION = "realmodel-output-to-spatial.v2"
 VOCAB_VERSION = "rkd-design-vocab.v1"
 GEOMETRY_RULE_VERSION = "rkd-realmodel-adapter-geometry.v2"
@@ -326,7 +328,8 @@ def reconcile_site(basemap_dir: Any, site: dict) -> dict:
                                               f"调用者遗漏底图未核项：{sorted(missing)[:4]}", stage="basemap")
     return {**facts,
             "entrance": {"side": facts["entrance_fact"]["side"], "point_m": point_m,
-                         "width_m": caller_ent.get("width_m", 1.8), "status": facts["entrance_fact"]["status"],
+                         "width_m": caller_ent.get("width_m") or 1.8,  # declared assumption, site_verified=false
+                         "status": facts["entrance_fact"]["status"],
                          "site_verified": False,
                          "point_source": ("basemap_inferred" if fact_point is not None and point_m == fact_point
                                           else "caller_concept_assumption"),
@@ -335,14 +338,29 @@ def reconcile_site(basemap_dir: Any, site: dict) -> dict:
 
 
 # ------------------------------------------------------- R02: source evidence
-def verify_source(provenance: dict, candidate: dict) -> dict:
-    import os
-    from pathlib import Path
+def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict:
+    """Verify provenance against a CONTROLLED ledger, never caller JSON files.
+
+    ``run_ledger`` must be a ``ControlledRunLedger`` supplied by the trusted
+    verification service.  With no ledger (or no matching issued run id) an
+    unverifiable source stays ``unknown`` and a ``real_model`` claim is
+    rejected.  A candidate SHA / record SHA computed by the caller is NOT
+    authenticity evidence.
+    """
+    try:
+        from .controlled_run_ledger import RunLedgerError
+    except ImportError:  # loaded by path in an offline repro harness
+        import sys as _sys
+        from pathlib import Path as _Path
+        _here = str(_Path(__file__).resolve().parent)
+        if _here not in _sys.path:
+            _sys.path.insert(0, _here)
+        from controlled_run_ledger import RunLedgerError
 
     prov = provenance or {}
     origin = prov.get("design_origin") or {}
-    kind = str(origin.get("kind") or "unknown")
-    if kind not in {"real_model", "human", "fixture", "unknown"}:
+    declared_kind = str(origin.get("kind") or "unknown")
+    if declared_kind not in {"real_model", "human", "fixture", "unknown"}:
         raise RealModelSpatialAdaptationError("DESIGN_ORIGIN_INVALID", "design_origin.kind 非法", stage="source")
     candidate_sha = sha256_hex(candidate)
     declared_sha = str(prov.get("sha256") or "")
@@ -356,89 +374,73 @@ def verify_source(provenance: dict, candidate: dict) -> dict:
         raise RealModelSpatialAdaptationError("MODEL_FRAME_UNKNOWN_OR_MISMATCH",
                                               "模型原生边界必须提供且与确认 v2 底图一致", stage="basemap")
 
+    project_id = str(prov.get("project_id") or "unknown_project")
     run_refs = [str(r) for r in (origin.get("run_refs") or [])]
-    run_evidence = []
-    if kind == "real_model":
-        # Non-empty refs are NOT evidence: each must resolve to a real, hashed record.
-        if not run_refs:
-            raise RealModelSpatialAdaptationError("DESIGN_ORIGIN_UNVERIFIED",
-                                                  "real_model 声明没有任何可核验运行记录", stage="source")
-        for ref in run_refs:
-            path = Path(ref)
-            if not path.is_absolute():
-                path = Path(os.environ.get("RKD_VERIFY_ROOT", ".")) / path
-            if not path.is_file():
-                raise RealModelSpatialAdaptationError("RUN_RECORD_MISSING", f"运行记录不存在：{ref}", stage="source")
-            raw = path.read_bytes()
-            try:
-                record = json.loads(raw.decode("utf-8"))
-            except (ValueError, UnicodeDecodeError):
-                raise RealModelSpatialAdaptationError("RUN_RECORD_INVALID", f"运行记录不可解析：{ref}", stage="source")
-            declared = str(record.get("record_sha256") or "")
-            # record_sha256 is the SHA of the record with that field blanked.
-            check = dict(record); check["record_sha256"] = ""
-            if declared != sha256_hex(check):
-                raise RealModelSpatialAdaptationError("RUN_RECORD_SHA_MISMATCH",
-                                                      f"运行记录 SHA 不符：{ref}", stage="source")
-            if record.get("kind") != "real_model_run" or record.get("simulated") is not False:
-                raise RealModelSpatialAdaptationError("RUN_RECORD_NOT_REAL",
-                                                      f"记录不是真实模型运行：{ref}", stage="source")
-            if str(record.get("candidate_sha256") or "") != candidate_sha:
-                raise RealModelSpatialAdaptationError("RUN_RECORD_CANDIDATE_MISMATCH",
-                                                      f"运行记录的候选摘要与当前候选不符：{ref}", stage="source")
-            for field in ("input_hash", "output_sha256", "model", "prompt_version", "project_id", "generated_at"):
-                if not record.get(field):
-                    raise RealModelSpatialAdaptationError("RUN_RECORD_INCOMPLETE",
-                                                          f"运行记录缺 {field}：{ref}", stage="source")
-            run_evidence.append({"ref": ref, "record_sha256": declared,
-                                 "model": record["model"], "prompt_version": record["prompt_version"],
-                                 "input_hash": record["input_hash"], "output_sha256": record["output_sha256"],
-                                 "project_id": record["project_id"], "generated_at": record["generated_at"]})
-        generation_real_model = True
-        origin_kind = "real_model_output"
-    else:
-        # Offline/human/unknown: no self-declared real source; refs may only be
-        # auditable simulated stub records and never change the kind to real_model.
-        for ref in run_refs:
-            path = Path(ref)
-            if not path.is_absolute():
-                path = Path(os.environ.get("RKD_VERIFY_ROOT", ".")) / path
-            if not path.is_file():
-                raise RealModelSpatialAdaptationError("RUN_RECORD_MISSING", f"引用记录不存在：{ref}", stage="source")
-            record = json.loads(path.read_text(encoding="utf-8"))
-            if record.get("simulated") is not True or str(record.get("candidate_sha256") or "") != candidate_sha:
-                raise RealModelSpatialAdaptationError("RUN_RECORD_UNVERIFIABLE",
-                                                      f"模拟运行记录不可核验或候选摘要不符：{ref}", stage="source")
-            run_evidence.append({"ref": ref, "simulated": True,
-                                 "record_sha256": sha256_bytes(path.read_bytes()),
-                                 "candidate_sha256": record["candidate_sha256"]})
-        generation_real_model = False
-        origin_kind = {"fixture": "fixture_shape", "human": "human_edited", "unknown": "unknown_origin"}[kind]
-
     parent = prov.get("parent_revision_id")
-    parent_verified = False
-    if parent:
-        pe = prov.get("parent_evidence") or {}
-        if not isinstance(pe, dict) or not pe.get("candidate_sha256") or not pe.get("record_ref"):
-            raise RealModelSpatialAdaptationError("PARENT_UNVERIFIED",
-                                                  f"父版本 {parent} 无可核验证据", stage="source")
-        ppath = Path(str(pe["record_ref"]))
-        if not ppath.is_absolute():
-            ppath = Path(os.environ.get("RKD_VERIFY_ROOT", ".")) / ppath
-        if not ppath.is_file():
-            raise RealModelSpatialAdaptationError("PARENT_RECORD_MISSING", f"父记录不存在：{ppath}", stage="source")
-        precord = json.loads(ppath.read_text(encoding="utf-8"))
-        if str(precord.get("candidate_sha256") or "") != str(pe["candidate_sha256"]):
-            raise RealModelSpatialAdaptationError("PARENT_SHA_MISMATCH", "父候选摘要不符", stage="source")
-        parent_verified = True
+    parent_evidence = prov.get("parent_evidence") or {}
+    parent_candidate_sha = (str(parent_evidence.get("candidate_sha256") or "")
+                            if isinstance(parent_evidence, dict) else "")
+    if parent and not parent_candidate_sha:
+        raise RealModelSpatialAdaptationError("PARENT_UNVERIFIED",
+                                              f"父修订 {parent} 未提供父候选摘要", stage="source")
 
-    return {"kind": kind, "origin_kind": origin_kind, "generation_real_model": generation_real_model,
-            "candidate_sha256": candidate_sha, "run_refs": run_refs, "run_evidence": run_evidence,
-            "parent_revision_id": parent, "parent_verified": parent_verified,
-            "declared_by": str(origin.get("declared_by") or "not_declared"),
-            "declaration": origin.get("declaration"),
-            "diff_baseline": ("source_parent" if parent_verified else
-                              ("unknown_missing_parent" if parent else "none_root"))}
+    verified_records: list[dict] = []
+    if run_ledger is None:
+        if declared_kind == "real_model" or run_refs:
+            raise RealModelSpatialAdaptationError(
+                "RUN_LEDGER_ABSENT",
+                "未提供受控运行账本；自报运行记录/摘要不能作为真实性证据", stage="source")
+    else:
+        for ref in run_refs:
+            try:
+                rec = run_ledger.verify(
+                    ref, project_id=project_id, candidate_sha256=candidate_sha,
+                    parent_revision_id=parent, parent_candidate_sha256=parent_candidate_sha or None)
+            except RunLedgerError as error:
+                raise RealModelSpatialAdaptationError(error.code, error.message, stage="source") from error
+            verified_records.append(rec)
+
+    if declared_kind == "real_model":
+        if not verified_records:
+            raise RealModelSpatialAdaptationError(
+                "DESIGN_ORIGIN_UNVERIFIED",
+                "real_model 声明没有受控账本可核验的真实运行记录", stage="source")
+        if any(r.get("simulated") is not False or r.get("kind") != "real_model_run"
+               for r in verified_records):
+            raise RealModelSpatialAdaptationError("RUN_RECORD_NOT_REAL",
+                                                  "账本记录不是非模拟真实模型运行", stage="source")
+        kind, origin_kind, generation_real_model = "real_model", "real_model_output", True
+    elif declared_kind == "unknown" and verified_records:
+        # Evidence exists but provenance cannot be safely promoted: stay unknown.
+        kind, origin_kind, generation_real_model = "unknown", "unknown_origin", False
+    else:
+        kind = declared_kind
+        origin_kind = {"fixture": "fixture_shape", "human": "human_edited", "unknown": "unknown_origin"}[kind]
+        generation_real_model = False
+
+    parent_verified = bool(verified_records) and parent is not None
+    run_evidence = [{
+        "run_id": r["run_id"], "kind": r["kind"], "simulated": r["simulated"],
+        "issuer": r["issuer"], "project_id": r["project_id"],
+        "candidate_sha256": r["candidate_sha256"], "input_hash": r["input_hash"],
+        "output_sha256": r["output_sha256"], "model": r["model"],
+        "prompt_version": r["prompt_version"], "request_id": r["request_id"],
+        "parent_revision_id": r.get("parent_revision_id"),
+        "parent_candidate_sha256": r.get("parent_candidate_sha256"),
+        "signature_present": bool(r.get("issuer_signature")),
+    } for r in verified_records]
+    return {
+        "kind": kind, "origin_kind": origin_kind, "generation_real_model": generation_real_model,
+        "candidate_sha256": candidate_sha, "run_refs": run_refs, "run_evidence": run_evidence,
+        "project_id": project_id, "parent_revision_id": parent,
+        "parent_verified": parent_verified,
+        "declared_by": str(origin.get("declared_by") or "not_declared"),
+        "declaration": origin.get("declaration"),
+        "diff_baseline": ("source_parent" if parent_verified else
+                          ("unknown_missing_parent" if parent else "none_root")),
+        "source_verification_note": ("受控账本签发并验签；自报文件/哈希不作为证据" if verified_records
+                                     else "无可核验运行记录；来源未升级为真实"),
+    }
 
 
 # ------------------------------------------------------- R04: axis-aware path
@@ -460,11 +462,11 @@ def path_centreline(poly: list[list[int]], segment_id: str) -> dict:
 
 # ------------------------------------------------------- main adaptation
 def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
-                    provenance: dict, created_at: str) -> dict:
+                    provenance: dict, created_at: str, run_ledger=None) -> dict:
     if not isinstance(candidate, dict):
         raise RealModelSpatialAdaptationError("NOT_A_CANDIDATE", "候选不是 JSON 对象", stage="source")
     recon = reconcile_site(basemap_dir, site)
-    source = verify_source(provenance, candidate)
+    source = verify_source(provenance, candidate, run_ledger=run_ledger)
     kind = source["kind"]
     ledger: list[dict] = []
     unknowns: list[dict] = []
@@ -508,7 +510,8 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
                       "polygon_mm": poly, "area_sqm": round(_shoelace_m2(poly), 4),
                       "source_refs": [str(x) for x in (z.get("source_refs") or [])],
                       "geometry_mode": "rect_four_corner_from_metric_rect", "non_rectangular_capability": False,
-                      "raw_zone_role": raw_role, "declared_min_area_m2": z.get("min_area_m2")})
+                      "raw_zone_role": raw_role, "declared_min_area_m2": z.get("min_area_m2"),
+                      "material_binding": str(z["material_id"]) if z.get("material_id") else None})
         id_map.append({"source_object_id": oid, "target_object_id": oid, "group": "zones"})
 
     circulation = []
@@ -570,7 +573,10 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
         item = {"object_id": oid, "catalog_id": f"realmodel:{family}", "x_mm": cx, "y_mm": cy,
                 "w_mm": w_mm, "d_mm": d_mm, "rot": 0,
                 "rotation_source": "not_in_model_output_assumed_axis_aligned", "catalog_spec_known": False,
-                "source_refs": [str(x) for x in (f.get("source_refs") or [])]}
+                "source_refs": [str(x) for x in (f.get("source_refs") or [])],
+                "material_binding": str(f["material_id"]) if f.get("material_id") else None}
+        if f.get("statement"):
+            item["statement"] = str(f["statement"])
         intended = f.get("parent_object_id") or f.get("intended_parent")
         if intended:
             item["intended_parent"] = str(intended)
@@ -621,7 +627,27 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
                            entry, "enum", "unsupported"))
     for r in candidate.get("relationships") or []:
         if isinstance(r, dict):
-            semantic.append({"kind": "relationship", "value": r, "geometry": False})
+            semantic.append({"kind": "relationship", "value": r, "geometry": False,
+                             "relation_id": r.get("relation_id"),
+                             "source_refs": list(r.get("source_refs") or [])})
+            ledger.append(_row(f"relationships[{r.get('relation_id')}]", "spatial.semantic_intents.relationship",
+                               str(r.get("relation_id") or ""), r, r, "preserved"))
+    if candidate.get("narrative"):
+        semantic.append({"kind": "narrative", "value": candidate["narrative"], "geometry": False})
+        ledger.append(_row("strategy.narrative", "spatial.semantic_intents.narrative", "strategy",
+                           candidate["narrative"], candidate["narrative"], "preserved"))
+    # Field-level provenance from the persisted-candidate conversion: nothing is
+    # silently dropped; every unsupported kind/geometry is visible downstream.
+    mapping_ledger = list(candidate.get("field_ledger") or [])
+    for row in mapping_ledger:
+        ledger.append({**row, "stage": "persisted_candidate_conversion"})
+    source_revision = candidate.get("source_revision") or {}
+    for u in (candidate.get("mapping_losses") or []):
+        if u.get("status") in {"unsupported_unknown", "unknown"}:
+            unsupported.append({"item": str(u.get("item") or "unmapped"),
+                                "source_field": "persisted_candidate_conversion",
+                                "reason": str(u.get("loss") or u.get("status")),
+                                "status": "unsupported_unknown"})
 
     materials = []
     for m in candidate.get("materials") or []:
@@ -667,7 +693,7 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
     statement = str(candidate.get("concept") or candidate.get("statement") or
                     (candidate.get("strategy") or {}).get("statement") or "候选适配，非设计成果")
     model = {
-        "schema_version": "rkd-ai-design-option.v1",
+        "schema_version": TOP_LEVEL_VERSION,
         "set_id": str(prov.get("set_id") or "offline-set"),
         "option_id": str(prov.get("option_id") or f"{artifact_id}:{candidate.get('strategy_id', 'candidate')}"),
         "revision_no": int(prov.get("revision_no") or 1), "parent_revision_id": source["parent_revision_id"],
@@ -707,7 +733,7 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
                        "provider_name": "RealModelSpatialAdapter", "model_id": prov.get("model_id"),
                        "real_model": source["generation_real_model"],
                        "adapter_version": ADAPTER_VERSION, "prompt_version": str(prov.get("prompt_version") or "offline"),
-                       "schema_version": "rkd-ai-design-option.v1",
+                       "schema_version": TOP_LEVEL_VERSION,
                        "config_hash": sha256_hex({"adapter": ADAPTER_VERSION, "mapping": MAPPING_VERSION,
                                                   "vocab": VOCAB_VERSION}),
                        "input_hash": sha256_hex({"candidate": candidate, "site": recon}),
@@ -718,6 +744,15 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
         "change_reason": "v2 离线适配：底图结构化对账 + 来源证据核验；未调用模型、未生成设计",
         "actor_id": str(prov.get("actor_id") or "offline-adapter"), "created_at": created_at,
         "structure_signature": {},
+        "site_snapshot": {"contract": recon["contract_version"],
+                          "boundary_mm": recon["boundary_mm"],
+                          "sha256": recon["boundary_sha256"],
+                          "site_verified": False,
+                          "unverified_facts": recon["unverified_facts"],
+                          "entrance_fact": recon["entrance_fact"],
+                          "entrance_assumption": recon["entrance"]},
+        "source_revision": source_revision,
+        "mapping_losses": list(candidate.get("mapping_losses") or []),
         "spatial": {
             "schema_version": SPATIAL_VERSION, "unit": "mm",
             "origin": {"coordinate_system": "site-local-southwest-origin-x-east-y-north",
@@ -760,14 +795,19 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
                 "source_verification": {"kind": kind, "candidate_sha256": source_sha,
                                         "run_evidence_count": len(source["run_evidence"]),
                                         "generation_real_model": source["generation_real_model"],
-                                        "parent_verified": source["parent_verified"]},
+                                        "parent_verified": source["parent_verified"],
+                                        "project_id": source.get("project_id"),
+                                        "run_evidence": source["run_evidence"],
+                                        "note": source["source_verification_note"]},
+                "source_revision": source_revision,
                 "object_id_map": id_map,
                 "losses": [
                     {"item": "zones[].polygon_mm", "loss": "same_rectangle_four_corners_only"},
                     {"item": "narrative/sequence/intent/relationships", "loss": "semantic_only_not_geometry"},
                     {"item": "walls incl. curved_intent", "loss": "no_wall_or_arc_geometry"},
                     {"item": "material specs/prices/camera/illuminance/height", "loss": "not_in_model_output"},
-                ],
+                ] + list(candidate.get("mapping_losses") or []),
+                "mapping_losses": list(candidate.get("mapping_losses") or []),
                 "field_ledger": ledger, "diff_baseline": source["diff_baseline"],
             },
             "semantic_intents": semantic,
@@ -833,41 +873,95 @@ def candidate_from_persisted(model: dict) -> tuple[dict, dict]:
     The authoritative geometry is objects[].shape (metres) exactly as the
     provider stored it.  Returns (candidate_shape, derivation_note).
     """
-    if not isinstance(model, dict) or str(model.get("schema_version") or "") != "rkd-ai-design-option.v1":
+    if not isinstance(model, dict) or str(model.get("schema_version") or "") not in {
+            "rkd-ai-design-option.v1", TOP_LEVEL_VERSION}:
         raise RealModelSpatialAdaptationError("PERSISTED_SCHEMA_MISMATCH",
-                                              "输入不是已持久化的 rkd-ai-design-option.v1 候选", stage="source")
+                                              "输入不是已持久化的 rkd-ai-design-option 候选", stage="source")
     gen = model.get("generation") or {}
+    model_sha = sha256_hex(model)
+    source_revision = {"option_id": model.get("option_id"),
+                       "revision_no": model.get("revision_no"),
+                       "model_sha256": model_sha,
+                       "parent_revision_id": model.get("parent_revision_id")}
     cand: dict[str, Any] = {
         "strategy_id": (model.get("strategy") or {}).get("strategy_id") or "persisted",
         "concept": (model.get("strategy") or {}).get("statement") or "已持久化候选",
-        "tradeoffs": (model.get("strategy") or {}).get("tradeoffs") or [],
+        "tradeoffs": list((model.get("strategy") or {}).get("tradeoffs") or []),
         "zones": [], "walls": [], "furniture": [], "paths": [], "connections": [],
         "circulation_kind": (model.get("circulation") or {}).get("kind"),
         "materials": [], "cost_unknown": [],
+        "relationships": [dict(r) for r in (model.get("relationships") or []) if isinstance(r, dict)],
+        "narrative": dict((model.get("strategy") or {}).get("narrative") or {}),
+        "source_revision": source_revision,
+        "field_ledger": [],
+        "mapping_losses": [],
     }
+    # Per-object material bindings from the authoritative materials list.
+    material_index = {str(m.get("material_id")): m for m in (model.get("materials") or [])
+                      if isinstance(m, dict)}
+    losses: list[dict] = []
+    unsupported_kinds: list[dict] = []
+    unsupported_geometry: list[dict] = []
+    bound_materials: set[str] = set()
+
+    def ledger(src: str, dst: str, oid: str, sv: Any, tv: Any, status: str) -> None:
+        cand["field_ledger"].append({"source_field": src, "target_field": dst, "object_id": oid,
+                                     "source_value": sv, "target_value": tv,
+                                     "unit": "enum", "status": status})
+
     for obj in model.get("objects") or []:
-        if not isinstance(obj, dict) or not isinstance(obj.get("shape"), dict):
+        if not isinstance(obj, dict):
+            losses.append({"item": "非对象条目", "reason": "objects[] 含非 JSON 对象", "status": "unknown"})
             continue
-        shape = {**obj["shape"]}
+        oid = str(obj.get("object_id") or "")
+        shape = obj.get("shape")
+        if not isinstance(shape, dict) or str(shape.get("type") or "rect") != "rect":
+            unsupported_geometry.append({"object_id": oid, "kind": obj.get("kind"),
+                                         "shape_type": (shape or {}).get("type") if isinstance(shape, dict) else None,
+                                         "reason": "非矩形几何，适配器不凭空生成形状"})
+            losses.append({"item": f"geometry:{oid}", "source_value": shape,
+                           "target_value": None, "status": "unsupported_unknown"})
+            ledger(f"objects[{oid}].shape", "(不生成几何)", oid, shape, None, "unsupported")
+            continue
         props = obj.get("properties") or {}
-        base = {"object_id": obj.get("object_id"), "name": obj.get("name"),
+        base = {"object_id": oid, "name": obj.get("name"),
                 "x": shape.get("x"), "y": shape.get("y"),
-                "width": shape.get("width"), "length": shape.get("length")}
+                "width": shape.get("width"), "length": shape.get("length"),
+                "source_refs": list(obj.get("source_refs") or [])}
+        # Object-level material id wins over strategy-level intent.
+        mat_id = obj.get("material_id") or props.get("material_id")
+        if mat_id:
+            bound_materials.add(str(mat_id))
+            base["material_id"] = str(mat_id)
         kind = str(obj.get("kind") or "")
         if kind == "functional_zone":
             cand["zones"].append({**base, "zone_role": props.get("zone_role"),
                                   "sequence_role": props.get("sequence_role"), "intent": props.get("intent"),
-                                  "min_area_m2": obj.get("min_area_m2"),
-                                  "source_refs": obj.get("source_refs") or []})
+                                  "min_area_m2": obj.get("min_area_m2")})
+            ledger(f"objects[{oid}].properties", f"zones[{oid}].role/intent", oid, props, props, "preserved")
         elif kind == "partition":
             cand["walls"].append({**base, "wall_type": props.get("wall_type", "screen")})
         elif kind == "display_object":
-            cand["furniture"].append({**base, "furniture_type": props.get("furniture_type"),
-                                      "intended_parent": props.get("intended_parent"),
-                                      "focal": props.get("focal", False),
-                                      "source_refs": obj.get("source_refs") or []})
+            # focal objects keep their focal structure instead of becoming a
+            # plain display_object (the previous version lost that fact).
+            is_focal = bool(props.get("focal")) or oid.startswith("focal:")
+            entry = {**base, "furniture_type": props.get("furniture_type"),
+                     "intended_parent": props.get("intended_parent"),
+                     "focal": is_focal, "statement": props.get("statement")}
+            if is_focal:
+                cand["focal_point"] = entry
+                ledger(f"objects[{oid}].properties.focal", f"focal_point[{oid}]", oid,
+                       True, True, "preserved")
+            else:
+                cand["furniture"].append(entry)
         elif kind == "entrance_marker":
             cand.setdefault("entrance_buffers", []).append(base)
+        else:
+            unsupported_kinds.append({"object_id": oid, "kind": kind,
+                                      "reason": "未知对象种类；不猜测映射，不静默丢弃"})
+            losses.append({"item": f"kind:{oid}", "source_value": kind,
+                           "target_value": None, "status": "unsupported_unknown"})
+            ledger(f"objects[{oid}].kind", "(unsupported)", oid, kind, None, "unsupported")
     for seg in (model.get("circulation") or {}).get("segments") or []:
         if isinstance(seg, dict) and isinstance(seg.get("shape"), dict):
             cand["paths"].append({"segment_id": seg.get("segment_id"), **seg["shape"]})
@@ -876,26 +970,139 @@ def candidate_from_persisted(model: dict) -> tuple[dict, dict]:
         if isinstance(mat, dict):
             cand["materials"].append({"material_id": mat.get("material_id"), "name": mat.get("name"),
                                       "intent": mat.get("intent"), "source_refs": mat.get("source_refs") or []})
+    for mid in sorted(bound_materials - set(material_index)):
+        losses.append({"item": f"material_binding:{mid}", "source_value": mid,
+                       "target_value": None, "status": "unknown",
+                       "reason": "对象引用了主材料表不存在的 material_id"})
     for u in (((model.get("cost") or {}).get("unknown_items")) or []):
         if isinstance(u, dict) and u.get("statement"):
             cand["cost_unknown"].append(str(u["statement"]))
+    if not cand["relationships"]:
+        losses.append({"item": "relationships", "source_value": model.get("relationships"),
+                       "target_value": [], "status": "unknown",
+                       "reason": "源候选无关系对象，目标不虚构关系"})
+    cand["mapping_losses"] = [
+        {"item": l.get("item"), "loss": l.get("reason") or l.get("status"),
+         "source_value": l.get("source_value"), "target_value": l.get("target_value"),
+         "status": l.get("status"), "stage": "persisted_candidate_conversion"}
+        for l in losses]
     note = {"source": "persisted_rkd-ai-design-option.v1",
+            "source_revision": source_revision,
             "objects_read": len(model.get("objects") or []),
             "segments_read": len(cand["paths"]),
+            "relationships_read": len(cand["relationships"]),
+            "material_bindings": sorted(bound_materials),
+            "focal_mapped": bool(cand.get("focal_point")),
+            "unsupported_kinds": unsupported_kinds,
+            "unsupported_geometry": unsupported_geometry,
+            "losses": losses,
+            "field_ledger_count": len(cand["field_ledger"]),
             "provider_kind": gen.get("provider_kind"), "real_model": gen.get("real_model"),
             "generated_at": gen.get("generated_at"),
             "option_id": model.get("option_id"), "revision_no": model.get("revision_no")}
     return cand, note
 
 
+def verify_persisted_site_snapshot(model: dict, site: dict, basemap_dir: Any) -> dict:
+    """P1: prove the persisted candidate was GENERATED on the same site snapshot.
+
+    Checks boundary frame, entrance point and every keep-out obstacle against
+    the hash-verified site.  A candidate drawn on a test boundary with a
+    different entrance must fail here, not be silently re-bound later.
+    """
+    recon = reconcile_site(basemap_dir, site)
+    b = model.get("boundary") or {}
+    bw, bh = _m_to_mm(b.get("width"), "persisted.width"), _m_to_mm(b.get("length"), "persisted.length")
+    if (bw, bh) != tuple(recon["boundary_mm"]):
+        raise RealModelSpatialAdaptationError("PERSISTED_FRAME_MISMATCH",
+                                              f"持久候选边界 {bw}x{bh} 与场地快照 {recon['boundary_mm']} 不符",
+                                              stage="site")
+    ent = b.get("entrance") or {}
+    ep = ent.get("point") or []
+    if len(ep) != 2:
+        raise RealModelSpatialAdaptationError("PERSISTED_ENTRANCE_MISSING", "持久候选没有入口点", stage="site")
+    ex, ey = _m_to_mm(ep[0], "entrance.x"), _m_to_mm(ep[1], "entrance.y")
+    expected = recon["entrance"].get("point_m")
+    if not expected:
+        raise RealModelSpatialAdaptationError("SITE_ENTRANCE_ASSUMPTION_MISSING", "场地快照没有入口假设", stage="site")
+    if (ex, ey) != (_m_to_mm(expected[0], "site.x"), _m_to_mm(expected[1], "site.y")):
+        raise RealModelSpatialAdaptationError("PERSISTED_ENTRANCE_MISMATCH",
+                                              f"持久候选入口 ({ex},{ey})mm 与场地快照假设不符；不得静默重绑",
+                                              stage="site")
+    # Obstacles in the persisted candidate must be EXACTLY the snapshot keep-outs.
+    got = {}
+    for o in b.get("obstacles") or []:
+        sh = o.get("shape") or {}
+        got[str(o.get("object_id"))] = tuple(_m_to_mm(sh.get(k), f"obstacle.{k}")
+                                             for k in ("x", "y", "width", "length"))
+    expected_obs = {}
+    for k in recon["keepouts"]:
+        expected_obs[str(k["object_id"])] = tuple(_m_to_mm(v, "keepout") for v in k["rect_m"])
+    if got != expected_obs:
+        raise RealModelSpatialAdaptationError("PERSISTED_KEEPOUT_MISMATCH",
+                                              f"持久候选保留区 {got} 与场地快照 {expected_obs} 不符", stage="site")
+    return {"boundary_mm": [bw, bh], "entrance_mm": [ex, ey], "keepouts": got,
+            "site_snapshot_sha256": recon["boundary_sha256"], "status": "matched"}
+
+
+def validate_candidate_geometry_against_site(model: dict, site: dict, basemap_dir: Any) -> dict:
+    """P1: no circulation segment may overlap a confirmed keep-out, and every
+    segment must touch the declared entrance.  Conflicts are hard failures."""
+    recon = reconcile_site(basemap_dir, site)
+    obstacles = [tuple(_m_to_mm(v, "keepout") for v in k["rect_m"]) for k in recon["keepouts"]]
+    overlaps: list[dict] = []
+    for seg in (model.get("circulation") or {}).get("segments") or []:
+        sh = seg.get("shape") or {}
+        if str(sh.get("type") or "rect") != "rect":
+            raise RealModelSpatialAdaptationError("PERSISTED_GEOMETRY_UNSUPPORTED",
+                                                  "持久候选动线段不是 rect，几何能力不足", stage="site")
+        sx, sy, sw, sl = (_m_to_mm(sh.get(k), f"seg.{k}") for k in ("x", "y", "width", "length"))
+        for i, (ox, oy, ow, ol) in enumerate(obstacles):
+            iw = min(sx + sw, ox + ow) - max(sx, ox)
+            ih = min(sy + sl, oy + ol) - max(sy, oy)
+            if iw > 0 and ih > 0:
+                overlaps.append({"segment_id": seg.get("segment_id"), "keepout_index": i,
+                                 "overlap_mm2": iw * ih})
+    if overlaps:
+        raise RealModelSpatialAdaptationError("CIRCULATION_BLOCKED_BY_KEEPOUT",
+                                              f"动线与确认底图保留区交叠：{overlaps[:3]}", stage="site")
+    # entrance must lie on at least one segment boundary
+    expected = recon["entrance"].get("point_m")
+    if not expected:
+        raise RealModelSpatialAdaptationError("SITE_ENTRANCE_ASSUMPTION_MISSING", "场地快照没有入口假设", stage="site")
+    ex, ey = _m_to_mm(expected[0], "site.x"), _m_to_mm(expected[1], "site.y")
+    connected = False
+    for seg in (model.get("circulation") or {}).get("segments") or []:
+        sh = seg.get("shape") or {}
+        sx, sy = _m_to_mm(sh.get("x", 0), "seg.x"), _m_to_mm(sh.get("y", 0), "seg.y")
+        sw, sl = _m_to_mm(sh.get("width", 0), "seg.w"), _m_to_mm(sh.get("length", 0), "seg.l")
+        if sx <= ex <= sx + sw and sy <= ey <= sy + sl:
+            connected = True
+            break
+    if not connected:
+        raise RealModelSpatialAdaptationError("ENTRANCE_NOT_CONNECTED_TO_SNAPSHOT",
+                                              f"入口 ({ex},{ey})mm 未落在任何动线段上", stage="site")
+    return {"overlaps": [], "entrance_connected": True,
+            "segments_checked": len((model.get("circulation") or {}).get("segments") or []),
+            "keepouts_checked": len(obstacles)}
+
+
 def adapt_persisted_candidate(model: dict, *, site: dict, basemap_dir: Any,
-                              provenance: dict, created_at: str) -> tuple[dict, dict]:
+                              provenance: dict, created_at: str, run_ledger=None,
+                              skip_site_integrity: bool = False) -> tuple[dict, dict]:
+    integrity = {"status": "not_run"}
+    if not skip_site_integrity:
+        integrity = verify_persisted_site_snapshot(model, site, basemap_dir)
+        geometry = validate_candidate_geometry_against_site(model, site, basemap_dir)
+        integrity["geometry"] = geometry
     cand, note = candidate_from_persisted(model)
     adapted = adapt_candidate(cand, site=site, basemap_dir=basemap_dir,
-                              provenance=provenance, created_at=created_at)
+                              provenance=provenance, created_at=created_at,
+                              run_ledger=run_ledger)
     note["adapter_version"] = ADAPTER_VERSION
     note["candidate_sha256"] = sha256_hex(cand)
     note["spatial_model_hash"] = sha256_hex(adapted)
+    note["site_snapshot_integrity"] = integrity
     return adapted, note
 
 
