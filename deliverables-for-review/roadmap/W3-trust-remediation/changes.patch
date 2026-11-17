@@ -1,0 +1,3382 @@
+diff --git a/contracts/v2/ai-design-option.schema.json b/contracts/v2/ai-design-option.schema.json
+index fb337ce..d8cb852 100644
+--- a/contracts/v2/ai-design-option.schema.json
++++ b/contracts/v2/ai-design-option.schema.json
+@@ -150,7 +150,51 @@
+     },
+     "site_snapshot": {
+       "type": "object",
+-      "additionalProperties": true
++      "additionalProperties": true,
++      "required": [
++        "sha256",
++        "basemap_files_sha256",
++        "boundary_mm",
++        "entrance_assumption"
++      ],
++      "properties": {
++        "sha256": {
++          "type": "string",
++          "pattern": "^[0-9a-f]{64}$"
++        },
++        "basemap_files_sha256": {
++          "type": "string",
++          "pattern": "^[0-9a-f]{64}$"
++        },
++        "boundary_mm": {
++          "type": "array",
++          "minItems": 2,
++          "maxItems": 2,
++          "items": {
++            "type": "integer"
++          }
++        },
++        "entrance_assumption": {
++          "type": "object",
++          "additionalProperties": true,
++          "required": [
++            "kind",
++            "value_m",
++            "site_verified"
++          ],
++          "properties": {
++            "kind": {
++              "const": "concept_replaceable"
++            },
++            "site_verified": {
++              "const": false
++            }
++          }
++        },
++        "site_verified": {
++          "const": false
++        }
++      }
+     },
+     "source_revision": {
+       "type": "object",
+@@ -438,6 +482,10 @@
+               },
+               "shape": {
+                 "$ref": "#/$defs/shape"
++              },
++              "properties": {
++                "type": "object",
++                "additionalProperties": true
+               }
+             }
+           }
+@@ -1388,9 +1436,10 @@
+             "contract_version",
+             "design_origin",
+             "site_source",
+-            "boundary_sha256",
+             "site_verified",
+-            "parent_link_status"
++            "parent_link_status",
++            "site_snapshot_sha256",
++            "basemap_files_sha256"
+           ],
+           "properties": {
+             "origin_kind": {
+@@ -1406,6 +1455,14 @@
+             },
+             "site_verified": {
+               "const": false
++            },
++            "site_snapshot_sha256": {
++              "type": "string",
++              "pattern": "^[0-9a-f]{64}$"
++            },
++            "basemap_files_sha256": {
++              "type": "string",
++              "pattern": "^[0-9a-f]{64}$"
+             }
+           }
+         },
+diff --git a/mvp/rkd_mvp/admission.py b/mvp/rkd_mvp/admission.py
+new file mode 100644
+index 0000000..41e8d40
+--- /dev/null
++++ b/mvp/rkd_mvp/admission.py
+@@ -0,0 +1,218 @@
++"""One controlled admission entrance for formal design candidates.
++
++The 2253899 review found three separate holes:
++
++* ``adapt_persisted_candidate(skip_site_integrity=True)`` bypassed the only site
++  gate and still produced an output that looked adoptable;
++* the real service (``ai_design_option_service``) still loaded only the v1
++  schema, so v2 was "authoritative" only inside a verification script;
++* "old consumer rejects v2" was asserted by comparing version strings, not by
++  running a consumer that dispatches on version.
++
++This module makes the gate explicit and shared:
++
++``ContractRegistry``
++    Version dispatch.  An unknown version raises ``UNSUPPORTED_SCHEMA_VERSION``
++    (a real consumer decision), not merely a schema mismatch.  A registry built
++    with only v1 is the honest stand-in for the OLD consumer.
++
++``admit_document``
++    The single entrance: contract version -> site snapshot binding -> geometry
++    (keep-outs, entrance connection, source/legacy/spatial projection) -> source
++    evidence through the controlled verifier.  Returns an ``admission`` block
++    with ``status``/``adoptable``/``scope`` that is persisted with the revision.
++    ``not_validated`` is never adoptable.
++
++No network, no external keys.
++"""
++from __future__ import annotations
++
++import copy
++import json
++from pathlib import Path
++from typing import Any
++
++from jsonschema import Draft202012Validator
++
++from . import realmodel_spatial_adapter as A
++
++CONTRACTS = {
++    "rkd-ai-design-option.v1": "contracts/v1/ai-design-option.schema.json",
++    "rkd-ai-design-option.v2": "contracts/v2/ai-design-option.schema.json",
++}
++ROOT = Path(__file__).resolve().parents[2]
++LEGACY_BOUNDARY_SOURCES = {"test_parameters_not_site_verified",
++                           "manual_boundary_not_site_verified"}
++
++
++class UnsupportedSchemaVersion(Exception):
++    code = "UNSUPPORTED_SCHEMA_VERSION"
++
++    def __init__(self, version: Any, supported: list[str]) -> None:
++        self.version = version
++        self.supported = supported
++        super().__init__(f"不支持的契约版本 {version!r}；本消费者支持 {supported}")
++
++
++class ContractViolation(Exception):
++    code = "SCHEMA_INVALID"
++
++    def __init__(self, errors: list[str]) -> None:
++        self.errors = errors
++        super().__init__("；".join(errors[:4]))
++
++
++class ContractRegistry:
++    """Version-dispatching consumer. Restricting ``versions`` = an old consumer."""
++
++    def __init__(self, root: str | Path | None = None, *, versions: tuple[str, ...] | None = None) -> None:
++        base = Path(root).resolve() if root else ROOT
++        self.schemas: dict[str, dict] = {}
++        self.validators: dict[str, Draft202012Validator] = {}
++        for version, relative in CONTRACTS.items():
++            if versions is not None and version not in versions:
++                continue
++            schema = json.loads((base / relative).read_text(encoding="utf-8"))
++            Draft202012Validator.check_schema(schema)
++            self.schemas[version] = schema
++            self.validators[version] = Draft202012Validator(schema)
++        if not self.validators:
++            raise ValueError("契约注册表为空")
++
++    @property
++    def supported_versions(self) -> list[str]:
++        return sorted(self.validators)
++
++    def validate(self, document: Any) -> dict:
++        if not isinstance(document, dict):
++            raise ContractViolation(["候选不是 JSON 对象"])
++        version = document.get("schema_version")
++        if version not in self.validators:
++            raise UnsupportedSchemaVersion(version, self.supported_versions)
++        errors = sorted(self.validators[version].iter_errors(document),
++                        key=lambda error: list(error.path))
++        if errors:
++            raise ContractViolation([f"{list(e.path)}: {e.message}" for e in errors])
++        return document
++
++
++def legacy_consumer_validate(document: dict, root: str | Path | None = None) -> dict:
++    """Stand-in for a consumer that only knows v1 (the shipped service)."""
++    return ContractRegistry(root, versions=("rkd-ai-design-option.v1",)).validate(document)
++
++
++def engineering_admission(document: dict) -> dict:
++    """Synthetic v1 engineering bridge: usable, but explicitly NOT site-bound."""
++    return {
++        "status": "engineering_only",
++        "adoptable": True,
++        "scope": "engineering_only",
++        "site_bound": False,
++        "site_snapshot_sha256": None,
++        "basemap_files_sha256": None,
++        "checks": [{"check": "contract", "ok": True, "detail": document.get("schema_version")}],
++        "blockers": ["非场地绑定、非真实模型：只用于工程桥与回归，不作为真实设计成果"],
++    }
++
++
++def reject_admission(code: str, message: str, **extra: Any) -> dict:
++    return {"status": "not_validated", "adoptable": False, "scope": "isolated_test",
++            "site_bound": False, "site_snapshot_sha256": None, "basemap_files_sha256": None,
++            "checks": [{"check": code, "ok": False, "detail": message}],
++            "blockers": [f"{code}: {message}"], **extra}
++
++
++def admit_document(document: dict, *, site: dict, basemap_dir: str | Path,
++                   run_verifier: Any = None,
++                   registry: ContractRegistry | None = None) -> dict:
++    """The single controlled entrance. Returns an ``admission`` block."""
++    registry = registry or ContractRegistry()
++    try:
++        registry.validate(document)
++    except UnsupportedSchemaVersion as error:
++        return reject_admission(error.code, str(error))
++    except ContractViolation as error:
++        return reject_admission(error.code, str(error))
++
++    version = document.get("schema_version")
++    generation = document.get("generation") or {}
++    if version == "rkd-ai-design-option.v1":
++        if generation.get("real_model") is True:
++            return reject_admission(
++                "REAL_MODEL_REQUIRES_V2",
++                "v1 文档不能承载场地快照；声明真实模型时必须使用并核验 v2")
++        if (document.get("boundary") or {}).get("boundary_source") not in LEGACY_BOUNDARY_SOURCES:
++            return reject_admission("V1_BOUNDARY_UNKNOWN",
++                                    "v1 边界来源不在已知工程测试取值内")
++        return engineering_admission(document)
++
++    checks: list[dict] = [{"check": "contract", "ok": True, "detail": version}]
++    try:
++        integrity = A.verify_persisted_site_snapshot(document, site, basemap_dir)
++        geometry = A.validate_candidate_geometry_against_site(document, site, basemap_dir)
++        projections = A.verify_geometry_projection_consistency(document)
++    except A.RealModelSpatialAdaptationError as error:
++        return reject_admission(error.code, error.message)
++    checks.append({"check": "site_snapshot", "ok": True,
++                   "detail": {"site_snapshot_sha256": integrity["site_snapshot_sha256"],
++                              "basemap_files_sha256": integrity["basemap_files_sha256"],
++                              "entrance_mm": integrity["entrance_mm"]}})
++    checks.append({"check": "geometry", "ok": True, "detail": geometry})
++    checks.append({"check": "projection_consistency", "ok": True, "detail": projections})
++
++    # Source: verify the run references through the CONTROLLED verifier only.
++    # The candidate digest is the one the adapter recorded for its input; a run
++    # record must match it AND the site snapshot.  We do not re-derive it from
++    # the output document (that would be a different object graph).
++    spatial_source = ((document.get("spatial") or {}).get("source") or {})
++    origin = spatial_source.get("design_origin") or {}
++    declared_sha = str(spatial_source.get("sha256") or "")
++    project_id = str(((document.get("spatial") or {}).get("adaptation") or {})
++                     .get("source_verification", {}).get("project_id") or "unknown_project")
++    run_refs = [str(r) for r in (origin.get("run_refs") or [])]
++    verified: list[dict] = []
++    if run_refs:
++        from .controlled_run_ledger import RunLedgerError, assert_trusted_verifier
++
++        try:
++            verifier = assert_trusted_verifier(run_verifier)
++            for ref in run_refs:
++                verified.append(verifier.verify(
++                    ref, project_id=project_id, candidate_sha256=declared_sha,
++                    site_snapshot_sha256=integrity["site_snapshot_sha256"],
++                    parent_revision_id=document.get("parent_revision_id")))
++        except RunLedgerError as error:
++            return reject_admission(error.code, error.message)
++    if origin.get("kind") == "real_model":
++        if not verified or any(r.get("simulated") is not False or r.get("kind") != "real_model_run"
++                               for r in verified):
++            return reject_admission("DESIGN_ORIGIN_UNVERIFIED",
++                                    "real_model 声明没有可核验的非模拟真实运行记录")
++    checks.append({"check": "source", "ok": True,
++                   "detail": {"kind": origin.get("kind") or "unknown",
++                              "candidate_sha256": declared_sha,
++                              "run_evidence_count": len(verified),
++                              "generation_real_model": origin.get("kind") == "real_model",
++                              "parent_verified": bool(verified) and
++                              bool(document.get("parent_revision_id"))}})
++    return {
++        "status": "admitted",
++        "adoptable": True,
++        "scope": "site_bound",
++        "site_bound": True,
++        "site_snapshot_sha256": integrity["site_snapshot_sha256"],
++        "basemap_files_sha256": integrity["basemap_files_sha256"],
++        "checks": checks,
++        "blockers": [],
++    }
++
++
++def resolve_legacy_admission(document: dict) -> dict:
++    """Admission for revisions persisted before the gate existed (no block)."""
++    generation = document.get("generation") or {}
++    if generation.get("real_model") is True:
++        return reject_admission("REAL_MODEL_REQUIRES_V2", "历史 v1 真实模型声明无法核验")
++    version = document.get("schema_version")
++    if version == "rkd-ai-design-option.v1":
++        return engineering_admission(document)
++    return reject_admission("ADMISSION_NOT_RECORDED", "v2 候选没有准入党，不能采用")
+diff --git a/mvp/rkd_mvp/ai_design_geometry.py b/mvp/rkd_mvp/ai_design_geometry.py
+index 6fc416b..87c7e3e 100644
+--- a/mvp/rkd_mvp/ai_design_geometry.py
++++ b/mvp/rkd_mvp/ai_design_geometry.py
+@@ -51,8 +51,10 @@ def _check(code: str, status: str, message: str) -> dict[str, str]:
+ 
+ 
+ def validate_model(raw: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+-    if not isinstance(raw, dict) or raw.get("schema_version") != SCHEMA_VERSION:
+-        raise GeometryError(400, "INVALID_DESIGN_MODEL", "候选模型版本无效")
++    if not isinstance(raw, dict) or raw.get("schema_version") not in {
++            SCHEMA_VERSION, "rkd-ai-design-option.v2"}:
++        raise GeometryError(400, "UNSUPPORTED_SCHEMA_VERSION",
++                            "候选模型版本不在本消费者支持的版本列表内")
+     boundary = raw.get("boundary")
+     if not isinstance(boundary, dict):
+         raise GeometryError(400, "INVALID_BOUNDARY", "边界格式无效")
+diff --git a/mvp/rkd_mvp/ai_design_option_provider.py b/mvp/rkd_mvp/ai_design_option_provider.py
+index 1775e2e..1717770 100644
+--- a/mvp/rkd_mvp/ai_design_option_provider.py
++++ b/mvp/rkd_mvp/ai_design_option_provider.py
+@@ -40,6 +40,8 @@ REAL_ADAPTER_VERSION = "rkd-real-design-provider.v3"
+ REAL_PROMPT_VERSION = f"design-studio-concept.zh-CN.v3+{REFERENCE_VERSION}"
+ RULE_VERSION = "ai-design-geometry.v1"
+ SCHEMA_PATH = Path(__file__).resolve().parents[2] / "contracts" / "v1" / "ai-design-option.schema.json"
++SCHEMA_V2_PATH = Path(__file__).resolve().parents[2] / "contracts" / "v2" / "ai-design-option.schema.json"
++TOP_V2 = "rkd-ai-design-option.v2"
+ 
+ 
+ @dataclass(frozen=True)
+@@ -545,50 +547,41 @@ REAL_DESIGN_OUTPUT_SHAPE = {
+     }]
+ }
+ 
+-LEGAL_PATH_EXAMPLE = {
+-    "entrance_side": "left",
+-    "entrance_point": [0, 1.0],
+-    "note": "这是 12x8m、左侧入口、已通过全部硬检查的完整合法基线。你可以改变分区数量、比例、邻接与动线组织来做不同的设计，但每一次调整都必须重新满足约束 2/3/4；若不确定，请从这些坐标出发做小幅改动。左侧入口点固定为 [0,1.0]，必须有一段动线矩形的边界经过它；右侧为 [12,1.0]，下侧 [1.5,0]，上侧 [1.5,8]。",
+-    "paths": [{"segment_id": "path-south", "x": 0, "y": 0.4, "width": 12, "length": 1.2},
+-              {"segment_id": "path-west", "x": 2.4, "y": 0.4, "width": 1.2, "length": 6.4},
+-              {"segment_id": "path-east", "x": 8.8, "y": 0.4, "width": 1.2, "length": 6.4},
+-              {"segment_id": "path-north", "x": 2.4, "y": 5.6, "width": 7.6, "length": 1.2}],
+-    "connections": [["path-south", "path-west"], ["path-south", "path-east"],
+-                    ["path-west", "path-north"], ["path-east", "path-north"]],
+-    "narrative": {"theme": "从品牌第一眼到深度洽谈的环游叙事", "topology": "narrative-loop",
+-                  "sequence": ["入口门斗", "前厅形象", "中央展示", "深度洽谈", "收束出口"],
+-                  "first_view": "入口正对品牌形象墙与中岛主展台",
+-                  "climax": "中央展示区位于动线约三分之二处"},
+-    "zones": [
+-        {"object_id": "zone:reception", "name": "前厅接待 FOYER", "x": 3.6, "y": 1.6, "width": 2.0,
+-         "length": 4.0, "material_id": "mat-warm", "min_area_m2": "4",
+-         "zone_role": "foyer", "sequence_role": "opening", "intent": "建立品牌第一印象"},
+-        {"object_id": "zone:display", "name": "中央展示 SHOWROOM", "x": 5.6, "y": 1.6, "width": 1.6,
+-         "length": 4.0, "material_id": "mat-warm", "min_area_m2": "4",
+-         "zone_role": "primary_display", "sequence_role": "climax", "intent": "核心展项与停留"},
+-        {"object_id": "zone:discussion", "name": "深度洽谈 NEGOTIATION", "x": 7.2, "y": 1.6, "width": 1.6,
+-         "length": 4.0, "material_id": "mat-neutral", "min_area_m2": "4",
+-         "zone_role": "deep_talk", "sequence_role": "closing", "intent": "半私密转化"},
+-    ],
+-    "walls": [
+-        {"object_id": "wall:feature", "name": "品牌形象片墙", "x": 5.4, "y": 3.4,
+-         "width": 0.14, "length": 2.0, "wall_type": "feature"}
+-    ],
+-    "furniture": [
+-        {"object_id": "f:reception", "name": "服务前台 SERVICE COUNTER", "x": 3.9, "y": 2.1,
+-         "width": 1.0, "length": 0.45, "furniture_type": "reception_desk", "parent_object_id": "zone:reception"},
+-        {"object_id": "f:talk", "name": "洽谈桌椅 TABLE & CHAIRS", "x": 7.5, "y": 2.6,
+-         "width": 1.0, "length": 1.0, "furniture_type": "table_chairs", "parent_object_id": "zone:discussion"},
+-        {"object_id": "f:plant", "name": "景观绿植 PLANT", "x": 4.2, "y": 4.6,
+-         "width": 0.6, "length": 0.6, "furniture_type": "plant", "parent_object_id": "zone:reception"},
+-    ],
+-    "focal_point": {"object_id": "focal:hero", "name": "中岛主展台 ISLAND", "x": 5.8, "y": 3.0,
+-                    "width": 1.2, "length": 0.8, "furniture_type": "island", "statement": "全场视觉焦点"},
+-    "entrance_buffers": [{"object_id": "entrance:portal", "name": "主入口门斗", "x": 0.3, "y": 0.5,
+-                          "width": 0.8, "length": 0.8, "material_id": "mat-warm"}],
+-    "displays": [],
+-    "partitions": [],
+-}
++# The former hard-coded 12x8m LEGAL_PATH_EXAMPLE was REMOVED: a fixed
++# cross-site baseline in every request misled the model about this site and
++# hid the missing entrance. Requests now carry the real site snapshot.
++
++def _site_dimension(site: dict[str, Any], key: str) -> Decimal:
++    """Fail closed: never fall back to a 12x8 test boundary."""
++    if not isinstance(site, dict) or site.get(key) is None:
++        raise DesignOptionProviderFailure(
++            category="configuration", code="SITE_BOUNDARY_MISSING",
++            message=f"场地缺少 {key}；不得用默认 12x8m 示例边界代替")
++    value = _num(site[key], f"site.{key}")
++    if value <= 0:
++        raise DesignOptionProviderFailure(category="configuration", code="SITE_BOUNDARY_INVALID",
++                                          message=f"场地 {key} 必须为正数")
++    return value
++
++
++def _declared_snapshot(site: dict[str, Any]) -> dict[str, Any] | None:
++    """Validate the site snapshot before it is sent to a model."""
++    snapshot = site.get("site_snapshot") if isinstance(site, dict) else None
++    if snapshot is None:
++        return None
++    from .site_snapshot import SiteSnapshotError, verify_snapshot_shape
++
++    try:
++        verify_snapshot_shape(snapshot)
++    except SiteSnapshotError as error:
++        raise DesignOptionProviderFailure(category="validation", code=error.code,
++                                          message=error.message) from error
++    declared = site.get("site_snapshot_sha256")
++    if declared and str(declared) != str(snapshot["sha256"]):
++        raise DesignOptionProviderFailure(
++            category="validation", code="SITE_SNAPSHOT_SHA_MISMATCH",
++            message=f"site.site_snapshot_sha256 与快照自身的 {snapshot['sha256'][:12]} 不符")
++    return snapshot
+ 
+ 
+ def _num(value: Any, field_name: str) -> Decimal:
+@@ -647,17 +640,30 @@ class RealModelDesignOptionProvider:
+     """A real language model acts as the designer; the program validates and draws."""
+ 
+     def __init__(self, config: DesignOptionConfig, api_key: str, *, opener: Any | None = None,
+-                 environ: dict[str, str] | None = None, run_log_dir: str | Path | None = None) -> None:
++                 environ: dict[str, str] | None = None, run_log_dir: str | Path | None = None,
++                 on_exchange: Any | None = None) -> None:
+         self.config = config
+         self.api_key = api_key
+         self.opener = opener or build_opener(ProxyHandler({}))
++        # An injected opener is an offline protocol stub: its bytes can never be
++        # promoted to a "real model run" by the controlled service.
++        self.transport = "local_protocol_stub" if opener is not None else "live_http"
++        self.on_exchange = on_exchange
+         self.env = dict(os.environ if environ is None else environ)
+-        self.schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+-        self.validator = Draft202012Validator(self.schema)
++        # A site-bound candidate is v2; validate it against the version it
++        # declares, never against v1 just because that used to be the only one.
++        self.schemas = {SCHEMA_VERSION: json.loads(SCHEMA_PATH.read_text(encoding="utf-8")),
++                        TOP_V2: json.loads(SCHEMA_V2_PATH.read_text(encoding="utf-8"))}
++        self.validators = {name: Draft202012Validator(schema) for name, schema in self.schemas.items()}
++        self.schema = self.schemas[SCHEMA_VERSION]
++        self.validator = self.validators[SCHEMA_VERSION]
+         self.runs: list[dict[str, Any]] = []
+         default_log = Path(__file__).resolve().parents[2] / "var" / "ai-model-runs"
+         self.run_log_dir = Path(run_log_dir or self.env.get("RKD_AI_RUN_LOG_DIR") or default_log)
+ 
++    def _validator_for(self, model: dict[str, Any]) -> Draft202012Validator:
++        return self.validators.get(str(model.get("schema_version")), self.validator)
++
+     # -- model call and auditable run record ---------------------------------
+ 
+     def _log_run(self, record: dict[str, Any]) -> None:
+@@ -679,8 +685,9 @@ class RealModelDesignOptionProvider:
+         payload = {"model": self.config.model_id, "temperature": 0.2,
+                    "max_tokens": self.config.max_output_tokens,
+                    "response_format": {"type": "json_object"}, "messages": messages}
++        request_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+         request = Request(f"{self.config.base_url}/chat/completions",
+-                          data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
++                          data=request_bytes,
+                           headers={"Content-Type": "application/json",
+                                    "Authorization": f"Bearer {self.api_key}",
+                                    "X-Request-Id": request_id}, method="POST")
+@@ -688,6 +695,13 @@ class RealModelDesignOptionProvider:
+         try:
+             with self.opener.open(request, timeout=self.config.timeout_seconds) as response:
+                 raw = response.read(4 * 1024 * 1024).decode("utf-8", errors="replace")
++                if self.on_exchange is not None:
++                    # The controlled service observes the ACTUAL bytes; it derives
++                    # "simulated" from the transport, never from our claim.
++                    self.on_exchange(request_bytes=request_bytes,
++                                     response_bytes=raw.encode("utf-8"),
++                                     endpoint=f"{self.config.base_url}/chat/completions",
++                                     transport=self.transport)
+                 provider_request_id = response.headers.get("X-Request-Id") or request_id
+                 data = json.loads(raw)
+                 content = data["choices"][0]["message"]["content"]
+@@ -756,19 +770,31 @@ class RealModelDesignOptionProvider:
+ 
+     def _design_messages(self, *, brief: dict[str, Any], site: dict[str, Any],
+                          feedback: dict[str, Any] | None = None) -> list[dict[str, str]]:
+-        width, length = _num(site.get("width", 12), "site.width"), _num(site.get("length", 8), "site.length")
++        width, length = _site_dimension(site, "width"), _site_dimension(site, "length")
++        snapshot = _declared_snapshot(site)
++        entrance = site.get("entrance") if isinstance(site.get("entrance"), dict) else {}
++        point = entrance.get("point")
+         payload: dict[str, Any] = {
+             "task": "像真实设计团队一样完成室内展厅的概念设计与平面组织",
+             "boundary": {"width": _decimal(width), "length": _decimal(length), "unit": "m",
+-                         "boundary_source": str(site.get("boundary_source") or "test_parameters_not_site_verified"),
+-                         "note": "边界是明确标记的测试参数，未经现场核验，不得当作实测",
++                         "boundary_source": str(site.get("boundary_source") or "unknown_not_site_verified"),
++                         "note": "边界来自本次场地快照（未现场核验），不得当作实测",
++                         "site_snapshot_sha256": (snapshot or {}).get("sha256"),
++                         "basemap_files_sha256": (snapshot or {}).get("basemap_files_sha256"),
++                         "entrance": {"side": entrance.get("side"),
++                                      "point": point,
++                                      "site_verified": False,
++                                      "source": entrance.get("source") or "not_declared",
++                                      "assumption": entrance.get("assumption")},
+                          "obstacles": site.get("obstacles", [])},
++            "site_snapshot": snapshot,
+             "brief": self._brief_view(brief, self.config.external_context_allowed),
+             "output_shape": REAL_DESIGN_OUTPUT_SHAPE,
+-            "legal_path_example": LEGAL_PATH_EXAMPLE,
++            "output_shape_note": "output_shape 里的数字只是字段格式示意，不是可用基线；必须按本场地边界与入口重画",
+             "rules": ["只输出严格 JSON", "两个 candidate 必须有实质不同的空间组织",
+                       "所有坐标与尺寸为米制数值", "未知信息写 unknown，不编价格或做法",
+-                      "legal_path_example 是已通过全部硬检查的完整基线；第二方案若难以自证，请从该基线坐标出发调整分区与动线组织",
++                      "禁止套用任何非本场地的固定示例坐标；每个矩形都必须落在本场地边界内",
++                      "动线必须经过 boundary.entrance.point 声明的入口点，且不得压到 boundary.obstacles 保留区",
+                       "程序不会自动添加入口缓冲；如需表达入口前区，请在 entrance_buffers 中给出且不得与 zones 重叠，也可以留空数组"],
+         }
+         if feedback is not None:
+@@ -794,8 +820,8 @@ class RealModelDesignOptionProvider:
+     def _to_model(self, candidate: dict[str, Any], *, set_id: str, site: dict[str, Any],
+                   cost_source: dict[str, Any], input_hash: str, generated_at: str,
+                   provider_request_id: str, brief: dict[str, Any], option_index: int) -> dict[str, Any]:
+-        width = _num(site.get("width", 12), "site.width")
+-        length = _num(site.get("length", 8), "site.length")
++        width = _site_dimension(site, "width")
++        length = _site_dimension(site, "length")
+         source_ids = _source_ids(brief)
+         primary = "synthetic-input" if "synthetic-input" in source_ids else source_ids[0]
+         strategy_id = str(candidate.get("strategy_id") or f"real-concept-{option_index}").strip()[:80]
+@@ -938,15 +964,26 @@ class RealModelDesignOptionProvider:
+         statement = "｜".join(
+             [narrative_text] + [str(candidate.get(key) or "") for key in ("concept", "statement", "rationale")
+                                 if str(candidate.get(key) or "")]) or "真实模型概念方案"
++        snapshot = _declared_snapshot(site)
++        entrance = site.get("entrance") if isinstance(site.get("entrance"), dict) else {}
++        top_version = ("rkd-ai-design-option.v2" if snapshot is not None else SCHEMA_VERSION)
+         model = {
+-            "schema_version": SCHEMA_VERSION, "set_id": set_id,
++            "schema_version": top_version, "set_id": set_id,
+             "option_id": f"{set_id}:{strategy_id}", "revision_no": 1, "parent_revision_id": None,
+             "strategy": {"strategy_id": strategy_id, "statement": statement[:2000],
+                          "tradeoffs": [str(item) for item in (candidate.get("tradeoffs") or [])][:8],
+                          "source_refs": [primary]},
+             "boundary": {"width": _decimal(width), "length": _decimal(length), "unit": "m",
+-                         "boundary_source": str(site.get("boundary_source") or "test_parameters_not_site_verified"),
+-                         "entrance": {"side": side, "point": point, "width": _decimal(path_width)},
++                         "boundary_source": str(site.get("boundary_source") or "unknown_not_site_verified"),
++                         "entrance": {"side": side, "point": point, "width": _decimal(path_width),
++                                      **(({"site_snapshot_sha256": snapshot["sha256"],
++                                           "basemap_files_sha256": snapshot["basemap_files_sha256"],
++                                           "site_verified": False,
++                                           "source": entrance.get("source") or "not_declared",
++                                           "assumption": entrance.get("assumption")}
++                                          | {"point_source": (entrance.get("assumption") or {}).get("kind",
++                                                                                                   "not_declared")})
++                                         if snapshot is not None else {})},
+                          "obstacles": obstacles},
+             "objects": objects, "relationships": relationships,
+             "circulation": {"path_id": "main-" + kind, "kind": kind,
+@@ -967,6 +1004,25 @@ class RealModelDesignOptionProvider:
+             "change_reason": "真实模型完成概念设计与空间组织",
+             "actor_id": "real-model-designer", "created_at": generated_at,
+         }
++        if snapshot is not None:
++            if str(site.get("boundary_source") or "") != str(snapshot["contract_version"]):
++                raise DesignOptionProviderFailure(
++                    category="configuration", code="SITE_SNAPSHOT_BOUNDARY_CONFLICT",
++                    message="带快照的请求必须声明 boundary_source=rkd-site-basemap.v2")
++            # v2: the persisted candidate carries the SAME snapshot digests that
++            # were sent in the request, so the adapter can prove same-source.
++            model["site_snapshot"] = {
++                "schema_version": snapshot["schema_version"],
++                "contract": snapshot["contract_version"],
++                "sha256": snapshot["sha256"],
++                "basemap_files_sha256": snapshot["basemap_files_sha256"],
++                "boundary_mm": list(snapshot["boundary_mm"]),
++                "entrance_assumption": snapshot["entrance_assumption"],
++                "entrance_fact": snapshot["entrance_fact"],
++                "unverified_facts": list(snapshot["unverified_facts"]),
++                "site_verified": False,
++            }
++        model["generation"]["schema_version"] = top_version
+         model["structure_signature"] = structure_signature(model)
+         return model
+ 
+@@ -989,8 +1045,8 @@ class RealModelDesignOptionProvider:
+         joined = " ".join(problems)
+         hints: list[str] = []
+         if "ENTRANCE_NOT_CONNECTED" in joined:
+-            hints.append("入口点固定为 left=[0,1.0]、right=[12,1.0]、bottom=[1.5,0]、top=[1.5,8]；"
+-                         "必须有一段动线矩形的边界精确经过该点，例如左侧入口保留 x=0 且 y 覆盖 1.0 的横向路径。")
++            hints.append("入口点必须等于本次请求 boundary.entrance.point；"
++                         "至少有一段动线矩形的边界精确经过该点，不得套用其它场地示例坐标。")
+         if "ZONE_NO_PATH_ACCESS" in joined:
+             hints.append("每个功能区至少有一条完整边与某段动线的边共线且共边长度 ≥0.5m；"
+                          "把 zone 的 y 设为 path-south 上边界 1.6，或把 zone 的 x 设为 path-west 右边界 3.6，最稳妥。")
+@@ -1059,7 +1115,7 @@ class RealModelDesignOptionProvider:
+                                            input_hash=input_hash, generated_at=generated_at,
+                                            provider_request_id=request_id, brief=brief, option_index=index)
+                     models.append(model)
+-                    problems.extend(f"方案{index + 1} {item}" for item in self._problems(model, self.validator))
++                    problems.extend(f"方案{index + 1} {item}" for item in self._problems(model, self._validator_for(model)))
+                 except DesignOptionProviderFailure as error:
+                     problems.append(f"方案{index + 1} {error.code}: {error.message}")
+             if len(models) == 2 and not candidates_are_structurally_different(models[0], models[1]):
+@@ -1139,7 +1195,7 @@ class RealModelDesignOptionProvider:
+                              {"role": "user", "content": json.dumps({"geometry_review": last_problems,
+                                                                       "instruction": "修正后重新输出完整 JSON"}, ensure_ascii=False)}]
+                 continue
+-            problems = self._problems(revised, self.validator)
++            problems = self._problems(revised, self._validator_for(revised))
+             explicit_conflicts = [str(item) for item in (value.get("locked_conflicts") or []) if str(item)]
+             if explicit_conflicts:
+                 problems.append("LOCK_CONFLICT: " + "；".join(explicit_conflicts[:3]))
+@@ -1178,7 +1234,7 @@ class RealModelDesignOptionProvider:
+                         counterpart["locked"] = True
+                         lock_conflicts.append(f"锁定展陈对象 {object_id} 被模型改动，程序已恢复")
+             if lock_conflicts:
+-                problems = self._problems(revised, self.validator)
++                problems = self._problems(revised, self._validator_for(revised))
+                 if problems:
+                     last_problems = problems
+                     continue
+diff --git a/mvp/rkd_mvp/ai_design_option_service.py b/mvp/rkd_mvp/ai_design_option_service.py
+index 764b512..8200add 100644
+--- a/mvp/rkd_mvp/ai_design_option_service.py
++++ b/mvp/rkd_mvp/ai_design_option_service.py
+@@ -17,6 +17,8 @@ from typing import Any, Callable
+ 
+ from jsonschema import Draft202012Validator
+ 
++from .admission import (ContractRegistry, ContractViolation, UnsupportedSchemaVersion,
++                        admit_document, resolve_legacy_admission)
+ from .ai_design_geometry import (
+     GeometryError, candidates_are_structurally_different, render_svg,
+     structure_signature, validate_model,
+@@ -28,6 +30,8 @@ from .ai_design_option_provider import (
+ from .models import new_id, now_iso
+ 
+ SCHEMA_PATH = Path(__file__).resolve().parents[2] / "contracts" / "v1" / "ai-design-option.schema.json"
++DEFAULT_BASEMAP_DIR = (Path(__file__).resolve().parents[2]
++                       / "deliverables-for-review/roadmap/W2-R4-表达收口/basemap")
+ 
+ 
+ class AIDesignOptionServiceError(Exception):
+@@ -48,7 +52,9 @@ class AIDesignOptionService:
+     def __init__(self, repository: Any, brief_provider: Callable[[str, str], dict[str, Any] | None],
+                  context_provider: Callable[[str, str], dict[str, Any]], runtime_root: str | Path,
+                  *, config: DesignOptionConfig | None = None, provider: Any | None = None,
+-                 start_workers: bool = True, studio_source: Any | None = None) -> None:
++                 start_workers: bool = True, studio_source: Any | None = None,
++                 basemap_dir: str | Path | None = None,
++                 run_verifier: Any | None = None) -> None:
+         self.repository = repository
+         self.brief_provider = brief_provider
+         self.context_provider = context_provider
+@@ -59,9 +65,13 @@ class AIDesignOptionService:
+         # W1: explicit read boundary into Studio's own store. None -> lazy
+         # default bound to RKD_STUDIO_DB at first use (never the live project DB).
+         self.studio_source = studio_source
++        # W3 trust: version-dispatching consumer (v1 + v2) and the site gate.
++        self.registry = ContractRegistry()
+         self.schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+         Draft202012Validator.check_schema(self.schema)
+-        self.validator = Draft202012Validator(self.schema)
++        self.validator = Draft202012Validator(self.schema)  # legacy v1 validator
++        self.basemap_dir = Path(basemap_dir) if basemap_dir else DEFAULT_BASEMAP_DIR
++        self.run_verifier = run_verifier
+         self._lock = threading.Lock()
+         self._active_sets: set[str] = set()
+ 
+@@ -103,10 +113,16 @@ class AIDesignOptionService:
+ 
+     def _validate_candidate(self, model: Any, *, brief: dict[str, Any], config: DesignOptionConfig,
+                             input_hash: str) -> dict[str, Any]:
+-        errors = sorted(self.validator.iter_errors(model), key=lambda error: list(error.path))
+-        if errors:
+-            raise DesignOptionProviderFailure(category="validation", code="SCHEMA_INVALID",
+-                                              message="候选模型不符合版本化契约")
++        # Version dispatch: an unknown version is a CONSUMER decision, not a
++        # generic schema mismatch.  Old consumers (v1-only registry) refuse v2.
++        try:
++            self.registry.validate(model)
++        except UnsupportedSchemaVersion as error:
++            raise DesignOptionProviderFailure(category="validation", code=error.code,
++                                              message=str(error)) from error
++        except ContractViolation as error:
++            raise DesignOptionProviderFailure(category="validation", code=error.code,
++                                              message="候选模型不符合版本化契约：" + str(error)) from error
+         try:
+             checked, validation = validate_model(model)
+         except GeometryError as error:
+@@ -143,6 +159,21 @@ class AIDesignOptionService:
+         checked["structure_signature"] = structure_signature(checked)
+         return checked
+ 
++    def _admission_for(self, model: dict[str, Any], site: dict[str, Any]) -> dict[str, Any]:
++        """Persisted with the revision; adoption reads it back."""
++        if str(model.get("schema_version") or "").endswith(".v2"):
++            try:
++                return admit_document(model, site=site, basemap_dir=self.basemap_dir,
++                                      run_verifier=self.run_verifier, registry=self.registry)
++            except Exception as error:  # noqa: BLE001 - fail closed, never adopt
++                return {"status": "not_validated", "adoptable": False,
++                        "scope": "isolated_test", "site_bound": False,
++                        "site_snapshot_sha256": None, "basemap_files_sha256": None,
++                        "checks": [{"check": "admission_error", "ok": False,
++                                    "detail": type(error).__name__}],
++                        "blockers": [f"准入党异常：{error}"]}
++        return resolve_legacy_admission(model)
++
+     def submit(self, organization_id: str, project_id: str, actor_id: str,
+                request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+         if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 255:
+@@ -221,6 +252,11 @@ class AIDesignOptionService:
+                 tx.update_set(set_id, status="running", phase="validation", updated_at=now_iso())
+             checked = [self._validate_candidate(model, brief=context["brief"], config=config,
+                                                 input_hash=item["input_hash"]) for model in models]
++            # Admission is RECORD metadata, not part of the versioned document:
++            # writing it into model["validation"] would break the contract on
++            # every later revise().
++            admissions = {id(model): self._admission_for(model, context.get("site") or {})
++                          for model in checked}
+             if len(checked) < 2 or not all(candidates_are_structurally_different(checked[0], other) for other in checked[1:]):
+                 raise DesignOptionProviderFailure(category="validation", code="HOMOGENEOUS_CANDIDATES",
+                                                   message="候选空间组织实质相同，不能作为多方案通过")
+@@ -248,7 +284,9 @@ class AIDesignOptionService:
+                         "option_revision_id": option_revision_id, "set_id": set_id,
+                         "option_id": model["option_id"], "revision_no": 1, "parent_revision_id": None,
+                         "strategy_id": model["strategy"]["strategy_id"], "strategy": model["strategy"],
+-                        "model": model, "validation": model["validation"], "materials": model["materials"],
++                        "model": model, "validation": {**model["validation"],
++                                                       "admission": admissions[id(model)]},
++                        "materials": model["materials"],
+                         "cost": model["cost"], "feedback": model["feedback"], "diff": model["diff"],
+                         "conflicts": model["conflicts"], "structure_signature": model["structure_signature"],
+                         "lifecycle_status": "candidate", "source_kind": model["source_kind"],
+@@ -808,6 +846,13 @@ class AIDesignOptionService:
+                 raise AIDesignOptionServiceError(409, "STALE_OPTION_REVISION", "候选版本已变化，请重新读取")
+             if revision["validation"]["status"] != "passed":
+                 raise AIDesignOptionServiceError(422, "INVALID_CANDIDATE", "未通过硬检查的候选不能采用")
++            admission = (revision["validation"].get("admission")
++                         or resolve_legacy_admission(revision["model"]))
++            if admission.get("adoptable") is not True:
++                raise AIDesignOptionServiceError(
++                    422, "ADMISSION_NOT_VALIDATED",
++                    "候选未通过受控准入党（场地/来源/版本），不能采用："
++                    + "；".join(admission.get("blockers") or ["未验证"]))
+             adoption = tx.adoption()
+             current_version = int(adoption["expected_revision"]) if adoption else 0
+             if current_version != expected_version:
+diff --git a/mvp/rkd_mvp/ai_spatial_outputs.py b/mvp/rkd_mvp/ai_spatial_outputs.py
+index 012f565..0d1d1c6 100644
+--- a/mvp/rkd_mvp/ai_spatial_outputs.py
++++ b/mvp/rkd_mvp/ai_spatial_outputs.py
+@@ -1594,6 +1594,14 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
+         "schema_version": MANIFEST_VERSION,
+         "baseline": frozen,
+         "binding": binding or {},
++        "site_snapshot": ({
++            "sha256": model["site_snapshot"].get("sha256"),
++            "basemap_files_sha256": model["site_snapshot"].get("basemap_files_sha256"),
++            "contract": model["site_snapshot"].get("contract"),
++            "boundary_mm": model["site_snapshot"].get("boundary_mm"),
++            "entrance_assumption": model["site_snapshot"].get("entrance_assumption"),
++            "site_verified": False,
++        } if isinstance(model.get("site_snapshot"), dict) else None),
+         "camera": camera,
+         "quantities": quantities,
+         "cost": cost,
+@@ -1636,13 +1644,20 @@ def _quantity_csv(quantities: dict) -> bytes:
+     return ("\n".join(lines) + "\n").encode("utf-8")
+ 
+ 
+-def finalize_package(files: dict, manifest: dict) -> dict:
++def finalize_package(files: dict, manifest: dict, *,
++                     completeness: dict | None = None) -> dict:
+     """ONE file set -> manifest + ZIP.
+ 
+     Registration, manifest and archive are built from the same dict, so a render
+     that exists is always inside the archive and a manifest that lists a file
+     always points at real bytes. The finished ZIP is then re-opened and checked
+     against the manifest before anything is registered.
++
++    ``completeness`` is written INTO the manifest before the archive is built,
++    so an incomplete package carries its own status inside the ZIP instead of
++    being patched afterwards (the 2253899 bug: the manifest was rewritten after
++    finalize and the archive was rebuilt from a file set that already contained
++    ``package.zip``, so the ZIP contained itself and failed its own check).
+     """
+     content = {name: tuple(value) for name, value in files.items()}
+     if any(name in {"manifest.json", "package.zip"} for name in content):
+@@ -1654,6 +1669,8 @@ def finalize_package(files: dict, manifest: dict) -> dict:
+                         "sha256": sha256_bytes(data), "size_bytes": len(data)})
+     manifest = dict(manifest)
+     manifest["files"] = entries
++    if completeness is not None:
++        manifest["package_completeness"] = dict(completeness)
+     manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+     out = dict(content)
+     out["manifest.json"] = ("manifest_json", "application/json", manifest_bytes)
+@@ -1668,6 +1685,51 @@ def finalize_package(files: dict, manifest: dict) -> dict:
+     return {"files": out, "manifest": manifest, "check": check}
+ 
+ 
++def build_delivery_package(model: dict, *, project_id: str, option_revision_id: str,
++                           render_bytes: bytes | None = None,
++                           render_status: str = "not_run",
++                           render_meta: dict | None = None,
++                           settings: dict | None = None,
++                           finish_scope: dict | None = None) -> dict:
++    """ONE code path for complete AND incomplete delivery packages.
++
++    The archive is built from the final file set exactly once, the manifest
++    (including ``package_completeness``) is inside it, and the archive is
++    re-opened and compared entry by entry.  A ZIP is never placed inside itself
++    and an incomplete package can never be reported as complete.
++    """
++    pkg = build_package(model, project_id=project_id, option_revision_id=option_revision_id,
++                        settings=settings, finish_scope=finish_scope)
++    files = dict(pkg["files"])
++    # The candidate document itself travels with the package so the site
++    # snapshot / source provenance can be audited from the ZIP alone.
++    files["model.json"] = ("development_json", "application/json", _json(model))
++    complete = render_bytes is not None and render_status == "rendered"
++    if render_bytes is not None:
++        meta = dict(render_meta or {})
++        meta.setdefault("schema_version", "rkd-render-meta.v1")
++        meta.setdefault("render_sha256", sha256_bytes(render_bytes))
++        meta.setdefault("status", "rendered")
++        meta.setdefault("engineering_sample", True)
++        files["render.png"] = ("png", "image/png", render_bytes)
++        files["render.png.meta.json"] = ("manifest_json", "application/json", _json(meta))
++    completeness = ({"status": "complete", "reason": "render 成功，清单与 ZIP 逐项一致",
++                     "render_status": render_status}
++                    if complete else
++                    {"status": "incomplete", "reason": "render 未运行或失败；不得登记为完整成果",
++                     "render_status": render_status})
++    final = finalize_package(files, pkg["manifest"], completeness=completeness)
++    zip_bytes = final["files"]["package.zip"][2]
++    manifest_bytes = final["files"]["manifest.json"][2]
++    zcheck = check_zip_against_manifest(zip_bytes, manifest_bytes)
++    registration = assert_complete_package(zip_bytes, manifest_bytes)
++    return {"package": final, "files": final["files"], "manifest": final["manifest"],
++            "manifest_bytes": manifest_bytes, "zip_bytes": zip_bytes,
++            "zip_check": zcheck, "completeness": completeness,
++            "registration": registration, "complete": complete,
++            "render_status": render_status, "build": pkg}
++
++
+ def check_zip_against_manifest(zip_bytes: bytes, manifest_bytes: bytes) -> dict:
+     """Re-open the archive and compare every manifest entry byte-for-byte."""
+     problems: list[str] = []
+@@ -1700,3 +1762,28 @@ def check_zip_against_manifest(zip_bytes: bytes, manifest_bytes: bytes) -> dict:
+     return {"ok": not problems, "problems": problems, "checked": len(listed),
+             "zip_bytes": len(zip_bytes), "zip_sha256": sha256_bytes(zip_bytes),
+             "entries": sorted(listed)}
++
++
++def package_completeness(manifest_bytes: bytes) -> dict:
++    """Read the declared completeness from the manifest INSIDE the archive."""
++    try:
++        manifest = json.loads(manifest_bytes.decode("utf-8"))
++    except Exception as error:  # noqa: BLE001
++        return {"status": "invalid", "reason": f"清单不可解析：{error}"}
++    declared = manifest.get("package_completeness")
++    if isinstance(declared, dict) and declared.get("status"):
++        return dict(declared)
++    return {"status": "complete", "reason": "未声明不完整", "implicit": True}
++
++
++def assert_complete_package(zip_bytes: bytes, manifest_bytes: bytes) -> dict:
++    """Registration boundary: only a byte-consistent COMPLETE package may be
++    treated as a deliverable.  An incomplete package can never masquerade.
++    """
++    check = check_zip_against_manifest(zip_bytes, manifest_bytes)
++    declared = package_completeness(manifest_bytes)
++    ok = bool(check["ok"]) and declared.get("status") == "complete"
++    return {"ok": ok, "check": check, "completeness": declared,
++            "reason": ("完整包逐项一致" if ok else
++                       (f"清单不完整：{declared.get('reason')}" if check["ok"]
++                        else f"清单校验失败：{check['problems'][:3]}"))}
+diff --git a/mvp/rkd_mvp/controlled_run_ledger.py b/mvp/rkd_mvp/controlled_run_ledger.py
+index 96b53b8..c03337f 100644
+--- a/mvp/rkd_mvp/controlled_run_ledger.py
++++ b/mvp/rkd_mvp/controlled_run_ledger.py
+@@ -1,36 +1,66 @@
+-"""Controlled run ledger: the ONLY trusted source of run provenance.
+-
+-Why this exists
+----------------
+-A JSON file that carries its own ``record_sha256`` proves only that the file is
+-internally consistent.  Any caller can fabricate ``kind=real_model_run``,
+-``simulated=false``, candidate/input/output hashes and a project id, then
+-recompute the hash.  Earlier adapter versions accepted exactly that.
+-
+-Trust boundary
+---------------
+-* Records are ISSUED by this in-process service via ``issue()``.  Each gets a
+-  server-generated ``run_id`` and an HMAC signature made with a secret created
+-  at process start (``secrets.token_bytes``).  The secret is never written to
+-  disk, logged, returned, or accepted as a caller argument.
+-* Records are VERIFIED by looking up ``run_id`` in this ledger and recomputing
+-  the HMAC.  Caller-supplied file paths / embedded records are never trusted.
+-* Cross-project, wrong parent, tampered fields and fabricated ids fail closed.
+-* In offline verification only ``local_protocol_stub_run`` (simulated=true) is
+-  ever issued.  No ``real_model_run`` can be issued here, so an unverifiable
+-  ``real_model`` claim stays ``unknown`` / is rejected.
+-
+-This module performs no network calls and reads no keys.
++"""Controlled run service: the ONLY issuer of run provenance.
++
++Trust boundary (v2, after the 2253899 review)
++---------------------------------------------
++The previous ``ControlledRunLedger`` was a plain object any caller could
++construct, and ``issue(kind="real_model_run", simulated=False, ...)`` accepted
++whatever input/output/parent the caller asserted.  A second instance, a copied
++record or an arbitrary object then verified, so "signed" proved only
++"this instance signed what the caller typed".  That is not a trust boundary.
++
++v2 rules:
++
++1. **Constructing a ledger is not enough to be trusted.**  A service instance
++   gets a persisted ``issuer_id`` and an HMAC key in its own store directory.
++   Consumers verify through ``TrustedRunVerifier``, which is only produced by
++   ``service.verifier()`` and pins the issuer id.  A record issued by any other
++   service/store fails ``RUN_ISSUER_UNKNOWN``.
++2. **A real run cannot be self-declared.**  ``issue()`` needs an
++   ``ExchangeObservation`` created by ``observe_exchange()`` from the actual
++   request/response bytes.  ``simulated`` is DERIVED by the service:
++   an injected protocol stub is always simulated; only a live transport to a
++   non-loopback endpoint can produce ``kind="real_model_run"``.
++3. **A parent must exist in the same project.**  ``register_revision()`` is
++   called by the real repository when a revision is persisted.  An invented
++   parent id fails ``PARENT_UNREGISTERED``; a mismatched parent digest fails
++   ``PARENT_CANDIDATE_MISMATCH``.
++4. **Restart policy.**  The key and an append-only record log persist under the
++   service directory, so records issued before a restart still verify.  If the
++   key is missing/unreadable, the service refuses to verify anything issued
++   earlier: those sources stay ``unknown`` and can never be promoted to
++   ``real_model``.  Residual risk is stated honestly: an attacker with write
++   access to the service directory and its key can forge records.  The boundary
++   is the OS account + directory ACL, not a hardware token, and this batch does
++   not add any account/NAS platform.
++5. **Isolation.**  ``isolated_test`` mode exists for negative tests only; its
++   records are marked ``admission_scope=not_validated`` and can never be used
++   as adoptable evidence.
++
++No network calls, no external keys, no reads outside the service directory.
+ """
+ from __future__ import annotations
+ 
+ import hashlib
+ import hmac
+ import json
++import os
+ import secrets
++import threading
++import uuid
+ from dataclasses import dataclass, field
+ from datetime import datetime, timezone
++from pathlib import Path
+ from typing import Any
++from urllib.parse import urlparse
++
++SERVICE_VERSION = "rkd-controlled-run-service.v2"
++RECORD_VERSION = "rkd-controlled-run-record.v2"
++TRANSPORTS = {"live_http", "local_protocol_stub", "fixture"}
++_KIND_BY_TRANSPORT = {"live_http": "real_model_run",
++                      "local_protocol_stub": "local_protocol_stub_run",
++                      "fixture": "fixture_run"}
++_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
++_PRIVATE_PREFIX = ("10.", "192.168.", "169.254.", "127.")
+ 
+ 
+ class RunLedgerError(Exception):
+@@ -52,91 +82,364 @@ def _now() -> str:
+     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+ 
+ 
+-@dataclass
+-class ControlledRunLedger:
+-    """Append-only, in-process ledger.  One instance per verification process."""
++def _is_loopback_or_private(endpoint: str) -> bool:
++    try:
++        host = (urlparse(endpoint).hostname or "").lower()
++    except ValueError:
++        return True
++    if not host or host in _LOCAL_HOSTS:
++        return True
++    if host.startswith(_PRIVATE_PREFIX):
++        return True
++    if host.startswith("172."):
++        try:
++            second = int(host.split(".")[1])
++        except (IndexError, ValueError):
++            return True
++        if 16 <= second <= 31:
++            return True
++    if host.endswith(".local") or host.endswith(".internal"):
++        return True
++    return False
++
++
++@dataclass(frozen=True)
++class ExchangeObservation:
++    """Proof that the service SAW these request/response bytes."""
++
++    observation_id: str
++    project_id: str
++    transport: str
++    endpoint: str
++    request_sha256: str
++    response_sha256: str
++    request_bytes: int
++    response_bytes: int
++    captured_at: str
++    simulated: bool
++    _token: object = field(repr=False, compare=False, default=None)
++
++
++class TrustedRunVerifier:
++    """Read-only verification capability handed to consumers.
++
++    Consumers never receive the service, never receive the key and cannot issue.
++    """
++
++    __slots__ = ("_service_ref", "_token", "issuer_id", "service_id")
++
++    def __init__(self, service_ref: "ControlledRunService", token: object) -> None:
++        if token is not _VERIFIER_TOKEN:
++            raise RunLedgerError("VERIFIER_FORGED",
++                                 "验证能力只能由受控运行服务签发，不能自行构造")
++        self._service_ref = service_ref
++        self._token = token
++        self.issuer_id = service_ref.issuer_id
++        self.service_id = service_ref.service_id
++
++    def is_live(self) -> bool:
++        ref = self._service_ref
++        return ref is not None and ref.issuer_id == self.issuer_id
++
++    def verify(self, run_id: str, *, project_id: str, candidate_sha256: str,
++               site_snapshot_sha256: str | None = None,
++               parent_revision_id: str | None = None,
++               parent_candidate_sha256: str | None = None) -> dict:
++        ref = self._service_ref
++        if ref is None or not self.is_live():
++            raise RunLedgerError("VERIFIER_STALE", "验证能力对应的服务实例已失效")
++        return ref._verify_record(run_id, project_id=project_id,
++                                  candidate_sha256=candidate_sha256,
++                                  site_snapshot_sha256=site_snapshot_sha256,
++                                  parent_revision_id=parent_revision_id,
++                                  parent_candidate_sha256=parent_candidate_sha256)
++
++    def revision_registered(self, project_id: str, revision_id: str) -> bool:
++        return self._service_ref._revisions.get((project_id, revision_id)) is not None
++
++
++_VERIFIER_TOKEN = object()
++
++
++class ControlledRunService:
++    """The controlled service. One instance per application composition root."""
++
++    def __init__(self, store_dir: str | Path, *, service_id: str = SERVICE_VERSION,
++                 isolated_test: bool = False) -> None:
++        self.store_dir = Path(store_dir).resolve()
++        self.store_dir.mkdir(parents=True, exist_ok=True)
++        self.service_id = service_id
++        self.isolated_test = bool(isolated_test)
++        self.admission_scope = "not_validated" if self.isolated_test else "controlled"
++        self._lock = threading.RLock()
++        self._observations: dict[str, ExchangeObservation] = {}
++        self._revisions: dict[tuple[str, str], str] = {}
++        self._load_identity()
++        self._load_revisions()
++        self._records = self._load_records()
++        self._sequence = len(self._records)
++        self._verification_state = "available" if self._secret else "unknown_missing_key"
+ 
+-    service_id: str = "rkd-controlled-run-service.v1"
+-    _secret: bytes = field(default_factory=lambda: secrets.token_bytes(32),
+-                           repr=False, compare=False)
+-    _records: dict[str, dict] = field(default_factory=dict)
+-    _sequence: int = 0
++    # -- identity / persistence ---------------------------------------------
++    def _load_identity(self) -> None:
++        meta_path = self.store_dir / "service.json"
++        key_path = self.store_dir / "secret.key"
++        meta: dict[str, Any] = {}
++        if meta_path.is_file():
++            try:
++                meta = json.loads(meta_path.read_text(encoding="utf-8"))
++            except ValueError:
++                meta = {}
++        self.issuer_id = str(meta.get("issuer_id") or f"issuer-{uuid.uuid4().hex[:16]}")
++        if not meta:
++            meta = {"schema_version": SERVICE_VERSION, "issuer_id": self.issuer_id,
++                    "created_at": _now(), "service_dir": str(self.store_dir)}
++            meta_path.write_bytes(canonical(meta))
++        self._secret = b""
++        if key_path.is_file():
++            try:
++                self._secret = key_path.read_bytes()
++            except OSError:
++                self._secret = b""
++        elif meta.get("secret_written") is True:
++            # The service once had a key but it is gone: do NOT mint a new one,
++            # because that would silently invalidate every earlier signature.
++            self._secret = b""
++        else:
++            self._secret = secrets.token_bytes(32)
++            key_path.write_bytes(self._secret)
++            try:
++                os.chmod(key_path, 0o600)
++            except OSError:
++                pass
++            meta["secret_written"] = True
++            meta_path.write_bytes(canonical(meta))
++        if len(self._secret) != 32:
++            self._secret = b""  # verification unavailable -> sources stay unknown
+ 
++    def _load_records(self) -> dict[str, dict]:
++        path = self.store_dir / "runs.jsonl"
++        records: dict[str, dict] = {}
++        if not path.is_file():
++            return records
++        for line in path.read_text(encoding="utf-8").splitlines():
++            if not line.strip():
++                continue
++            try:
++                record = json.loads(line)
++            except ValueError:
++                continue
++            if isinstance(record, dict) and record.get("run_id"):
++                records[str(record["run_id"])] = record
++        return records
++
++    def _load_revisions(self) -> None:
++        path = self.store_dir / "revisions.jsonl"
++        if not path.is_file():
++            return
++        for line in path.read_text(encoding="utf-8").splitlines():
++            if not line.strip():
++                continue
++            try:
++                row = json.loads(line)
++            except ValueError:
++                continue
++            key = (str(row.get("project_id")), str(row.get("revision_id")))
++            if row.get("candidate_sha256"):
++                self._revisions[key] = str(row["candidate_sha256"])
++
++    def _append(self, name: str, payload: dict) -> None:
++        with (self.store_dir / name).open("a", encoding="utf-8") as stream:
++            stream.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
++
++    # -- signing -------------------------------------------------------------
+     def _sign(self, payload: dict) -> str:
++        if not self._secret:
++            raise RunLedgerError("RUN_LEDGER_KEY_UNAVAILABLE",
++                                 "服务签名密钥不可用；此前签发的运行只能保持 unknown")
+         return hmac.new(self._secret, canonical(payload), hashlib.sha256).hexdigest()
+ 
+-    def issue(self, *, kind: str, simulated: bool, project_id: str,
++    # -- repository integration ---------------------------------------------
++    def register_revision(self, *, project_id: str, revision_id: str,
++                          candidate_sha256: str) -> dict:
++        """Called by the REAL repository when a revision is persisted."""
++        key = (str(project_id), str(revision_id))
++        if not key[0] or not key[1] or not candidate_sha256:
++            raise RunLedgerError("REVISION_REGISTRATION_INVALID", "项目/修订/候选摘要不能为空")
++        with self._lock:
++            existing = self._revisions.get(key)
++            if existing and existing != candidate_sha256:
++                raise RunLedgerError("REVISION_ALREADY_REGISTERED",
++                                     f"修订 {key[1]} 已登记为另一份候选，拒绝覆盖")
++            self._revisions[key] = str(candidate_sha256)
++        self._append("revisions.jsonl", {"project_id": key[0], "revision_id": key[1],
++                                        "candidate_sha256": str(candidate_sha256),
++                                        "registered_at": _now()})
++        return {"project_id": key[0], "revision_id": key[1],
++                "candidate_sha256": str(candidate_sha256), "status": "registered"}
++
++    # -- observation ---------------------------------------------------------
++    def observe_exchange(self, *, project_id: str, transport: str, endpoint: str,
++                         request_bytes: bytes, response_bytes: bytes) -> ExchangeObservation:
++        """Record the bytes the service actually saw on the wire."""
++        if transport not in TRANSPORTS:
++            raise RunLedgerError("TRANSPORT_UNKNOWN", f"未知传输类型 {transport!r}")
++        if not project_id:
++            raise RunLedgerError("PROJECT_REQUIRED", "观测必须带项目")
++        # simulated is DERIVED, never accepted from the caller.
++        simulated = True
++        if transport == "live_http":
++            if _is_loopback_or_private(endpoint):
++                simulated = True   # loopback/private = local, never "real"
++            else:
++                simulated = False
++        observation = ExchangeObservation(
++            observation_id=f"obs-{uuid.uuid4().hex[:16]}", project_id=str(project_id),
++            transport=transport, endpoint=str(endpoint),
++            request_sha256=hashlib.sha256(request_bytes).hexdigest(),
++            response_sha256=hashlib.sha256(response_bytes).hexdigest(),
++            request_bytes=len(request_bytes), response_bytes=len(response_bytes),
++            captured_at=_now(), simulated=simulated, _token=_OBSERVATION_TOKEN)
++        with self._lock:
++            self._observations[observation.observation_id] = observation
++        self._append("observations.jsonl", {
++            "observation_id": observation.observation_id, "project_id": str(project_id),
++            "transport": transport, "endpoint": str(endpoint),
++            "request_sha256": observation.request_sha256,
++            "response_sha256": observation.response_sha256,
++            "request_bytes": observation.request_bytes,
++            "response_bytes": observation.response_bytes,
++            "simulated": simulated, "captured_at": observation.captured_at})
++        return observation
++
++    # -- issuing -------------------------------------------------------------
++    def issue(self, *, observation: ExchangeObservation, project_id: str,
+               candidate_sha256: str, input_hash: str, output_sha256: str,
+-              model: str, prompt_version: str, request_id: str,
++              model: str, prompt_version: str, site_snapshot_sha256: str,
++              basemap_files_sha256: str,
+               parent_revision_id: str | None = None,
+-              parent_candidate_sha256: str | None = None,
+-              parent_project_id: str | None = None,
+-              provider_request_id: str | None = None,
+               details: dict | None = None) -> dict:
+-        """Issue a record.  Only the SERVICE decides run_id and signature."""
+-        if kind not in {"local_protocol_stub_run", "real_model_run", "human_edit", "fixture_run"}:
+-            raise RunLedgerError("RUN_KIND_INVALID", f"未知运行种类 {kind}")
+-        if kind == "real_model_run" and simulated:
+-            raise RunLedgerError("REAL_RUN_CANNOT_BE_SIMULATED", "真实运行不得标 simulated")
+-        self._sequence += 1
+-        run_id = f"{self.service_id}-run-{self._sequence:06d}"
+-        payload = {
+-            "schema_version": "rkd-controlled-run-record.v1",
+-            "run_id": run_id, "kind": kind, "simulated": simulated,
+-            "issued_at": _now(), "issuer": self.service_id,
+-            "project_id": str(project_id),
+-            "candidate_sha256": str(candidate_sha256),
+-            "input_hash": str(input_hash), "output_sha256": str(output_sha256),
+-            "model": str(model), "prompt_version": str(prompt_version),
+-            "request_id": str(request_id),
+-            "provider_request_id": str(provider_request_id or request_id),
+-            "parent_revision_id": parent_revision_id,
+-            "parent_candidate_sha256": parent_candidate_sha256,
+-            "parent_project_id": parent_project_id,
+-            "details": details or {},
+-        }
+-        record = {**payload, "issuer_signature": self._sign(payload)}
+-        self._records[run_id] = record
++        """Issue a run record. Only THIS service can turn an observation into one."""
++        if _OBSERVATION_TOKEN is None:  # pragma: no cover - never true
++            raise RunLedgerError("OBSERVATION_REQUIRED", "缺少观测")
++        if not isinstance(observation, ExchangeObservation) or \
++                observation._token is not _OBSERVATION_TOKEN or \
++                self._observations.get(observation.observation_id) is not observation:
++            raise RunLedgerError("OBSERVATION_FORGED",
++                                 "只能由本服务观测到的真实请求/响应签发运行记录")
++        if observation.project_id != str(project_id):
++            raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH", "观测项目与运行项目不一致")
++        if observation.transport == "live_http" and observation.simulated is False and \
++                self.isolated_test:
++            raise RunLedgerError("ISOLATED_TEST_CANNOT_BE_REAL", "隔离测试模式不得签发真实运行")
++        if not site_snapshot_sha256 or not basemap_files_sha256:
++            raise RunLedgerError("SNAPSHOT_BINDING_REQUIRED",
++                                 "运行记录必须同时绑定场地快照摘要与底图文件摘要")
++        if not (candidate_sha256 and input_hash and output_sha256 and model and prompt_version):
++            raise RunLedgerError("RUN_FIELDS_INCOMPLETE", "运行记录字段不完整")
++        parent_candidate_sha = None
++        parent_project = None
++        if parent_revision_id:
++            key = (str(project_id), str(parent_revision_id))
++            parent_candidate_sha = self._revisions.get(key)
++            if not parent_candidate_sha:
++                raise RunLedgerError("PARENT_UNREGISTERED",
++                                     f"父修订 {parent_revision_id} 未经仓储登记，不能作为父链")
++            parent_project = str(project_id)
++        kind = _KIND_BY_TRANSPORT[observation.transport]
++        with self._lock:
++            self._sequence += 1
++            run_id = f"{self.service_id}-run-{self._sequence:06d}"
++            payload = {
++                "schema_version": RECORD_VERSION,
++                "run_id": run_id, "kind": kind, "simulated": bool(observation.simulated),
++                "issued_at": _now(), "issuer": self.service_id,
++                "issuer_id": self.issuer_id,
++                "admission_scope": self.admission_scope,
++                "project_id": str(project_id),
++                "candidate_sha256": str(candidate_sha256),
++                "input_hash": str(input_hash), "output_sha256": str(output_sha256),
++                "site_snapshot_sha256": str(site_snapshot_sha256),
++                "basemap_files_sha256": str(basemap_files_sha256),
++                "model": str(model), "prompt_version": str(prompt_version),
++                "request_sha256": observation.request_sha256,
++                "response_sha256": observation.response_sha256,
++                "transport": observation.transport, "endpoint": observation.endpoint,
++                "observation_id": observation.observation_id,
++                "parent_revision_id": parent_revision_id,
++                "parent_candidate_sha256": parent_candidate_sha,
++                "parent_project_id": parent_project,
++                "details": details or {},
++            }
++            record = {**payload, "issuer_signature": self._sign(payload)}
++            self._records[run_id] = record
++            self._append("runs.jsonl", record)
+         return dict(record)
+ 
+-    def verify(self, run_id: str, *, project_id: str, candidate_sha256: str,
+-               parent_revision_id: str | None = None,
+-               parent_candidate_sha256: str | None = None) -> dict:
+-        """Verify a run by LEDGER LOOKUP, never by caller-supplied bytes."""
++    # -- verification --------------------------------------------------------
++    def verifier(self) -> TrustedRunVerifier:
++        return TrustedRunVerifier(self, _VERIFIER_TOKEN)
++
++    def _verify_record(self, run_id: str, *, project_id: str, candidate_sha256: str,
++                       site_snapshot_sha256: str | None,
++                       parent_revision_id: str | None,
++                       parent_candidate_sha256: str | None) -> dict:
+         record = self._records.get(str(run_id))
+         if not record:
+             raise RunLedgerError("RUN_ID_NOT_IN_LEDGER",
+-                                 f"运行 {run_id} 不存在于受控账本；自报文件/哈希不作为证据")
++                                 f"运行 {run_id} 不存在于受控服务记录；自报文件/哈希不作为证据")
++        if self._verification_state != "available":
++            raise RunLedgerError("RUN_LEDGER_KEY_UNAVAILABLE",
++                                 "签名密钥不可用（重启前后无法核电），该来源只能保持 unknown")
+         payload = {k: v for k, v in record.items() if k != "issuer_signature"}
+         if not hmac.compare_digest(str(record.get("issuer_signature") or ""), self._sign(payload)):
+             raise RunLedgerError("RUN_SIGNATURE_INVALID", f"运行 {run_id} 签名不匹配（记录被篡改）")
+-        if record["issuer"] != self.service_id:
+-            raise RunLedgerError("RUN_ISSUER_UNKNOWN", f"运行 {run_id} 不是受控服务签发")
+-        if record["project_id"] != project_id:
++        if record.get("issuer") != self.service_id or record.get("issuer_id") != self.issuer_id:
++            raise RunLedgerError("RUN_ISSUER_UNKNOWN",
++                                 f"运行 {run_id} 不是本受控服务实例签发")
++        if record["project_id"] != str(project_id):
+             raise RunLedgerError("RUN_PROJECT_MISMATCH",
+                                  f"运行 {run_id} 项目 {record['project_id']} 与当前 {project_id} 不符")
+         if record["candidate_sha256"] != candidate_sha256:
+-            raise RunLedgerError("RUN_CANDIDATE_MISMATCH",
+-                                 f"运行 {run_id} 的候选摘要与当前候选不符")
+-        for field_name in ("input_hash", "output_sha256", "model", "prompt_version", "request_id"):
+-            if not record.get(field_name):
+-                raise RunLedgerError("RUN_FIELDS_INCOMPLETE", f"运行 {run_id} 缺 {field_name}")
+-        # Parent chain must match BOTH the revision id and the candidate digest,
+-        # and must live in the same project.
++            raise RunLedgerError("RUN_CANDIDATE_MISMATCH", f"运行 {run_id} 的候选摘要与当前候选不符")
++        if site_snapshot_sha256 is not None and \
++                record.get("site_snapshot_sha256") != str(site_snapshot_sha256):
++            raise RunLedgerError("RUN_SNAPSHOT_MISMATCH",
++                                 f"运行 {run_id} 绑定的场地快照与当前快照不符")
+         if parent_revision_id is not None:
+             if record.get("parent_revision_id") != parent_revision_id:
+                 raise RunLedgerError("PARENT_REVISION_MISMATCH",
+                                      f"父修订 {parent_revision_id} 与运行记录不符")
++            registered = self._revisions.get((str(project_id), str(parent_revision_id)))
++            if not registered:
++                raise RunLedgerError("PARENT_UNREGISTERED",
++                                     f"父修订 {parent_revision_id} 未经仓储登记")
++            if record.get("parent_candidate_sha256") != registered:
++                raise RunLedgerError("PARENT_CANDIDATE_MISMATCH", "父候选摘要与仓储登记不符")
+             if parent_candidate_sha256 is not None and \
+                     record.get("parent_candidate_sha256") != parent_candidate_sha256:
+-                raise RunLedgerError("PARENT_CANDIDATE_MISMATCH", "父候选摘要与运行记录不符")
+-            if record.get("parent_project_id") not in (None, project_id):
+-                raise RunLedgerError("PARENT_PROJECT_MISMATCH", "父版本属于其它项目")
++                raise RunLedgerError("PARENT_CANDIDATE_MISMATCH", "父候选摘要与调用者提供的不符")
+         elif record.get("parent_revision_id"):
+             raise RunLedgerError("PARENT_REVISION_MISSING", "运行记录带父链但调用者未提供")
+         return dict(record)
+ 
+     def export_public(self) -> list[dict]:
+-        """Export records WITHOUT the signing secret (signature stays verifiable
+-        only inside this process).  Useful for evidence manifests."""
++        """Public export without the secret; signatures remain process-verifiable."""
+         return [dict(r) for r in self._records.values()]
++
++    @property
++    def verification_state(self) -> str:
++        return self._verification_state
++
++
++_OBSERVATION_TOKEN = object()
++
++
++def assert_trusted_verifier(obj: Any) -> TrustedRunVerifier:
++    """Consumers accept ONLY this capability, never a ledger/dict/duck-type."""
++    if not isinstance(obj, TrustedRunVerifier):
++        raise RunLedgerError("RUN_VERIFIER_UNTRUSTED",
++                             "验证必须注入受控服务的只读验证能力；不接受自建账本或 JSON")
++    if not obj.is_live():
++        raise RunLedgerError("RUN_VERIFIER_STALE", "验证能力已失效")
++    return obj
+diff --git a/mvp/rkd_mvp/realmodel_spatial_adapter.py b/mvp/rkd_mvp/realmodel_spatial_adapter.py
+index ae15826..77fb853 100644
+--- a/mvp/rkd_mvp/realmodel_spatial_adapter.py
++++ b/mvp/rkd_mvp/realmodel_spatial_adapter.py
+@@ -250,7 +250,9 @@ def _load_basemap_facts(basemap_dir: Any) -> dict:
+     for i in range(int(data.get("counts", {}).get("unresolved_topology_items") or 0)):
+         unverified.append(f"拓扑复核标记#{i + 1}")
+     return {"contract_version": BASEMAP_CONTRACT, "boundary_mm": [bw, bh],
+-            "boundary_sha256": sha256_hex({f["name"]: f["sha256"] for f in files}),
++            # file-byte digest only; NOT a site snapshot digest
++            "basemap_files_sha256": sha256_hex({f["name"]: f["sha256"] for f in files}),
++            "boundary_sha256": sha256_hex({f["name"]: f["sha256"] for f in files}),  # legacy alias
+             "files": files, "keepouts": keepouts, "entrance_fact": entrance_fact,
+             "unverified_facts": unverified, "site_verified": False,
+             "json_sha256": next(f["sha256"] for f in files if f["name"] == "底图数据.json"),
+@@ -326,7 +328,29 @@ def reconcile_site(basemap_dir: Any, site: dict) -> dict:
+     if missing:
+         raise RealModelSpatialAdaptationError("UNVERIFIED_FACTS_MISMATCH",
+                                               f"调用者遗漏底图未核项：{sorted(missing)[:4]}", stage="basemap")
++
++    # SNAPSHOT BINDING: the declared snapshot digest must equal a rebuild from
++    # the same entrance assumption + basemap facts.  A digest cannot be asserted
++    # independently of the data it claims to cover.
++    from . import site_snapshot as SS
++    try:
++        snapshot = SS.snapshot_from_site(site, facts)
++    except SS.SiteSnapshotError as error:
++        raise RealModelSpatialAdaptationError(error.code, error.message, stage="basemap") from error
++    declared_assumption = (site.get("site_snapshot") or {}).get("entrance_assumption") \
++        if isinstance(site.get("site_snapshot"), dict) else None
++    if declared_assumption and point_m is not None:
++        declared_point = declared_assumption.get("value_m")
++        if declared_point is not None and (
++                abs(float(declared_point[0]) - point_m[0]) > 1e-6 or
++                abs(float(declared_point[1]) - point_m[1]) > 1e-6):
++            raise RealModelSpatialAdaptationError(
++                "ENTRANCE_DECLARATION_CONFLICT",
++                f"site.entrance.point_m={point_m} 与快照入口 {declared_point} 不一致", stage="basemap")
+     return {**facts,
++            "site_snapshot": snapshot,
++            "site_snapshot_sha256": snapshot["sha256"],
++            "basemap_files_sha256": snapshot["basemap_files_sha256"],
+             "entrance": {"side": facts["entrance_fact"]["side"], "point_m": point_m,
+                          "width_m": caller_ent.get("width_m") or 1.8,  # declared assumption, site_verified=false
+                          "status": facts["entrance_fact"]["status"],
+@@ -338,24 +362,28 @@ def reconcile_site(basemap_dir: Any, site: dict) -> dict:
+ 
+ 
+ # ------------------------------------------------------- R02: source evidence
+-def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict:
+-    """Verify provenance against a CONTROLLED ledger, never caller JSON files.
+-
+-    ``run_ledger`` must be a ``ControlledRunLedger`` supplied by the trusted
+-    verification service.  With no ledger (or no matching issued run id) an
+-    unverifiable source stays ``unknown`` and a ``real_model`` claim is
+-    rejected.  A candidate SHA / record SHA computed by the caller is NOT
+-    authenticity evidence.
++def verify_source(provenance: dict, candidate: dict, *, run_verifier=None,
++                  site_snapshot_sha256: str | None = None) -> dict:
++    """Verify provenance against the CONTROLLED RUN SERVICE, not caller JSON.
++
++    ``run_verifier`` must be the read-only capability produced by
++    ``ControlledRunService.verifier()``.  A caller-built ledger, a dict or any
++    duck-typed object is rejected (``RUN_VERIFIER_UNTRUSTED``): a signature over
++    caller-supplied bytes proves nothing about a real model call.
++
++    With no verifier (or no matching issued run id) an unverifiable source stays
++    ``unknown`` and a ``real_model`` claim is rejected.  A candidate SHA / record
++    SHA computed by the caller is NOT authenticity evidence.
+     """
+     try:
+-        from .controlled_run_ledger import RunLedgerError
++        from .controlled_run_ledger import RunLedgerError, assert_trusted_verifier
+     except ImportError:  # loaded by path in an offline repro harness
+         import sys as _sys
+         from pathlib import Path as _Path
+         _here = str(_Path(__file__).resolve().parent)
+         if _here not in _sys.path:
+             _sys.path.insert(0, _here)
+-        from controlled_run_ledger import RunLedgerError
++        from controlled_run_ledger import RunLedgerError, assert_trusted_verifier
+ 
+     prov = provenance or {}
+     origin = prov.get("design_origin") or {}
+@@ -384,18 +412,33 @@ def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict
+         raise RealModelSpatialAdaptationError("PARENT_UNVERIFIED",
+                                               f"父修订 {parent} 未提供父候选摘要", stage="source")
+ 
++    prov_snapshot = str(prov.get("site_snapshot_sha256") or "")
++    if site_snapshot_sha256 is not None and prov_snapshot != str(site_snapshot_sha256):
++        raise RealModelSpatialAdaptationError(
++            "SOURCE_SNAPSHOT_MISMATCH",
++            f"来源声明的场地快照 {prov_snapshot[:12] or '缺失'} 与本次适配快照 "
++            f"{str(site_snapshot_sha256)[:12]} 不符；不得把别的场地的运行挂到本候选",
++            stage="source")
++
+     verified_records: list[dict] = []
+-    if run_ledger is None:
++    verifier = None
++    if run_verifier is None:
+         if declared_kind == "real_model" or run_refs:
+             raise RealModelSpatialAdaptationError(
+-                "RUN_LEDGER_ABSENT",
+-                "未提供受控运行账本；自报运行记录/摘要不能作为真实性证据", stage="source")
++                "RUN_VERIFIER_ABSENT",
++                "未注入受控服务验证能力；自报运行记录/摘要不能作为真实性证据", stage="source")
+     else:
++        try:
++            verifier = assert_trusted_verifier(run_verifier)
++        except RunLedgerError as error:
++            raise RealModelSpatialAdaptationError(error.code, error.message, stage="source") from error
+         for ref in run_refs:
+             try:
+-                rec = run_ledger.verify(
++                rec = verifier.verify(
+                     ref, project_id=project_id, candidate_sha256=candidate_sha,
+-                    parent_revision_id=parent, parent_candidate_sha256=parent_candidate_sha or None)
++                    site_snapshot_sha256=(str(site_snapshot_sha256) if site_snapshot_sha256 else None),
++                    parent_revision_id=parent,
++                    parent_candidate_sha256=parent_candidate_sha or None)
+             except RunLedgerError as error:
+                 raise RealModelSpatialAdaptationError(error.code, error.message, stage="source") from error
+             verified_records.append(rec)
+@@ -404,11 +447,15 @@ def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict
+         if not verified_records:
+             raise RealModelSpatialAdaptationError(
+                 "DESIGN_ORIGIN_UNVERIFIED",
+-                "real_model 声明没有受控账本可核验的真实运行记录", stage="source")
++                "real_model 声明没有受控服务可核验的真实运行记录", stage="source")
+         if any(r.get("simulated") is not False or r.get("kind") != "real_model_run"
+                for r in verified_records):
+             raise RealModelSpatialAdaptationError("RUN_RECORD_NOT_REAL",
+-                                                  "账本记录不是非模拟真实模型运行", stage="source")
++                                                  "运行记录不是非模拟真实模型运行", stage="source")
++        if parent and not verifier.revision_registered(project_id, str(parent)):
++            raise RealModelSpatialAdaptationError(
++                "PARENT_UNREGISTERED",
++                f"父修订 {parent} 未经持久仓储登记；任意父链不能算已解析", stage="source")
+         kind, origin_kind, generation_real_model = "real_model", "real_model_output", True
+     elif declared_kind == "unknown" and verified_records:
+         # Evidence exists but provenance cannot be safely promoted: stay unknown.
+@@ -418,13 +465,20 @@ def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict
+         origin_kind = {"fixture": "fixture_shape", "human": "human_edited", "unknown": "unknown_origin"}[kind]
+         generation_real_model = False
+ 
+-    parent_verified = bool(verified_records) and parent is not None
++    parent_verified = bool(verifier) and bool(verified_records) and parent is not None and \
++        verifier.revision_registered(project_id, str(parent))
+     run_evidence = [{
+         "run_id": r["run_id"], "kind": r["kind"], "simulated": r["simulated"],
+-        "issuer": r["issuer"], "project_id": r["project_id"],
++        "issuer": r["issuer"], "issuer_id": r.get("issuer_id"),
++        "admission_scope": r.get("admission_scope"),
++        "project_id": r["project_id"],
+         "candidate_sha256": r["candidate_sha256"], "input_hash": r["input_hash"],
+         "output_sha256": r["output_sha256"], "model": r["model"],
+-        "prompt_version": r["prompt_version"], "request_id": r["request_id"],
++        "prompt_version": r["prompt_version"],
++        "site_snapshot_sha256": r.get("site_snapshot_sha256"),
++        "basemap_files_sha256": r.get("basemap_files_sha256"),
++        "transport": r.get("transport"), "request_sha256": r.get("request_sha256"),
++        "response_sha256": r.get("response_sha256"),
+         "parent_revision_id": r.get("parent_revision_id"),
+         "parent_candidate_sha256": r.get("parent_candidate_sha256"),
+         "signature_present": bool(r.get("issuer_signature")),
+@@ -436,10 +490,12 @@ def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict
+         "parent_verified": parent_verified,
+         "declared_by": str(origin.get("declared_by") or "not_declared"),
+         "declaration": origin.get("declaration"),
++        "site_snapshot_sha256": prov_snapshot or None,
+         "diff_baseline": ("source_parent" if parent_verified else
+                           ("unknown_missing_parent" if parent else "none_root")),
+-        "source_verification_note": ("受控账本签发并验签；自报文件/哈希不作为证据" if verified_records
+-                                     else "无可核验运行记录；来源未升级为真实"),
++        "source_verification_note": ("受控服务观测实际请求/响应后签发并验签；自报文件/哈希不作为证据"
++                                     if verified_records else
++                                     "无可核验运行记录；来源未升级为真实"),
+     }
+ 
+ 
+@@ -460,13 +516,50 @@ def path_centreline(poly: list[list[int]], segment_id: str) -> dict:
+             "unknown_reason": f"{segment_id} 近方形（{w}x{h}mm），主轴不可判定，不猜测方向"}
+ 
+ 
++# ------------------------------------------------------- R04b: reversible rect
++def axis_preserving_rect_mm(declared_bbox: list[int], axis: dict,
++                            segment_id: str) -> list[int]:
++    """Rebuild the legacy rectangle from centreline + width, direction-aware.
++
++    The 2253899 adapter always rebuilt a HORIZONTAL rectangle from the
++    centreline, so a vertical 1.2x4.1 m path became ``width=0, length=1.2``.
++    This reconstructs along the declared axis and proves the result equals the
++    source rectangle; any mismatch fails closed instead of emitting a
++    degenerate shape.
++    """
++    x, y, w, h = (int(v) for v in declared_bbox)
++    orientation = str(axis.get("axis") or "")
++    if orientation == "horizontal":
++        xs = [p[0] for p in axis["path_mm"]]
++        ys = [p[1] for p in axis["path_mm"]]
++        rebuilt = [min(xs), (min(ys) + max(ys) - int(axis["width_mm"])) // 2,
++                   max(xs) - min(xs), int(axis["width_mm"])]
++    elif orientation == "vertical":
++        xs = [p[0] for p in axis["path_mm"]]
++        ys = [p[1] for p in axis["path_mm"]]
++        rebuilt = [(min(xs) + max(xs) - int(axis["width_mm"])) // 2, min(ys),
++                   int(axis["width_mm"]), max(ys) - min(ys)]
++    else:
++        rebuilt = [x, y, w, h]
++    if rebuilt[2] <= 0 or rebuilt[3] <= 0:
++        raise RealModelSpatialAdaptationError(
++            "LEGACY_RECT_DEGENERATE",
++            f"{segment_id} 的 legacy 矩形退化为 {rebuilt}；拒绝输出零宽/零长动线", stage="geometry")
++    if rebuilt != [x, y, w, h]:
++        raise RealModelSpatialAdaptationError(
++            "LEGACY_RECT_NOT_REVERSIBLE",
++            f"{segment_id} 由中心线重构的矩形 {rebuilt} 与源矩形 {[x, y, w, h]} 不一致", stage="geometry")
++    return rebuilt
++
++
+ # ------------------------------------------------------- main adaptation
+ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
+-                    provenance: dict, created_at: str, run_ledger=None) -> dict:
++                    provenance: dict, created_at: str, run_verifier=None) -> dict:
+     if not isinstance(candidate, dict):
+         raise RealModelSpatialAdaptationError("NOT_A_CANDIDATE", "候选不是 JSON 对象", stage="source")
+     recon = reconcile_site(basemap_dir, site)
+-    source = verify_source(provenance, candidate, run_ledger=run_ledger)
++    source = verify_source(provenance, candidate, run_verifier=run_verifier,
++                           site_snapshot_sha256=recon["site_snapshot_sha256"])
+     kind = source["kind"]
+     ledger: list[dict] = []
+     unknowns: list[dict] = []
+@@ -522,8 +615,11 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
+         _require_within(poly, recon["boundary_mm"], f"path[{i}]")
+         sid = str(p.get("segment_id") or f"path:{i}")
+         axis = path_centreline(poly, sid)
++        xs, ys = [q[0] for q in poly], [q[1] for q in poly]
++        declared_rect = [min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)]
+         item = {"object_id": sid, "path_mm": axis["path_mm"], "width_mm": axis["width_mm"],
+                 "axis": axis["axis"], "axis_known_status": axis["axis_known_status"],
++                "declared_rect_mm": declared_rect,
+                 "width_known_status": "model_declared_unverified",
+                 "path_representation": "rect_axis_centerline_from_metric_rect",
+                 "source_refs": [str(x) for x in (p.get("source_refs") or [])]}
+@@ -736,7 +832,8 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
+                        "schema_version": TOP_LEVEL_VERSION,
+                        "config_hash": sha256_hex({"adapter": ADAPTER_VERSION, "mapping": MAPPING_VERSION,
+                                                   "vocab": VOCAB_VERSION}),
+-                       "input_hash": sha256_hex({"candidate": candidate, "site": recon}),
++                       "input_hash": sha256_hex({"candidate": candidate,
++                                                 "site_snapshot_sha256": recon["site_snapshot_sha256"]}),
+                        "generated_at": created_at,
+                        "interpretation_method": "deterministic_field_mapping_v2"},
+         "feedback": {"text": None, "parsed_intents": [], "locks": [], "interpretation_method": "not_applicable_offline"},
+@@ -744,13 +841,16 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
+         "change_reason": "v2 离线适配：底图结构化对账 + 来源证据核验；未调用模型、未生成设计",
+         "actor_id": str(prov.get("actor_id") or "offline-adapter"), "created_at": created_at,
+         "structure_signature": {},
+-        "site_snapshot": {"contract": recon["contract_version"],
++        "site_snapshot": {"schema_version": recon["site_snapshot"]["schema_version"],
++                          "contract": recon["contract_version"],
++                          "sha256": recon["site_snapshot_sha256"],
++                          "basemap_files_sha256": recon["basemap_files_sha256"],
+                           "boundary_mm": recon["boundary_mm"],
+-                          "sha256": recon["boundary_sha256"],
+                           "site_verified": False,
+                           "unverified_facts": recon["unverified_facts"],
+                           "entrance_fact": recon["entrance_fact"],
+-                          "entrance_assumption": recon["entrance"]},
++                          "entrance_assumption": recon["site_snapshot"]["entrance_assumption"],
++                          "entrance_resolved": recon["entrance"]},
+         "source_revision": source_revision,
+         "mapping_losses": list(candidate.get("mapping_losses") or []),
+         "spatial": {
+@@ -771,12 +871,15 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
+                                   "declaration": source["declaration"], "run_refs": source["run_refs"],
+                                   "run_evidence": source["run_evidence"]},
+                 "site_source": {"source": BASEMAP_CONTRACT, "boundary_mm": recon["boundary_mm"],
+-                                "boundary_sha256": recon["boundary_sha256"],
++                                "site_snapshot_sha256": recon["site_snapshot_sha256"],
++                                "basemap_files_sha256": recon["basemap_files_sha256"],
+                                 "json_sha256": recon["json_sha256"], "svg_sha256": recon["svg_sha256"],
+                                 "site_verified": False, "unverified_facts": recon["unverified_facts"],
+                                 "keepouts": recon["keepouts"], "entrance_fact": recon["entrance_fact"],
+                                 "entrance_assumption": recon["entrance"]},
+-                "basemap_contract": BASEMAP_CONTRACT, "boundary_sha256": recon["boundary_sha256"],
++                "basemap_contract": BASEMAP_CONTRACT,
++                "site_snapshot_sha256": recon["site_snapshot_sha256"],
++                "basemap_files_sha256": recon["basemap_files_sha256"],
+                 "boundary_mm": recon["boundary_mm"], "site_verified": False,
+                 "declared_by": source["declared_by"], "run_refs": source["run_refs"],
+                 "parent_revision_uid": source["parent_revision_id"],
+@@ -797,6 +900,8 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
+                                         "generation_real_model": source["generation_real_model"],
+                                         "parent_verified": source["parent_verified"],
+                                         "project_id": source.get("project_id"),
++                                        "site_snapshot_sha256": recon["site_snapshot_sha256"],
++                                        "basemap_files_sha256": recon["basemap_files_sha256"],
+                                         "run_evidence": source["run_evidence"],
+                                         "note": source["source_verification_note"]},
+                 "source_revision": source_revision,
+@@ -856,13 +961,23 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
+                            "material_id": None, "parent_object_id": None, "source_refs": [], "locked": False,
+                            "properties": {"geometry_mode": "bbox_derived", "semantic_only": True}})
+     model["objects"] = legacy
+-    model["circulation"]["segments"] = [
+-        {"segment_id": c["object_id"], "shape": _mm_shape([
+-            [c["path_mm"][0][0], min(p[1] for p in c["path_mm"])],
+-            [c["path_mm"][-1][0], min(p[1] for p in c["path_mm"])],
+-            [c["path_mm"][-1][0], min(p[1] for p in c["path_mm"]) + c["width_mm"]],
+-            [c["path_mm"][0][0], min(p[1] for p in c["path_mm"]) + c["width_mm"]]])}
+-        for c in circulation]
++    # Legacy circulation is derived from the SAME source rectangle, along its
++    # declared axis, and proven reversible.  No zero-width degenerates.
++    model["circulation"]["segments"] = []
++    for c in circulation:
++        rect = axis_preserving_rect_mm(c["declared_rect_mm"], c, c["object_id"])
++        x, y, w, h = rect
++        model["circulation"]["segments"].append({
++            "segment_id": c["object_id"],
++            "shape": _mm_shape([[x, y], [x + w, y], [x + w, y + h], [x, y + h]]),
++            "properties": {
++                "geometry_mode": "axis_preserving_rect",
++                "axis": c["axis"], "axis_known_status": c["axis_known_status"],
++                "declared_rect_mm": rect,
++                "source_rect_mm": list(c["declared_rect_mm"]),
++                "exact_path_ref": f"spatial.circulation:{c['object_id']}",
++                "width_known_status": "model_declared_unverified",
++            }})
+     return model
+ 
+ 
+@@ -1006,11 +1121,28 @@ def candidate_from_persisted(model: dict) -> tuple[dict, dict]:
+ def verify_persisted_site_snapshot(model: dict, site: dict, basemap_dir: Any) -> dict:
+     """P1: prove the persisted candidate was GENERATED on the same site snapshot.
+ 
+-    Checks boundary frame, entrance point and every keep-out obstacle against
+-    the hash-verified site.  A candidate drawn on a test boundary with a
+-    different entrance must fail here, not be silently re-bound later.
++    Checks the declared snapshot digest, boundary frame, entrance point and every
++    keep-out obstacle against the hash-verified site.  A candidate drawn on a
++    test boundary, on another snapshot or with a different entrance must fail
++    here, not be silently re-bound later.
+     """
+     recon = reconcile_site(basemap_dir, site)
++    snap = model.get("site_snapshot") or {}
++    declared = str(snap.get("sha256") or "")
++    if not declared:
++        raise RealModelSpatialAdaptationError(
++            "PERSISTED_SNAPSHOT_MISSING", "持久候选没有场地快照摘要；不能证明与本场地同源", stage="site")
++    if declared != recon["site_snapshot_sha256"]:
++        raise RealModelSpatialAdaptationError(
++            "PERSISTED_SNAPSHOT_MISMATCH",
++            f"持久候选快照 {declared[:12]} 与本次场地快照 {recon['site_snapshot_sha256'][:12]} 不符",
++            stage="site")
++    declared_basemap = str(snap.get("basemap_files_sha256") or "")
++    if declared_basemap != recon["basemap_files_sha256"]:
++        raise RealModelSpatialAdaptationError(
++            "PERSISTED_BASEMAP_MISMATCH",
++            f"持久候选底图文件摘要 {declared_basemap[:12]} 与确认底图 {recon['basemap_files_sha256'][:12]} 不符",
++            stage="site")
+     b = model.get("boundary") or {}
+     bw, bh = _m_to_mm(b.get("width"), "persisted.width"), _m_to_mm(b.get("length"), "persisted.length")
+     if (bw, bh) != tuple(recon["boundary_mm"]):
+@@ -1042,7 +1174,10 @@ def verify_persisted_site_snapshot(model: dict, site: dict, basemap_dir: Any) ->
+         raise RealModelSpatialAdaptationError("PERSISTED_KEEPOUT_MISMATCH",
+                                               f"持久候选保留区 {got} 与场地快照 {expected_obs} 不符", stage="site")
+     return {"boundary_mm": [bw, bh], "entrance_mm": [ex, ey], "keepouts": got,
+-            "site_snapshot_sha256": recon["boundary_sha256"], "status": "matched"}
++            "site_snapshot_sha256": recon["site_snapshot_sha256"],
++            "basemap_files_sha256": recon["basemap_files_sha256"],
++            "declared_snapshot_sha256": declared,
++            "status": "matched"}
+ 
+ 
+ def validate_candidate_geometry_against_site(model: dict, site: dict, basemap_dir: Any) -> dict:
+@@ -1087,22 +1222,107 @@ def validate_candidate_geometry_against_site(model: dict, site: dict, basemap_di
+             "keepouts_checked": len(obstacles)}
+ 
+ 
++def verify_geometry_projection_consistency(model: dict) -> dict:
++    """P1: source rect, legacy objects/segments and spatial projection must agree.
++
++    Covers every circulation segment (horizontal / vertical / near-square),
++    every zone and every furniture/partition projection: same rectangle, same
++    identity, no zero-width degenerate, connections refer to existing segments.
++    """
++    spatial = model.get("spatial") or {}
++    checks: list[dict] = []
++    legacy_by_id = {str(o.get("object_id")): o for o in (model.get("objects") or [])}
++    paths = {str(c.get("object_id")): c for c in (spatial.get("circulation") or [])}
++    segments = {str(s.get("segment_id")): s for s in ((model.get("circulation") or {}).get("segments") or [])}
++    problems: list[dict] = []
++
++    def bbox_of_shape(shape: dict) -> list[int]:
++        x = _m_to_mm(shape.get("x"), "shape.x")
++        y = _m_to_mm(shape.get("y"), "shape.y")
++        w = _m_to_mm(shape.get("width"), "shape.width")
++        h = _m_to_mm(shape.get("length"), "shape.length")
++        return [x, y, w, h]
++
++    for sid, path in paths.items():
++        segment = segments.get(sid)
++        if not segment:
++            problems.append({"item": sid, "problem": "legacy_segment_missing"})
++            continue
++        declared = [int(v) for v in path.get("declared_rect_mm") or []]
++        legacy = bbox_of_shape(segment.get("shape") or {})
++        source = [int(v) for v in (segment.get("properties") or {}).get("source_rect_mm") or []]
++        if legacy[2] <= 0 or legacy[3] <= 0:
++            problems.append({"item": sid, "problem": "legacy_zero_dimension", "rect": legacy})
++        if not (declared == legacy == source):
++            problems.append({"item": sid, "problem": "rect_mismatch",
++                             "declared": declared, "legacy": legacy, "source": source})
++        checks.append({"item": sid, "axis": path.get("axis"), "rect": legacy,
++                       "area_m2": round(legacy[2] * legacy[3] / 1_000_000, 4)})
++    for zid, zone in {str(z.get("object_id")): z for z in (spatial.get("zones") or [])}.items():
++        legacy = legacy_by_id.get(zid)
++        if not legacy:
++            problems.append({"item": zid, "problem": "legacy_zone_missing"})
++            continue
++        poly = zone.get("polygon_mm") or []
++        xs, ys = [p[0] for p in poly], [p[1] for p in poly]
++        expected = [int(min(xs)), int(min(ys)), int(max(xs) - min(xs)), int(max(ys) - min(ys))]
++        got = bbox_of_shape(legacy.get("shape") or {})
++        if got != expected:
++            problems.append({"item": zid, "problem": "zone_rect_mismatch",
++                             "spatial": expected, "legacy": got})
++    for fur in spatial.get("furniture") or []:
++        fid = str(fur.get("object_id"))
++        legacy = legacy_by_id.get(fid)
++        if not legacy:
++            problems.append({"item": fid, "problem": "legacy_furniture_missing"})
++            continue
++        expected = [round(fur["x_mm"] - fur["w_mm"] / 2), round(fur["y_mm"] - fur["d_mm"] / 2),
++                    int(fur["w_mm"]), int(fur["d_mm"])]
++        got = bbox_of_shape(legacy.get("shape") or {})
++        if got != expected:
++            problems.append({"item": fid, "problem": "furniture_rect_mismatch",
++                             "spatial": expected, "legacy": got})
++    ids = set(paths)
++    for pair in (model.get("circulation") or {}).get("connections") or []:
++        if len(pair) != 2 or pair[0] not in ids or pair[1] not in ids:
++            problems.append({"item": list(pair), "problem": "connection_unknown_segment"})
++    if problems:
++        raise RealModelSpatialAdaptationError(
++            "GEOMETRY_PROJECTION_INCONSISTENT",
++            f"源矩形/legacy/spatial 投影不一致：{problems[:4]}", stage="geometry")
++    return {"segments": checks, "zones": len(spatial.get("zones") or []),
++            "furniture": len(spatial.get("furniture") or []),
++            "connections": len((model.get("circulation") or {}).get("connections") or []),
++            "status": "consistent"}
++
++
+ def adapt_persisted_candidate(model: dict, *, site: dict, basemap_dir: Any,
+-                              provenance: dict, created_at: str, run_ledger=None,
+-                              skip_site_integrity: bool = False) -> tuple[dict, dict]:
+-    integrity = {"status": "not_run"}
+-    if not skip_site_integrity:
+-        integrity = verify_persisted_site_snapshot(model, site, basemap_dir)
+-        geometry = validate_candidate_geometry_against_site(model, site, basemap_dir)
+-        integrity["geometry"] = geometry
++                              provenance: dict, created_at: str, run_verifier=None
++                              ) -> tuple[dict, dict]:
++    """Persisted candidate -> adapt.  Site integrity is ALWAYS enforced.
++
++    The 2253899 ``skip_site_integrity`` switch is gone: a caller could bypass the
++    only site gate and still get an adoptable document.  Isolated negatives must
++    use ``verify_persisted_site_snapshot`` directly and mark their output
++    ``not_validated``; they never travel through this function.
++    """
++    integrity = verify_persisted_site_snapshot(model, site, basemap_dir)
++    geometry = validate_candidate_geometry_against_site(model, site, basemap_dir)
+     cand, note = candidate_from_persisted(model)
+     adapted = adapt_candidate(cand, site=site, basemap_dir=basemap_dir,
+                               provenance=provenance, created_at=created_at,
+-                              run_ledger=run_ledger)
++                              run_verifier=run_verifier)
++    # Source / legacy / spatial projections are compared on the ADAPTED
++    # document, where all three actually exist.
++    consistency = verify_geometry_projection_consistency(adapted)
++    integrity["geometry"] = geometry
++    integrity["projections"] = consistency
+     note["adapter_version"] = ADAPTER_VERSION
+     note["candidate_sha256"] = sha256_hex(cand)
+     note["spatial_model_hash"] = sha256_hex(adapted)
+     note["site_snapshot_integrity"] = integrity
++    note["site_snapshot_sha256"] = integrity["site_snapshot_sha256"]
++    note["basemap_files_sha256"] = integrity["basemap_files_sha256"]
+     return adapted, note
+ 
+ 
+diff --git a/mvp/rkd_mvp/site_snapshot.py b/mvp/rkd_mvp/site_snapshot.py
+new file mode 100644
+index 0000000..199df70
+--- /dev/null
++++ b/mvp/rkd_mvp/site_snapshot.py
+@@ -0,0 +1,210 @@
++"""Canonical site snapshot: ONE fact set, TWO clearly separated digests.
++
++Why this module exists
++----------------------
++W3 复核发现 ``site_snapshot.sha256`` 实际是"底图文件清单摘要"，而审计里的
++``site_snapshot_sha256`` 是另一套算法的完整快照摘要，两者同名不同物，且模型请求
++根本没有携带入口与快照哈希。本模块把两件事分开命名并固定算法：
++
++``basemap_files_sha256``
++    用户已确认底图五个文件的字节摘要（{文件名: sha256} 的规范化 JSON 的 sha256）。
++    它只回答"是否用了同一批底图字节"。
++
++``site_snapshot_sha256``
++    完整场地快照（边界、保留区、入口事实与概念假设、未核项、底图文件摘要、
++    ``site_verified=false``）的规范化 JSON 摘要。它回答"这次设计用的整份场地
++    假设是否同一份"。改入口、改假设理由、改保留区、改未核项都会改变它。
++
++两个摘要都写进：provider 请求正文、受控运行记录、持久候选、适配输出、成果清单。
++任何一处不一致都按失败处理，不做"就近重绑"。
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++from typing import Any
++
++SNAPSHOT_VERSION = "rkd-site-snapshot.v2"
++SNAPSHOT_CONTRACT = "rkd-site-basemap.v2"
++
++
++class SiteSnapshotError(Exception):
++    def __init__(self, code: str, message: str) -> None:
++        self.code, self.message = code, message
++        super().__init__(f"{code}: {message}")
++
++
++def canonical_json(value: Any) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True,
++                      separators=(",", ":")).encode("utf-8")
++
++
++def sha256_hex(value: Any) -> str:
++    return hashlib.sha256(canonical_json(value)).hexdigest()
++
++
++def basemap_files_sha256(files: list[dict]) -> str:
++    """Digest of the confirmed basemap BYTES only (never the site assumption)."""
++    return sha256_hex({str(f["name"]): str(f["sha256"]) for f in files})
++
++
++def build_snapshot(*, facts: dict, entrance_point_m: list[float] | None,
++                   entrance_reason: str, entrance_width_m: float | None = None) -> dict:
++    """Build the single snapshot from hash-verified basemap facts + assumption.
++
++    ``entrance_point_m`` is a replaceable concept assumption, never a site fact;
++    ``site_verified`` is always false in this batch.
++    """
++    bw, bh = facts["boundary_mm"]
++    payload = {
++        "schema_version": SNAPSHOT_VERSION,
++        "contract_version": SNAPSHOT_CONTRACT,
++        "boundary_source": SNAPSHOT_CONTRACT,
++        "width_m": bw / 1000,
++        "length_m": bh / 1000,
++        "boundary_mm": [bw, bh],
++        "keepouts": [{k: v for k, v in item.items()} for item in facts["keepouts"]],
++        "entrance_fact": dict(facts["entrance_fact"]),
++        "entrance_assumption": {
++            "kind": "concept_replaceable",
++            "value_m": ([float(entrance_point_m[0]), float(entrance_point_m[1])]
++                        if entrance_point_m is not None else None),
++            "width_m": (float(entrance_width_m) if entrance_width_m is not None else None),
++            "width_known_status": "unknown",
++            "reason": str(entrance_reason),
++            "site_verified": False,
++        },
++        "unverified_facts": sorted({str(u) for u in facts["unverified_facts"]}),
++        "basemap_files": [{"name": f["name"], "bytes": f["bytes"], "sha256": f["sha256"]}
++                          for f in facts["files"]],
++        "basemap_files_sha256": basemap_files_sha256(facts["files"]),
++        "site_verified": False,
++        "note": "事实/概念假设/现场未知分离；入口点为可替换概念假设，不是实测",
++    }
++    payload["sha256"] = sha256_hex(payload)
++    return payload
++
++
++def recompute_sha256(snapshot: dict) -> str:
++    payload = {k: v for k, v in snapshot.items() if k != "sha256"}
++    return sha256_hex(payload)
++
++
++def verify_snapshot_shape(snapshot: dict) -> dict:
++    """Recompute the digest and refuse self-inconsistent snapshots."""
++    if not isinstance(snapshot, dict):
++        raise SiteSnapshotError("SNAPSHOT_NOT_OBJECT", "场地快照不是 JSON 对象")
++    if str(snapshot.get("schema_version") or "") != SNAPSHOT_VERSION:
++        raise SiteSnapshotError("SNAPSHOT_VERSION_UNSUPPORTED",
++                                f"快照版本 {snapshot.get('schema_version')!r} 不是 {SNAPSHOT_VERSION}")
++    declared = str(snapshot.get("sha256") or "")
++    actual = recompute_sha256(snapshot)
++    if not declared or declared != actual:
++        raise SiteSnapshotError("SNAPSHOT_SHA_MISMATCH",
++                                f"快照自述 sha256={declared[:12]} 与实际 {actual[:12]} 不符")
++    files = snapshot.get("basemap_files") or []
++    if not files or str(snapshot.get("basemap_files_sha256") or "") != basemap_files_sha256(files):
++        raise SiteSnapshotError("BASEMAP_DIGEST_MISMATCH", "底图文件摘要与文件清单不符")
++    if snapshot.get("site_verified") is not False:
++        raise SiteSnapshotError("SNAPSHOT_OVERCLAIMS_SITE",
++                                "本批场地未现场核验，site_verified 必须为 false")
++    if str((snapshot.get("entrance_assumption") or {}).get("kind") or "") != "concept_replaceable":
++        raise SiteSnapshotError("ENTRANCE_ASSUMPTION_NOT_DECLARED", "入口必须声明 concept_replaceable 假设")
++    return {"site_snapshot_sha256": declared,
++            "basemap_files_sha256": snapshot["basemap_files_sha256"],
++            "boundary_mm": list(snapshot["boundary_mm"]),
++            "entrance_point_m": (snapshot["entrance_assumption"].get("value_m")),
++            "keepouts": len(snapshot.get("keepouts") or []),
++            "unverified_count": len(snapshot.get("unverified_facts") or [])}
++
++
++def baseline_facts() -> dict:
++    """Load facts from the user-confirmed v2 basemap (single source of truth)."""
++    from pathlib import Path
++
++    from .realmodel_spatial_adapter import _load_basemap_facts  # lazy: avoid import cycle
++
++    root = Path(__file__).resolve().parents[2]
++    return _load_basemap_facts(root / "deliverables-for-review/roadmap/W2-R4-表达收口/basemap")
++
++
++def provider_site(snapshot: dict) -> dict:
++    """The same snapshot expressed for the model request (legacy keys + full snapshot)."""
++    verify_snapshot_shape(snapshot)
++    assump = snapshot["entrance_assumption"]
++    point = assump.get("value_m")
++    keepouts = [{"object_id": k["object_id"], "name": k["name"], "rect_m": list(k["rect_m"]),
++                 "status": k["status"], "site_verified": False}
++                for k in snapshot["keepouts"]]
++    obstacles = [{"object_id": k["object_id"], "name": k["name"],
++                  "shape": {"type": "rect", "x": str(k["rect_m"][0]), "y": str(k["rect_m"][1]),
++                            "width": str(k["rect_m"][2]), "length": str(k["rect_m"][3])},
++                  "properties": {"source": SNAPSHOT_CONTRACT, "site_verified": False}}
++                 for k in keepouts]
++    return {
++        "width": snapshot["width_m"], "length": snapshot["length_m"], "unit": "m",
++        "boundary_source": SNAPSHOT_CONTRACT,
++        "site_snapshot_sha256": snapshot["sha256"],
++        "basemap_files_sha256": snapshot["basemap_files_sha256"],
++        "site_snapshot": snapshot,
++        "obstacles": obstacles,
++        "entrance": {"side": snapshot["entrance_fact"]["side"], "point": point,
++                     "width": (str(assump["width_m"]) if assump.get("width_m") is not None else None),
++                     "source": "concept_assumption", "site_verified": False,
++                     "assumption": assump,
++                     "basemap_inferred_point_m": snapshot["entrance_fact"].get("inferred_point_m")},
++    }
++
++
++def adapter_site(snapshot: dict) -> dict:
++    """The same snapshot expressed for the adapter/geometry gate."""
++    verify_snapshot_shape(snapshot)
++    assump = snapshot["entrance_assumption"]
++    return {
++        "contract_version": SNAPSHOT_CONTRACT,
++        "boundary_source": SNAPSHOT_CONTRACT,
++        "width_m": snapshot["width_m"], "length_m": snapshot["length_m"],
++        "site_snapshot": snapshot,
++        "snapshot_sha256": snapshot["sha256"],
++        "basemap_files_sha256": snapshot["basemap_files_sha256"],
++        "keepouts": [{"object_id": k["object_id"], "name": k["name"], "rect_m": list(k["rect_m"]),
++                      "status": k["status"], "site_verified": False}
++                     for k in snapshot["keepouts"]],
++        "entrance": {"side": snapshot["entrance_fact"]["side"], "point_m": assump.get("value_m"),
++                     "width_m": assump.get("width_m"), "status": snapshot["entrance_fact"]["status"],
++                     "assumption": assump},
++        "unverified_facts": list(snapshot["unverified_facts"]),
++    }
++
++
++def snapshot_from_site(site: dict, facts: dict) -> dict:
++    """Rebuild the snapshot implied by a caller site and compare hashes.
++
++    Used by the adapter so that the digest cannot be asserted independently of
++    the data: the caller's entrance assumption is fed back into the canonical
++    builder, and the rebuilt digest must equal the declared one.
++    """
++    declared = site.get("site_snapshot")
++    if isinstance(declared, dict):
++        verify_snapshot_shape(declared)
++        entrance = (declared.get("entrance_assumption") or {}).get("value_m")
++        reason = (declared.get("entrance_assumption") or {}).get("reason") or ""
++    else:
++        declared = None
++        entrance = (site.get("entrance") or {}).get("point_m")
++        reason = ((site.get("entrance") or {}).get("assumption") or {}).get("reason") or ""
++    rebuilt = build_snapshot(
++        facts=facts, entrance_point_m=entrance, entrance_reason=reason,
++        entrance_width_m=((site.get("entrance") or {}).get("width_m")
++                          if isinstance(site.get("entrance"), dict) else None))
++    for key in ("site_snapshot_sha256", "snapshot_sha256", "sha256"):
++        value = str(site.get(key) or "")
++        if value and value != rebuilt["sha256"]:
++            raise SiteSnapshotError(
++                "SNAPSHOT_SHA_MISMATCH",
++                f"site.{key}={value[:12]} 与按场地数据重算的 {rebuilt['sha256'][:12]} 不符；"
++                "入口/保留区/未核项与快照不一致不得放行")
++    if declared is not None and declared["sha256"] != rebuilt["sha256"]:
++        raise SiteSnapshotError("SNAPSHOT_DATA_MISMATCH",
++                                "site.site_snapshot 的摘要与其中的入口/保留区数据重算结果不符")
++    return rebuilt
+diff --git a/scripts/verify_w3_trust_remediation.py b/scripts/verify_w3_trust_remediation.py
+new file mode 100644
+index 0000000..9657243
+--- /dev/null
++++ b/scripts/verify_w3_trust_remediation.py
+@@ -0,0 +1,575 @@
++"""W3 trust remediation verification (baseline 2253899).
++
++One real pipeline, no external calls:
++  hash-verified v2 basemap -> SINGLE site snapshot (two named digests)
++  -> protocol stub captures the EXACT request -> real provider.generate
++  -> real SQLite repository -> controlled run service (observes the exchange)
++  -> same-run adapter with site gate + projection consistency
++  -> v2 contract + old/new consumer dispatch
++  -> real service adoption gate (not_validated refused)
++  -> delivery package (complete / incomplete) re-opened against its manifest
++  -> HTTP download = not_run.
++
++  python scripts/verify_w3_trust_remediation.py \
++      --evidence var/evidence/roadmap/W3-trust-remediation/after \
++      --out deliverables-for-review/roadmap/W3-trust-remediation [--no-render]
++"""
++from __future__ import annotations
++
++import argparse
++import copy
++import hashlib
++import io
++import json
++import os
++import re
++import subprocess
++import sys
++import zipfile
++from datetime import datetime, timezone
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++for _p in (ROOT / "mvp", ROOT / "scripts", ROOT):
++    if str(_p) not in sys.path:
++        sys.path.insert(0, str(_p))
++
++from jsonschema import Draft202012Validator  # noqa: E402
++
++from rkd_mvp import realmodel_spatial_adapter as A  # noqa: E402
++from rkd_mvp import site_snapshot as SS  # noqa: E402
++from rkd_mvp.admission import (ContractRegistry, UnsupportedSchemaVersion, admit_document,  # noqa: E402
++                               legacy_consumer_validate)
++from rkd_mvp.ai_design_option_provider import (DesignOptionConfig, DesignOptionProviderFailure,  # noqa: E402
++                                               RealModelDesignOptionProvider,
++                                               build_design_option_provider)
++from rkd_mvp.ai_design_option_repository import SQLiteAIDesignOptionRepository  # noqa: E402
++from rkd_mvp.ai_design_option_service import AIDesignOptionService  # noqa: E402
++from rkd_mvp.ai_spatial_outputs import (assert_complete_package, build_delivery_package,  # noqa: E402
++                                        check_zip_against_manifest)
++from rkd_mvp.controlled_run_ledger import ControlledRunService, RunLedgerError  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from w3_trust_findings import CapturingOpener, candidate  # noqa: E402
++
++BASEMAP_DIR = ROOT / "deliverables-for-review/roadmap/W2-R4-表达收口/basemap"
++CONTRACT_V2 = ROOT / "contracts/v2/ai-design-option.schema.json"
++LEGACY_SCHEMA = ROOT / "contracts/v1/ai-design-option.schema.json"
++CHECKS: list[dict] = []
++PROJECT = "ningbo-xiecheng"
++
++
++def now() -> str:
++    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
++
++
++def canon(value) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True,
++                      separators=(",", ":")).encode("utf-8")
++
++
++def sha(value) -> str:
++    return hashlib.sha256(canon(value)).hexdigest()
++
++
++def record(cid: str, name: str, ok, evidence) -> None:
++    CHECKS.append({"id": cid, "name": name,
++                   "result": ("observed_pass" if ok else "observed_fail") if ok is not None else "not_run",
++                   "evidence": evidence})
++    print(("PASS " if ok is True else "SKIP " if ok is None else "FAIL ") + cid + " " + name, flush=True)
++
++
++def message_payload(body: dict) -> dict:
++    for message in body.get("messages") or []:
++        if message.get("role") == "user":
++            try:
++                return json.loads(message.get("content") or "{}")
++            except ValueError:
++                return {}
++    return {}
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--evidence", default=str(ROOT / "var/evidence/roadmap/W3-trust-remediation/after"))
++    ap.add_argument("--out", default=str(ROOT / "deliverables-for-review/roadmap/W3-trust-remediation"))
++    ap.add_argument("--no-render", action="store_true")
++    args = ap.parse_args()
++    evidence = Path(args.evidence).resolve()
++    out = Path(args.out).resolve()
++    (evidence / "runtime").mkdir(parents=True, exist_ok=True)
++    (out / "outputs").mkdir(parents=True, exist_ok=True)
++    started = now()
++    run_slug = started.replace(":", "").replace("+", "_").replace("-", "")
++    service_dir = evidence / "runtime" / "runservice" / run_slug
++
++    # ---- D-01 one snapshot, two separately named digests --------------------
++    facts = A._load_basemap_facts(BASEMAP_DIR)
++    snap = SS.build_snapshot(facts=facts, entrance_point_m=[0, 10.3],
++                             entrance_reason="底图仅推断西门厅；概念暂用点位，现场复核后替换")
++    shape = SS.verify_snapshot_shape(snap)
++    moved = SS.build_snapshot(facts=facts, entrance_point_m=[0, 9.4],
++                              entrance_reason="改入口，用于验证摘要随数据变化")
++    record("D-01", "场地快照：完整快照摘要与底图文件摘要分开命名、可重算、随入口变化",
++           shape["site_snapshot_sha256"] == snap["sha256"] and
++           snap["sha256"] != snap["basemap_files_sha256"] and
++           moved["sha256"] != snap["sha256"] and
++           snap["basemap_files_sha256"] == facts["basemap_files_sha256"],
++           {"site_snapshot_sha256": snap["sha256"],
++            "basemap_files_sha256": snap["basemap_files_sha256"],
++            "moved_entrance_sha256": moved["sha256"],
++            "unverified_count": shape["unverified_count"], "keepouts": shape["keepouts"],
++            "site_verified": snap["site_verified"]})
++
++    psite, asite = SS.provider_site(snap), SS.adapter_site(snap)
++
++    # ---- real provider call through a capture stub -------------------------
++    opener = CapturingOpener({"branch": candidate("branch", 10.3),
++                              "loop": candidate("loop", 10.3)})
++    exchanges: list[dict] = []
++
++    def on_exchange(**kwargs):
++        exchanges.append(kwargs)
++
++    service = ControlledRunService(service_dir)
++    config = DesignOptionConfig(kind="openai_compatible", name="本地协议桩（模拟）",
++                                adapter_version="rkd-real-design-provider.stub",
++                                prompt_version="design-stub.zh-CN.v1",
++                                schema_version="rkd-ai-design-option.v1", max_candidates=2,
++                                real_model=True, configuration_errors=[],
++                                base_url="http://127.0.0.1:9/local-stub", model_id="stub-model",
++                                api_key_present=True, max_attempts=2, timeout_seconds=5,
++                                external_context_allowed=False)
++    provider = RealModelDesignOptionProvider(config, api_key="stub-not-a-real-key", opener=opener,
++                                             run_log_dir=str(evidence / "runtime" / "runs"),
++                                             on_exchange=on_exchange)
++    brief = {"requirements": [], "design_intent": [], "conflicts": [],
++             "cost": {"known_items": [], "unknown_items": []}}
++    try:
++        models = provider.generate(set_id="w3-stub-set", brief=brief, site=psite,
++                                   input_hash=snap["sha256"], generated_at=now())
++        provider_error = ""
++    except DesignOptionProviderFailure as error:
++        models, provider_error = [], f"{error.code}: {error.message}"
++
++    # ---- D-02 the ACTUAL request body --------------------------------------
++    request = (opener.requests[0]["body"] if opener.requests else {})
++    payload = message_payload(request)
++    boundary = payload.get("boundary") or {}
++    entrance = boundary.get("entrance") or {}
++    point = entrance.get("point")
++    body_text = json.dumps(request, ensure_ascii=False)
++    snapshot_block = payload.get("site_snapshot") or {}
++    fixed_example = any(token in body_text for token in
++                        ("legal_path_example", "12x8", "12 x 8", "12, 1.0", "12,1.0"))
++    record("D-02", "实际模型请求：携带入口点、完整快照、保留区与两套摘要；无固定 12x8 示例",
++           point is not None and abs(float(point[1]) - 10.3) < 1e-6 and
++           boundary.get("site_snapshot_sha256") == snap["sha256"] and
++           boundary.get("basemap_files_sha256") == snap["basemap_files_sha256"] and
++           len(snapshot_block.get("keepouts") or []) == 2 and
++           bool(snapshot_block.get("unverified_facts")) and not fixed_example,
++           {"messages": len(request.get("messages") or []),
++            "request_sha256": opener.requests[0]["body_sha256"] if opener.requests else None,
++            "request_bytes": opener.requests[0]["body_bytes"] if opener.requests else 0,
++            "entrance_point": point, "boundary_snapshot": boundary.get("site_snapshot_sha256"),
++            "boundary_basemap": boundary.get("basemap_files_sha256"),
++            "snapshot_keepouts": len(snapshot_block.get("keepouts") or []),
++            "snapshot_unverified": len(snapshot_block.get("unverified_facts") or []),
++            "ships_fixed_12x8_example": fixed_example})
++
++    if not models:
++        audit = {"schema_version": "rkd-w3-trust-remediation.v2", "checks": CHECKS,
++                 "blocker": provider_error or "provider 未产出候选", "started_at": started,
++                 "finished_at": now(), "external_calls": 0, "cost_cny": 0}
++        (evidence / "verification.json").write_bytes(canon(audit))
++        (out / "checks.json").write_bytes(canon(audit))
++        return 1
++
++    record("D-03", "候选是 v2 且带同一快照摘要（provider 不再以 v1 承载场地）",
++           all(model["schema_version"] == "rkd-ai-design-option.v2" and
++               model["site_snapshot"]["sha256"] == snap["sha256"] and
++               model["site_snapshot"]["basemap_files_sha256"] == snap["basemap_files_sha256"]
++               for model in models),
++           [{"option_id": model["option_id"], "schema": model["schema_version"],
++             "snapshot": model["site_snapshot"]["sha256"],
++             "basemap": model["site_snapshot"]["basemap_files_sha256"]} for model in models])
++
++    # ---- persist through the REAL repository -------------------------------
++    db = evidence / "runtime" / "app.sqlite3"
++    if db.exists():
++        db.unlink()
++    store = SQLiteStore(str(db))
++    conn = store._connection()
++    conn.execute("INSERT OR IGNORE INTO projects(organization_id, project_id, name, status, version) "
++                 "VALUES (?,?,?,?,?)", ("org-local", PROJECT, "宁波协诚（隔离桩库）", "active", 1))
++    conn.commit()
++    repo = SQLiteAIDesignOptionRepository(str(db))
++    persisted: list[dict] = []
++    with repo.transaction("org-local", PROJECT, write=True) as tx:
++        tx.insert_set({"set_id": "w3-stub-set", "brief_id": "w3-stub-brief",
++                       "input_hash": snap["sha256"], "status": "succeeded", "phase": "completed",
++                       "attempt_count": 1, "config": config.public(), "context": {},
++                       "error_code": None, "error_message": None,
++                       "idempotency_key": "w3-stub-set-v1", "actor_id": "stub",
++                       "created_at": now(), "updated_at": now()})
++        for i, model in enumerate(models):
++            oid = f"ai-option-revision-stub-{i}"
++            tx.insert_revision({"option_revision_id": oid, "set_id": "w3-stub-set",
++                                "option_id": f"w3-stub-set:stub-{i}", "revision_no": 1,
++                                "parent_revision_id": None,
++                                "strategy_id": model["strategy"]["strategy_id"],
++                                "strategy": model["strategy"], "model": model,
++                                "validation": model["validation"], "materials": model["materials"],
++                                "cost": model["cost"], "feedback": model["feedback"],
++                                "diff": model["diff"], "conflicts": model["conflicts"],
++                                "structure_signature": model["structure_signature"],
++                                "lifecycle_status": "candidate", "source_kind": model["source_kind"],
++                                "change_reason": "本地协议桩候选，未采用", "actor_id": "stub",
++                                "created_at": now()})
++            persisted.append(tx.revision(oid)["model"])
++    record("D-04", "候选经真实 SQLite 仓储写入并读回，读回文档仍绑定同一快照摘要",
++           len(persisted) == 2 and all(p["site_snapshot"]["sha256"] == snap["sha256"] and
++                                       p["schema_version"] == "rkd-ai-design-option.v2"
++                                       for p in persisted),
++           [{"option_id": p["option_id"], "snapshot": p["site_snapshot"]["sha256"],
++             "objects": len(p["objects"])} for p in persisted])
++
++    # ---- controlled run service: observe, register, issue ------------------
++    observations = [service.observe_exchange(project_id=PROJECT, **item) for item in exchanges]
++    run_refs: list[str] = []
++    for i, model in enumerate(persisted):
++        cand, _ = A.candidate_from_persisted(model)
++        service.register_revision(project_id=PROJECT, revision_id=f"ai-option-revision-stub-{i}",
++                                  candidate_sha256=sha(cand))
++        record_row = service.issue(observation=observations[min(i, len(observations) - 1)],
++                                   project_id=PROJECT, candidate_sha256=sha(cand),
++                                   input_hash=snap["sha256"], output_sha256=sha(model),
++                                   model=config.model_id, prompt_version=config.prompt_version,
++                                   site_snapshot_sha256=snap["sha256"],
++                                   basemap_files_sha256=snap["basemap_files_sha256"],
++                                   details={"transport_note": "本地协议桩，非真实模型"})
++        run_refs.append(record_row["run_id"])
++    verifier = service.verifier()
++    issued = service.export_public()
++    record("D-05", "运行记录由受控服务观测实际请求/响应后签发：simulated、绑定同一快照、不是真实模型",
++           all(r["simulated"] is True and r["kind"] == "local_protocol_stub_run" and
++               r["site_snapshot_sha256"] == snap["sha256"] and
++               r["basemap_files_sha256"] == snap["basemap_files_sha256"] and
++               bool(r["issuer_signature"]) for r in issued),
++           [{"run_id": r["run_id"], "kind": r["kind"], "simulated": r["simulated"],
++             "transport": r["transport"], "request_sha256": r["request_sha256"][:16],
++             "site_snapshot_sha256": r["site_snapshot_sha256"][:16],
++             "issuer_id": r["issuer_id"]} for r in issued])
++
++    # ---- same-run adaptation with the site gate ---------------------------
++    adapted: list[dict] = []
++    adapt_errors: list[str] = []
++    for i, model in enumerate(persisted):
++        cand, _ = A.candidate_from_persisted(model)
++        prov = {"artifact_id": f"stub-{i}", "sha256": sha(cand), "set_id": "w3-stub-set",
++                "option_id": model["option_id"], "revision_no": 1, "parent_revision_id": None,
++                "actor_id": "offline-verifier", "model_site_boundary_m": [26.17, 17.92],
++                "project_id": PROJECT, "provider_kind": "local_protocol_stub",
++                "prompt_version": config.prompt_version, "model_id": config.model_id,
++                "site_snapshot_sha256": snap["sha256"],
++                "design_origin": {"kind": "fixture", "declared_by": "local_protocol_stub",
++                                  "declaration": "本地协议桩模拟，不是真实模型调用",
++                                  "run_refs": [run_refs[i]]}}
++        try:
++            doc, note = A.adapt_persisted_candidate(model, site=asite, basemap_dir=BASEMAP_DIR,
++                                                    provenance=prov, created_at=now(),
++                                                    run_verifier=verifier)
++            adapted.append(doc)
++        except A.RealModelSpatialAdaptationError as error:
++            adapt_errors.append(f"{error.code}: {error.message}")
++    record("D-06", "同一运行适配成功：场地门槛与源/legacy/spatial 投影一致性均执行",
++           len(adapted) == 2 and not adapt_errors,
++           {"adapted": len(adapted), "errors": adapt_errors,
++            "integrity": [(doc.get("spatial", {}).get("source", {}).get("site_snapshot_sha256")
++                           or "") for doc in adapted]})
++
++    # ---- D-07 circulation rectangles are reversible -----------------------
++    zero, mismatch, rows = [], [], []
++    if adapted:
++        spatial = {c["object_id"]: c for c in adapted[0]["spatial"]["circulation"]}
++        legacy = {s["segment_id"]: s for s in adapted[0]["circulation"]["segments"]}
++        for sid, path in spatial.items():
++            shape = (legacy.get(sid) or {}).get("shape") or {}
++            width = float(shape.get("width") or 0) * 1000
++            length = float(shape.get("length") or 0) * 1000
++            declared = path.get("declared_rect_mm") or []
++            if width <= 0 or length <= 0:
++                zero.append(sid)
++            if [round(width), round(length)] != [declared[2], declared[3]]:
++                mismatch.append(sid)
++            rows.append({"segment_id": sid, "axis": path.get("axis"),
++                         "declared_rect_mm": declared,
++                         "legacy_mm": [round(width), round(length)],
++                         "area_m2": round(width * length / 1_000_000, 4)})
++    record("D-07", "纵向/横向动线的 legacy 矩形零宽为零、与源矩形逐项相等（含面积）",
++           bool(rows) and not zero and not mismatch and
++           any(row["axis"] == "vertical" for row in rows) and
++           any(row["axis"] == "horizontal" for row in rows),
++           {"zero_dimension": zero, "mismatched": mismatch, "segments": rows})
++
++    # ---- D-08 source forgery / arbitrary parent / rogue service -----------
++    cand0, _ = A.candidate_from_persisted(persisted[0])
++    attempts: dict[str, dict] = {}
++    for name, kwargs in (("未登记父链", {"parent_revision_id": "invented-parent-uid"}),
++                         ("跨项目", {})):
++        try:
++            target_project = PROJECT if name != "跨项目" else "other-project"
++            service.issue(observation=observations[0], project_id=target_project,
++                          candidate_sha256=sha(cand0), input_hash=snap["sha256"],
++                          output_sha256=sha({"o": name}), model=config.model_id,
++                          prompt_version=config.prompt_version,
++                          site_snapshot_sha256=snap["sha256"],
++                          basemap_files_sha256=snap["basemap_files_sha256"], **kwargs)
++            attempts[name] = {"rejected": False}
++        except RunLedgerError as error:
++            attempts[name] = {"rejected": True, "code": error.code}
++    try:
++        rogue = ControlledRunService(evidence / "runtime" / "rogue-service" / run_slug)
++        rogue.verifier().verify(run_refs[0], project_id=PROJECT,
++                                candidate_sha256=sha(cand0))
++        attempts["自建服务验签"] = {"rejected": False}
++    except RunLedgerError as error:
++        attempts["自建服务验签"] = {"rejected": True, "code": error.code}
++    try:
++        A.adapt_candidate(cand0, site=asite, basemap_dir=BASEMAP_DIR,
++                          provenance={"sha256": sha(cand0), "model_site_boundary_m": [26.17, 17.92],
++                                      "project_id": PROJECT, "site_snapshot_sha256": snap["sha256"],
++                                      "design_origin": {"kind": "real_model", "declared_by": "forger",
++                                                        "declaration": "self", "run_refs": [run_refs[0]]}},
++                          created_at=now(), run_verifier=verifier)
++        attempts["桩记录冒充真实"] = {"rejected": False}
++    except A.RealModelSpatialAdaptationError as error:
++        attempts["桩记录冒充真实"] = {"rejected": True, "code": error.code}
++    record("D-08", "未登记父链/跨项目/自建服务/桩记录冒充真实 全部拒绝",
++           all(value.get("rejected") for value in attempts.values()), attempts)
++
++    # ---- D-09 contract dispatch: old consumer vs new consumer -------------
++    v2_doc = adapted[0] if adapted else {}
++    v2_errors = [e.message for e in Draft202012Validator(
++        json.loads(CONTRACT_V2.read_text(encoding="utf-8"))).iter_errors(v2_doc)]
++    legacy_schema = json.loads(LEGACY_SCHEMA.read_text(encoding="utf-8"))
++    synthetic_config = DesignOptionConfig(kind="synthetic", name="本地合成（非真实 AI）",
++                                          adapter_version="rkd-design-option-provider.v1",
++                                          prompt_version="design-option-strategy.zh-CN.v1",
++                                          schema_version="rkd-ai-design-option.v1",
++                                          max_candidates=2, real_model=False,
++                                          configuration_errors=[])
++    synthetic = build_design_option_provider(synthetic_config)
++    v1_doc = synthetic.generate(
++        set_id="w3-synth-set", brief=brief,
++        site={"width": 12, "length": 8, "unit": "m",
++              "boundary_source": "test_parameters_not_site_verified"},
++        input_hash=sha({"synthetic": True}), generated_at=now())[0]
++    v1_errors = [e.message for e in Draft202012Validator(legacy_schema).iter_errors(v1_doc)]
++    old_consumer_code = ""
++    try:
++        legacy_consumer_validate(v2_doc)
++    except UnsupportedSchemaVersion as error:
++        old_consumer_code = error.code
++    new_consumer_ok = ContractRegistry().validate(v2_doc) is v2_doc
++    record("D-09", "版本分发：旧消费者对 v2 明确报不支持版本，新消费者读写 v2，v1 文档仍通过",
++           not v2_errors and not v1_errors and old_consumer_code == "UNSUPPORTED_SCHEMA_VERSION"
++           and new_consumer_ok,
++           {"v2_errors": v2_errors[:3], "v1_errors": v1_errors[:3],
++            "old_consumer_code": old_consumer_code,
++            "old_consumer_versions": ContractRegistry(versions=("rkd-ai-design-option.v1",)).supported_versions,
++            "new_consumer_versions": ContractRegistry().supported_versions})
++
++    # ---- D-10 real service adoption gate ----------------------------------
++    gate = {}
++    try:
++        svc = AIDesignOptionService(repo, lambda *_: None, lambda *_: {}, evidence / "runtime" / "svc",
++                                    config=config, provider=None, start_workers=False,
++                                    basemap_dir=BASEMAP_DIR, run_verifier=verifier)
++        gate["registry_versions"] = svc.registry.supported_versions
++        # v2 through the REAL consumer validation entry
++        # A provider-produced v2 document, not the adapter projection.
++        checked = svc._validate_candidate(copy.deepcopy(models[0]), brief=brief, config=config,
++                                          input_hash=snap["sha256"])
++        gate["v2_accepted_by_service"] = checked["schema_version"] == "rkd-ai-design-option.v2"
++        gate["admission"] = admit_document(adapted[0], site=asite, basemap_dir=BASEMAP_DIR,
++                                           run_verifier=verifier)
++        # adoption refuses a revision whose admission is not_validated
++        with repo.transaction("org-local", PROJECT, write=True) as tx:
++            tx.insert_revision({"option_revision_id": "gate-rev", "set_id": "w3-stub-set",
++                                "option_id": "gate-option", "revision_no": 1,
++                                "parent_revision_id": None, "strategy_id": "gate",
++                                "strategy": models[0]["strategy"], "model": models[0],
++                                "validation": {"status": "passed",
++                                               "admission": {"status": "not_validated",
++                                                             "adoptable": False,
++                                                             "blockers": ["隔离测试"]}},
++                                "materials": models[0]["materials"], "cost": models[0]["cost"],
++                                "feedback": models[0]["feedback"], "diff": [], "conflicts": [],
++                                "structure_signature": models[0]["structure_signature"],
++                                "lifecycle_status": "candidate", "source_kind": models[0]["source_kind"],
++                                "change_reason": "gate", "actor_id": "verifier",
++                                "created_at": now()})
++        try:
++            svc.adopt("org-local", PROJECT, "verifier", {"option_id": "gate-option",
++                                                         "expected_revision": 1,
++                                                         "expected_version": 0})
++            gate["not_validated_rejected"] = False
++            gate["adopt_error"] = ""
++        except Exception as error:  # noqa: BLE001
++            gate["not_validated_rejected"] = getattr(error, "code", "") == "ADMISSION_NOT_VALIDATED"
++            gate["adopt_error"] = f"{getattr(error, 'code', type(error).__name__)}"
++    except Exception as error:  # noqa: BLE001
++        gate["error"] = f"{type(error).__name__}: {error}"
++    record("D-10", "真实服务入口：注册表支持 v2、v2 经服务校验、未验证候选被采用闸口拒绝",
++           bool(gate.get("v2_accepted_by_service")) and
++           gate.get("not_validated_rejected") is True and
++           "rkd-ai-design-option.v2" in (gate.get("registry_versions") or []),
++           gate)
++
++    # ---- D-11 admission on the adapted document ----------------------------
++    try:
++        admission = admit_document(adapted[0], site=asite, basemap_dir=BASEMAP_DIR,
++                                   run_verifier=verifier)
++        tampered = copy.deepcopy(adapted[0])
++        tampered["site_snapshot"]["sha256"] = sha({"not": "this site"})
++        tampered_admission = admit_document(tampered, site=asite, basemap_dir=BASEMAP_DIR,
++                                           run_verifier=verifier)
++    except Exception as error:  # noqa: BLE001
++        admission = {"error": str(error)}
++        tampered_admission = {}
++    record("D-11", "准入党：同源候选 admitted/site_bound，改动快照摘要后不可采用",
++           admission.get("status") == "admitted" and admission.get("adoptable") is True and
++           admission.get("site_bound") is True and
++           tampered_admission.get("adoptable") is False,
++           {"admission": {k: admission.get(k) for k in ("status", "adoptable", "scope",
++                                                        "site_snapshot_sha256", "blockers")},
++            "tampered": {k: tampered_admission.get(k) for k in ("status", "adoptable", "blockers")}})
++
++    # ---- D-12 package: complete (render) and incomplete --------------------
++    render_path = out / "outputs" / "render.png"
++    render = {"status": "not_run"}
++    if not args.no_render:
++        scene = build_delivery_package(adapted[0], project_id="ningbo-xiecheng-stub",
++                                       option_revision_id="w3-stub-r1",
++                                       render_status="pending")["build"]
++        (evidence / "scene-for-render.json").write_bytes(canon(scene["scene"]))
++        blender = ROOT / "tools/blender/blender-4.2.9-windows-x64/blender.exe"
++        if blender.is_file():
++            env = dict(os.environ)
++            for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
++                env.pop(key, None)
++            cmd = [str(blender), "-b", "--factory-startup", "-noaudio", "--python",
++                   str(ROOT / "scripts/render_spatial_scene.py"), "--",
++                   "--scene", str(evidence / "scene-for-render.json"),
++                   "--out", str(render_path), "--width", "1280", "--height", "800", "--samples", "48"]
++            try:
++                proc = subprocess.run(cmd, capture_output=True, timeout=300, env=env)
++                render = {"status": "rendered" if proc.returncode == 0 and render_path.is_file()
++                          and render_path.stat().st_size > 10000 else "failed",
++                          "returncode": proc.returncode,
++                          "bytes": render_path.stat().st_size if render_path.is_file() else 0}
++            except Exception as error:  # noqa: BLE001
++                render = {"status": "failed", "error": str(error)}
++    record("D-12", "人眼图（本地 Blender 工程样张）" + ("（--no-render 未运行）" if args.no_render else ""),
++           None if args.no_render else render.get("status") == "rendered", render)
++
++    render_bytes = render_path.read_bytes() if render.get("status") == "rendered" else None
++    complete = build_delivery_package(adapted[0], project_id="ningbo-xiecheng-stub",
++                                      option_revision_id="w3-stub-r1",
++                                      render_bytes=render_bytes,
++                                      render_status=render.get("status", "not_run"))
++    incomplete = build_delivery_package(adapted[0], project_id="ningbo-xiecheng-stub",
++                                        option_revision_id="w3-stub-r1",
++                                        render_status="not_run")
++    def archive_names(zip_bytes: bytes) -> list[str]:
++        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as archive:
++            return sorted(archive.namelist())
++
++    complete_names = archive_names(complete["zip_bytes"])
++    incomplete_names = archive_names(incomplete["zip_bytes"])
++    record("D-13", "完整包：render 在 ZIP 内、清单逐项一致、可登记为完整",
++           (None if render.get("status") != "rendered" else
++            complete["zip_check"]["ok"] and complete["complete"] and
++            complete["registration"]["ok"] and "render.png" in complete_names and
++            "package.zip" not in complete_names),
++           {"names": complete_names, "check": complete["zip_check"]["problems"],
++            "render_status": render.get("status"),
++            "registration_ok": complete["registration"]["ok"],
++            "manifest_sha256": hashlib.sha256(complete["manifest_bytes"]).hexdigest(),
++            "zip_sha256": hashlib.sha256(complete["zip_bytes"]).hexdigest(),
++            "render_sha256": (hashlib.sha256(render_bytes).hexdigest() if render_bytes else None)})
++    record("D-14", "不完整包：同样通过清单校验，但显式 incomplete 且不能冒充完整",
++           incomplete["zip_check"]["ok"] and not incomplete["complete"] and
++           incomplete["registration"]["ok"] is False and
++           incomplete["completeness"]["status"] == "incomplete" and
++           "package.zip" not in incomplete_names,
++           {"names": incomplete_names, "check": incomplete["zip_check"]["problems"],
++            "completeness": incomplete["completeness"],
++            "registration_ok": incomplete["registration"]["ok"]})
++    record("D-15", "HTTP 下载路径（用户可操作链）", None,
++           {"reason": "本批未启动 HTTP 服务/浏览器；ZIP 仅内存重开字节校验，不等于 HTTP 下载"})
++
++    # ---- outputs -----------------------------------------------------------
++    frozen = adapted[0]
++    written: dict[str, dict] = {}
++
++    def write(name: str, data: bytes) -> None:
++        (out / "outputs" / name).write_bytes(data)
++        written[name] = {"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
++
++    write("model.json", canon(frozen))
++    write("manifest.json", complete["manifest_bytes"])
++    write("package.zip", complete["zip_bytes"])
++    for name, (_, _, data) in complete["files"].items():
++        if name in {"manifest.json", "package.zip"}:
++            continue
++        write(name, data)
++    (out / "outputs" / "package-incomplete.zip").write_bytes(incomplete["zip_bytes"])
++    (out / "outputs" / "manifest-incomplete.json").write_bytes(incomplete["manifest_bytes"])
++    write("request-payload.json", canon(request))
++    write("site-snapshot.json", canon(snap))
++
++    plan = complete["files"]["plan.svg"][2].decode("utf-8")
++    record("D-16", "图面不把模型声明宽度称净宽；近方主轴标未验证",
++           "净宽 mm" not in plan and "模型声明宽度" in plan and "非实测净宽" in plan,
++           {"fragments": re.findall(r"主动线[^<]{0,40}", plan)[:2]})
++
++    # ---- D-17 the same digests reach the delivered manifest inside the ZIP --
++    with zipfile.ZipFile(io.BytesIO(complete["zip_bytes"])) as archive:
++        inner_manifest = json.loads(archive.read("manifest.json"))
++        inner_model = json.loads(archive.read("model.json"))
++    inner_site = inner_manifest.get("site_snapshot") or {}
++    record("D-17", "成果清单与模型均携带同一场地快照/底图文件摘要，与请求和运行记录逐项相等",
++           inner_site.get("sha256") == snap["sha256"] and
++           inner_site.get("basemap_files_sha256") == snap["basemap_files_sha256"] and
++           inner_model.get("site_snapshot", {}).get("sha256") == snap["sha256"] and
++           inner_model.get("site_snapshot", {}).get("basemap_files_sha256") == snap["basemap_files_sha256"] and
++           all(r["site_snapshot_sha256"] == snap["sha256"] for r in service.export_public()),
++           {"manifest_site_snapshot_sha256": inner_site.get("sha256"),
++            "manifest_basemap_files_sha256": inner_site.get("basemap_files_sha256"),
++            "model_site_snapshot_sha256": (inner_model.get("site_snapshot") or {}).get("sha256"),
++            "request_site_snapshot_sha256": boundary.get("site_snapshot_sha256"),
++            "snapshot_sha256": snap["sha256"],
++            "basemap_files_sha256": snap["basemap_files_sha256"]})
++
++    audit = {"schema_version": "rkd-w3-trust-remediation.v2", "baseline": "2253899",
++             "started_at": started, "finished_at": now(), "checks": CHECKS,
++             "site_snapshot_sha256": snap["sha256"],
++             "basemap_files_sha256": snap["basemap_files_sha256"],
++             "run_records": [{"run_id": r["run_id"], "kind": r["kind"],
++                              "simulated": r["simulated"], "issuer_id": r["issuer_id"],
++                              "request_sha256": r["request_sha256"],
++                              "site_snapshot_sha256": r["site_snapshot_sha256"]} for r in service.export_public()],
++             "hashes": written, "render": render,
++             "external_calls": 0, "tokens": 0, "cost_cny": 0, "keys_used": False,
++             "not_run": ["HTTP 下载", "真实模型调用", "正式采用/发布", "浏览器 UI 可操作链"]}
++    (evidence / "verification.json").write_bytes(canon(audit))
++    (out / "checks.json").write_bytes(canon(audit))
++    failed = [c["id"] for c in CHECKS if c["result"] == "observed_fail"]
++    print(f"\nSUMMARY pass={sum(c['result'] == 'observed_pass' for c in CHECKS)} "
++          f"fail={failed} not_run={[c['id'] for c in CHECKS if c['result'] == 'not_run']}")
++    return 1 if failed else 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/w3_trust_findings.py b/scripts/w3_trust_findings.py
+new file mode 100644
+index 0000000..abd932a
+--- /dev/null
++++ b/scripts/w3_trust_findings.py
+@@ -0,0 +1,674 @@
++"""Reproduce the six 2253899 trust findings against a given code root.
++
++The SAME harness runs on the frozen baseline copy and on the fixed working tree;
++only the target code root changes.  Every case drives real code: a real provider
++call through a protocol stub that captures request bytes, the real SQLite
++repository, the real adapter, the real package builder and the real manifest
++checker.  No case merely re-reads a JSON field that a script wrote.
++
++Cases
++  C1 legacy 动线矩形零宽（纵向被按横向重构）
++  C2 公开 issue 自签伪真实运行 + 任意父链
++  C3 完整快照摘要与底图文件摘要混用
++  C4 实际模型请求缺入口/快照，仍带 12x8 示例
++  C5 绕过场地校验（skip_site_integrity）
++  C6 无渲染 ZIP 内嵌自身且清单校验失败
++
++  python scripts/w3_trust_findings.py --code-root <dir> --label before|after --out <dir>
++"""
++from __future__ import annotations
++
++import argparse
++import copy
++import hashlib
++import inspect
++import io
++import json
++import sys
++import traceback
++import zipfile
++from datetime import datetime, timezone
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++BASEMAP = ROOT / "deliverables-for-review/roadmap/W2-R4-表达收口/basemap"
++
++
++def canon(value) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True,
++                      separators=(",", ":")).encode("utf-8")
++
++
++def sha(value) -> str:
++    return hashlib.sha256(canon(value)).hexdigest()
++
++
++def now() -> str:
++    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
++
++
++class StubResponse:
++    def __init__(self, payload: dict) -> None:
++        self._raw = canon(payload)
++        self.headers = {"X-Request-Id": "local-stub-request"}
++
++    def __enter__(self):
++        return self
++
++    def __exit__(self, *args):
++        return False
++
++    def read(self, _n=None):
++        return self._raw
++
++
++class CapturingOpener:
++    """Protocol stub that keeps the EXACT request body bytes it was asked to send."""
++
++    def __init__(self, candidates: dict) -> None:
++        self.candidates = candidates
++        self.requests: list[dict] = []
++        self.responses: list[bytes] = []
++
++    def open(self, request, timeout=None):
++        body = bytes(request.data or b"")
++        payload = json.loads(body.decode("utf-8"))
++        content = canon({"candidates": [self.candidates["branch"], self.candidates["loop"]]})
++        self.requests.append({"url": request.full_url, "body": payload,
++                              "body_sha256": hashlib.sha256(body).hexdigest(),
++                              "body_bytes": len(body)})
++        response = canon({"choices": [{"message": {"content": content.decode("utf-8")}}],
++                          "model": payload.get("model"), "usage": {}})
++        self.responses.append(response)
++        return StubResponse(json.loads(response))
++
++
++def candidate(kind: str, entrance_y: float) -> dict:
++    y_bottom = round(entrance_y - 0.6, 2)       # covers the entrance y
++    y_top = round(entrance_y + 0.6, 2)
++    base = {
++        "strategy_id": f"{kind}-stub", "concept": "本地协议桩候选，非设计成果",
++        "statement": "本地协议桩候选，非设计成果", "tradeoffs": ["仅验证工程链"],
++        "entrance_side": "left", "circulation_kind": kind,
++        "walls": [], "furniture": [], "paths": [], "connections": [],
++        "materials": [{"material_id": "mat-warm", "name": "暖木意向", "intent": "未选产品"}],
++        "cost_unknown": ["材料单价与价源"], "relationships": [],
++    }
++    base["paths"] = [
++        {"segment_id": "path-entry", "x": 0, "y": y_bottom, "width": 24.0, "length": 1.2},
++        {"segment_id": "path-west", "x": 3.0, "y": y_top, "width": 1.2, "length": 4.1},
++        {"segment_id": "path-north", "x": 3.0, "y": round(y_top + 4.1, 2), "width": 17.0, "length": 1.2},
++    ]
++    base["connections"] = [["path-entry", "path-west"], ["path-west", "path-north"]]
++    if kind == "loop":
++        base["paths"].append({"segment_id": "path-east", "x": 19.0, "y": y_top,
++                              "width": 1.2, "length": 4.1})
++        base["connections"] += [["path-entry", "path-east"], ["path-east", "path-north"]]
++    base["zones"] = [
++        {"object_id": "zone:foyer", "name": "前厅", "x": 4.6, "y": y_top,
++         "width": 5.0, "length": 3.5, "zone_role": "foyer", "sequence_role": "opening",
++         "intent": "品牌第一眼", "min_area_m2": "4"},
++        {"object_id": "zone:display", "name": "主展", "x": 10.0, "y": y_top,
++         "width": 5.0, "length": 3.5, "zone_role": "primary_display",
++         "sequence_role": "climax", "intent": "主展停留", "min_area_m2": "4"},
++        {"object_id": "zone:talk", "name": "洽谈", "x": 15.4, "y": y_top,
++         "width": 3.4, "length": 3.4, "zone_role": "deep_talk",
++         "sequence_role": "closing", "intent": "半私密洽谈", "min_area_m2": "4"},
++    ]
++    base["walls"] = [{"object_id": "wall:feature", "name": "形象墙", "x": 14.9,
++                      "y": round(y_top + 0.4, 2), "width": 0.14, "length": 2.0,
++                      "wall_type": "feature"}]
++    base["furniture"] = [{"object_id": "f:desk", "name": "前台", "x": 5.2,
++                          "y": round(y_top + 0.6, 2), "width": 1.2, "length": 0.6,
++                          "furniture_type": "reception_desk", "parent_object_id": "zone:foyer"}]
++    base["focal_point"] = {"object_id": "focal:hero", "name": "中岛", "x": 11.5,
++                           "y": round(y_top + 0.8, 2), "width": 1.4, "length": 0.9,
++                           "furniture_type": "island", "statement": "视觉焦点"}
++    return base
++
++
++def legacy_snapshot(facts: dict, entrance_y: float) -> dict:
++    """The 2253899 snapshot shape (for comparability of before/after audits)."""
++    payload = {
++        "schema_version": "rkd-site-snapshot.v1",
++        "contract_version": "rkd-site-basemap.v2",
++        "boundary_source": "rkd-site-basemap.v2",
++        "width_m": 26.17, "length_m": 17.92,
++        "boundary_mm": facts["boundary_mm"],
++        "facts": {"keepouts": facts["keepouts"], "entrance_fact": facts["entrance_fact"],
++                  "boundary_mm": facts["boundary_mm"], "files": facts["files"],
++                  "json_sha256": facts["json_sha256"], "svg_sha256": facts["svg_sha256"]},
++        "assumption": {"entrance": {"kind": "concept_replaceable",
++                                    "value_m": [0, entrance_y],
++                                    "reason": "底图仅推断西门厅；概念暂用点位，现场复核后替换",
++                                    "site_verified": False}},
++        "unverified_facts": facts["unverified_facts"], "site_verified": False,
++    }
++    payload["sha256"] = sha(payload)
++    return payload
++
++
++def legacy_provider_site(snap: dict) -> dict:
++    obstacles = []
++    for k in snap["facts"]["keepouts"]:
++        x, y, w, h = k["rect_m"]
++        obstacles.append({"object_id": k["object_id"], "name": k["name"],
++                          "shape": {"type": "rect", "x": str(x), "y": str(y),
++                                    "width": str(w), "length": str(h)},
++                          "properties": {"source": snap["contract_version"], "site_verified": False}})
++    ex, ey = snap["assumption"]["entrance"]["value_m"]
++    return {"width": snap["width_m"], "length": snap["length_m"], "unit": "m",
++            "boundary_source": "manual_boundary_not_site_verified",
++            "site_snapshot_sha256": snap["sha256"], "obstacles": obstacles,
++            "entrance": {"side": "left", "point": [str(ex), str(ey)], "width": "1.2",
++                         "source": "concept_assumption", "site_verified": False}}
++
++
++def legacy_adapter_site(snap: dict) -> dict:
++    return {
++        "contract_version": snap["contract_version"],
++        "boundary_source": snap["boundary_source"],
++        "width_m": snap["width_m"], "length_m": snap["length_m"],
++        "snapshot_sha256": snap["sha256"],
++        "keepouts": [{"object_id": k["object_id"], "name": k["name"], "rect_m": k["rect_m"],
++                      "status": k["status"]} for k in snap["facts"]["keepouts"]],
++        "entrance": {"side": snap["facts"]["entrance_fact"]["side"],
++                     "point_m": snap["assumption"]["entrance"]["value_m"],
++                     "width_m": None, "status": snap["facts"]["entrance_fact"]["status"],
++                     "assumption": snap["assumption"]["entrance"]},
++        "unverified_facts": snap["unverified_facts"],
++    }
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--code-root", required=True)
++    ap.add_argument("--label", required=True)
++    ap.add_argument("--out", required=True)
++    ap.add_argument("--render-png", default="")
++    args = ap.parse_args()
++    code_root = Path(args.code_root).resolve()
++    out = Path(args.out).resolve()
++    out.mkdir(parents=True, exist_ok=True)
++    for path in (code_root / "mvp", code_root):
++        if str(path) not in sys.path:
++            sys.path.insert(0, str(path))
++    sys.path.insert(0, str(ROOT / "scripts"))
++
++    from rkd_mvp import realmodel_spatial_adapter as A
++    from rkd_mvp.ai_design_option_provider import (DesignOptionConfig, DesignOptionProviderFailure,
++                                                   RealModelDesignOptionProvider)
++    from rkd_mvp.ai_design_option_repository import SQLiteAIDesignOptionRepository
++    from rkd_mvp.ai_spatial_outputs import (build_package, finalize_package,
++                                            check_zip_against_manifest)
++    from rkd_mvp.sqlite_store import SQLiteStore
++
++    try:
++        from rkd_mvp import site_snapshot as SS
++    except ImportError:
++        SS = None
++    cases: dict[str, dict] = {}
++    stamp = now()
++    facts = A._load_basemap_facts(BASEMAP)
++
++    # ---- one real pipeline: snapshot -> stub request -> provider -> SQLite ----
++    if SS is not None:
++        snap = SS.build_snapshot(facts=facts, entrance_point_m=[0, 10.3],
++                                 entrance_reason="底图仅推断西门厅；概念暂用点位，现场复核后替换")
++        psite, asite = SS.provider_site(snap), SS.adapter_site(snap)
++        snapshot_sha = snap["sha256"]
++        basemap_sha = snap["basemap_files_sha256"]
++    else:
++        snap = legacy_snapshot(facts, 10.3)
++        psite, asite = legacy_provider_site(snap), legacy_adapter_site(snap)
++        snapshot_sha = snap["sha256"]
++        basemap_sha = None
++
++    opener = CapturingOpener({"branch": candidate("branch", 10.3),
++                              "loop": candidate("loop", 10.3)})
++    exchanges: list[dict] = []
++
++    def on_exchange(**kwargs):
++        exchanges.append(kwargs)
++
++    run_slug = args.label + "-" + stamp.replace(":", "").replace("+", "_").replace("-", "")[:15]
++    ledger_base = out / "runservice" / run_slug
++    service = None
++    if hasattr(A, "verify_geometry_projection_consistency"):
++        from rkd_mvp.controlled_run_ledger import ControlledRunService
++        service = ControlledRunService(ledger_base)
++    else:
++        from rkd_mvp.controlled_run_ledger import ControlledRunLedger
++        ledger = ControlledRunLedger()
++
++    config = DesignOptionConfig(kind="openai_compatible", name="本地协议桩（模拟）",
++                                adapter_version="rkd-real-design-provider.stub",
++                                prompt_version="design-stub.zh-CN.v1",
++                                schema_version="rkd-ai-design-option.v1", max_candidates=2,
++                                real_model=True, configuration_errors=[],
++                                base_url="http://127.0.0.1:9/local-stub", model_id="stub-model",
++                                api_key_present=True, max_attempts=2, timeout_seconds=5,
++                                external_context_allowed=False)
++    provider_kwargs = {"run_log_dir": str(out / "runs")}
++    if service is not None:
++        provider_kwargs["on_exchange"] = on_exchange
++    provider = RealModelDesignOptionProvider(config, api_key="stub-not-a-real-key",
++                                             opener=opener, **provider_kwargs)
++    brief = {"requirements": [], "design_intent": [], "conflicts": [],
++             "cost": {"known_items": [], "unknown_items": []}}
++    models, provider_error = [], ""
++    try:
++        models = provider.generate(set_id="w3-stub-set", brief=brief, site=psite,
++                                   input_hash=snapshot_sha, generated_at=stamp)
++    except DesignOptionProviderFailure as error:
++        provider_error = f"{error.code}: {error.message}"
++
++    db = out / "runtime" / "app.sqlite3"
++    db.parent.mkdir(parents=True, exist_ok=True)
++    if db.exists():
++        db.unlink()
++    store = SQLiteStore(str(db))
++    conn = store._connection()
++    conn.execute("INSERT OR IGNORE INTO projects(organization_id, project_id, name, status, version) "
++                 "VALUES (?,?,?,?,?)", ("org-local", "ningbo-xiecheng", "隔离桩库", "active", 1))
++    conn.commit()
++    repo = SQLiteAIDesignOptionRepository(str(db))
++    persisted: list[dict] = []
++    run_refs: list[str] = []
++    with repo.transaction("org-local", "ningbo-xiecheng", write=True) as tx:
++        tx.insert_set({"set_id": "w3-stub-set", "brief_id": "w3-stub-brief",
++                       "input_hash": snapshot_sha, "status": "succeeded", "phase": "completed",
++                       "attempt_count": 1, "config": config.public(), "context": {},
++                       "error_code": None, "error_message": None,
++                       "idempotency_key": "w3-stub-set-v1", "actor_id": "stub",
++                       "created_at": stamp, "updated_at": stamp})
++        for i, model in enumerate(models):
++            oid = f"ai-option-revision-stub-{i}"
++            tx.insert_revision({"option_revision_id": oid, "set_id": "w3-stub-set",
++                                "option_id": f"w3-stub-set:stub-{i}", "revision_no": 1,
++                                "parent_revision_id": None,
++                                "strategy_id": model["strategy"]["strategy_id"],
++                                "strategy": model["strategy"], "model": model,
++                                "validation": model["validation"], "materials": model["materials"],
++                                "cost": model["cost"], "feedback": model["feedback"],
++                                "diff": model["diff"], "conflicts": model["conflicts"],
++                                "structure_signature": model["structure_signature"],
++                                "lifecycle_status": "candidate", "source_kind": model["source_kind"],
++                                "change_reason": "本地协议桩候选", "actor_id": "stub",
++                                "created_at": stamp})
++            persisted.append(tx.revision(oid)["model"])
++
++    if service is not None:
++        observations = []
++        for exchange in exchanges:
++            observations.append(service.observe_exchange(project_id="ningbo-xiecheng", **exchange))
++        for i, model in enumerate(persisted):
++            cand, _ = A.candidate_from_persisted(model)
++            service.register_revision(project_id="ningbo-xiecheng",
++                                      revision_id=f"ai-option-revision-stub-{i}",
++                                      candidate_sha256=sha(cand))
++            rec = service.issue(observation=observations[min(i, len(observations) - 1)],
++                                project_id="ningbo-xiecheng", candidate_sha256=sha(cand),
++                                input_hash=snapshot_sha, output_sha256=sha(model),
++                                model=config.model_id, prompt_version=config.prompt_version,
++                                site_snapshot_sha256=snapshot_sha,
++                                basemap_files_sha256=basemap_sha,
++                                details={"adapter": "stub"})
++            run_refs.append(rec["run_id"])
++        verifier = service.verifier()
++    else:
++        for i, model in enumerate(persisted):
++            cand, _ = A.candidate_from_persisted(model)
++            rec = ledger.issue(kind="local_protocol_stub_run", simulated=True,
++                               project_id="ningbo-xiecheng", candidate_sha256=sha(cand),
++                               input_hash=snapshot_sha, output_sha256=sha(model),
++                               model=config.model_id, prompt_version=config.prompt_version,
++                               request_id=opener.requests[min(i, len(opener.requests) - 1)]["body_sha256"],
++                               details={"site_snapshot_sha256": snapshot_sha})
++            run_refs.append(rec["run_id"])
++        verifier = None
++
++    def provenance(index: int, cand: dict, *, kind="fixture", refs=None, parent=None,
++                   parent_sha=None) -> dict:
++        return {"artifact_id": f"stub-{index}", "sha256": sha(cand), "set_id": "w3-stub-set",
++                "option_id": f"w3-stub-set:stub-{index}", "revision_no": 1,
++                "parent_revision_id": parent, "actor_id": "offline-verifier",
++                "model_site_boundary_m": [26.17, 17.92], "project_id": "ningbo-xiecheng",
++                "provider_kind": "local_protocol_stub", "prompt_version": config.prompt_version,
++                "model_id": config.model_id, "site_snapshot_sha256": snapshot_sha,
++                "parent_evidence": {"candidate_sha256": parent_sha} if parent else {},
++                "design_origin": {"kind": kind, "declared_by": "local_protocol_stub",
++                                  "declaration": "本地协议桩模拟，不是真实模型调用",
++                                  "run_refs": refs if refs is not None else []}}
++
++    adapt_kwargs = {"run_verifier": verifier} if service is not None else {"run_ledger": ledger}
++    adapted: list[dict] = []
++    adapt_errors: list[str] = []
++    for i, model in enumerate(persisted):
++        cand, _ = A.candidate_from_persisted(model)
++        try:
++            doc, _note = A.adapt_persisted_candidate(
++                model, site=asite, basemap_dir=BASEMAP,
++                provenance=provenance(i, cand, refs=run_refs[i:i + 1]), created_at=stamp,
++                **adapt_kwargs)
++            adapted.append(doc)
++        except Exception as error:  # noqa: BLE001
++            adapt_errors.append(f"{type(error).__name__}: {getattr(error, 'code', '')} {error}")
++    sample = adapted[0] if adapted else {}
++
++    # ---------------- C1: legacy circulation rectangles ----------------------
++    try:
++        spatial_paths = {c["object_id"]: c for c in sample.get("spatial", {}).get("circulation", [])}
++        legacy_segments = {s["segment_id"]: s for s in sample.get("circulation", {}).get("segments", [])}
++        per_segment = []
++        zeros = []
++        mismatches = []
++        for sid, path in spatial_paths.items():
++            seg = legacy_segments.get(sid) or {}
++            shape = seg.get("shape") or {}
++            width, length = float(shape.get("width") or 0), float(shape.get("length") or 0)
++            declared = path.get("declared_rect_mm")
++            source = (seg.get("properties") or {}).get("source_rect_mm")
++            zero = width <= 0 or length <= 0
++            mismatch = bool(declared) and (
++                [round(width * 1000), round(length * 1000)] != [declared[2], declared[3]]
++                or (source is not None and list(source) != list(declared)))
++            if zero:
++                zeros.append(sid)
++            if mismatch:
++                mismatches.append(sid)
++            per_segment.append({"segment_id": sid, "axis": path.get("axis"),
++                                "spatial_width_mm": path.get("width_mm"),
++                                "spatial_length_mm": (max(p[1] for p in path["path_mm"]) -
++                                                      min(p[1] for p in path["path_mm"])),
++                                "declared_rect_mm": declared,
++                                "legacy_width_m": width, "legacy_length_m": length,
++                                "source_rect_mm": source})
++        vertical = [p for p in per_segment if p["axis"] == "vertical"]
++        horizontal = [p for p in per_segment if p["axis"] == "horizontal"]
++        ok = bool(per_segment) and not zeros and not mismatches and bool(vertical) and bool(horizontal)
++        cases["C1_legacy_zero_width"] = {
++            "ok": ok, "zero_dimension_segments": zeros, "mismatched_segments": mismatches,
++            "vertical_checked": len(vertical), "horizontal_checked": len(horizontal),
++            "segments": per_segment,
++        }
++    except Exception as error:  # noqa: BLE001
++        cases["C1_legacy_zero_width"] = {"ok": False, "error": str(error),
++                                         "adapt_errors": adapt_errors}
++
++    # ---------------- C2: self-issued real run / arbitrary parent ------------
++    cand0, _ = A.candidate_from_persisted(persisted[0]) if persisted else ({}, {})
++    if service is None:
++        try:
++            fake = ledger.issue(kind="real_model_run", simulated=False,
++                                project_id="ningbo-xiecheng", candidate_sha256=sha(cand0),
++                                input_hash=sha({"anything": True}), output_sha256=sha({"fake": True}),
++                                model="invented-model", prompt_version="invented-prompt",
++                                request_id="invented", parent_revision_id="invented-parent-uid",
++                                parent_candidate_sha256=sha({"parent": "invented"}),
++                                parent_project_id="ningbo-xiecheng")
++            forged_prov = provenance(0, cand0, kind="real_model", refs=[fake["run_id"]],
++                                     parent="invented-parent-uid", parent_sha=sha({"parent": "invented"}))
++            doc = A.adapt_candidate(cand0, site=asite, basemap_dir=BASEMAP,
++                                    provenance=forged_prov, created_at=stamp, run_ledger=ledger)
++            cases["C2_self_issued_real_run"] = {
++                "ok": False, "accepted": True,
++                "issued_kind": fake["kind"], "issued_simulated": fake["simulated"],
++                "generation_real_model": doc["generation"]["real_model"],
++                "parent_link_status": doc["spatial"]["source"]["parent_link_status"],
++                "run_signature_present": bool(fake.get("issuer_signature")),
++                "note": "公开 issue 接受调用者自报 real_model_run 与任意父链，并被适配器采信",
++            }
++        except Exception as error:  # noqa: BLE001
++            cases["C2_self_issued_real_run"] = {"ok": True, "accepted": False,
++                                                "error": f"{type(error).__name__}: {error}"}
++    else:
++        from rkd_mvp.controlled_run_ledger import ExchangeObservation
++        attempts: dict[str, dict] = {}
++        # (a) forged observation object
++        try:
++            forged_obs = ExchangeObservation(observation_id="obs-forged", project_id="ningbo-xiecheng",
++                                             transport="live_http", endpoint="https://api.example.com",
++                                             request_sha256=sha({"r": 1}), response_sha256=sha({"r": 2}),
++                                             request_bytes=1, response_bytes=1, captured_at=stamp,
++                                             simulated=False, _token=None)
++            service.issue(observation=forged_obs, project_id="ningbo-xiecheng",
++                          candidate_sha256=sha(cand0), input_hash=sha({"a": 1}),
++                          output_sha256=sha({"o": 1}), model="invented", prompt_version="invented",
++                          site_snapshot_sha256=snapshot_sha, basemap_files_sha256=basemap_sha)
++            attempts["伪造观测"] = {"rejected": False}
++        except Exception as error:  # noqa: BLE001
++            attempts["伪造观测"] = {"rejected": True, "code": getattr(error, "code", type(error).__name__)}
++        # (b) arbitrary parent that the repository never registered
++        try:
++            service.issue(observation=observations[0], project_id="ningbo-xiecheng",
++                          candidate_sha256=sha(cand0), input_hash=snapshot_sha,
++                          output_sha256=sha({"o": 2}), model=config.model_id,
++                          prompt_version=config.prompt_version,
++                          site_snapshot_sha256=snapshot_sha, basemap_files_sha256=basemap_sha,
++                          parent_revision_id="invented-parent-uid")
++            attempts["任意父链"] = {"rejected": False}
++        except Exception as error:  # noqa: BLE001
++            attempts["任意父链"] = {"rejected": True, "code": getattr(error, "code", type(error).__name__)}
++        # (c) a second, independently constructed service must not verify these records
++        try:
++            from rkd_mvp.controlled_run_ledger import ControlledRunService
++            rogue = ControlledRunService(out / "rogue-service" / run_slug)
++            rogue.verifier().verify(run_refs[0], project_id="ningbo-xiecheng",
++                                    candidate_sha256=sha(cand0))
++            attempts["自建服务核验"] = {"rejected": False}
++        except Exception as error:  # noqa: BLE001
++            attempts["自建服务核验"] = {"rejected": True, "code": getattr(error, "code", type(error).__name__)}
++        # (d) a stub-recorded observation can never be labelled real
++        try:
++            doc = A.adapt_candidate(cand0, site=asite, basemap_dir=BASEMAP,
++                                    provenance=provenance(0, cand0, kind="real_model",
++                                                          refs=[run_refs[0]], parent=None),
++                                    created_at=stamp, run_verifier=verifier)
++            attempts["桩记录冒充真实"] = {"rejected": False,
++                                       "generation_real_model": doc["generation"]["real_model"]}
++        except Exception as error:  # noqa: BLE001
++            attempts["桩记录冒充真实"] = {"rejected": True,
++                                       "code": getattr(error, "code", type(error).__name__)}
++        cases["C2_self_issued_real_run"] = {
++            "ok": all(v.get("rejected") for v in attempts.values()),
++            "attempts": attempts,
++            "issued_kind": service.export_public()[0]["kind"],
++            "issued_simulated": service.export_public()[0]["simulated"],
++            "issuer_id": service.issuer_id,
++        }
++
++    # ---------------- C3: snapshot digest vs basemap digest ------------------
++    try:
++        model_snap = (sample.get("site_snapshot") or {})
++        site_source = ((sample.get("spatial") or {}).get("source") or {})
++        model_snapshot_sha = model_snap.get("sha256")
++        model_basemap_sha = model_snap.get("basemap_files_sha256")
++        record_sha = None
++        if service is not None:
++            record_sha = service.export_public()[0].get("site_snapshot_sha256")
++        same = (model_snapshot_sha == snapshot_sha and
++                (record_sha in (None, snapshot_sha)) and
++                (basemap_sha is None or model_basemap_sha == basemap_sha) and
++                (basemap_sha is None or model_snapshot_sha != model_basemap_sha))
++        # entrance change must change the snapshot digest
++        moved = None
++        if SS is not None:
++            moved = SS.build_snapshot(facts=facts, entrance_point_m=[0, 9.4],
++                                      entrance_reason="改入口以验证哈希随数据变化")["sha256"]
++        cases["C3_snapshot_hash"] = {
++            "ok": bool(same and (moved is None or moved != snapshot_sha)),
++            "audit_snapshot_sha256": snapshot_sha,
++            "model_site_snapshot_sha256": model_snapshot_sha,
++            "model_basemap_files_sha256": model_basemap_sha,
++            "confirmed_basemap_files_sha256": basemap_sha,
++            "run_record_snapshot_sha256": record_sha,
++            "spatial_source_snapshot_sha256": site_source.get("site_snapshot_sha256"),
++            "entrance_moved_sha256": moved,
++            "hashes_equal": model_snapshot_sha == snapshot_sha,
++            "separately_named": (model_snapshot_sha != model_basemap_sha) if model_basemap_sha else False,
++        }
++    except Exception as error:  # noqa: BLE001
++        cases["C3_snapshot_hash"] = {"ok": False, "error": str(error)}
++
++    # ---------------- C4: actual model request body --------------------------
++    try:
++        envelope = (opener.requests[0]["body"] if opener.requests else {})
++        # The design payload is the user message inside the chat envelope; that
++        # string is exactly what the model would read.
++        body = envelope
++        for message in envelope.get("messages") or []:
++            if message.get("role") == "user":
++                try:
++                    body = json.loads(message.get("content") or "{}")
++                except ValueError:
++                    body = {}
++                break
++        boundary = body.get("boundary") or {}
++        entrance = boundary.get("entrance") or {}
++        point = entrance.get("point")
++        text = json.dumps(envelope, ensure_ascii=False)
++        request_snapshot = body.get("site_snapshot") or {}
++        keepouts = request_snapshot.get("keepouts") if isinstance(request_snapshot, dict) else None
++        legal_12x8 = any(token in text for token in ("legal_path_example", "12x8m", "12x8",
++                                                     "12 x 8", "12, 1.0"))
++        ok = (point is not None and abs(float(point[0])) < 1e-9 and abs(float(point[1]) - 10.3) < 1e-6
++              and boundary.get("site_snapshot_sha256") == snapshot_sha
++              and bool(keepouts) and bool(request_snapshot.get("unverified_facts")))
++        cases["C4_model_request"] = {
++            "ok": bool(ok and not legal_12x8),
++            "has_entrance_point": point is not None,
++            "entrance_point": point,
++            "boundary_snapshot_sha256": boundary.get("site_snapshot_sha256"),
++            "has_site_snapshot_block": bool(request_snapshot),
++            "snapshot_block_keepouts": len(keepouts or []),
++            "snapshot_block_unverified": len(request_snapshot.get("unverified_facts") or []),
++            "ships_12x8_example": legal_12x8,
++            "request_sha256": opener.requests[0]["body_sha256"] if opener.requests else None,
++            "request_bytes": opener.requests[0]["body_bytes"] if opener.requests else 0,
++            "provider_error": provider_error,
++        }
++    except Exception as error:  # noqa: BLE001
++        cases["C4_model_request"] = {"ok": False, "error": str(error)}
++
++    # ---------------- C5: bypass the site gate -------------------------------
++    try:
++        tampered = copy.deepcopy(persisted[0])
++        tampered["boundary"]["entrance"]["point"] = ["0", "2.24"]
++        bypass_param = "skip_site_integrity" in inspect.signature(
++            A.adapt_persisted_candidate).parameters
++        result: dict = {"bypass_parameter_present": bypass_param}
++        if bypass_param:
++            doc, note = A.adapt_persisted_candidate(
++                tampered, site=asite, basemap_dir=BASEMAP,
++                provenance=provenance(0, A.candidate_from_persisted(tampered)[0], refs=[]),
++                created_at=stamp, skip_site_integrity=True, **adapt_kwargs)
++            result.update({"accepted": True,
++                           "output_entrance": doc["boundary"]["entrance"]["point"],
++                           "site_integrity_status": (note.get("site_snapshot_integrity") or {}).get("status"),
++                           "ok": False})
++        else:
++            try:
++                A.adapt_persisted_candidate(
++                    tampered, site=asite, basemap_dir=BASEMAP,
++                    provenance=provenance(0, A.candidate_from_persisted(tampered)[0], refs=[]),
++                    created_at=stamp, **adapt_kwargs)
++                result.update({"accepted": True, "ok": False})
++            except Exception as error:  # noqa: BLE001
++                result.update({"accepted": False, "code": getattr(error, "code", type(error).__name__),
++                               "message": str(error)[:200], "ok": True})
++        cases["C5_site_gate_bypass"] = result
++    except Exception as error:  # noqa: BLE001
++        cases["C5_site_gate_bypass"] = {"ok": False, "error": str(error)}
++
++    # ---------------- C6: incomplete ZIP ------------------------------------
++    try:
++        if service is None:
++            # 2253899 --no-render branch, executed verbatim with baseline modules
++            pkg = build_package(sample, project_id="ningbo-xiecheng-stub",
++                                option_revision_id="w3-stub-r1")
++            files = dict(pkg["files"])
++            final = finalize_package(files, pkg["manifest"])
++            mbytes = final["files"]["manifest.json"][2]
++            manifest = json.loads(mbytes.decode("utf-8"))
++            manifest["package_completeness"] = {"status": "incomplete",
++                                                "reason": "render 未成功；不得登记为完整成果",
++                                                "render_status": "not_run"}
++            mbytes = canon(manifest)
++            final["files"]["manifest.json"] = ("manifest_json", "application/json", mbytes)
++            buffer = io.BytesIO()
++            with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
++                for name, (_, _, data) in final["files"].items():
++                    archive.writestr(name, data)
++            final["files"]["package.zip"] = ("package_zip", "application/zip", buffer.getvalue())
++            zbytes = final["files"]["package.zip"][2]
++            check = check_zip_against_manifest(zbytes, mbytes)
++            with zipfile.ZipFile(io.BytesIO(zbytes)) as archive:
++                names = sorted(archive.namelist())
++            cases["C6_incomplete_zip"] = {
++                "ok": False, "zip_check_ok": check["ok"], "problems": check["problems"],
++                "names": names, "self_nested": "package.zip" in names,
++                "declares_incomplete": True,
++                "path": "2253899 verify_w3_control_trust.py --no-render 代码路径",
++            }
++        else:
++            from rkd_mvp.ai_spatial_outputs import assert_complete_package, build_delivery_package
++            incomplete = build_delivery_package(sample, project_id="ningbo-xiecheng-stub",
++                                                option_revision_id="w3-stub-r1")
++            with zipfile.ZipFile(io.BytesIO(incomplete["zip_bytes"])) as archive:
++                names = sorted(archive.namelist())
++            render_path = Path(args.render_png) if args.render_png else None
++            complete = None
++            if render_path and render_path.is_file():
++                complete = build_delivery_package(sample, project_id="ningbo-xiecheng-stub",
++                                                  option_revision_id="w3-stub-r1",
++                                                  render_bytes=render_path.read_bytes(),
++                                                  render_status="rendered")
++            ok = (incomplete["zip_check"]["ok"] and not incomplete["complete"]
++                  and incomplete["registration"]["ok"] is False
++                  and "package.zip" not in names
++                  and names.count("manifest.json") == 1
++                  and (complete is None or (complete["zip_check"]["ok"]
++                                            and complete["complete"]
++                                            and complete["registration"]["ok"] is True)))
++            cases["C6_incomplete_zip"] = {
++                "ok": bool(ok),
++                "incomplete_zip_check_ok": incomplete["zip_check"]["ok"],
++                "incomplete_names": names,
++                "incomplete_registration_ok": incomplete["registration"]["ok"],
++                "incomplete_status": incomplete["completeness"]["status"],
++                "self_nested": "package.zip" in names,
++                "complete_checked": complete is not None,
++                "complete_registration_ok": (complete["registration"]["ok"]
++                                             if complete is not None else None),
++                "path": "ai_spatial_outputs.build_delivery_package（唯一文件集）",
++            }
++    except Exception as error:  # noqa: BLE001
++        cases["C6_incomplete_zip"] = {"ok": False, "error": str(error),
++                                      "trace": traceback.format_exc()[-800:]}
++
++    evidence = {
++        "schema_version": "rkd-w3-trust-findings.v2", "label": args.label,
++        "code_root": str(code_root), "executed_at": stamp,
++        "pipeline": {"provider_error": provider_error, "models": len(models),
++                     "persisted": len(persisted), "adapted": len(adapted),
++                     "adapt_errors": adapt_errors,
++                     "requests": [{"body_sha256": r["body_sha256"], "bytes": r["body_bytes"],
++                                   "url": r["url"]} for r in opener.requests],
++                     "run_refs": run_refs},
++        "site_snapshot_sha256": snapshot_sha,
++        "basemap_files_sha256": basemap_sha,
++        "cases": cases,
++        "summary": {key: value.get("ok") for key, value in cases.items()},
++        "external_calls": 0, "cost_cny": 0, "keys_used": False,
++    }
++    (out / f"findings-{args.label}.json").write_bytes(canon(evidence))
++    (out / "findings.json").write_bytes(canon(evidence))
++    print(json.dumps(evidence["summary"], ensure_ascii=False))
++    for key, value in cases.items():
++        print(" ", key, json.dumps(value, ensure_ascii=False)[:300])
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

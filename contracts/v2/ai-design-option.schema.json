@@ -150,7 +150,51 @@
     },
     "site_snapshot": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "required": [
+        "sha256",
+        "basemap_files_sha256",
+        "boundary_mm",
+        "entrance_assumption"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "basemap_files_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "boundary_mm": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer"
+          }
+        },
+        "entrance_assumption": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "kind",
+            "value_m",
+            "site_verified"
+          ],
+          "properties": {
+            "kind": {
+              "const": "concept_replaceable"
+            },
+            "site_verified": {
+              "const": false
+            }
+          }
+        },
+        "site_verified": {
+          "const": false
+        }
+      }
     },
     "source_revision": {
       "type": "object",
@@ -438,6 +482,10 @@
               },
               "shape": {
                 "$ref": "#/$defs/shape"
+              },
+              "properties": {
+                "type": "object",
+                "additionalProperties": true
               }
             }
           }
@@ -1388,9 +1436,10 @@
             "contract_version",
             "design_origin",
             "site_source",
-            "boundary_sha256",
             "site_verified",
-            "parent_link_status"
+            "parent_link_status",
+            "site_snapshot_sha256",
+            "basemap_files_sha256"
           ],
           "properties": {
             "origin_kind": {
@@ -1406,6 +1455,14 @@
             },
             "site_verified": {
               "const": false
+            },
+            "site_snapshot_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "basemap_files_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
             }
           }
         },

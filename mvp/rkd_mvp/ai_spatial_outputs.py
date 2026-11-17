@@ -1594,6 +1594,14 @@ def build_package(model: dict, *, project_id: str, option_revision_id: str,
         "schema_version": MANIFEST_VERSION,
         "baseline": frozen,
         "binding": binding or {},
+        "site_snapshot": ({
+            "sha256": model["site_snapshot"].get("sha256"),
+            "basemap_files_sha256": model["site_snapshot"].get("basemap_files_sha256"),
+            "contract": model["site_snapshot"].get("contract"),
+            "boundary_mm": model["site_snapshot"].get("boundary_mm"),
+            "entrance_assumption": model["site_snapshot"].get("entrance_assumption"),
+            "site_verified": False,
+        } if isinstance(model.get("site_snapshot"), dict) else None),
         "camera": camera,
         "quantities": quantities,
         "cost": cost,
@@ -1636,13 +1644,20 @@ def _quantity_csv(quantities: dict) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def finalize_package(files: dict, manifest: dict) -> dict:
+def finalize_package(files: dict, manifest: dict, *,
+                     completeness: dict | None = None) -> dict:
     """ONE file set -> manifest + ZIP.
 
     Registration, manifest and archive are built from the same dict, so a render
     that exists is always inside the archive and a manifest that lists a file
     always points at real bytes. The finished ZIP is then re-opened and checked
     against the manifest before anything is registered.
+
+    ``completeness`` is written INTO the manifest before the archive is built,
+    so an incomplete package carries its own status inside the ZIP instead of
+    being patched afterwards (the 2253899 bug: the manifest was rewritten after
+    finalize and the archive was rebuilt from a file set that already contained
+    ``package.zip``, so the ZIP contained itself and failed its own check).
     """
     content = {name: tuple(value) for name, value in files.items()}
     if any(name in {"manifest.json", "package.zip"} for name in content):
@@ -1654,6 +1669,8 @@ def finalize_package(files: dict, manifest: dict) -> dict:
                         "sha256": sha256_bytes(data), "size_bytes": len(data)})
     manifest = dict(manifest)
     manifest["files"] = entries
+    if completeness is not None:
+        manifest["package_completeness"] = dict(completeness)
     manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
     out = dict(content)
     out["manifest.json"] = ("manifest_json", "application/json", manifest_bytes)
@@ -1666,6 +1683,51 @@ def finalize_package(files: dict, manifest: dict) -> dict:
     if not check["ok"]:
         raise ValueError(f"交付包自检失败：{check['problems']}")
     return {"files": out, "manifest": manifest, "check": check}
+
+
+def build_delivery_package(model: dict, *, project_id: str, option_revision_id: str,
+                           render_bytes: bytes | None = None,
+                           render_status: str = "not_run",
+                           render_meta: dict | None = None,
+                           settings: dict | None = None,
+                           finish_scope: dict | None = None) -> dict:
+    """ONE code path for complete AND incomplete delivery packages.
+
+    The archive is built from the final file set exactly once, the manifest
+    (including ``package_completeness``) is inside it, and the archive is
+    re-opened and compared entry by entry.  A ZIP is never placed inside itself
+    and an incomplete package can never be reported as complete.
+    """
+    pkg = build_package(model, project_id=project_id, option_revision_id=option_revision_id,
+                        settings=settings, finish_scope=finish_scope)
+    files = dict(pkg["files"])
+    # The candidate document itself travels with the package so the site
+    # snapshot / source provenance can be audited from the ZIP alone.
+    files["model.json"] = ("development_json", "application/json", _json(model))
+    complete = render_bytes is not None and render_status == "rendered"
+    if render_bytes is not None:
+        meta = dict(render_meta or {})
+        meta.setdefault("schema_version", "rkd-render-meta.v1")
+        meta.setdefault("render_sha256", sha256_bytes(render_bytes))
+        meta.setdefault("status", "rendered")
+        meta.setdefault("engineering_sample", True)
+        files["render.png"] = ("png", "image/png", render_bytes)
+        files["render.png.meta.json"] = ("manifest_json", "application/json", _json(meta))
+    completeness = ({"status": "complete", "reason": "render 成功，清单与 ZIP 逐项一致",
+                     "render_status": render_status}
+                    if complete else
+                    {"status": "incomplete", "reason": "render 未运行或失败；不得登记为完整成果",
+                     "render_status": render_status})
+    final = finalize_package(files, pkg["manifest"], completeness=completeness)
+    zip_bytes = final["files"]["package.zip"][2]
+    manifest_bytes = final["files"]["manifest.json"][2]
+    zcheck = check_zip_against_manifest(zip_bytes, manifest_bytes)
+    registration = assert_complete_package(zip_bytes, manifest_bytes)
+    return {"package": final, "files": final["files"], "manifest": final["manifest"],
+            "manifest_bytes": manifest_bytes, "zip_bytes": zip_bytes,
+            "zip_check": zcheck, "completeness": completeness,
+            "registration": registration, "complete": complete,
+            "render_status": render_status, "build": pkg}
 
 
 def check_zip_against_manifest(zip_bytes: bytes, manifest_bytes: bytes) -> dict:
@@ -1700,3 +1762,28 @@ def check_zip_against_manifest(zip_bytes: bytes, manifest_bytes: bytes) -> dict:
     return {"ok": not problems, "problems": problems, "checked": len(listed),
             "zip_bytes": len(zip_bytes), "zip_sha256": sha256_bytes(zip_bytes),
             "entries": sorted(listed)}
+
+
+def package_completeness(manifest_bytes: bytes) -> dict:
+    """Read the declared completeness from the manifest INSIDE the archive."""
+    try:
+        manifest = json.loads(manifest_bytes.decode("utf-8"))
+    except Exception as error:  # noqa: BLE001
+        return {"status": "invalid", "reason": f"清单不可解析：{error}"}
+    declared = manifest.get("package_completeness")
+    if isinstance(declared, dict) and declared.get("status"):
+        return dict(declared)
+    return {"status": "complete", "reason": "未声明不完整", "implicit": True}
+
+
+def assert_complete_package(zip_bytes: bytes, manifest_bytes: bytes) -> dict:
+    """Registration boundary: only a byte-consistent COMPLETE package may be
+    treated as a deliverable.  An incomplete package can never masquerade.
+    """
+    check = check_zip_against_manifest(zip_bytes, manifest_bytes)
+    declared = package_completeness(manifest_bytes)
+    ok = bool(check["ok"]) and declared.get("status") == "complete"
+    return {"ok": ok, "check": check, "completeness": declared,
+            "reason": ("完整包逐项一致" if ok else
+                       (f"清单不完整：{declared.get('reason')}" if check["ok"]
+                        else f"清单校验失败：{check['problems'][:3]}"))}

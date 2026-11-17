@@ -17,6 +17,8 @@ from typing import Any, Callable
 
 from jsonschema import Draft202012Validator
 
+from .admission import (ContractRegistry, ContractViolation, UnsupportedSchemaVersion,
+                        admit_document, resolve_legacy_admission)
 from .ai_design_geometry import (
     GeometryError, candidates_are_structurally_different, render_svg,
     structure_signature, validate_model,
@@ -28,6 +30,8 @@ from .ai_design_option_provider import (
 from .models import new_id, now_iso
 
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "contracts" / "v1" / "ai-design-option.schema.json"
+DEFAULT_BASEMAP_DIR = (Path(__file__).resolve().parents[2]
+                       / "deliverables-for-review/roadmap/W2-R4-表达收口/basemap")
 
 
 class AIDesignOptionServiceError(Exception):
@@ -48,7 +52,9 @@ class AIDesignOptionService:
     def __init__(self, repository: Any, brief_provider: Callable[[str, str], dict[str, Any] | None],
                  context_provider: Callable[[str, str], dict[str, Any]], runtime_root: str | Path,
                  *, config: DesignOptionConfig | None = None, provider: Any | None = None,
-                 start_workers: bool = True, studio_source: Any | None = None) -> None:
+                 start_workers: bool = True, studio_source: Any | None = None,
+                 basemap_dir: str | Path | None = None,
+                 run_verifier: Any | None = None) -> None:
         self.repository = repository
         self.brief_provider = brief_provider
         self.context_provider = context_provider
@@ -59,9 +65,13 @@ class AIDesignOptionService:
         # W1: explicit read boundary into Studio's own store. None -> lazy
         # default bound to RKD_STUDIO_DB at first use (never the live project DB).
         self.studio_source = studio_source
+        # W3 trust: version-dispatching consumer (v1 + v2) and the site gate.
+        self.registry = ContractRegistry()
         self.schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(self.schema)
-        self.validator = Draft202012Validator(self.schema)
+        self.validator = Draft202012Validator(self.schema)  # legacy v1 validator
+        self.basemap_dir = Path(basemap_dir) if basemap_dir else DEFAULT_BASEMAP_DIR
+        self.run_verifier = run_verifier
         self._lock = threading.Lock()
         self._active_sets: set[str] = set()
 
@@ -103,10 +113,16 @@ class AIDesignOptionService:
 
     def _validate_candidate(self, model: Any, *, brief: dict[str, Any], config: DesignOptionConfig,
                             input_hash: str) -> dict[str, Any]:
-        errors = sorted(self.validator.iter_errors(model), key=lambda error: list(error.path))
-        if errors:
-            raise DesignOptionProviderFailure(category="validation", code="SCHEMA_INVALID",
-                                              message="候选模型不符合版本化契约")
+        # Version dispatch: an unknown version is a CONSUMER decision, not a
+        # generic schema mismatch.  Old consumers (v1-only registry) refuse v2.
+        try:
+            self.registry.validate(model)
+        except UnsupportedSchemaVersion as error:
+            raise DesignOptionProviderFailure(category="validation", code=error.code,
+                                              message=str(error)) from error
+        except ContractViolation as error:
+            raise DesignOptionProviderFailure(category="validation", code=error.code,
+                                              message="候选模型不符合版本化契约：" + str(error)) from error
         try:
             checked, validation = validate_model(model)
         except GeometryError as error:
@@ -142,6 +158,21 @@ class AIDesignOptionService:
         checked["validation"] = validation
         checked["structure_signature"] = structure_signature(checked)
         return checked
+
+    def _admission_for(self, model: dict[str, Any], site: dict[str, Any]) -> dict[str, Any]:
+        """Persisted with the revision; adoption reads it back."""
+        if str(model.get("schema_version") or "").endswith(".v2"):
+            try:
+                return admit_document(model, site=site, basemap_dir=self.basemap_dir,
+                                      run_verifier=self.run_verifier, registry=self.registry)
+            except Exception as error:  # noqa: BLE001 - fail closed, never adopt
+                return {"status": "not_validated", "adoptable": False,
+                        "scope": "isolated_test", "site_bound": False,
+                        "site_snapshot_sha256": None, "basemap_files_sha256": None,
+                        "checks": [{"check": "admission_error", "ok": False,
+                                    "detail": type(error).__name__}],
+                        "blockers": [f"准入党异常：{error}"]}
+        return resolve_legacy_admission(model)
 
     def submit(self, organization_id: str, project_id: str, actor_id: str,
                request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
@@ -221,6 +252,11 @@ class AIDesignOptionService:
                 tx.update_set(set_id, status="running", phase="validation", updated_at=now_iso())
             checked = [self._validate_candidate(model, brief=context["brief"], config=config,
                                                 input_hash=item["input_hash"]) for model in models]
+            # Admission is RECORD metadata, not part of the versioned document:
+            # writing it into model["validation"] would break the contract on
+            # every later revise().
+            admissions = {id(model): self._admission_for(model, context.get("site") or {})
+                          for model in checked}
             if len(checked) < 2 or not all(candidates_are_structurally_different(checked[0], other) for other in checked[1:]):
                 raise DesignOptionProviderFailure(category="validation", code="HOMOGENEOUS_CANDIDATES",
                                                   message="候选空间组织实质相同，不能作为多方案通过")
@@ -248,7 +284,9 @@ class AIDesignOptionService:
                         "option_revision_id": option_revision_id, "set_id": set_id,
                         "option_id": model["option_id"], "revision_no": 1, "parent_revision_id": None,
                         "strategy_id": model["strategy"]["strategy_id"], "strategy": model["strategy"],
-                        "model": model, "validation": model["validation"], "materials": model["materials"],
+                        "model": model, "validation": {**model["validation"],
+                                                       "admission": admissions[id(model)]},
+                        "materials": model["materials"],
                         "cost": model["cost"], "feedback": model["feedback"], "diff": model["diff"],
                         "conflicts": model["conflicts"], "structure_signature": model["structure_signature"],
                         "lifecycle_status": "candidate", "source_kind": model["source_kind"],
@@ -808,6 +846,13 @@ class AIDesignOptionService:
                 raise AIDesignOptionServiceError(409, "STALE_OPTION_REVISION", "候选版本已变化，请重新读取")
             if revision["validation"]["status"] != "passed":
                 raise AIDesignOptionServiceError(422, "INVALID_CANDIDATE", "未通过硬检查的候选不能采用")
+            admission = (revision["validation"].get("admission")
+                         or resolve_legacy_admission(revision["model"]))
+            if admission.get("adoptable") is not True:
+                raise AIDesignOptionServiceError(
+                    422, "ADMISSION_NOT_VALIDATED",
+                    "候选未通过受控准入党（场地/来源/版本），不能采用："
+                    + "；".join(admission.get("blockers") or ["未验证"]))
             adoption = tx.adoption()
             current_version = int(adoption["expected_revision"]) if adoption else 0
             if current_version != expected_version:

@@ -250,7 +250,9 @@ def _load_basemap_facts(basemap_dir: Any) -> dict:
     for i in range(int(data.get("counts", {}).get("unresolved_topology_items") or 0)):
         unverified.append(f"拓扑复核标记#{i + 1}")
     return {"contract_version": BASEMAP_CONTRACT, "boundary_mm": [bw, bh],
-            "boundary_sha256": sha256_hex({f["name"]: f["sha256"] for f in files}),
+            # file-byte digest only; NOT a site snapshot digest
+            "basemap_files_sha256": sha256_hex({f["name"]: f["sha256"] for f in files}),
+            "boundary_sha256": sha256_hex({f["name"]: f["sha256"] for f in files}),  # legacy alias
             "files": files, "keepouts": keepouts, "entrance_fact": entrance_fact,
             "unverified_facts": unverified, "site_verified": False,
             "json_sha256": next(f["sha256"] for f in files if f["name"] == "底图数据.json"),
@@ -326,7 +328,29 @@ def reconcile_site(basemap_dir: Any, site: dict) -> dict:
     if missing:
         raise RealModelSpatialAdaptationError("UNVERIFIED_FACTS_MISMATCH",
                                               f"调用者遗漏底图未核项：{sorted(missing)[:4]}", stage="basemap")
+
+    # SNAPSHOT BINDING: the declared snapshot digest must equal a rebuild from
+    # the same entrance assumption + basemap facts.  A digest cannot be asserted
+    # independently of the data it claims to cover.
+    from . import site_snapshot as SS
+    try:
+        snapshot = SS.snapshot_from_site(site, facts)
+    except SS.SiteSnapshotError as error:
+        raise RealModelSpatialAdaptationError(error.code, error.message, stage="basemap") from error
+    declared_assumption = (site.get("site_snapshot") or {}).get("entrance_assumption") \
+        if isinstance(site.get("site_snapshot"), dict) else None
+    if declared_assumption and point_m is not None:
+        declared_point = declared_assumption.get("value_m")
+        if declared_point is not None and (
+                abs(float(declared_point[0]) - point_m[0]) > 1e-6 or
+                abs(float(declared_point[1]) - point_m[1]) > 1e-6):
+            raise RealModelSpatialAdaptationError(
+                "ENTRANCE_DECLARATION_CONFLICT",
+                f"site.entrance.point_m={point_m} 与快照入口 {declared_point} 不一致", stage="basemap")
     return {**facts,
+            "site_snapshot": snapshot,
+            "site_snapshot_sha256": snapshot["sha256"],
+            "basemap_files_sha256": snapshot["basemap_files_sha256"],
             "entrance": {"side": facts["entrance_fact"]["side"], "point_m": point_m,
                          "width_m": caller_ent.get("width_m") or 1.8,  # declared assumption, site_verified=false
                          "status": facts["entrance_fact"]["status"],
@@ -338,24 +362,28 @@ def reconcile_site(basemap_dir: Any, site: dict) -> dict:
 
 
 # ------------------------------------------------------- R02: source evidence
-def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict:
-    """Verify provenance against a CONTROLLED ledger, never caller JSON files.
+def verify_source(provenance: dict, candidate: dict, *, run_verifier=None,
+                  site_snapshot_sha256: str | None = None) -> dict:
+    """Verify provenance against the CONTROLLED RUN SERVICE, not caller JSON.
 
-    ``run_ledger`` must be a ``ControlledRunLedger`` supplied by the trusted
-    verification service.  With no ledger (or no matching issued run id) an
-    unverifiable source stays ``unknown`` and a ``real_model`` claim is
-    rejected.  A candidate SHA / record SHA computed by the caller is NOT
-    authenticity evidence.
+    ``run_verifier`` must be the read-only capability produced by
+    ``ControlledRunService.verifier()``.  A caller-built ledger, a dict or any
+    duck-typed object is rejected (``RUN_VERIFIER_UNTRUSTED``): a signature over
+    caller-supplied bytes proves nothing about a real model call.
+
+    With no verifier (or no matching issued run id) an unverifiable source stays
+    ``unknown`` and a ``real_model`` claim is rejected.  A candidate SHA / record
+    SHA computed by the caller is NOT authenticity evidence.
     """
     try:
-        from .controlled_run_ledger import RunLedgerError
+        from .controlled_run_ledger import RunLedgerError, assert_trusted_verifier
     except ImportError:  # loaded by path in an offline repro harness
         import sys as _sys
         from pathlib import Path as _Path
         _here = str(_Path(__file__).resolve().parent)
         if _here not in _sys.path:
             _sys.path.insert(0, _here)
-        from controlled_run_ledger import RunLedgerError
+        from controlled_run_ledger import RunLedgerError, assert_trusted_verifier
 
     prov = provenance or {}
     origin = prov.get("design_origin") or {}
@@ -384,18 +412,33 @@ def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict
         raise RealModelSpatialAdaptationError("PARENT_UNVERIFIED",
                                               f"父修订 {parent} 未提供父候选摘要", stage="source")
 
+    prov_snapshot = str(prov.get("site_snapshot_sha256") or "")
+    if site_snapshot_sha256 is not None and prov_snapshot != str(site_snapshot_sha256):
+        raise RealModelSpatialAdaptationError(
+            "SOURCE_SNAPSHOT_MISMATCH",
+            f"来源声明的场地快照 {prov_snapshot[:12] or '缺失'} 与本次适配快照 "
+            f"{str(site_snapshot_sha256)[:12]} 不符；不得把别的场地的运行挂到本候选",
+            stage="source")
+
     verified_records: list[dict] = []
-    if run_ledger is None:
+    verifier = None
+    if run_verifier is None:
         if declared_kind == "real_model" or run_refs:
             raise RealModelSpatialAdaptationError(
-                "RUN_LEDGER_ABSENT",
-                "未提供受控运行账本；自报运行记录/摘要不能作为真实性证据", stage="source")
+                "RUN_VERIFIER_ABSENT",
+                "未注入受控服务验证能力；自报运行记录/摘要不能作为真实性证据", stage="source")
     else:
+        try:
+            verifier = assert_trusted_verifier(run_verifier)
+        except RunLedgerError as error:
+            raise RealModelSpatialAdaptationError(error.code, error.message, stage="source") from error
         for ref in run_refs:
             try:
-                rec = run_ledger.verify(
+                rec = verifier.verify(
                     ref, project_id=project_id, candidate_sha256=candidate_sha,
-                    parent_revision_id=parent, parent_candidate_sha256=parent_candidate_sha or None)
+                    site_snapshot_sha256=(str(site_snapshot_sha256) if site_snapshot_sha256 else None),
+                    parent_revision_id=parent,
+                    parent_candidate_sha256=parent_candidate_sha or None)
             except RunLedgerError as error:
                 raise RealModelSpatialAdaptationError(error.code, error.message, stage="source") from error
             verified_records.append(rec)
@@ -404,11 +447,15 @@ def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict
         if not verified_records:
             raise RealModelSpatialAdaptationError(
                 "DESIGN_ORIGIN_UNVERIFIED",
-                "real_model 声明没有受控账本可核验的真实运行记录", stage="source")
+                "real_model 声明没有受控服务可核验的真实运行记录", stage="source")
         if any(r.get("simulated") is not False or r.get("kind") != "real_model_run"
                for r in verified_records):
             raise RealModelSpatialAdaptationError("RUN_RECORD_NOT_REAL",
-                                                  "账本记录不是非模拟真实模型运行", stage="source")
+                                                  "运行记录不是非模拟真实模型运行", stage="source")
+        if parent and not verifier.revision_registered(project_id, str(parent)):
+            raise RealModelSpatialAdaptationError(
+                "PARENT_UNREGISTERED",
+                f"父修订 {parent} 未经持久仓储登记；任意父链不能算已解析", stage="source")
         kind, origin_kind, generation_real_model = "real_model", "real_model_output", True
     elif declared_kind == "unknown" and verified_records:
         # Evidence exists but provenance cannot be safely promoted: stay unknown.
@@ -418,13 +465,20 @@ def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict
         origin_kind = {"fixture": "fixture_shape", "human": "human_edited", "unknown": "unknown_origin"}[kind]
         generation_real_model = False
 
-    parent_verified = bool(verified_records) and parent is not None
+    parent_verified = bool(verifier) and bool(verified_records) and parent is not None and \
+        verifier.revision_registered(project_id, str(parent))
     run_evidence = [{
         "run_id": r["run_id"], "kind": r["kind"], "simulated": r["simulated"],
-        "issuer": r["issuer"], "project_id": r["project_id"],
+        "issuer": r["issuer"], "issuer_id": r.get("issuer_id"),
+        "admission_scope": r.get("admission_scope"),
+        "project_id": r["project_id"],
         "candidate_sha256": r["candidate_sha256"], "input_hash": r["input_hash"],
         "output_sha256": r["output_sha256"], "model": r["model"],
-        "prompt_version": r["prompt_version"], "request_id": r["request_id"],
+        "prompt_version": r["prompt_version"],
+        "site_snapshot_sha256": r.get("site_snapshot_sha256"),
+        "basemap_files_sha256": r.get("basemap_files_sha256"),
+        "transport": r.get("transport"), "request_sha256": r.get("request_sha256"),
+        "response_sha256": r.get("response_sha256"),
         "parent_revision_id": r.get("parent_revision_id"),
         "parent_candidate_sha256": r.get("parent_candidate_sha256"),
         "signature_present": bool(r.get("issuer_signature")),
@@ -436,10 +490,12 @@ def verify_source(provenance: dict, candidate: dict, *, run_ledger=None) -> dict
         "parent_verified": parent_verified,
         "declared_by": str(origin.get("declared_by") or "not_declared"),
         "declaration": origin.get("declaration"),
+        "site_snapshot_sha256": prov_snapshot or None,
         "diff_baseline": ("source_parent" if parent_verified else
                           ("unknown_missing_parent" if parent else "none_root")),
-        "source_verification_note": ("受控账本签发并验签；自报文件/哈希不作为证据" if verified_records
-                                     else "无可核验运行记录；来源未升级为真实"),
+        "source_verification_note": ("受控服务观测实际请求/响应后签发并验签；自报文件/哈希不作为证据"
+                                     if verified_records else
+                                     "无可核验运行记录；来源未升级为真实"),
     }
 
 
@@ -460,13 +516,50 @@ def path_centreline(poly: list[list[int]], segment_id: str) -> dict:
             "unknown_reason": f"{segment_id} 近方形（{w}x{h}mm），主轴不可判定，不猜测方向"}
 
 
+# ------------------------------------------------------- R04b: reversible rect
+def axis_preserving_rect_mm(declared_bbox: list[int], axis: dict,
+                            segment_id: str) -> list[int]:
+    """Rebuild the legacy rectangle from centreline + width, direction-aware.
+
+    The 2253899 adapter always rebuilt a HORIZONTAL rectangle from the
+    centreline, so a vertical 1.2x4.1 m path became ``width=0, length=1.2``.
+    This reconstructs along the declared axis and proves the result equals the
+    source rectangle; any mismatch fails closed instead of emitting a
+    degenerate shape.
+    """
+    x, y, w, h = (int(v) for v in declared_bbox)
+    orientation = str(axis.get("axis") or "")
+    if orientation == "horizontal":
+        xs = [p[0] for p in axis["path_mm"]]
+        ys = [p[1] for p in axis["path_mm"]]
+        rebuilt = [min(xs), (min(ys) + max(ys) - int(axis["width_mm"])) // 2,
+                   max(xs) - min(xs), int(axis["width_mm"])]
+    elif orientation == "vertical":
+        xs = [p[0] for p in axis["path_mm"]]
+        ys = [p[1] for p in axis["path_mm"]]
+        rebuilt = [(min(xs) + max(xs) - int(axis["width_mm"])) // 2, min(ys),
+                   int(axis["width_mm"]), max(ys) - min(ys)]
+    else:
+        rebuilt = [x, y, w, h]
+    if rebuilt[2] <= 0 or rebuilt[3] <= 0:
+        raise RealModelSpatialAdaptationError(
+            "LEGACY_RECT_DEGENERATE",
+            f"{segment_id} 的 legacy 矩形退化为 {rebuilt}；拒绝输出零宽/零长动线", stage="geometry")
+    if rebuilt != [x, y, w, h]:
+        raise RealModelSpatialAdaptationError(
+            "LEGACY_RECT_NOT_REVERSIBLE",
+            f"{segment_id} 由中心线重构的矩形 {rebuilt} 与源矩形 {[x, y, w, h]} 不一致", stage="geometry")
+    return rebuilt
+
+
 # ------------------------------------------------------- main adaptation
 def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
-                    provenance: dict, created_at: str, run_ledger=None) -> dict:
+                    provenance: dict, created_at: str, run_verifier=None) -> dict:
     if not isinstance(candidate, dict):
         raise RealModelSpatialAdaptationError("NOT_A_CANDIDATE", "候选不是 JSON 对象", stage="source")
     recon = reconcile_site(basemap_dir, site)
-    source = verify_source(provenance, candidate, run_ledger=run_ledger)
+    source = verify_source(provenance, candidate, run_verifier=run_verifier,
+                           site_snapshot_sha256=recon["site_snapshot_sha256"])
     kind = source["kind"]
     ledger: list[dict] = []
     unknowns: list[dict] = []
@@ -522,8 +615,11 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
         _require_within(poly, recon["boundary_mm"], f"path[{i}]")
         sid = str(p.get("segment_id") or f"path:{i}")
         axis = path_centreline(poly, sid)
+        xs, ys = [q[0] for q in poly], [q[1] for q in poly]
+        declared_rect = [min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)]
         item = {"object_id": sid, "path_mm": axis["path_mm"], "width_mm": axis["width_mm"],
                 "axis": axis["axis"], "axis_known_status": axis["axis_known_status"],
+                "declared_rect_mm": declared_rect,
                 "width_known_status": "model_declared_unverified",
                 "path_representation": "rect_axis_centerline_from_metric_rect",
                 "source_refs": [str(x) for x in (p.get("source_refs") or [])]}
@@ -736,7 +832,8 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
                        "schema_version": TOP_LEVEL_VERSION,
                        "config_hash": sha256_hex({"adapter": ADAPTER_VERSION, "mapping": MAPPING_VERSION,
                                                   "vocab": VOCAB_VERSION}),
-                       "input_hash": sha256_hex({"candidate": candidate, "site": recon}),
+                       "input_hash": sha256_hex({"candidate": candidate,
+                                                 "site_snapshot_sha256": recon["site_snapshot_sha256"]}),
                        "generated_at": created_at,
                        "interpretation_method": "deterministic_field_mapping_v2"},
         "feedback": {"text": None, "parsed_intents": [], "locks": [], "interpretation_method": "not_applicable_offline"},
@@ -744,13 +841,16 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
         "change_reason": "v2 离线适配：底图结构化对账 + 来源证据核验；未调用模型、未生成设计",
         "actor_id": str(prov.get("actor_id") or "offline-adapter"), "created_at": created_at,
         "structure_signature": {},
-        "site_snapshot": {"contract": recon["contract_version"],
+        "site_snapshot": {"schema_version": recon["site_snapshot"]["schema_version"],
+                          "contract": recon["contract_version"],
+                          "sha256": recon["site_snapshot_sha256"],
+                          "basemap_files_sha256": recon["basemap_files_sha256"],
                           "boundary_mm": recon["boundary_mm"],
-                          "sha256": recon["boundary_sha256"],
                           "site_verified": False,
                           "unverified_facts": recon["unverified_facts"],
                           "entrance_fact": recon["entrance_fact"],
-                          "entrance_assumption": recon["entrance"]},
+                          "entrance_assumption": recon["site_snapshot"]["entrance_assumption"],
+                          "entrance_resolved": recon["entrance"]},
         "source_revision": source_revision,
         "mapping_losses": list(candidate.get("mapping_losses") or []),
         "spatial": {
@@ -771,12 +871,15 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
                                   "declaration": source["declaration"], "run_refs": source["run_refs"],
                                   "run_evidence": source["run_evidence"]},
                 "site_source": {"source": BASEMAP_CONTRACT, "boundary_mm": recon["boundary_mm"],
-                                "boundary_sha256": recon["boundary_sha256"],
+                                "site_snapshot_sha256": recon["site_snapshot_sha256"],
+                                "basemap_files_sha256": recon["basemap_files_sha256"],
                                 "json_sha256": recon["json_sha256"], "svg_sha256": recon["svg_sha256"],
                                 "site_verified": False, "unverified_facts": recon["unverified_facts"],
                                 "keepouts": recon["keepouts"], "entrance_fact": recon["entrance_fact"],
                                 "entrance_assumption": recon["entrance"]},
-                "basemap_contract": BASEMAP_CONTRACT, "boundary_sha256": recon["boundary_sha256"],
+                "basemap_contract": BASEMAP_CONTRACT,
+                "site_snapshot_sha256": recon["site_snapshot_sha256"],
+                "basemap_files_sha256": recon["basemap_files_sha256"],
                 "boundary_mm": recon["boundary_mm"], "site_verified": False,
                 "declared_by": source["declared_by"], "run_refs": source["run_refs"],
                 "parent_revision_uid": source["parent_revision_id"],
@@ -797,6 +900,8 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
                                         "generation_real_model": source["generation_real_model"],
                                         "parent_verified": source["parent_verified"],
                                         "project_id": source.get("project_id"),
+                                        "site_snapshot_sha256": recon["site_snapshot_sha256"],
+                                        "basemap_files_sha256": recon["basemap_files_sha256"],
                                         "run_evidence": source["run_evidence"],
                                         "note": source["source_verification_note"]},
                 "source_revision": source_revision,
@@ -856,13 +961,23 @@ def adapt_candidate(candidate: dict, *, site: dict, basemap_dir: Any,
                            "material_id": None, "parent_object_id": None, "source_refs": [], "locked": False,
                            "properties": {"geometry_mode": "bbox_derived", "semantic_only": True}})
     model["objects"] = legacy
-    model["circulation"]["segments"] = [
-        {"segment_id": c["object_id"], "shape": _mm_shape([
-            [c["path_mm"][0][0], min(p[1] for p in c["path_mm"])],
-            [c["path_mm"][-1][0], min(p[1] for p in c["path_mm"])],
-            [c["path_mm"][-1][0], min(p[1] for p in c["path_mm"]) + c["width_mm"]],
-            [c["path_mm"][0][0], min(p[1] for p in c["path_mm"]) + c["width_mm"]]])}
-        for c in circulation]
+    # Legacy circulation is derived from the SAME source rectangle, along its
+    # declared axis, and proven reversible.  No zero-width degenerates.
+    model["circulation"]["segments"] = []
+    for c in circulation:
+        rect = axis_preserving_rect_mm(c["declared_rect_mm"], c, c["object_id"])
+        x, y, w, h = rect
+        model["circulation"]["segments"].append({
+            "segment_id": c["object_id"],
+            "shape": _mm_shape([[x, y], [x + w, y], [x + w, y + h], [x, y + h]]),
+            "properties": {
+                "geometry_mode": "axis_preserving_rect",
+                "axis": c["axis"], "axis_known_status": c["axis_known_status"],
+                "declared_rect_mm": rect,
+                "source_rect_mm": list(c["declared_rect_mm"]),
+                "exact_path_ref": f"spatial.circulation:{c['object_id']}",
+                "width_known_status": "model_declared_unverified",
+            }})
     return model
 
 
@@ -1006,11 +1121,28 @@ def candidate_from_persisted(model: dict) -> tuple[dict, dict]:
 def verify_persisted_site_snapshot(model: dict, site: dict, basemap_dir: Any) -> dict:
     """P1: prove the persisted candidate was GENERATED on the same site snapshot.
 
-    Checks boundary frame, entrance point and every keep-out obstacle against
-    the hash-verified site.  A candidate drawn on a test boundary with a
-    different entrance must fail here, not be silently re-bound later.
+    Checks the declared snapshot digest, boundary frame, entrance point and every
+    keep-out obstacle against the hash-verified site.  A candidate drawn on a
+    test boundary, on another snapshot or with a different entrance must fail
+    here, not be silently re-bound later.
     """
     recon = reconcile_site(basemap_dir, site)
+    snap = model.get("site_snapshot") or {}
+    declared = str(snap.get("sha256") or "")
+    if not declared:
+        raise RealModelSpatialAdaptationError(
+            "PERSISTED_SNAPSHOT_MISSING", "持久候选没有场地快照摘要；不能证明与本场地同源", stage="site")
+    if declared != recon["site_snapshot_sha256"]:
+        raise RealModelSpatialAdaptationError(
+            "PERSISTED_SNAPSHOT_MISMATCH",
+            f"持久候选快照 {declared[:12]} 与本次场地快照 {recon['site_snapshot_sha256'][:12]} 不符",
+            stage="site")
+    declared_basemap = str(snap.get("basemap_files_sha256") or "")
+    if declared_basemap != recon["basemap_files_sha256"]:
+        raise RealModelSpatialAdaptationError(
+            "PERSISTED_BASEMAP_MISMATCH",
+            f"持久候选底图文件摘要 {declared_basemap[:12]} 与确认底图 {recon['basemap_files_sha256'][:12]} 不符",
+            stage="site")
     b = model.get("boundary") or {}
     bw, bh = _m_to_mm(b.get("width"), "persisted.width"), _m_to_mm(b.get("length"), "persisted.length")
     if (bw, bh) != tuple(recon["boundary_mm"]):
@@ -1042,7 +1174,10 @@ def verify_persisted_site_snapshot(model: dict, site: dict, basemap_dir: Any) ->
         raise RealModelSpatialAdaptationError("PERSISTED_KEEPOUT_MISMATCH",
                                               f"持久候选保留区 {got} 与场地快照 {expected_obs} 不符", stage="site")
     return {"boundary_mm": [bw, bh], "entrance_mm": [ex, ey], "keepouts": got,
-            "site_snapshot_sha256": recon["boundary_sha256"], "status": "matched"}
+            "site_snapshot_sha256": recon["site_snapshot_sha256"],
+            "basemap_files_sha256": recon["basemap_files_sha256"],
+            "declared_snapshot_sha256": declared,
+            "status": "matched"}
 
 
 def validate_candidate_geometry_against_site(model: dict, site: dict, basemap_dir: Any) -> dict:
@@ -1087,22 +1222,107 @@ def validate_candidate_geometry_against_site(model: dict, site: dict, basemap_di
             "keepouts_checked": len(obstacles)}
 
 
+def verify_geometry_projection_consistency(model: dict) -> dict:
+    """P1: source rect, legacy objects/segments and spatial projection must agree.
+
+    Covers every circulation segment (horizontal / vertical / near-square),
+    every zone and every furniture/partition projection: same rectangle, same
+    identity, no zero-width degenerate, connections refer to existing segments.
+    """
+    spatial = model.get("spatial") or {}
+    checks: list[dict] = []
+    legacy_by_id = {str(o.get("object_id")): o for o in (model.get("objects") or [])}
+    paths = {str(c.get("object_id")): c for c in (spatial.get("circulation") or [])}
+    segments = {str(s.get("segment_id")): s for s in ((model.get("circulation") or {}).get("segments") or [])}
+    problems: list[dict] = []
+
+    def bbox_of_shape(shape: dict) -> list[int]:
+        x = _m_to_mm(shape.get("x"), "shape.x")
+        y = _m_to_mm(shape.get("y"), "shape.y")
+        w = _m_to_mm(shape.get("width"), "shape.width")
+        h = _m_to_mm(shape.get("length"), "shape.length")
+        return [x, y, w, h]
+
+    for sid, path in paths.items():
+        segment = segments.get(sid)
+        if not segment:
+            problems.append({"item": sid, "problem": "legacy_segment_missing"})
+            continue
+        declared = [int(v) for v in path.get("declared_rect_mm") or []]
+        legacy = bbox_of_shape(segment.get("shape") or {})
+        source = [int(v) for v in (segment.get("properties") or {}).get("source_rect_mm") or []]
+        if legacy[2] <= 0 or legacy[3] <= 0:
+            problems.append({"item": sid, "problem": "legacy_zero_dimension", "rect": legacy})
+        if not (declared == legacy == source):
+            problems.append({"item": sid, "problem": "rect_mismatch",
+                             "declared": declared, "legacy": legacy, "source": source})
+        checks.append({"item": sid, "axis": path.get("axis"), "rect": legacy,
+                       "area_m2": round(legacy[2] * legacy[3] / 1_000_000, 4)})
+    for zid, zone in {str(z.get("object_id")): z for z in (spatial.get("zones") or [])}.items():
+        legacy = legacy_by_id.get(zid)
+        if not legacy:
+            problems.append({"item": zid, "problem": "legacy_zone_missing"})
+            continue
+        poly = zone.get("polygon_mm") or []
+        xs, ys = [p[0] for p in poly], [p[1] for p in poly]
+        expected = [int(min(xs)), int(min(ys)), int(max(xs) - min(xs)), int(max(ys) - min(ys))]
+        got = bbox_of_shape(legacy.get("shape") or {})
+        if got != expected:
+            problems.append({"item": zid, "problem": "zone_rect_mismatch",
+                             "spatial": expected, "legacy": got})
+    for fur in spatial.get("furniture") or []:
+        fid = str(fur.get("object_id"))
+        legacy = legacy_by_id.get(fid)
+        if not legacy:
+            problems.append({"item": fid, "problem": "legacy_furniture_missing"})
+            continue
+        expected = [round(fur["x_mm"] - fur["w_mm"] / 2), round(fur["y_mm"] - fur["d_mm"] / 2),
+                    int(fur["w_mm"]), int(fur["d_mm"])]
+        got = bbox_of_shape(legacy.get("shape") or {})
+        if got != expected:
+            problems.append({"item": fid, "problem": "furniture_rect_mismatch",
+                             "spatial": expected, "legacy": got})
+    ids = set(paths)
+    for pair in (model.get("circulation") or {}).get("connections") or []:
+        if len(pair) != 2 or pair[0] not in ids or pair[1] not in ids:
+            problems.append({"item": list(pair), "problem": "connection_unknown_segment"})
+    if problems:
+        raise RealModelSpatialAdaptationError(
+            "GEOMETRY_PROJECTION_INCONSISTENT",
+            f"源矩形/legacy/spatial 投影不一致：{problems[:4]}", stage="geometry")
+    return {"segments": checks, "zones": len(spatial.get("zones") or []),
+            "furniture": len(spatial.get("furniture") or []),
+            "connections": len((model.get("circulation") or {}).get("connections") or []),
+            "status": "consistent"}
+
+
 def adapt_persisted_candidate(model: dict, *, site: dict, basemap_dir: Any,
-                              provenance: dict, created_at: str, run_ledger=None,
-                              skip_site_integrity: bool = False) -> tuple[dict, dict]:
-    integrity = {"status": "not_run"}
-    if not skip_site_integrity:
-        integrity = verify_persisted_site_snapshot(model, site, basemap_dir)
-        geometry = validate_candidate_geometry_against_site(model, site, basemap_dir)
-        integrity["geometry"] = geometry
+                              provenance: dict, created_at: str, run_verifier=None
+                              ) -> tuple[dict, dict]:
+    """Persisted candidate -> adapt.  Site integrity is ALWAYS enforced.
+
+    The 2253899 ``skip_site_integrity`` switch is gone: a caller could bypass the
+    only site gate and still get an adoptable document.  Isolated negatives must
+    use ``verify_persisted_site_snapshot`` directly and mark their output
+    ``not_validated``; they never travel through this function.
+    """
+    integrity = verify_persisted_site_snapshot(model, site, basemap_dir)
+    geometry = validate_candidate_geometry_against_site(model, site, basemap_dir)
     cand, note = candidate_from_persisted(model)
     adapted = adapt_candidate(cand, site=site, basemap_dir=basemap_dir,
                               provenance=provenance, created_at=created_at,
-                              run_ledger=run_ledger)
+                              run_verifier=run_verifier)
+    # Source / legacy / spatial projections are compared on the ADAPTED
+    # document, where all three actually exist.
+    consistency = verify_geometry_projection_consistency(adapted)
+    integrity["geometry"] = geometry
+    integrity["projections"] = consistency
     note["adapter_version"] = ADAPTER_VERSION
     note["candidate_sha256"] = sha256_hex(cand)
     note["spatial_model_hash"] = sha256_hex(adapted)
     note["site_snapshot_integrity"] = integrity
+    note["site_snapshot_sha256"] = integrity["site_snapshot_sha256"]
+    note["basemap_files_sha256"] = integrity["basemap_files_sha256"]
     return adapted, note
 
 

@@ -40,6 +40,8 @@ REAL_ADAPTER_VERSION = "rkd-real-design-provider.v3"
 REAL_PROMPT_VERSION = f"design-studio-concept.zh-CN.v3+{REFERENCE_VERSION}"
 RULE_VERSION = "ai-design-geometry.v1"
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "contracts" / "v1" / "ai-design-option.schema.json"
+SCHEMA_V2_PATH = Path(__file__).resolve().parents[2] / "contracts" / "v2" / "ai-design-option.schema.json"
+TOP_V2 = "rkd-ai-design-option.v2"
 
 
 @dataclass(frozen=True)
@@ -545,50 +547,41 @@ REAL_DESIGN_OUTPUT_SHAPE = {
     }]
 }
 
-LEGAL_PATH_EXAMPLE = {
-    "entrance_side": "left",
-    "entrance_point": [0, 1.0],
-    "note": "这是 12x8m、左侧入口、已通过全部硬检查的完整合法基线。你可以改变分区数量、比例、邻接与动线组织来做不同的设计，但每一次调整都必须重新满足约束 2/3/4；若不确定，请从这些坐标出发做小幅改动。左侧入口点固定为 [0,1.0]，必须有一段动线矩形的边界经过它；右侧为 [12,1.0]，下侧 [1.5,0]，上侧 [1.5,8]。",
-    "paths": [{"segment_id": "path-south", "x": 0, "y": 0.4, "width": 12, "length": 1.2},
-              {"segment_id": "path-west", "x": 2.4, "y": 0.4, "width": 1.2, "length": 6.4},
-              {"segment_id": "path-east", "x": 8.8, "y": 0.4, "width": 1.2, "length": 6.4},
-              {"segment_id": "path-north", "x": 2.4, "y": 5.6, "width": 7.6, "length": 1.2}],
-    "connections": [["path-south", "path-west"], ["path-south", "path-east"],
-                    ["path-west", "path-north"], ["path-east", "path-north"]],
-    "narrative": {"theme": "从品牌第一眼到深度洽谈的环游叙事", "topology": "narrative-loop",
-                  "sequence": ["入口门斗", "前厅形象", "中央展示", "深度洽谈", "收束出口"],
-                  "first_view": "入口正对品牌形象墙与中岛主展台",
-                  "climax": "中央展示区位于动线约三分之二处"},
-    "zones": [
-        {"object_id": "zone:reception", "name": "前厅接待 FOYER", "x": 3.6, "y": 1.6, "width": 2.0,
-         "length": 4.0, "material_id": "mat-warm", "min_area_m2": "4",
-         "zone_role": "foyer", "sequence_role": "opening", "intent": "建立品牌第一印象"},
-        {"object_id": "zone:display", "name": "中央展示 SHOWROOM", "x": 5.6, "y": 1.6, "width": 1.6,
-         "length": 4.0, "material_id": "mat-warm", "min_area_m2": "4",
-         "zone_role": "primary_display", "sequence_role": "climax", "intent": "核心展项与停留"},
-        {"object_id": "zone:discussion", "name": "深度洽谈 NEGOTIATION", "x": 7.2, "y": 1.6, "width": 1.6,
-         "length": 4.0, "material_id": "mat-neutral", "min_area_m2": "4",
-         "zone_role": "deep_talk", "sequence_role": "closing", "intent": "半私密转化"},
-    ],
-    "walls": [
-        {"object_id": "wall:feature", "name": "品牌形象片墙", "x": 5.4, "y": 3.4,
-         "width": 0.14, "length": 2.0, "wall_type": "feature"}
-    ],
-    "furniture": [
-        {"object_id": "f:reception", "name": "服务前台 SERVICE COUNTER", "x": 3.9, "y": 2.1,
-         "width": 1.0, "length": 0.45, "furniture_type": "reception_desk", "parent_object_id": "zone:reception"},
-        {"object_id": "f:talk", "name": "洽谈桌椅 TABLE & CHAIRS", "x": 7.5, "y": 2.6,
-         "width": 1.0, "length": 1.0, "furniture_type": "table_chairs", "parent_object_id": "zone:discussion"},
-        {"object_id": "f:plant", "name": "景观绿植 PLANT", "x": 4.2, "y": 4.6,
-         "width": 0.6, "length": 0.6, "furniture_type": "plant", "parent_object_id": "zone:reception"},
-    ],
-    "focal_point": {"object_id": "focal:hero", "name": "中岛主展台 ISLAND", "x": 5.8, "y": 3.0,
-                    "width": 1.2, "length": 0.8, "furniture_type": "island", "statement": "全场视觉焦点"},
-    "entrance_buffers": [{"object_id": "entrance:portal", "name": "主入口门斗", "x": 0.3, "y": 0.5,
-                          "width": 0.8, "length": 0.8, "material_id": "mat-warm"}],
-    "displays": [],
-    "partitions": [],
-}
+# The former hard-coded 12x8m LEGAL_PATH_EXAMPLE was REMOVED: a fixed
+# cross-site baseline in every request misled the model about this site and
+# hid the missing entrance. Requests now carry the real site snapshot.
+
+def _site_dimension(site: dict[str, Any], key: str) -> Decimal:
+    """Fail closed: never fall back to a 12x8 test boundary."""
+    if not isinstance(site, dict) or site.get(key) is None:
+        raise DesignOptionProviderFailure(
+            category="configuration", code="SITE_BOUNDARY_MISSING",
+            message=f"场地缺少 {key}；不得用默认 12x8m 示例边界代替")
+    value = _num(site[key], f"site.{key}")
+    if value <= 0:
+        raise DesignOptionProviderFailure(category="configuration", code="SITE_BOUNDARY_INVALID",
+                                          message=f"场地 {key} 必须为正数")
+    return value
+
+
+def _declared_snapshot(site: dict[str, Any]) -> dict[str, Any] | None:
+    """Validate the site snapshot before it is sent to a model."""
+    snapshot = site.get("site_snapshot") if isinstance(site, dict) else None
+    if snapshot is None:
+        return None
+    from .site_snapshot import SiteSnapshotError, verify_snapshot_shape
+
+    try:
+        verify_snapshot_shape(snapshot)
+    except SiteSnapshotError as error:
+        raise DesignOptionProviderFailure(category="validation", code=error.code,
+                                          message=error.message) from error
+    declared = site.get("site_snapshot_sha256")
+    if declared and str(declared) != str(snapshot["sha256"]):
+        raise DesignOptionProviderFailure(
+            category="validation", code="SITE_SNAPSHOT_SHA_MISMATCH",
+            message=f"site.site_snapshot_sha256 与快照自身的 {snapshot['sha256'][:12]} 不符")
+    return snapshot
 
 
 def _num(value: Any, field_name: str) -> Decimal:
@@ -647,16 +640,29 @@ class RealModelDesignOptionProvider:
     """A real language model acts as the designer; the program validates and draws."""
 
     def __init__(self, config: DesignOptionConfig, api_key: str, *, opener: Any | None = None,
-                 environ: dict[str, str] | None = None, run_log_dir: str | Path | None = None) -> None:
+                 environ: dict[str, str] | None = None, run_log_dir: str | Path | None = None,
+                 on_exchange: Any | None = None) -> None:
         self.config = config
         self.api_key = api_key
         self.opener = opener or build_opener(ProxyHandler({}))
+        # An injected opener is an offline protocol stub: its bytes can never be
+        # promoted to a "real model run" by the controlled service.
+        self.transport = "local_protocol_stub" if opener is not None else "live_http"
+        self.on_exchange = on_exchange
         self.env = dict(os.environ if environ is None else environ)
-        self.schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-        self.validator = Draft202012Validator(self.schema)
+        # A site-bound candidate is v2; validate it against the version it
+        # declares, never against v1 just because that used to be the only one.
+        self.schemas = {SCHEMA_VERSION: json.loads(SCHEMA_PATH.read_text(encoding="utf-8")),
+                        TOP_V2: json.loads(SCHEMA_V2_PATH.read_text(encoding="utf-8"))}
+        self.validators = {name: Draft202012Validator(schema) for name, schema in self.schemas.items()}
+        self.schema = self.schemas[SCHEMA_VERSION]
+        self.validator = self.validators[SCHEMA_VERSION]
         self.runs: list[dict[str, Any]] = []
         default_log = Path(__file__).resolve().parents[2] / "var" / "ai-model-runs"
         self.run_log_dir = Path(run_log_dir or self.env.get("RKD_AI_RUN_LOG_DIR") or default_log)
+
+    def _validator_for(self, model: dict[str, Any]) -> Draft202012Validator:
+        return self.validators.get(str(model.get("schema_version")), self.validator)
 
     # -- model call and auditable run record ---------------------------------
 
@@ -679,8 +685,9 @@ class RealModelDesignOptionProvider:
         payload = {"model": self.config.model_id, "temperature": 0.2,
                    "max_tokens": self.config.max_output_tokens,
                    "response_format": {"type": "json_object"}, "messages": messages}
+        request_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         request = Request(f"{self.config.base_url}/chat/completions",
-                          data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                          data=request_bytes,
                           headers={"Content-Type": "application/json",
                                    "Authorization": f"Bearer {self.api_key}",
                                    "X-Request-Id": request_id}, method="POST")
@@ -688,6 +695,13 @@ class RealModelDesignOptionProvider:
         try:
             with self.opener.open(request, timeout=self.config.timeout_seconds) as response:
                 raw = response.read(4 * 1024 * 1024).decode("utf-8", errors="replace")
+                if self.on_exchange is not None:
+                    # The controlled service observes the ACTUAL bytes; it derives
+                    # "simulated" from the transport, never from our claim.
+                    self.on_exchange(request_bytes=request_bytes,
+                                     response_bytes=raw.encode("utf-8"),
+                                     endpoint=f"{self.config.base_url}/chat/completions",
+                                     transport=self.transport)
                 provider_request_id = response.headers.get("X-Request-Id") or request_id
                 data = json.loads(raw)
                 content = data["choices"][0]["message"]["content"]
@@ -756,19 +770,31 @@ class RealModelDesignOptionProvider:
 
     def _design_messages(self, *, brief: dict[str, Any], site: dict[str, Any],
                          feedback: dict[str, Any] | None = None) -> list[dict[str, str]]:
-        width, length = _num(site.get("width", 12), "site.width"), _num(site.get("length", 8), "site.length")
+        width, length = _site_dimension(site, "width"), _site_dimension(site, "length")
+        snapshot = _declared_snapshot(site)
+        entrance = site.get("entrance") if isinstance(site.get("entrance"), dict) else {}
+        point = entrance.get("point")
         payload: dict[str, Any] = {
             "task": "像真实设计团队一样完成室内展厅的概念设计与平面组织",
             "boundary": {"width": _decimal(width), "length": _decimal(length), "unit": "m",
-                         "boundary_source": str(site.get("boundary_source") or "test_parameters_not_site_verified"),
-                         "note": "边界是明确标记的测试参数，未经现场核验，不得当作实测",
+                         "boundary_source": str(site.get("boundary_source") or "unknown_not_site_verified"),
+                         "note": "边界来自本次场地快照（未现场核验），不得当作实测",
+                         "site_snapshot_sha256": (snapshot or {}).get("sha256"),
+                         "basemap_files_sha256": (snapshot or {}).get("basemap_files_sha256"),
+                         "entrance": {"side": entrance.get("side"),
+                                      "point": point,
+                                      "site_verified": False,
+                                      "source": entrance.get("source") or "not_declared",
+                                      "assumption": entrance.get("assumption")},
                          "obstacles": site.get("obstacles", [])},
+            "site_snapshot": snapshot,
             "brief": self._brief_view(brief, self.config.external_context_allowed),
             "output_shape": REAL_DESIGN_OUTPUT_SHAPE,
-            "legal_path_example": LEGAL_PATH_EXAMPLE,
+            "output_shape_note": "output_shape 里的数字只是字段格式示意，不是可用基线；必须按本场地边界与入口重画",
             "rules": ["只输出严格 JSON", "两个 candidate 必须有实质不同的空间组织",
                       "所有坐标与尺寸为米制数值", "未知信息写 unknown，不编价格或做法",
-                      "legal_path_example 是已通过全部硬检查的完整基线；第二方案若难以自证，请从该基线坐标出发调整分区与动线组织",
+                      "禁止套用任何非本场地的固定示例坐标；每个矩形都必须落在本场地边界内",
+                      "动线必须经过 boundary.entrance.point 声明的入口点，且不得压到 boundary.obstacles 保留区",
                       "程序不会自动添加入口缓冲；如需表达入口前区，请在 entrance_buffers 中给出且不得与 zones 重叠，也可以留空数组"],
         }
         if feedback is not None:
@@ -794,8 +820,8 @@ class RealModelDesignOptionProvider:
     def _to_model(self, candidate: dict[str, Any], *, set_id: str, site: dict[str, Any],
                   cost_source: dict[str, Any], input_hash: str, generated_at: str,
                   provider_request_id: str, brief: dict[str, Any], option_index: int) -> dict[str, Any]:
-        width = _num(site.get("width", 12), "site.width")
-        length = _num(site.get("length", 8), "site.length")
+        width = _site_dimension(site, "width")
+        length = _site_dimension(site, "length")
         source_ids = _source_ids(brief)
         primary = "synthetic-input" if "synthetic-input" in source_ids else source_ids[0]
         strategy_id = str(candidate.get("strategy_id") or f"real-concept-{option_index}").strip()[:80]
@@ -938,15 +964,26 @@ class RealModelDesignOptionProvider:
         statement = "｜".join(
             [narrative_text] + [str(candidate.get(key) or "") for key in ("concept", "statement", "rationale")
                                 if str(candidate.get(key) or "")]) or "真实模型概念方案"
+        snapshot = _declared_snapshot(site)
+        entrance = site.get("entrance") if isinstance(site.get("entrance"), dict) else {}
+        top_version = ("rkd-ai-design-option.v2" if snapshot is not None else SCHEMA_VERSION)
         model = {
-            "schema_version": SCHEMA_VERSION, "set_id": set_id,
+            "schema_version": top_version, "set_id": set_id,
             "option_id": f"{set_id}:{strategy_id}", "revision_no": 1, "parent_revision_id": None,
             "strategy": {"strategy_id": strategy_id, "statement": statement[:2000],
                          "tradeoffs": [str(item) for item in (candidate.get("tradeoffs") or [])][:8],
                          "source_refs": [primary]},
             "boundary": {"width": _decimal(width), "length": _decimal(length), "unit": "m",
-                         "boundary_source": str(site.get("boundary_source") or "test_parameters_not_site_verified"),
-                         "entrance": {"side": side, "point": point, "width": _decimal(path_width)},
+                         "boundary_source": str(site.get("boundary_source") or "unknown_not_site_verified"),
+                         "entrance": {"side": side, "point": point, "width": _decimal(path_width),
+                                      **(({"site_snapshot_sha256": snapshot["sha256"],
+                                           "basemap_files_sha256": snapshot["basemap_files_sha256"],
+                                           "site_verified": False,
+                                           "source": entrance.get("source") or "not_declared",
+                                           "assumption": entrance.get("assumption")}
+                                          | {"point_source": (entrance.get("assumption") or {}).get("kind",
+                                                                                                   "not_declared")})
+                                         if snapshot is not None else {})},
                          "obstacles": obstacles},
             "objects": objects, "relationships": relationships,
             "circulation": {"path_id": "main-" + kind, "kind": kind,
@@ -967,6 +1004,25 @@ class RealModelDesignOptionProvider:
             "change_reason": "真实模型完成概念设计与空间组织",
             "actor_id": "real-model-designer", "created_at": generated_at,
         }
+        if snapshot is not None:
+            if str(site.get("boundary_source") or "") != str(snapshot["contract_version"]):
+                raise DesignOptionProviderFailure(
+                    category="configuration", code="SITE_SNAPSHOT_BOUNDARY_CONFLICT",
+                    message="带快照的请求必须声明 boundary_source=rkd-site-basemap.v2")
+            # v2: the persisted candidate carries the SAME snapshot digests that
+            # were sent in the request, so the adapter can prove same-source.
+            model["site_snapshot"] = {
+                "schema_version": snapshot["schema_version"],
+                "contract": snapshot["contract_version"],
+                "sha256": snapshot["sha256"],
+                "basemap_files_sha256": snapshot["basemap_files_sha256"],
+                "boundary_mm": list(snapshot["boundary_mm"]),
+                "entrance_assumption": snapshot["entrance_assumption"],
+                "entrance_fact": snapshot["entrance_fact"],
+                "unverified_facts": list(snapshot["unverified_facts"]),
+                "site_verified": False,
+            }
+        model["generation"]["schema_version"] = top_version
         model["structure_signature"] = structure_signature(model)
         return model
 
@@ -989,8 +1045,8 @@ class RealModelDesignOptionProvider:
         joined = " ".join(problems)
         hints: list[str] = []
         if "ENTRANCE_NOT_CONNECTED" in joined:
-            hints.append("入口点固定为 left=[0,1.0]、right=[12,1.0]、bottom=[1.5,0]、top=[1.5,8]；"
-                         "必须有一段动线矩形的边界精确经过该点，例如左侧入口保留 x=0 且 y 覆盖 1.0 的横向路径。")
+            hints.append("入口点必须等于本次请求 boundary.entrance.point；"
+                         "至少有一段动线矩形的边界精确经过该点，不得套用其它场地示例坐标。")
         if "ZONE_NO_PATH_ACCESS" in joined:
             hints.append("每个功能区至少有一条完整边与某段动线的边共线且共边长度 ≥0.5m；"
                          "把 zone 的 y 设为 path-south 上边界 1.6，或把 zone 的 x 设为 path-west 右边界 3.6，最稳妥。")
@@ -1059,7 +1115,7 @@ class RealModelDesignOptionProvider:
                                            input_hash=input_hash, generated_at=generated_at,
                                            provider_request_id=request_id, brief=brief, option_index=index)
                     models.append(model)
-                    problems.extend(f"方案{index + 1} {item}" for item in self._problems(model, self.validator))
+                    problems.extend(f"方案{index + 1} {item}" for item in self._problems(model, self._validator_for(model)))
                 except DesignOptionProviderFailure as error:
                     problems.append(f"方案{index + 1} {error.code}: {error.message}")
             if len(models) == 2 and not candidates_are_structurally_different(models[0], models[1]):
@@ -1139,7 +1195,7 @@ class RealModelDesignOptionProvider:
                              {"role": "user", "content": json.dumps({"geometry_review": last_problems,
                                                                       "instruction": "修正后重新输出完整 JSON"}, ensure_ascii=False)}]
                 continue
-            problems = self._problems(revised, self.validator)
+            problems = self._problems(revised, self._validator_for(revised))
             explicit_conflicts = [str(item) for item in (value.get("locked_conflicts") or []) if str(item)]
             if explicit_conflicts:
                 problems.append("LOCK_CONFLICT: " + "；".join(explicit_conflicts[:3]))
@@ -1178,7 +1234,7 @@ class RealModelDesignOptionProvider:
                         counterpart["locked"] = True
                         lock_conflicts.append(f"锁定展陈对象 {object_id} 被模型改动，程序已恢复")
             if lock_conflicts:
-                problems = self._problems(revised, self.validator)
+                problems = self._problems(revised, self._validator_for(revised))
                 if problems:
                     last_problems = problems
                     continue

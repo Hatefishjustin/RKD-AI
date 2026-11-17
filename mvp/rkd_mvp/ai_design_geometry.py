@@ -51,8 +51,10 @@ def _check(code: str, status: str, message: str) -> dict[str, str]:
 
 
 def validate_model(raw: Any) -> tuple[dict[str, Any], dict[str, Any]]:
-    if not isinstance(raw, dict) or raw.get("schema_version") != SCHEMA_VERSION:
-        raise GeometryError(400, "INVALID_DESIGN_MODEL", "候选模型版本无效")
+    if not isinstance(raw, dict) or raw.get("schema_version") not in {
+            SCHEMA_VERSION, "rkd-ai-design-option.v2"}:
+        raise GeometryError(400, "UNSUPPORTED_SCHEMA_VERSION",
+                            "候选模型版本不在本消费者支持的版本列表内")
     boundary = raw.get("boundary")
     if not isinstance(boundary, dict):
         raise GeometryError(400, "INVALID_BOUNDARY", "边界格式无效")
