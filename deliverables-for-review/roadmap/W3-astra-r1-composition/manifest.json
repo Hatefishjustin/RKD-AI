@@ -1,0 +1,70 @@
+{
+  "baseline": "446a6f6526391e1dcc6313f8247760c883448063",
+  "code_commit": "dbc907e",
+  "counts": {
+    "checks": {
+      "fail": 0,
+      "not_run": 2,
+      "observed_pass": 10
+    },
+    "files": 10,
+    "tests": {
+      "astra_remediation": "4/4 OK",
+      "composition_root": "7/7 OK",
+      "full_suite": "273/273 OK"
+    }
+  },
+  "files": {
+    "changes.patch": {
+      "bytes": 55171,
+      "sha256": "94691ad5e82c2325524ea9a2df1148faffbcaf74e5deca5989b4eaf9363ed65f"
+    },
+    "checks.json": {
+      "bytes": 5605,
+      "sha256": "70f90e07938bf0fb9278c709adc7de6e15adf0c6b3c412cb13687d32369526eb"
+    },
+    "code-diff.md": {
+      "bytes": 3868,
+      "sha256": "6b3ba34b0343596a396ee30360a026b074e6c345263bd93bb6c41f39627b375e"
+    },
+    "commit-reference.md": {
+      "bytes": 3029,
+      "sha256": "078eb5ccc13e7ca9e440e9930355a0b93ffaac1029fc66c31684796dab3838b9"
+    },
+    "decision-request.md": {
+      "bytes": 2905,
+      "sha256": "936befd76395e69a62b26763e907db00721504d1f2738c01bc057af065b8f3c7"
+    },
+    "outputs/entrypoints.json": {
+      "bytes": 3598,
+      "sha256": "bf96908cc4f7ec21cc7cd64c482f8a001b2384f498b027580c5761e96e3f2172"
+    },
+    "outputs/findings-after.json": {
+      "bytes": 1562,
+      "sha256": "b897942049e83484baed306edf6f495a7ff5cd2250f811fe6bd051e914b4f77c"
+    },
+    "outputs/findings-before.json": {
+      "bytes": 917,
+      "sha256": "d5e57eb13315868b10a7f9949969f11c5ac18215d5cb428f9bdaa4c6fe8c6be2"
+    },
+    "positive-negative-cases.md": {
+      "bytes": 3866,
+      "sha256": "eaa7f3f6f2e141c1bf9f79c59a24b0e32c6a6e6809fb626cc36a38e157da3d50"
+    },
+    "review-packet.md": {
+      "bytes": 11232,
+      "sha256": "89d85bb52e7379f53b635eccf9405c805f48b1c41f7529783a7448cb9f135028"
+    }
+  },
+  "generated_at": "2026-11-17",
+  "not_run": [
+    "HTTP 下载",
+    "PG 数据面",
+    "真实模型调用",
+    "正式采用/发布",
+    "浏览器 UI",
+    "专业签核"
+  ],
+  "review": "W3-astra-r1-composition",
+  "schema_version": "rkd-w3-astra-r1-composition-manifest.v1"
+}

@@ -1,3 +1,16 @@
+diff --git a/PROJECT_STATUS.md b/PROJECT_STATUS.md
+index 6c0e80e..fef1bde 100644
+--- a/PROJECT_STATUS.md
++++ b/PROJECT_STATUS.md
+@@ -4,6 +4,8 @@
+ 
+ ## 当前阶段
+ 
++**2026-11-17 W3 Astra R1 追加整改：真实组合根接通受控运行时（基线 `446a6f6`；不宣布 W3/阶段2/客户设计通过，不放行真实模型试验，不改 AD）：**第二轮意见指出 `86e3e36` 只新增了可注入的 `ControlledDesignRuntime` 类，全仓没有任何生产创建/注入位置，此前端到端证据依赖验证脚本手工注入。已在两个真实生产组合根接线：`mvp/rkd_mvp/api_service.py:107-127`（`load_design_option_config` → 真实模型配置时 `build_controlled_runtime` → 注入 `AIDesignOptionService`，缺 `runtime_root` 抛 `RUNTIME_ROOT_REQUIRED`；`133-137` 接 `spatial_renderer`）与 `mvp/rkd_mvp/postgres_api_service.py:88-101`（同构）。启动入口未改契约：`run_api_server.py:29`、`run_postgres_api.py:37`、`run_team_api.py:21`。fail-closed（`controlled_design_runtime.py:160-200`）：`REAL_MODEL_REQUIRED` / `DESIGN_CONFIG_INCOMPLETE` / `API_KEY_REQUIRED`；服务层 `ai_design_option_service.py:259-264` 真实模型配置无 runtime 直接 503 `CONTROLLED_RUNTIME_REQUIRED`，不退回旧候选路径、不产出无法采用的候选；反馈路径仍 `CONTROLLED_FEEDBACK_PATH_UNSUPPORTED` 且原修订不变（:908）；采用边界用持久化不可变源候选重新准入（:975-1008）。同例 harness `scripts/w3_composition_findings.py`（只调 `ApiService` 公共 API）：基线 `--expect vulnerable` 5/5 vulnerable（`chain` 实为 `failed`/`DESIGN_PROVIDER_NOT_CONFIGURED`，配置根本进不了产品路径），工作树 `--expect fixed` 5/5 fixed（`succeeded`→v2+spatial+来源 fixture→`adopted_draft`；四态 完整 `complete`/6 条清单逐条 SHA 相符、无渲染 `preview_incomplete`、失败 `SPATIAL_OUTPUT_FAILED` 无 revision、取消 `cancelled` 无 revision）。新增永久回归 `mvp/tests/test_w3_composition_root.py` **7/7 OK**（含 PG 组合根启动接线与 fail-closed），第一轮 Astra 回归 4/4，全量单测 **273/273 OK**。**not_run**：HTTP 服务进程级下载、浏览器 UI、PG 数据面（无活动实例，未用桩冒充）、真实模型调用（0 授权/0 费用/0 密钥）。复核包 `deliverables-for-review/roadmap/W3-astra-r1-composition/`，证据 `var/evidence/roadmap/W3-astra-r1-composition/{before,after}/`，请架构师复核。阶段1底图确认、阶段2方案、AD01—AD08、未知项与正式责任边界均未改动。
++
+ **2026-11-17 W3 GPT-6 Astra 独立复核 R1—R5 限定整改已交复核包（基线 `72442c7`；不宣布 W3/阶段2/客户设计通过，不放行真实模型试验，不改 AD）：**按 GPT-6 Astra 对 `72442c7` 的独立复核（不是设计验收意见）执行。先在冻结基线代码快照 `var/evidence/roadmap/W3-astra-remediation/before/` 上用同一 harness 复现五项，再修复，再同例复跑：before 5/5 vulnerable，after 5/5 fixed。R1 接通「场地快照→provider(受控 opener)→SQLite 持久候选→受控 spatial 适配→可信准入→采用」的实际服务链（新 `controlled_design_runtime.py`，服务采用边界重新计算准入；历史 v1 保持可读，反馈路径不受支持时显式拒绝并保留原版，不复用父准入）。R2 关闭自报 `observe_exchange`，签发只由受控传输实际字节产生。R3 准入党绑定服务上下文组织/项目与仓储不可变源候选摘要，重新适配对账几何，捕获内容篡改/来源冲突/跨项目。R4 从 `path_mm`/`width_mm`/footprint 重建几何，覆盖横纵近方/越界/零宽/对象增删/连接。R5 完整性判定接入真实登记与下载，无渲染显式 preview/incomplete，下载 ZIP 重开校验字节。综合验证 12 pass / 0 fail / 1 not_run（HTTP/浏览器），新增 4 项永久回归，全量单测 266/266 OK（基线 262+新增 4，日志 `var/evidence/roadmap/W3-astra-remediation/after/full-regression.log`）。信任边界为进程内（不防御任意进程执行权限攻击者），不扩 KMS/账号/NAS。外部调用 0、外发 0、费用 0、真实密钥未使用。复核包 `deliverables-for-review/roadmap/W3-astra-remediation/`，请架构师复核。阶段1底图确认、阶段2方案、AD01—AD08、未知项与正式责任边界均未改动。
+ 
+ **2026-11-17 W3 场地与来源整改架构复核（`2253899`）：**离线样例有进展，但不接受 v2 为已接入的生产权威契约，不放行真实模型试验。独立发现纵向动线 legacy 变零宽、公开账本可自签伪真实来源及任意父链、完整快照哈希与输出不一致、实际模型请求缺入口且携旧 12×8 示例、场地校验可跳过、无渲染包嵌套 ZIP 导致清单校验失败；正式服务仍固定 v1。独立 no-render 13 pass / 2 not_run，未重跑 Blender、全量单测或浏览器。详细整改与执行提示词见 `deliverables-for-review/roadmap/W3-trust-architect/review-and-next.md`。阶段1底图确认有效，未知项保留；阶段2设计和 AD 未通过。本轮仅文档审查，外部调用、外发、新图及费用均为 0。
 diff --git a/mvp/rkd_mvp/ai_design_option_service.py b/mvp/rkd_mvp/ai_design_option_service.py
 index a607d44..1df4e22 100644
 --- a/mvp/rkd_mvp/ai_design_option_service.py
@@ -265,14 +278,15 @@ index 5e700c1..3c37d53 100644
              PostgresAIDevelopmentRepository(store), self.ai_design_option_service, runtime_root,
 diff --git a/mvp/tests/test_w3_composition_root.py b/mvp/tests/test_w3_composition_root.py
 new file mode 100644
-index 0000000..2ddaef7
+index 0000000..6ab0697
 --- /dev/null
 +++ b/mvp/tests/test_w3_composition_root.py
-@@ -0,0 +1,311 @@
+@@ -0,0 +1,343 @@
 +"""W3 R1 永久回归：必须经真实应用/API 组合根执行（ApiService 公共方法）。
 +
 +覆盖 GPT-6 Astra R1 追加要求：
-+  * 真实组合根创建并注入 ControlledDesignRuntime（全仓唯一生产注入点）；
++  * 真实组合根创建并注入 ControlledDesignRuntime（全仓唯一生产注入点，
++    两个组合根 ApiService / PostgresApiService 都在启动期接线）；
 +  * 用户 API submit -> 场地快照 -> 受控 provider -> SQLite 候选 -> 适配/准入
 +    -> adopt 全链路；
 +  * 真实模型配置未注入 runtime 不得回退旧路径 / 产生无法采用候选；
@@ -311,6 +325,7 @@ index 0000000..2ddaef7
 +from rkd_mvp.controlled_design_runtime import ControlledRuntimeSetupError  # noqa: E402
 +from rkd_mvp.engine import MVPApp  # noqa: E402
 +from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.postgres_api_service import PostgresApiService  # noqa: E402
 +from rkd_mvp.requirement_service import RequirementService  # noqa: E402
 +from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
 +from w3_trust_findings import CapturingOpener, candidate  # noqa: E402
@@ -577,15 +592,45 @@ index 0000000..2ddaef7
 +        self.assertIsNone(cancel_service.get_ai_spatial_outputs(
 +            ORG, PROJECT, job_id=pending["job_id"])["revision"])
 +
++    # ------------------------------------------- PostgreSQL composition root
++    def test_postgres_composition_root_wires_runtime_and_fails_closed(self):
++        """第二个真实生产组合根：PG 版启动路径同样接线且 fail-closed。
++
++        只覆盖启动期组合（配置 -> 受控运行时 -> 设计服务注入）与失败分支；
++        PG 数据面需要活动实例，本机未测，记 not_run，不用桩冒充已跑通。
++        """
++        class NoDatabase:
++            """store 只在请求处理时使用；启动装配不需要连接。"""
++
++            def connection(self, **_kwargs):
++                raise RuntimeError("postgres not available in this test")
++
++        root = Path(tempfile.mkdtemp(dir=self.root))
++        with self.assertRaises(ControlledRuntimeSetupError) as caught:
++            PostgresApiService(NoDatabase(), root,
++                               design_option_config=real_config(complete=False))
++        self.assertEqual(caught.exception.code, "DESIGN_CONFIG_INCOMPLETE")
++
++        service = PostgresApiService(NoDatabase(), root, design_option_config=real_config(),
++                                     design_transport_opener=stub_opener())
++        self.assertIsNotNone(service.controlled_design_runtime)
++        self.assertIs(service.ai_design_option_service.controlled_runtime,
++                      service.controlled_design_runtime)
++
++        unconfigured = PostgresApiService(NoDatabase(), root,
++                                          design_option_config=unconfigured_config())
++        self.assertIsNone(unconfigured.controlled_design_runtime,
++                          "未配置通道不得凭空创建受控运行时")
++
 +
 +if __name__ == "__main__":
 +    unittest.main()
 diff --git a/scripts/w3_composition_findings.py b/scripts/w3_composition_findings.py
 new file mode 100644
-index 0000000..6062385
+index 0000000..2bf0ba4
 --- /dev/null
 +++ b/scripts/w3_composition_findings.py
-@@ -0,0 +1,268 @@
+@@ -0,0 +1,286 @@
 +"""Reproduce the R1 composition-root gap against a given code root.
 +
 +Same harness on the frozen baseline (446a6f6) and the fixed tree.  It drives
@@ -769,6 +814,7 @@ index 0000000..6062385
 +
 +    # C4: output four states driven by public API (only when chain succeeded).
 +    outputs = {"complete": False, "preview": False, "failed": False, "cancelled": False}
++    output_evidence: dict = {}
 +    if results["chain"]["ok"] and "spatial_renderer" in api_params:
 +        option = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
 +
@@ -795,6 +841,12 @@ index 0000000..6062385
 +                              for e in manifest["files"])
 +            outputs["complete"] = bool(meta.get("complete") and byte_ok
 +                                       and meta.get("delivery_status") == "complete")
++            output_evidence["complete"] = {
++                "job": job["status"], "delivery_status": meta.get("delivery_status"),
++                "manifest_entries": len(manifest["files"]), "zip_bytes": len(data),
++                "zip_sha256": hashlib.sha256(data).hexdigest(),
++                "every_entry_sha_matches": byte_ok,
++                "render_listed": any(e["filename"].endswith(".png") for e in manifest["files"])}
 +
 +        req2 = {**req, "settings": {"render": False}}
 +        job2 = wait(service, service.submit_ai_spatial_outputs(
@@ -807,6 +859,11 @@ index 0000000..6062385
 +            outputs["preview"] = (not meta2.get("complete")
 +                                  and meta2.get("delivery_status") == "preview_incomplete"
 +                                  and manifest2["package_completeness"]["status"] == "incomplete")
++            output_evidence["preview"] = {
++                "job": job2["status"], "delivery_status": meta2.get("delivery_status"),
++                "complete": meta2.get("complete"),
++                "manifest_completeness": manifest2["package_completeness"],
++                "zip_sha256": hashlib.sha256(data2).hexdigest()}
 +
 +        # render failure: same store, fresh public composition root, failing renderer
 +        fail_service = ApiService(
@@ -820,6 +877,9 @@ index 0000000..6062385
 +                                 and failed.get("error_code") in {"RENDER_FAILED", "SPATIAL_OUTPUT_FAILED"}
 +                                 and fail_service.get_ai_spatial_outputs(
 +                                     ORG, PROJECT, job_id=pending["job_id"])["revision"] is None)
++        output_evidence["failed"] = {"job": failed["status"],
++                                     "error_code": failed.get("error_code"),
++                                     "revision_registered": False}
 +
 +        # cancel while rendering
 +        blocking = BlockingRenderer()
@@ -835,7 +895,10 @@ index 0000000..6062385
 +        outputs["cancelled"] = bool(cancelled["status"] == "cancelled"
 +                                    and cancel_service.get_ai_spatial_outputs(
 +                                        ORG, PROJECT, job_id=pending_c["job_id"])["revision"] is None)
-+    results["outputs"] = {"ok": all(outputs.values()), "detail": outputs}
++        output_evidence["cancelled"] = {"job": cancelled["status"],
++                                        "revision_registered": False}
++    results["outputs"] = {"ok": all(outputs.values()),
++                          "detail": {**outputs, "evidence": output_evidence}}
 +
 +    summary = {name: ("fixed" if value["ok"] else "vulnerable")
 +               for name, value in results.items()}
