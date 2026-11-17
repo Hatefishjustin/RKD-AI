@@ -1,0 +1,62 @@
+{
+  "schema_version": "rkd-w3-astra-review-manifest.v1",
+  "baseline": "72442c768c88dcb10fa67f6017e7422842c21aee",
+  "code_commit": "86e3e363f71bbb1aa57b70bd4cab4cc222b7bbb3",
+  "review": "W3-astra-remediation",
+  "site_snapshot_sha256": "6d25bc494121b0e2c3bbab0f7d56607fa7a1e14f7985221c271d2755aaa34142",
+  "generated_at": "2026-11-17",
+  "files": {
+    "changes.patch": {
+      "bytes": 63330,
+      "sha256": "7410a82097a844065fae2b5e0c2ba240940f981df3ea16fc618ccb3d7c37b6a7"
+    },
+    "checks.json": {
+      "bytes": 5413,
+      "sha256": "0e73608a80a5785cedea8a952edd852e0106d7b43bbfd4777313249d64e07389"
+    },
+    "code-diff.md": {
+      "bytes": 2346,
+      "sha256": "1628bcdc488f6be04ee963d1e83435dbb972bead6bf9867abcfb62f1364fc690"
+    },
+    "commit-reference.md": {
+      "bytes": 2264,
+      "sha256": "3ac84a99c66d1f12a37fb1f0b16f26724098afae967ca00c6666fc8afed40eff"
+    },
+    "decision-request.md": {
+      "bytes": 1443,
+      "sha256": "d7e668431407d79e0f0de95e7a78a8c43d0f67cc0eeb955ce377d3577d3c4342"
+    },
+    "outputs/findings-after.json": {
+      "bytes": 1012,
+      "sha256": "31ceba040d6742cc2fda25fd2ae5cb1c025d30b0e90dcfa56f514ff930a41ee7"
+    },
+    "outputs/findings-before.json": {
+      "bytes": 1191,
+      "sha256": "3f98dac4467df82280fcb5c5786d1f3a9787cfe62016ecf5bc8ee8936cfac171"
+    },
+    "outputs/model.json": {
+      "bytes": 85756,
+      "sha256": "c6263c4b355f85a91bc9a578e66dfc683ca87b7b1b5faa95ead7d8eb6fa3a1a6"
+    },
+    "outputs/package-preview.zip": {
+      "bytes": 11828,
+      "sha256": "03d349fe4d70709ee9ec97b8779feae02876d0c0e695f3df71f1a6b5e22aba9c"
+    },
+    "outputs/package.zip": {
+      "bytes": 12084,
+      "sha256": "9f58f769457d40f64763f8c1dff365ed336b6be6cde00aa18970b18f22fd88f5"
+    },
+    "outputs/site-snapshot.json": {
+      "bytes": 5498,
+      "sha256": "d99900a431d0d5924988044ed0c502a2baeff1411aa67ef9e8f3a80961862be3"
+    },
+    "positive-negative-cases.md": {
+      "bytes": 3345,
+      "sha256": "80052b7c57c0c58c85b29105a158e5814d778a7a75e11ab92aa702c853e1999a"
+    },
+    "review-packet.md": {
+      "bytes": 9333,
+      "sha256": "9cb1ce97164c903c4369f78f5634fd64afb0ffb1f61eb4a6968c333ab0b20a69"
+    }
+  }
+}
