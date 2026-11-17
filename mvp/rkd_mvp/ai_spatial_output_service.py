@@ -24,8 +24,8 @@ from typing import Any, Callable
 
 from .ai_spatial_outputs import (
     COST_VERSION, GENERATOR_VERSION, MANIFEST_VERSION, PLAN_VERSION, QUANTITY_VERSION,
-    SCENE_VERSION, build_package, finalize_package, model_hash, normalize_finish_scope,
-    sha256_bytes,
+    SCENE_VERSION, assert_complete_package, build_package, completeness_for_render,
+    finalize_package, model_hash, normalize_finish_scope, sha256_bytes,
 )
 from .models import new_id, now_iso
 
@@ -69,6 +69,13 @@ def _json(value: Any) -> bytes:
 
 def _digest(value: Any) -> str:
     return hashlib.sha256(_json(value)).hexdigest()
+
+
+def registration_ok(package: dict) -> bool:
+    """True only when the stored package passed the completeness registration
+    boundary.  Legacy revisions without a registration block stay conservative."""
+    registration = package.get("registration") or {}
+    return bool(registration.get("ok")) and "package_completeness" in package
 
 
 def _settings(request: dict) -> dict:
@@ -335,6 +342,7 @@ class AISpatialOutputService:
             scene_path.write_bytes(_json(package["scene"]))
             files = dict(package["files"])
             render_meta = None
+            render_status = "not_run"
             if settings["render"]:
                 png_path = revision_dir / "render.png"
                 renderer = self.renderer
@@ -347,6 +355,7 @@ class AISpatialOutputService:
                                        settings["height"], settings["samples"])
                 png = png_path.read_bytes()
                 files["render.png"] = ("render_png", "image/png", png)
+                render_status = "rendered"
                 package["manifest"]["render"] = {
                     **render_meta,
                     "assumption": ("表达层为人工测试假设，非现场事实、非 AI 设计；"
@@ -360,7 +369,23 @@ class AISpatialOutputService:
                 self._discard(revision_dir)
                 return
             self._touch(organization_id, project_id, job_id, "pricing")
-            built = finalize_package(files, package["manifest"])
+            # R5: completeness is decided BEFORE packing and written into the
+            # manifest inside the archive.  A no-render job is still a legal
+            # preview but is explicitly incomplete and can never be registered
+            # or downloaded as a complete deliverable.
+            completeness = completeness_for_render(
+                render_status, render_present="render.png" in files)
+            built = finalize_package(files, package["manifest"], completeness=completeness)
+            manifest_bytes = built["files"]["manifest.json"][2]
+            zip_bytes = built["files"]["package.zip"][2]
+            registration = assert_complete_package(zip_bytes, manifest_bytes)
+            if not registration["ok"] and registration["check"]["ok"]:
+                # Byte-consistent but incomplete: legal PREVIEW only.
+                package["manifest"]["delivery_status"] = "preview_incomplete"
+            if not registration["check"]["ok"]:
+                raise AISpatialOutputError(
+                    500, "PACKAGE_INTEGRITY_FAILED",
+                    "交付包清单与 ZIP 字节不一致，未登记：" + "；".join(registration["check"]["problems"][:3]))
             for name, (_kind, _ctype, data) in built["files"].items():
                 (revision_dir / name).write_bytes(data)
             production_revision_id = new_id("ai-production-revision")
@@ -392,6 +417,10 @@ class AISpatialOutputService:
                                 "missing": package["manifest"]["missing"],
                                 "binding": binding,
                                 "package_check": built["check"],
+                                "package_completeness": completeness,
+                                "registration": {k: v for k, v in registration.items() if k != "check"},
+                                "delivery_status": ("complete" if registration["ok"]
+                                                    else "preview_incomplete"),
                                 "manifest_only_files": sorted(manifest_only)},
                     "quantities": package["quantities"], "cost": package["cost"],
                     "objects": {"zones": model["spatial"]["zones"],
@@ -588,6 +617,22 @@ class AISpatialOutputService:
                              "one_instance": True,
                              "instance_id": self.instance_id}}
 
+    def package_status(self, organization_id: str, project_id: str,
+                       production_revision_id: str) -> dict:
+        """R5: registration/download boundary exposes an explicit completeness
+        state; an incomplete package is always a preview, never a deliverable."""
+        with self.repository.transaction(organization_id, project_id) as tx:
+            revision = tx.revision(production_revision_id)
+        if not revision:
+            raise AISpatialOutputError(404, "OUTPUT_NOT_FOUND", "找不到该成果修订")
+        package = revision.get("package") or {}
+        completeness = package.get("package_completeness") or {}
+        return {"status": package.get("delivery_status")
+                or ("complete" if completeness.get("status") == "complete" else "preview_incomplete"),
+                "complete": bool(registration_ok(package) and completeness.get("status") == "complete"),
+                "package_completeness": completeness,
+                "registration": package.get("registration") or {}}
+
     def file(self, organization_id: str, project_id: str,
              production_revision_id: str, filename: str) -> tuple[dict, bytes]:
         with self.repository.transaction(organization_id, project_id) as tx:
@@ -595,6 +640,7 @@ class AISpatialOutputService:
             if not revision:
                 raise AISpatialOutputError(404, "OUTPUT_NOT_FOUND", "找不到该成果修订")
             artifacts = tx.artifacts(production_revision_id)
+        status = self.package_status(organization_id, project_id, production_revision_id)
         for a in artifacts:
             if a["filename"] == filename:
                 path = self.runtime_root / a["relative_path"]
@@ -604,7 +650,26 @@ class AISpatialOutputService:
                 if sha256_bytes(data) != a["sha256"]:
                     raise AISpatialOutputError(500, "FILE_HASH_MISMATCH",
                                                "文件字节与登记哈希不一致")
-                return a, data
+                if a["filename"] == "package.zip":
+                    # Re-open the exact download bytes against the registered
+                    # manifest; a ZIP that fails its own check is never served.
+                    from .ai_spatial_outputs import check_zip_against_manifest
+                    manifest_artifact = next((m for m in artifacts
+                                              if m["filename"] == "manifest.json"), None)
+                    if not manifest_artifact:
+                        raise AISpatialOutputError(500, "MANIFEST_MISSING", "成果清单登记缺失")
+                    mpath = self.runtime_root / manifest_artifact["relative_path"]
+                    if not mpath.exists():
+                        raise AISpatialOutputError(500, "MANIFEST_MISSING", "成果清单文件缺失")
+                    zcheck = check_zip_against_manifest(data, mpath.read_bytes())
+                    if not zcheck["ok"]:
+                        raise AISpatialOutputError(
+                            500, "PACKAGE_INTEGRITY_FAILED",
+                            "下载 ZIP 与登记清单不一致：" + "；".join(zcheck["problems"][:3]))
+                meta = dict(a)
+                meta["delivery_status"] = status["status"]
+                meta["complete"] = status["complete"]
+                return meta, data
         # render.png / scene.json are listed in manifest.json, not separate rows.
         # The manifest itself must match its registered SHA before it is trusted.
         manifest_file = next((a for a in artifacts if a["filename"] == "manifest.json"), None)
@@ -627,5 +692,6 @@ class AISpatialOutputService:
                         raise AISpatialOutputError(500, "FILE_HASH_MISMATCH",
                                                    "文件字节与清单哈希不一致")
                     return {"filename": filename, "content_type": entry["content_type"],
-                            "sha256": entry["sha256"], "size_bytes": entry["size_bytes"]}, data
+                            "sha256": entry["sha256"], "size_bytes": entry["size_bytes"],
+                            "delivery_status": status["status"], "complete": status["complete"]}, data
         raise AISpatialOutputError(404, "FILE_NOT_REGISTERED", "该文件未在成果清单中登记")

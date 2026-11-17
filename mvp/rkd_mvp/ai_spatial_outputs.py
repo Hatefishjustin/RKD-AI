@@ -1685,6 +1685,18 @@ def finalize_package(files: dict, manifest: dict, *,
     return {"files": out, "manifest": manifest, "check": check}
 
 
+def completeness_for_render(render_status: str, *, render_present: bool) -> dict:
+    """Single completeness decision shared by the standalone package builder
+    AND the real output service registration boundary (R5)."""
+    complete = bool(render_present) and render_status == "rendered"
+    return ({"status": "complete",
+             "reason": "render 成功，清单与 ZIP 逐项一致", "render_status": render_status}
+            if complete else
+            {"status": "incomplete",
+             "reason": "render 未运行/失败/取消；仅作 preview，不得冒充完整交付",
+             "render_status": render_status})
+
+
 def build_delivery_package(model: dict, *, project_id: str, option_revision_id: str,
                            render_bytes: bytes | None = None,
                            render_status: str = "not_run",
@@ -1713,11 +1725,7 @@ def build_delivery_package(model: dict, *, project_id: str, option_revision_id: 
         meta.setdefault("engineering_sample", True)
         files["render.png"] = ("png", "image/png", render_bytes)
         files["render.png.meta.json"] = ("manifest_json", "application/json", _json(meta))
-    completeness = ({"status": "complete", "reason": "render 成功，清单与 ZIP 逐项一致",
-                     "render_status": render_status}
-                    if complete else
-                    {"status": "incomplete", "reason": "render 未运行或失败；不得登记为完整成果",
-                     "render_status": render_status})
+    completeness = completeness_for_render(render_status, render_present=render_bytes is not None)
     final = finalize_package(files, pkg["manifest"], completeness=completeness)
     zip_bytes = final["files"]["package.zip"][2]
     manifest_bytes = final["files"]["manifest.json"][2]

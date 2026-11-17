@@ -7,6 +7,7 @@ real design provider is configured and verified.
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -54,7 +55,9 @@ class AIDesignOptionService:
                  *, config: DesignOptionConfig | None = None, provider: Any | None = None,
                  start_workers: bool = True, studio_source: Any | None = None,
                  basemap_dir: str | Path | None = None,
-                 run_verifier: Any | None = None) -> None:
+                 run_verifier: Any | None = None,
+                 controlled_runtime: Any | None = None,
+                 api_key: str = "") -> None:
         self.repository = repository
         self.brief_provider = brief_provider
         self.context_provider = context_provider
@@ -72,6 +75,17 @@ class AIDesignOptionService:
         self.validator = Draft202012Validator(self.schema)  # legacy v1 validator
         self.basemap_dir = Path(basemap_dir) if basemap_dir else DEFAULT_BASEMAP_DIR
         self.run_verifier = run_verifier
+        # W3 R1: the controlled runtime is the composition root for the real
+        # chain (snapshot -> provider -> persisted candidate -> controlled
+        # adaptation -> trusted admission -> adoption).  None keeps the legacy
+        # synthetic/simulation path unchanged for existing users.
+        self.controlled_runtime = controlled_runtime
+        # Key only ever lives in the process environment / injection, never in
+        # a file, DB, log, or contract.  The offline stub uses a placeholder.
+        self.api_key = api_key or __import__("os").environ.get("RKD_AI_API_KEY", "controlled-stub")
+        if controlled_runtime is not None:
+            self.basemap_dir = controlled_runtime.basemap_dir
+            self.run_verifier = controlled_runtime.verifier()
         self._lock = threading.Lock()
         self._active_sets: set[str] = set()
 
@@ -95,6 +109,11 @@ class AIDesignOptionService:
         brief_record = source["brief"]
         brief = brief_record["brief"] if isinstance(brief_record, dict) and "brief" in brief_record else brief_record
         site = dict(self.context_provider(organization_id, project_id) or {})
+        if self.controlled_runtime is not None:
+            # R1: production submit path carries the canonical v2 site snapshot,
+            # not the old 12x8 test boundary.  The real provider then emits a
+            # site-bound v2 candidate instead of an unadoptable v1 one.
+            site = dict(self.controlled_runtime.site_for_provider(project_id))
         site.setdefault("width", "12")
         site.setdefault("length", "8")
         site.setdefault("boundary_source", "test_parameters_not_site_verified")
@@ -102,7 +121,15 @@ class AIDesignOptionService:
         if obstacles is not None:
             if not isinstance(obstacles, list) or len(obstacles) > 12:
                 raise AIDesignOptionServiceError(400, "INVALID_OBSTACLES", "障碍集合格式无效")
-            site["obstacles"] = obstacles
+            if self.controlled_runtime is not None:
+                # The confirmed keep-outs come from the canonical snapshot, not
+                # from a caller.  Extra caller obstacles cannot replace them.
+                if obstacles:
+                    raise AIDesignOptionServiceError(
+                        400, "SITE_OBSTACLES_SNAPSHOT_AUTHORITATIVE",
+                        "受控场地使用已确认底图保留区；不接受调用者覆盖障碍集合")
+            else:
+                site["obstacles"] = obstacles
         site.setdefault("obstacles", [])
         return brief, site, str(source.get("job", {}).get("job_id") or brief_record.get("job_id") or brief_record.get("brief_id") or "")
 
@@ -174,6 +201,57 @@ class AIDesignOptionService:
                         "blockers": [f"准入党异常：{error}"]}
         return resolve_legacy_admission(model)
 
+    def _controlled_finalize(self, *, model: dict[str, Any], set_id: str,
+                             option_revision_id: str, config: DesignOptionConfig,
+                             input_hash: str, organization_id: str,
+                             project_id: str, created_at: str
+                             ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """Take a validated provider candidate through the controlled chain.
+
+        register immutable candidate -> issue a run from the ACTUAL observed
+        exchange -> controlled spatial adaptation -> trusted admission.  The
+        returned adapted model is what gets persisted, so the stored revision
+        carries both the spatial payload and its admission.  No gate is disabled
+        and no source is fabricated: with a stub, runs are simulated and the
+        origin is ``fixture``.
+        """
+        runtime = self.controlled_runtime
+        source_candidate = copy.deepcopy(model)
+        observations = runtime.run_service.controlled_observations(project_id=project_id)
+        observation = runtime.fresh_observation(observations)
+        if observation is None:
+            raise DesignOptionProviderFailure(
+                category="execution", code="CONTROLLED_EXCHANGE_MISSING",
+                message="受控传输没有观测到实际模型交换，不能签发运行记录")
+        record, provenance = runtime.register_and_issue(
+            project_id=project_id, revision_id=option_revision_id,
+            candidate_model=source_candidate, observation=observation,
+            config=config, input_hash=input_hash)
+        adapted, note = runtime.adapt(source_candidate, provenance=provenance,
+                                      created_at=created_at)
+        # Preserve the identity fields the service assigned to the candidate.
+        for key in ("option_id", "set_id", "revision_no", "parent_revision_id"):
+            if key in source_candidate:
+                adapted[key] = source_candidate[key]
+        admission = runtime.admit(
+            adapted, organization_id=organization_id, project_id=project_id,
+            source_candidate=source_candidate, provenance=provenance)
+        if not admission.get("adoptable"):
+            raise DesignOptionProviderFailure(
+                category="validation", code=admission.get("blockers", ["ADMISSION_NOT_VALIDATED"])[0].split(":")[0],
+                message="受控准入党拒绝：" + "；".join(admission.get("blockers") or ["未验证"]))
+        # Admission stays RECORD metadata (never inside the versioned document,
+        # whose validation schema forbids extra keys and which must survive a
+        # later revise unchanged).  The geometry hard-check status is set here;
+        # admission is stored beside the revision.
+        adapted["validation"] = {**(adapted.get("validation") or {}), "status": "passed"}
+        # Record the immutable source alongside the admission so adoption can
+        # re-verify the binding rather than trusting a persisted boolean.
+        metadata = {"admission": admission, "source_candidate": source_candidate,
+                    "provenance": provenance, "run_id": record["run_id"],
+                    "adapter_note": note}
+        return adapted, metadata, source_candidate, provenance
+
     def submit(self, organization_id: str, project_id: str, actor_id: str,
                request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
         if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 255:
@@ -237,7 +315,18 @@ class AIDesignOptionService:
                 tx.start_set(set_id, attempt, now_iso())
                 context = item["context"]
                 config = DesignOptionConfig.from_public(item["config"])
-            provider = build_design_option_provider(config) if self.provider is None else self.provider
+            if self.controlled_runtime is not None:
+                # The provider performs transport ONLY through the service-bound
+                # opener, so every exchange is observed by the controlled run
+                # service.  No caller can assert bytes or transport here.
+                from .ai_design_option_provider import RealModelDesignOptionProvider
+                provider = RealModelDesignOptionProvider(
+                    config, self.api_key,
+                    opener=self.controlled_runtime.bound_opener(project_id))
+            elif self.provider is not None:
+                provider = self.provider
+            else:
+                provider = build_design_option_provider(config)
             if provider is None:
                 raise DesignOptionProviderFailure(category="configuration", code="DESIGN_PROVIDER_NOT_CONFIGURED",
                                                   message="设计候选通道未配置")
@@ -252,11 +341,6 @@ class AIDesignOptionService:
                 tx.update_set(set_id, status="running", phase="validation", updated_at=now_iso())
             checked = [self._validate_candidate(model, brief=context["brief"], config=config,
                                                 input_hash=item["input_hash"]) for model in models]
-            # Admission is RECORD metadata, not part of the versioned document:
-            # writing it into model["validation"] would break the contract on
-            # every later revise().
-            admissions = {id(model): self._admission_for(model, context.get("site") or {})
-                          for model in checked}
             if len(checked) < 2 or not all(candidates_are_structurally_different(checked[0], other) for other in checked[1:]):
                 raise DesignOptionProviderFailure(category="validation", code="HOMOGENEOUS_CANDIDATES",
                                                   message="候选空间组织实质相同，不能作为多方案通过")
@@ -270,22 +354,47 @@ class AIDesignOptionService:
                 model["option_id"] = f"{set_id}:{model['strategy']['strategy_id']}"
                 model["set_id"] = set_id
                 model["revision_no"] = 1
+                model["parent_revision_id"] = None
+                if self.controlled_runtime is not None:
+                    # R1: the stored model is the CONTROLLED, site-bound spatial
+                    # projection and its admission is produced in the same run.
+                    model, metadata, _source, _prov = self._controlled_finalize(
+                        model=model, set_id=set_id, option_revision_id=option_revision_id,
+                        config=config, input_hash=item["input_hash"],
+                        organization_id=organization_id, project_id=project_id,
+                        created_at=now_iso())
                 data = render_svg(model)
                 relative = (attempt_dir / f"layout-{option_revision_id}.svg").relative_to(self.runtime_root).as_posix()
                 (self.runtime_root / relative).write_bytes(data)
-                prepared.append((option_revision_id, model, relative, data))
+                if self.controlled_runtime is not None:
+                    prepared.append((option_revision_id, model, relative, data, metadata))
+                else:
+                    prepared.append((option_revision_id, model, relative, data, None))
             with self.repository.transaction(organization_id, project_id, write=True) as tx:
                 current = tx.set_row(set_id)
                 if not current or current["status"] != "running" or int(current["attempt_count"]) != attempt:
                     raise DesignOptionProviderFailure(category="conflict", code="LATE_RESULT_DISCARDED",
                                                       message="候选集状态已变化，迟到结果未写入")
-                for option_revision_id, model, relative, data in prepared:
+                for option_revision_id, model, relative, data, metadata in prepared:
+                    if metadata is not None:
+                        # Controlled chain: the model already carries its
+                        # admitted validation block; keep the immutable binding
+                        # as record metadata for adoption-time re-verification.
+                        validation = dict(model["validation"])
+                        validation["controlled"] = {
+                            "admission": metadata["admission"],
+                            "source_candidate": metadata["source_candidate"],
+                            "provenance": metadata["provenance"],
+                            "run_id": metadata["run_id"],
+                        }
+                    else:
+                        validation = {**model["validation"],
+                                      "admission": self._admission_for(model, context.get("site") or {})}
                     row = {
                         "option_revision_id": option_revision_id, "set_id": set_id,
                         "option_id": model["option_id"], "revision_no": 1, "parent_revision_id": None,
                         "strategy_id": model["strategy"]["strategy_id"], "strategy": model["strategy"],
-                        "model": model, "validation": {**model["validation"],
-                                                       "admission": admissions[id(model)]},
+                        "model": model, "validation": validation,
                         "materials": model["materials"],
                         "cost": model["cost"], "feedback": model["feedback"], "diff": model["diff"],
                         "conflicts": model["conflicts"], "structure_signature": model["structure_signature"],
@@ -784,6 +893,15 @@ class AIDesignOptionService:
             # W1→W2 boundary: the legacy rect feedback/patch chain cannot edit a
             # precise spatial model without silently degrading it to bboxes.
             if (current.get("model") or {}).get("spatial"):
+                if self.controlled_runtime is not None:
+                    # R1: feedback on a controlled real-model candidate is a
+                    # currently UNSUPPORTED path.  Reject it explicitly and keep
+                    # the parent revision + its admission untouched; never
+                    # copy the parent admission onto an unverified new version.
+                    raise AIDesignOptionServiceError(
+                        422, "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED",
+                        "受控真实模型候选的反馈修订尚未接通精确修订路径；原版本与准入保持不变，"
+                        "不能复用父版准入生成新版本")
                 raise AIDesignOptionServiceError(
                     422, "SPATIAL_MODEL_REQUIRES_PRECISE_PATH",
                     "该候选来自精确 spatial 模型，旧的矩形反馈/补丁链不支持；"
@@ -848,6 +966,36 @@ class AIDesignOptionService:
                 raise AIDesignOptionServiceError(422, "INVALID_CANDIDATE", "未通过硬检查的候选不能采用")
             admission = (revision["validation"].get("admission")
                          or resolve_legacy_admission(revision["model"]))
+            if self.controlled_runtime is not None:
+                # Re-verify at the adoption boundary: a persisted boolean is not
+                # proof.  Recompute the trusted admission from the stored
+                # immutable source + provenance and require it still adopts.
+                controlled = (revision["validation"].get("controlled") or {})
+                if not controlled.get("source_candidate") or not controlled.get("provenance"):
+                    raise AIDesignOptionServiceError(
+                        422, "ADMISSION_NOT_VALIDATED", "受控候选缺少不可变来源绑定，不能采用")
+                try:
+                    # The admission block is RECORD metadata, not part of the
+                    # versioned document.  Re-verify a clean projection: strip
+                    # only the metadata keys this service itself added.
+                    clean_model = copy.deepcopy(revision["model"])
+                    validation = dict(clean_model.get("validation") or {})
+                    validation.pop("admission", None)
+                    validation.pop("controlled", None)
+                    clean_model["validation"] = validation
+                    rechecked = self.controlled_runtime.admit(
+                        clean_model, organization_id=organization_id,
+                        project_id=project_id,
+                        source_candidate=controlled["source_candidate"],
+                        provenance=controlled["provenance"])
+                except Exception as error:  # noqa: BLE001 - fail closed
+                    raise AIDesignOptionServiceError(
+                        422, "ADMISSION_NOT_VALIDATED", f"采用复核异常：{error}") from error
+                if rechecked.get("adoptable") is not True:
+                    raise AIDesignOptionServiceError(
+                        422, "ADMISSION_NOT_VALIDATED",
+                        "采用时复核未通过：" + "；".join(rechecked.get("blockers") or ["未验证"]))
+                admission = rechecked
             if admission.get("adoptable") is not True:
                 raise AIDesignOptionServiceError(
                     422, "ADMISSION_NOT_VALIDATED",

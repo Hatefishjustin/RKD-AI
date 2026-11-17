@@ -1222,18 +1222,77 @@ def validate_candidate_geometry_against_site(model: dict, site: dict, basemap_di
             "keepouts_checked": len(obstacles)}
 
 
-def verify_geometry_projection_consistency(model: dict) -> dict:
-    """P1: source rect, legacy objects/segments and spatial projection must agree.
+def rect_from_path_geometry(path: dict, segment_id: str) -> list[int]:
+    """Rebuild the occupied rectangle from the ACTUAL centreline / width data.
 
-    Covers every circulation segment (horizontal / vertical / near-square),
-    every zone and every furniture/partition projection: same rectangle, same
-    identity, no zero-width degenerate, connections refer to existing segments.
+    R4: the previous projection check compared only self-declared rectangles
+    (``declared_rect_mm``/``source_rect_mm``/legacy shape).  An attacker could
+    add 100000mm to ``path_mm`` and keep every declared field unchanged, and the
+    check still passed.  Here the rectangle is derived from the geometry that
+    actually drives display and measurement, then the caller compares it with
+    the declared/legacy fields.  Horizontal, vertical and near-square (footprint
+    polygon) cases are all handled; no direction is guessed from a square.
+    """
+    axis = str(path.get("axis") or "")
+    centre = path.get("path_mm")
+    width = path.get("width_mm")
+    if not isinstance(width, (int, float)) or isinstance(width, bool) or width <= 0:
+        raise RealModelSpatialAdaptationError(
+            "PATH_WIDTH_INVALID", f"{segment_id} 的 width_mm 非法或非正：{width!r}", stage="geometry")
+    w = int(width)
+    if w != float(width):
+        raise RealModelSpatialAdaptationError(
+            "PATH_WIDTH_SUB_MM", f"{segment_id} 的 width_mm 非整数毫米", stage="geometry")
+    if not isinstance(centre, list) or len(centre) != 2 or \
+            any(not isinstance(p, (list, tuple)) or len(p) != 2 for p in centre):
+        raise RealModelSpatialAdaptationError(
+            "PATH_CENTRELINE_INVALID", f"{segment_id} 的 path_mm 不是两点中心线", stage="geometry")
+    xs = [int(p[0]) for p in centre]
+    ys = [int(p[1]) for p in centre]
+    if axis == "horizontal":
+        if ys[0] != ys[1]:
+            raise RealModelSpatialAdaptationError(
+                "PATH_AXIS_INCONSISTENT", f"{segment_id} 声明横向但中心线 Y 不等", stage="geometry")
+        return [min(xs), (ys[0] * 2 - w) // 2, max(xs) - min(xs), w]
+    if axis == "vertical":
+        if xs[0] != xs[1]:
+            raise RealModelSpatialAdaptationError(
+                "PATH_AXIS_INCONSISTENT", f"{segment_id} 声明纵向但中心线 X 不等", stage="geometry")
+        return [(xs[0] * 2 - w) // 2, min(ys), w, max(ys) - min(ys)]
+    # near-square / ambiguous: polygon is authoritative, never guess the axis
+    poly = path.get("footprint_polygon_mm")
+    if not isinstance(poly, list) or len(poly) < 3:
+        raise RealModelSpatialAdaptationError(
+            "PATH_FOOTPRINT_MISSING",
+            f"{segment_id} 主轴未验证但没有可用于重建的 footprint_polygon_mm", stage="geometry")
+    px, py = [int(p[0]) for p in poly], [int(p[1]) for p in poly]
+    return [min(px), min(py), max(px) - min(px), max(py) - min(py)]
+
+
+def _rect_within(rect: list[int], boundary_mm: list[int]) -> bool:
+    x, y, w, h = rect
+    bw, bh = int(boundary_mm[0]), int(boundary_mm[1])
+    return x >= 0 and y >= 0 and w > 0 and h > 0 and x + w <= bw and y + h <= bh
+
+
+def verify_geometry_projection_consistency(model: dict) -> dict:
+    """P1/R4: every projection is rebuilt from actual geometry, then compared.
+
+    The occupied rectangle of each circulation segment is reconstructed from
+    its real centreline, width and (for near-square) footprint polygon. Zones
+    are rebuilt from their real polygons and furniture from its real centre and
+    dimensions.  Each rebuilt rectangle must equal both the legacy shape and
+    the declared rectangle; rebuilt geometry must stay inside the site frame;
+    object sets must match in BOTH directions; connection references must name
+    real segments.  A tampered ``path_mm``/``width_mm`` therefore fails even if
+    all self-declared rectangles are left intact.
     """
     spatial = model.get("spatial") or {}
     checks: list[dict] = []
     legacy_by_id = {str(o.get("object_id")): o for o in (model.get("objects") or [])}
     paths = {str(c.get("object_id")): c for c in (spatial.get("circulation") or [])}
     segments = {str(s.get("segment_id")): s for s in ((model.get("circulation") or {}).get("segments") or [])}
+    boundary_mm = list((spatial.get("origin") or {}).get("boundary_mm") or [])
     problems: list[dict] = []
 
     def bbox_of_shape(shape: dict) -> list[int]:
@@ -1248,33 +1307,67 @@ def verify_geometry_projection_consistency(model: dict) -> dict:
         if not segment:
             problems.append({"item": sid, "problem": "legacy_segment_missing"})
             continue
+        try:
+            rebuilt = rect_from_path_geometry(path, sid)
+        except RealModelSpatialAdaptationError as error:
+            problems.append({"item": sid, "problem": error.code, "detail": error.message})
+            continue
         declared = [int(v) for v in path.get("declared_rect_mm") or []]
         legacy = bbox_of_shape(segment.get("shape") or {})
         source = [int(v) for v in (segment.get("properties") or {}).get("source_rect_mm") or []]
         if legacy[2] <= 0 or legacy[3] <= 0:
             problems.append({"item": sid, "problem": "legacy_zero_dimension", "rect": legacy})
-        if not (declared == legacy == source):
+        if rebuilt[2] <= 0 or rebuilt[3] <= 0:
+            problems.append({"item": sid, "problem": "rebuilt_zero_dimension", "rect": rebuilt})
+        if not (rebuilt == declared == legacy == source):
             problems.append({"item": sid, "problem": "rect_mismatch",
-                             "declared": declared, "legacy": legacy, "source": source})
-        checks.append({"item": sid, "axis": path.get("axis"), "rect": legacy,
+                             "rebuilt_from_geometry": rebuilt, "declared": declared,
+                             "legacy": legacy, "source": source})
+        if len(boundary_mm) == 2 and not _rect_within(rebuilt, boundary_mm):
+            problems.append({"item": sid, "problem": "rebuilt_out_of_bounds",
+                             "rect": rebuilt, "boundary_mm": boundary_mm})
+        checks.append({"item": sid, "axis": path.get("axis"),
+                       "axis_known_status": path.get("axis_known_status"),
+                       "rebuilt_rect_mm": rebuilt, "rect": legacy,
                        "area_m2": round(legacy[2] * legacy[3] / 1_000_000, 4)})
+    for sid in segments:
+        if sid not in paths:
+            problems.append({"item": sid, "problem": "legacy_segment_extra"})
+    expected_zone_ids = {str(z.get("object_id")) for z in (spatial.get("zones") or [])}
+    legacy_zone_ids = {str(o.get("object_id")) for o in (model.get("objects") or [])
+                       if str(o.get("kind")) == "functional_zone"}
+    for zid in expected_zone_ids - legacy_zone_ids:
+        problems.append({"item": zid, "problem": "legacy_zone_missing"})
+    for zid in legacy_zone_ids - expected_zone_ids:
+        problems.append({"item": zid, "problem": "legacy_zone_extra"})
     for zid, zone in {str(z.get("object_id")): z for z in (spatial.get("zones") or [])}.items():
         legacy = legacy_by_id.get(zid)
         if not legacy:
-            problems.append({"item": zid, "problem": "legacy_zone_missing"})
             continue
         poly = zone.get("polygon_mm") or []
+        if len(poly) < 3:
+            problems.append({"item": zid, "problem": "zone_polygon_invalid"})
+            continue
         xs, ys = [p[0] for p in poly], [p[1] for p in poly]
         expected = [int(min(xs)), int(min(ys)), int(max(xs) - min(xs)), int(max(ys) - min(ys))]
         got = bbox_of_shape(legacy.get("shape") or {})
         if got != expected:
             problems.append({"item": zid, "problem": "zone_rect_mismatch",
                              "spatial": expected, "legacy": got})
-    for fur in spatial.get("furniture") or []:
-        fid = str(fur.get("object_id"))
+    spatial_fur = {str(f.get("object_id")): f for f in (spatial.get("furniture") or [])}
+    legacy_fur_ids = {str(o.get("object_id")) for o in (model.get("objects") or [])
+                      if str(o.get("kind")) == "display_object"}
+    for fid in set(spatial_fur) - legacy_fur_ids:
+        problems.append({"item": fid, "problem": "legacy_furniture_missing"})
+    for fid in legacy_fur_ids - set(spatial_fur):
+        problems.append({"item": fid, "problem": "legacy_furniture_extra"})
+    for fid, fur in spatial_fur.items():
         legacy = legacy_by_id.get(fid)
         if not legacy:
-            problems.append({"item": fid, "problem": "legacy_furniture_missing"})
+            continue
+        if any(not isinstance(fur.get(k), (int, float)) or isinstance(fur.get(k), bool)
+               for k in ("x_mm", "y_mm", "w_mm", "d_mm")):
+            problems.append({"item": fid, "problem": "furniture_dimensions_invalid"})
             continue
         expected = [round(fur["x_mm"] - fur["w_mm"] / 2), round(fur["y_mm"] - fur["d_mm"] / 2),
                     int(fur["w_mm"]), int(fur["d_mm"])]
@@ -1289,10 +1382,11 @@ def verify_geometry_projection_consistency(model: dict) -> dict:
     if problems:
         raise RealModelSpatialAdaptationError(
             "GEOMETRY_PROJECTION_INCONSISTENT",
-            f"源矩形/legacy/spatial 投影不一致：{problems[:4]}", stage="geometry")
+            f"几何重建/源矩形/legacy/spatial 投影不一致：{problems[:4]}", stage="geometry")
     return {"segments": checks, "zones": len(spatial.get("zones") or []),
             "furniture": len(spatial.get("furniture") or []),
             "connections": len((model.get("circulation") or {}).get("connections") or []),
+            "geometry_rebuilt_from": "path_mm+width_mm+footprint_polygon_mm",
             "status": "consistent"}
 
 

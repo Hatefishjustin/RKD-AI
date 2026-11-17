@@ -118,6 +118,10 @@ class ExchangeObservation:
     captured_at: str
     simulated: bool
     _token: object = field(repr=False, compare=False, default=None)
+    # v3: an observation is only trustworthy if the SERVICE itself performed the
+    # wire exchange that produced these bytes.  ``_exec`` is minted exclusively
+    # by ControlledRunService.executor(); callers never receive this token.
+    _exec: object = field(repr=False, compare=False, default=None)
 
 
 class TrustedRunVerifier:
@@ -159,18 +163,138 @@ class TrustedRunVerifier:
 
 
 _VERIFIER_TOKEN = object()
+_EXECUTION_TOKEN = object()
+
+
+class ControlledExecutionError(RunLedgerError):
+    """Raised when a caller tries to self-report an exchange instead of having
+    the controlled transport perform it."""
+
+
+class ControlledResponse:
+    """Response face returned by the controlled transport.
+
+    Carries the exact bytes read from the wire so the provider's parser and the
+    run ledger hash the SAME bytes; no lossy decode/re-encode in between.
+    """
+
+    def __init__(self, raw: bytes, headers: dict, *, response_sha256: str) -> None:
+        self._raw = raw
+        self.headers = dict(headers or {})
+        self.response_sha256 = response_sha256
+
+    def read(self, _n=None) -> bytes:
+        return self._raw
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+class ControlledTransport:
+    """The ONLY component that may perform a model exchange.
+
+    Transmission, byte capture and parsing are owned here (R2).  A caller may
+    ask for an exchange by describing the request; it can never assert the
+    transport kind, endpoint or response bytes itself.  ``simulated`` is derived
+    from the opener that the composition root injected: an injected opener is
+    ALWAYS a local stub (simulated); only the service's own live opener built by
+    :func:`build_live_opener` may produce a non-simulated observation, and only
+    against a non-loopback endpoint.
+    """
+
+    def __init__(self, service: "ControlledRunService", opener: Any, *,
+                 transport: str) -> None:
+        if transport not in TRANSPORTS:
+            raise RunLedgerError("TRANSPORT_UNKNOWN", f"未知传输类型 {transport!r}")
+        self._service = service
+        self._opener = opener
+        self._transport = transport
+
+    def bind(self, project_id: str) -> "BoundControlledOpener":
+        """Return an opener-shaped capability for one project.
+
+        The real provider takes an ``opener`` and calls ``opener.open(request)``.
+        Binding a project here means every exchange the provider performs goes
+        through THIS controlled transport; the provider cannot choose transport
+        kind, endpoint or response bytes.
+        """
+        return BoundControlledOpener(self, str(project_id))
+
+    def send(self, *, project_id: str, request: Any) -> ControlledResponse:
+        url = str(getattr(request, "full_url", "") or "")
+        endpoint = url
+        body = bytes(getattr(request, "data", b"") or b"")
+        # The service performs the actual I/O. There is no code path where a
+        # caller supplies response bytes or a transport label.
+        with self._opener.open(request, timeout=self._service.request_timeout) as response:
+            raw = response.read(4 * 1024 * 1024)
+            if isinstance(raw, str):
+                raw = raw.encode("utf-8")
+            raw = bytes(raw)
+            headers = dict(getattr(response, "headers", {}) or {})
+        if self._transport == "live_http" and _is_loopback_or_private(endpoint):
+            simulated = True
+        else:
+            simulated = self._transport != "live_http"
+        observation = self._service._record_exchange(
+            project_id=project_id, transport=self._transport, endpoint=endpoint,
+            request_bytes=body, response_bytes=raw, simulated=simulated,
+            exec_token=_EXECUTION_TOKEN)
+        return ControlledResponse(raw, headers,
+                                  response_sha256=observation.response_sha256)
+
+
+class BoundControlledOpener:
+    """Project-bound opener face given to the real provider.
+
+    Only ``open`` is exposed.  Response bytes come from the actual exchange the
+    controlled transport performs; no self-report surface is available here.
+    """
+
+    def __init__(self, transport: ControlledTransport, project_id: str) -> None:
+        self._transport = transport
+        self._project_id = project_id
+        self.observations: list[ExchangeObservation] = []
+
+    def open(self, request: Any, timeout: float | None = None) -> ControlledResponse:
+        response = self._transport.send(project_id=self._project_id, request=request)
+        return response
+
+
+def build_live_opener() -> Any:
+    """The real network opener, available ONLY to the composition root."""
+    from urllib.request import ProxyHandler, build_opener
+    return build_opener(ProxyHandler({}))
 
 
 class ControlledRunService:
-    """The controlled service. One instance per application composition root."""
+    """The controlled service. One instance per application composition root.
+
+    v3 (R2): a caller cannot manufacture a real or even a stub source by
+    self-reporting transport/endpoint/bytes.  ``observe_exchange`` and the
+    caller-facing ``issue`` are removed from the public surface.  The service is
+    constructed with the transport opener chosen by the composition root;
+    ``transport()`` hands out a capability whose ``send()`` actually performs
+    the I/O and records the observation.  ``issue()`` accepts only observations
+    whose bytes were captured by this service through that capability.
+    """
 
     def __init__(self, store_dir: str | Path, *, service_id: str = SERVICE_VERSION,
-                 isolated_test: bool = False) -> None:
+                 isolated_test: bool = False, opener: Any | None = None,
+                 transport: str = "local_protocol_stub", request_timeout: float = 30.0) -> None:
         self.store_dir = Path(store_dir).resolve()
         self.store_dir.mkdir(parents=True, exist_ok=True)
         self.service_id = service_id
         self.isolated_test = bool(isolated_test)
         self.admission_scope = "not_validated" if self.isolated_test else "controlled"
+        self.request_timeout = float(request_timeout)
+        self._transport_kind = transport
+        self._transport = ControlledTransport(
+            self, opener if opener is not None else build_live_opener(),
+            transport=transport if opener is not None else "live_http")
         self._lock = threading.RLock()
         self._observations: dict[str, ExchangeObservation] = {}
         self._revisions: dict[tuple[str, str], str] = {}
@@ -278,28 +402,40 @@ class ControlledRunService:
         return {"project_id": key[0], "revision_id": key[1],
                 "candidate_sha256": str(candidate_sha256), "status": "registered"}
 
-    # -- observation ---------------------------------------------------------
-    def observe_exchange(self, *, project_id: str, transport: str, endpoint: str,
-                         request_bytes: bytes, response_bytes: bytes) -> ExchangeObservation:
-        """Record the bytes the service actually saw on the wire."""
+    # -- transport capability / controlled observation -----------------------
+    def transport(self) -> ControlledTransport:
+        """Return the controlled transport capability.
+
+        Only its ``send()`` creates observations.  Passing an opener here is
+        impossible; the opener was bound at composition time.
+        """
+        return self._transport
+
+    def _record_exchange(self, *, project_id: str, transport: str, endpoint: str,
+                         request_bytes: bytes, response_bytes: bytes, simulated: bool,
+                         exec_token: object) -> ExchangeObservation:
+        """INTERNAL. Evidence the service itself captured on the wire.
+
+        Requires the private execution token, so a caller cannot call this
+        directly with self-reported bytes.  ``simulated`` was derived by the
+        transport from the injected opener + endpoint, never from a caller.
+        """
+        if exec_token is not _EXECUTION_TOKEN:
+            raise ControlledExecutionError(
+                "EXCHANGE_NOT_CONTROLLED",
+                "运行观测只能由受控传输实际发送请求与读取响应后产生，不接受自报字节")
         if transport not in TRANSPORTS:
             raise RunLedgerError("TRANSPORT_UNKNOWN", f"未知传输类型 {transport!r}")
         if not project_id:
             raise RunLedgerError("PROJECT_REQUIRED", "观测必须带项目")
-        # simulated is DERIVED, never accepted from the caller.
-        simulated = True
-        if transport == "live_http":
-            if _is_loopback_or_private(endpoint):
-                simulated = True   # loopback/private = local, never "real"
-            else:
-                simulated = False
         observation = ExchangeObservation(
             observation_id=f"obs-{uuid.uuid4().hex[:16]}", project_id=str(project_id),
             transport=transport, endpoint=str(endpoint),
             request_sha256=hashlib.sha256(request_bytes).hexdigest(),
             response_sha256=hashlib.sha256(response_bytes).hexdigest(),
             request_bytes=len(request_bytes), response_bytes=len(response_bytes),
-            captured_at=_now(), simulated=simulated, _token=_OBSERVATION_TOKEN)
+            captured_at=_now(), simulated=bool(simulated), _token=_OBSERVATION_TOKEN,
+            _exec=exec_token)
         with self._lock:
             self._observations[observation.observation_id] = observation
         self._append("observations.jsonl", {
@@ -309,8 +445,30 @@ class ControlledRunService:
             "response_sha256": observation.response_sha256,
             "request_bytes": observation.request_bytes,
             "response_bytes": observation.response_bytes,
-            "simulated": simulated, "captured_at": observation.captured_at})
+            "simulated": bool(simulated), "captured_at": observation.captured_at,
+            "controlled": True})
         return observation
+
+    def controlled_observations(self, *, project_id: str | None = None
+                                ) -> list[ExchangeObservation]:
+        """Read-only view of observations THIS service recorded on the wire.
+
+        Used by the composition runtime to bind a run record to the exchange
+        that actually happened; callers cannot insert into this registry.
+        """
+        with self._lock:
+            rows = list(self._observations.values())
+        if project_id is not None:
+            rows = [row for row in rows if row.project_id == str(project_id)]
+        return rows
+
+    # Deliberately removed: observe_exchange(project_id, transport=..., ...) —
+    # it let any caller assert transport='live_http', a public URL and arbitrary
+    # bytes, then issue a verified real_model_run without any network (R2).
+    def observe_exchange(self, **kwargs: Any) -> ExchangeObservation:
+        raise ControlledExecutionError(
+            "OBSERVE_EXCHANGE_CLOSED",
+            "自报观测已关闭：请使用 service.transport().send() 由受控传输实际执行交换")
 
     # -- issuing -------------------------------------------------------------
     def issue(self, *, observation: ExchangeObservation, project_id: str,
@@ -324,9 +482,10 @@ class ControlledRunService:
             raise RunLedgerError("OBSERVATION_REQUIRED", "缺少观测")
         if not isinstance(observation, ExchangeObservation) or \
                 observation._token is not _OBSERVATION_TOKEN or \
+                observation._exec is not _EXECUTION_TOKEN or \
                 self._observations.get(observation.observation_id) is not observation:
             raise RunLedgerError("OBSERVATION_FORGED",
-                                 "只能由本服务观测到的真实请求/响应签发运行记录")
+                                 "只能由本服务受控传输实际观测到的请求/响应签发运行记录")
         if observation.project_id != str(project_id):
             raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH", "观测项目与运行项目不一致")
         if observation.transport == "live_http" and observation.simulated is False and \
