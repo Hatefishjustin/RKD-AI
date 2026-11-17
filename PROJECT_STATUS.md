@@ -1,8 +1,10 @@
 # 室内设计公司自主生产系统：项目进度
 
-更新时间：2026-11-16
+更新时间：2026-11-17
 
 ## 当前阶段
+
+**2026-11-17 W3 场地与来源整改架构复核（`2253899`）：**离线样例有进展，但不接受 v2 为已接入的生产权威契约，不放行真实模型试验。独立发现纵向动线 legacy 变零宽、公开账本可自签伪真实来源及任意父链、完整快照哈希与输出不一致、实际模型请求缺入口且携旧 12×8 示例、场地校验可跳过、无渲染包嵌套 ZIP 导致清单校验失败；正式服务仍固定 v1。独立 no-render 13 pass / 2 not_run，未重跑 Blender、全量单测或浏览器。详细整改与执行提示词见 `deliverables-for-review/roadmap/W3-trust-architect/review-and-next.md`。阶段1底图确认有效，未知项保留；阶段2设计和 AD 未通过。本轮仅文档审查，外部调用、外发、新图及费用均为 0。
 
 **2026-11-16 W3 受控运行/场地快照六项整改交复核（基线 `4d2ac76`；不是设计批准、不放行真实模型试验、不进阶段3/W4、不改 AD）：**按 `deliverables-for-review/roadmap/W3-remediation-architect/review-and-next.md` 先在隔离目录复现六项负例（冻结基线代码存 `var/evidence/roadmap/W3-control-trust-remediation/before/code/`，同一 harness 对 before/after 各跑一次）。**前后实测**：入口错位 8.06m→0m、楼梯保留区交叠 3.072㎡→0；完整自校验伪来源/伪父链 接受→`RUN_LEDGER_ABSENT` 拒绝；关系/材料/focal/未知对象损失 0/null/丢/静默→1/保留/保留/显式 unsupported；契约 顶层 v1+26 错→唯一权威顶层 `rkd-ai-design-option.v2`（旧 v1 仍通过、v2 被旧消费者按版本拒绝）；图例 "主动线（净宽 mm）"→"模型声明宽度，非实测净宽"、近方标未验证；`--no-render` 包未声明不完整→清单显式 `package_completeness=incomplete`。**修复**：新增单一 `rkd-site-snapshot.v1`（哈希验证底图事实 + 可替换入口概念假设 `site_verified=false` + 现场未知）贯通 provider 请求/几何校审/适配/成果；修 provider 硬编码入口缺陷；新增受控运行账本（进程内密钥 HMAC、按 run_id 验签、项目/候选/父链绑定，自报 JSON 与自算 SHA 不再算证据；`real_model` 需 `simulated=false` 记录，本批 0 条故全部 `fixture`）；持久候选完整传递关系/材料/focal，未知 kind 与非矩形显式 unsupported；图面口径与不完整包治理；新增 `contracts/v2/ai-design-option.schema.json`（`spatial.oneOf` 两正式分支，旧 v1 schema 不改）。**验证**：综合脚本 **14/14 observed_pass、0 fail、1 not_run（HTTP 下载 C-13）**；`--no-render` 预跑 13 pass/0 fail/2 not_run；全量单测 **262/262 OK**；本地 Blender 出人眼图 1 张（1,041,510B，灰盒工程样张），ZIP 8 文件含 render 且重开逐项一致。复核包 `deliverables-for-review/roadmap/W3-control-trust-remediation/`（review-packet/checks/manifest/contract-evolution/positive-negative-cases/decision-request/code-diff/changes.patch + outputs 10 文件），证据 `var/evidence/roadmap/W3-control-trust-remediation/{before,after,no-render}/`；旧包与旧证据未覆盖。**未测**：HTTP 下载/浏览器 UI 可操作链（明确 not_run，不用内存 ZIP 冒称）、真实模型调用、正式采用/持久化到运行库、NAS/PG/账号/发布、专业签核。外部调用 0、外发 0、tokens 0、费用 0、密钥未落盘（stub key 非真密钥）；历史调用与自报 run_refs 不作本轮来源/授权。人眼图仍灰盒内部样张，缺真实材质/软装/多视角/客户成果，分区仍矩形、无施工尺寸链。交架构复核，不自行宣布 W3/阶段3/客户设计通过。下方历史保留。**
 
