@@ -256,6 +256,12 @@ class AIDesignOptionService:
                request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
         if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 255:
             raise AIDesignOptionServiceError(400, "INVALID_IDEMPOTENCY_KEY", "幂等键需为 8—255 字符")
+        if self.config.real_model and self.controlled_runtime is None:
+            # R1: a real-model config must NEVER silently fall back to the
+            # synthetic/legacy candidate path or emit an unadoptable candidate.
+            raise AIDesignOptionServiceError(
+                503, "CONTROLLED_RUNTIME_REQUIRED",
+                "真实模型配置必须通过应用组合根注入受控运行时；未注入时不生成候选")
         self._recover(organization_id, project_id)
         brief, site, brief_id = self._context(organization_id, project_id, request)
         config_record = self._config_record()

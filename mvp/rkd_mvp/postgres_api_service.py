@@ -45,7 +45,8 @@ class PostgresApiService(ApiService):
     runtime_info = {"backend": "postgresql", "scope": "business-pilot", "team_ready": False,
                     "capabilities": ["projects", "files", "decisions", "requirements", "design", "production", "procurement", "changes", "jobs", "issues", "estimates", "spatial", "ai_requirement_understanding", "ai_design_options", "ai_development_production", "ai_source_extractions", "ai_technical_delivery"]}
 
-    def __init__(self, store, runtime_root):
+    def __init__(self, store, runtime_root, *, design_option_config=None,
+                 design_transport_opener=None, controlled_runtime=None):
         # Deliberately no MVPApp: its legacy simulated command gateway is not
         # a PostgreSQL business implementation.
         self.app = SimpleNamespace(store=store)
@@ -81,8 +82,22 @@ class PostgresApiService(ApiService):
                                 "boundary_source": program.get("boundary_source", context["boundary_source"])})
             return context
 
+        # W3 R1: same composition-root wiring as ApiService. A real-model
+        # config always gets the controlled runtime; incomplete config fails
+        # at startup instead of producing an unadoptable candidate.
+        from .ai_design_option_provider import load_design_option_config
+        from .controlled_design_runtime import build_controlled_runtime
+        cfg = design_option_config or load_design_option_config()
+        self.design_option_config = cfg
+        runtime = controlled_runtime
+        if runtime is None and cfg.kind == "openai_compatible":
+            runtime = build_controlled_runtime(
+                runtime_root=runtime_root, config=cfg,
+                opener=design_transport_opener, basemap_dir=None)
+        self.controlled_design_runtime = runtime
         self.ai_design_option_service = AIDesignOptionService(
             PostgresAIDesignOptionRepository(store), brief_provider, context_provider, runtime_root,
+            config=cfg, controlled_runtime=runtime,
         )
         self.ai_development_service = AIDevelopmentService(
             PostgresAIDevelopmentRepository(store), self.ai_design_option_service, runtime_root,

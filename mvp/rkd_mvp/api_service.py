@@ -54,7 +54,11 @@ class ApiService:
                  ai_technical_delivery_service: AITechnicalDeliveryService | None = None,
                  runtime_root: str | Path | None = None,
                  studio_source: Any | None = None,
-                 ai_spatial_output_service: AISpatialOutputService | None = None) -> None:
+                 ai_spatial_output_service: AISpatialOutputService | None = None,
+                 design_option_config: Any | None = None,
+                 design_transport_opener: Any | None = None,
+                 controlled_runtime: Any | None = None,
+                 spatial_renderer: Any | None = None) -> None:
         self.app = app or MVPApp()
         self.file_service = file_service
         db_path = getattr(self.app.store, "db_path", None)
@@ -94,9 +98,30 @@ class ApiService:
             return context
 
         root = Path(runtime_root) if runtime_root else (Path(db_path).parent if db_path else None)
+        # W3 R1: the REAL composition root creates and injects the controlled
+        # runtime whenever the configured design provider is a real model.  A
+        # real-model config must never fall back to the synthetic/legacy path,
+        # and incomplete startup config fails here instead of fabricating a
+        # candidate.  Tests/verification may inject an opener or a prebuilt
+        # runtime at this seam; the API surface below is unchanged.
+        from .ai_design_option_provider import load_design_option_config
+        from .controlled_design_runtime import (ControlledRuntimeSetupError,
+                                                build_controlled_runtime)
+        cfg = design_option_config or load_design_option_config()
+        self.design_option_config = cfg
+        runtime = controlled_runtime
+        if runtime is None and cfg.kind == "openai_compatible":
+            if not root:
+                raise ControlledRuntimeSetupError(
+                    "RUNTIME_ROOT_REQUIRED", "真实模型受控链需要 runtime_root")
+            runtime = build_controlled_runtime(
+                runtime_root=root, config=cfg, opener=design_transport_opener,
+                basemap_dir=None)
+        self.controlled_design_runtime = runtime
         self.ai_design_option_service = ai_design_option_service or (
             AIDesignOptionService(SQLiteAIDesignOptionRepository(db_path), ai_brief_provider,
-                                  ai_design_context_provider, root,
+                                  ai_design_context_provider, root, config=cfg,
+                                  controlled_runtime=runtime,
                                   studio_source=studio_source)
             if db_path and self.ai_requirement_service and root else None
         )
@@ -107,7 +132,8 @@ class ApiService:
         )
         self.ai_spatial_output_service = ai_spatial_output_service or (
             AISpatialOutputService(SQLiteAIDevelopmentRepository(db_path),
-                                   self.ai_design_option_service, root)
+                                   self.ai_design_option_service, root,
+                                   renderer=spatial_renderer)
             if db_path and self.ai_design_option_service and root else None
         )
         self.ai_technical_delivery_service = ai_technical_delivery_service or (

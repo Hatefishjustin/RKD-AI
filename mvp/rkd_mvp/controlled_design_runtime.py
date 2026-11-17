@@ -23,7 +23,7 @@ of scope, as stated in the review packet.
 """
 from __future__ import annotations
 
-import copy
+import os
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,15 @@ from . import realmodel_spatial_adapter as A
 from . import site_snapshot as SS
 from .admission import admit_document
 from .controlled_run_ledger import ControlledRunService
+from .ai_design_option_provider import DesignOptionConfig, load_design_option_config
+
+
+class ControlledRuntimeSetupError(Exception):
+    """Startup configuration cannot support a controlled real-model chain."""
+
+    def __init__(self, code: str, message: str) -> None:
+        self.code, self.message = code, message
+        super().__init__(f"{code}: {message}")
 
 DEFAULT_BASEMAP = (Path(__file__).resolve().parents[2]
                    / "deliverables-for-review/roadmap/W2-R4-表达收口/basemap")
@@ -45,9 +54,10 @@ class ControlledDesignRuntime:
                  basemap_dir: str | Path | None = None,
                  entrance_point_m: list[float] | None = None,
                  entrance_reason: str = DEFAULT_ENTRANCE_REASON,
-                 isolated_test: bool = False) -> None:
+                 isolated_test: bool = False,
+                 transport: str = "local_protocol_stub") -> None:
         self.run_service = ControlledRunService(
-            store_dir, opener=opener, transport="local_protocol_stub",
+            store_dir, opener=opener, transport=transport,
             isolated_test=isolated_test)
         self.basemap_dir = Path(basemap_dir) if basemap_dir else DEFAULT_BASEMAP
         facts = A._load_basemap_facts(self.basemap_dir)
@@ -95,6 +105,14 @@ class ControlledDesignRuntime:
             basemap_files_sha256=self.snapshot["basemap_files_sha256"],
             parent_revision_id=parent_revision_id,
             details={"transport_note": "受控传输实际交换；注入桩恒为模拟，不是真实模型"})
+        # Origin declaration follows the SIGNED run record, never a hard-coded
+        # claim: a stub exchange stays fixture/simulated, a verified live run
+        # may be declared real_model by a separate authorized path.
+        declared_kind = "real_model" if (record.get("kind") == "real_model_run"
+                                        and record.get("simulated") is False) else "fixture"
+        declaration = ("受控服务观测真实 HTTP 交换并签发；按运行记录声明真实来源"
+                       if declared_kind == "real_model" else
+                       "本地协议桩/未核验传输：来源为 fixture，不冒充真实模型")
         provenance = {
             "sha256": candidate_sha,
             "artifact_id": revision_id,
@@ -105,14 +123,14 @@ class ControlledDesignRuntime:
             "actor_id": candidate_model.get("actor_id"),
             "model_site_boundary_m": [self.snapshot["width_m"], self.snapshot["length_m"]],
             "project_id": project_id,
-            "provider_kind": "local_protocol_stub",
+            "provider_kind": str(record.get("transport") or "local_protocol_stub"),
             "prompt_version": str(config.prompt_version),
             "model_id": str(config.model_id or "stub-model"),
             "site_snapshot_sha256": self.snapshot["sha256"],
             "basemap_files_sha256": self.snapshot["basemap_files_sha256"],
             "design_origin": {
-                "kind": "fixture", "declared_by": "controlled-design-runtime",
-                "declaration": "本地协议桩模拟；来源为 fixture，不冒充真实模型",
+                "kind": declared_kind, "declared_by": "controlled-design-runtime",
+                "declaration": declaration,
                 "run_refs": [record["run_id"]]},
         }
         return record, provenance
@@ -137,3 +155,46 @@ class ControlledDesignRuntime:
     @staticmethod
     def fresh_observation(observations: list[Any]) -> Any | None:
         return observations[-1] if observations else None
+
+
+def build_controlled_runtime(*, runtime_root: str | Path,
+                             config: DesignOptionConfig | None = None,
+                             opener: Any | None = None,
+                             basemap_dir: str | Path | None = None,
+                             environ: dict[str, str] | None = None) -> ControlledDesignRuntime:
+    """Create the controlled runtime from the REAL application configuration.
+
+    Called by the application composition roots (``ApiService`` /
+    ``PostgresApiService``) when the configured design provider is a real model.
+    It never fabricates a real source:
+
+    * a real-model config with missing base_url/model/key FAILS CLOSED here;
+    * the transport opener is injected by the composition root (an injected
+      opener is a local stub => every run is simulated); with no opener the
+      live HTTP opener is used and only a non-loopback endpoint can be real;
+    * the basemap comes from the confirmed v2 files, never from the request.
+
+    ``environ`` is only for tests; production reads ``os.environ``.  The API key
+    is never copied into the runtime, a file or a log — it stays in the process
+    environment and is read by the provider at call time.
+    """
+    env = dict(os.environ if environ is None else environ)
+    cfg = config or load_design_option_config(env)
+    if cfg.kind != "openai_compatible":
+        raise ControlledRuntimeSetupError(
+            "REAL_MODEL_REQUIRED",
+            "受控运行时只服务真实模型配置（openai_compatible）；合成通道保持原有非 AI 路径")
+    if cfg.configuration_errors:
+        raise ControlledRuntimeSetupError(
+            "DESIGN_CONFIG_INCOMPLETE",
+            "真实模型配置不完整，拒绝以不完整配置启动受控链：" + "；".join(cfg.configuration_errors))
+    if not cfg.api_key_present and not (env.get("RKD_AI_API_KEY") or "").strip():
+        raise ControlledRuntimeSetupError(
+            "API_KEY_REQUIRED",
+            "真实模型运行必须提供会话环境变量 RKD_AI_API_KEY；不写入文件/日志/仓储")
+    from .controlled_run_ledger import build_live_opener
+    transport = "local_protocol_stub" if opener is not None else "live_http"
+    store_dir = Path(runtime_root) / "controlled-runs"
+    return ControlledDesignRuntime(
+        store_dir=store_dir, opener=opener if opener is not None else build_live_opener(),
+        transport=transport, basemap_dir=basemap_dir, isolated_test=False)

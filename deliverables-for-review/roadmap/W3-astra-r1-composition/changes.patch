@@ -1,0 +1,856 @@
+diff --git a/mvp/rkd_mvp/ai_design_option_service.py b/mvp/rkd_mvp/ai_design_option_service.py
+index a607d44..1df4e22 100644
+--- a/mvp/rkd_mvp/ai_design_option_service.py
++++ b/mvp/rkd_mvp/ai_design_option_service.py
+@@ -256,6 +256,12 @@ class AIDesignOptionService:
+                request: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+         if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 255:
+             raise AIDesignOptionServiceError(400, "INVALID_IDEMPOTENCY_KEY", "幂等键需为 8—255 字符")
++        if self.config.real_model and self.controlled_runtime is None:
++            # R1: a real-model config must NEVER silently fall back to the
++            # synthetic/legacy candidate path or emit an unadoptable candidate.
++            raise AIDesignOptionServiceError(
++                503, "CONTROLLED_RUNTIME_REQUIRED",
++                "真实模型配置必须通过应用组合根注入受控运行时；未注入时不生成候选")
+         self._recover(organization_id, project_id)
+         brief, site, brief_id = self._context(organization_id, project_id, request)
+         config_record = self._config_record()
+diff --git a/mvp/rkd_mvp/ai_spatial_output_service.py b/mvp/rkd_mvp/ai_spatial_output_service.py
+index 084cc86..770cb05 100644
+--- a/mvp/rkd_mvp/ai_spatial_output_service.py
++++ b/mvp/rkd_mvp/ai_spatial_output_service.py
+@@ -18,6 +18,7 @@ import json
+ import os
+ import subprocess
+ import threading
++import time
+ import uuid
+ from pathlib import Path
+ from typing import Any, Callable
+@@ -490,6 +491,17 @@ class AISpatialOutputService:
+                          error_code=code, error_message=message,
+                          only_status=("queued", "running"))
+ 
++    def wait_for_idle(self, timeout_seconds: float = 15.0) -> None:
++        """Wait for this instance's background output workers to finish.
++
++        Public lifecycle helper used by the API composition root and by tests
++        to avoid tearing down a runtime directory while a cancelled renderer is
++        still discarding its late bytes.
++        """
++        deadline = time.monotonic() + timeout_seconds
++        while time.monotonic() < deadline and self._active:
++            time.sleep(0.02)
++
+     # ------------------------------------------------------------------ recovery
+     def recover(self, organization_id: str, project_id: str) -> dict[str, Any]:
+         """Reclaim ONLY jobs left behind by another worker instance.
+diff --git a/mvp/rkd_mvp/api_service.py b/mvp/rkd_mvp/api_service.py
+index 4c310e5..968e0d5 100644
+--- a/mvp/rkd_mvp/api_service.py
++++ b/mvp/rkd_mvp/api_service.py
+@@ -54,7 +54,11 @@ class ApiService:
+                  ai_technical_delivery_service: AITechnicalDeliveryService | None = None,
+                  runtime_root: str | Path | None = None,
+                  studio_source: Any | None = None,
+-                 ai_spatial_output_service: AISpatialOutputService | None = None) -> None:
++                 ai_spatial_output_service: AISpatialOutputService | None = None,
++                 design_option_config: Any | None = None,
++                 design_transport_opener: Any | None = None,
++                 controlled_runtime: Any | None = None,
++                 spatial_renderer: Any | None = None) -> None:
+         self.app = app or MVPApp()
+         self.file_service = file_service
+         db_path = getattr(self.app.store, "db_path", None)
+@@ -94,9 +98,30 @@ class ApiService:
+             return context
+ 
+         root = Path(runtime_root) if runtime_root else (Path(db_path).parent if db_path else None)
++        # W3 R1: the REAL composition root creates and injects the controlled
++        # runtime whenever the configured design provider is a real model.  A
++        # real-model config must never fall back to the synthetic/legacy path,
++        # and incomplete startup config fails here instead of fabricating a
++        # candidate.  Tests/verification may inject an opener or a prebuilt
++        # runtime at this seam; the API surface below is unchanged.
++        from .ai_design_option_provider import load_design_option_config
++        from .controlled_design_runtime import (ControlledRuntimeSetupError,
++                                                build_controlled_runtime)
++        cfg = design_option_config or load_design_option_config()
++        self.design_option_config = cfg
++        runtime = controlled_runtime
++        if runtime is None and cfg.kind == "openai_compatible":
++            if not root:
++                raise ControlledRuntimeSetupError(
++                    "RUNTIME_ROOT_REQUIRED", "真实模型受控链需要 runtime_root")
++            runtime = build_controlled_runtime(
++                runtime_root=root, config=cfg, opener=design_transport_opener,
++                basemap_dir=None)
++        self.controlled_design_runtime = runtime
+         self.ai_design_option_service = ai_design_option_service or (
+             AIDesignOptionService(SQLiteAIDesignOptionRepository(db_path), ai_brief_provider,
+-                                  ai_design_context_provider, root,
++                                  ai_design_context_provider, root, config=cfg,
++                                  controlled_runtime=runtime,
+                                   studio_source=studio_source)
+             if db_path and self.ai_requirement_service and root else None
+         )
+@@ -107,7 +132,8 @@ class ApiService:
+         )
+         self.ai_spatial_output_service = ai_spatial_output_service or (
+             AISpatialOutputService(SQLiteAIDevelopmentRepository(db_path),
+-                                   self.ai_design_option_service, root)
++                                   self.ai_design_option_service, root,
++                                   renderer=spatial_renderer)
+             if db_path and self.ai_design_option_service and root else None
+         )
+         self.ai_technical_delivery_service = ai_technical_delivery_service or (
+diff --git a/mvp/rkd_mvp/controlled_design_runtime.py b/mvp/rkd_mvp/controlled_design_runtime.py
+index bec903c..56563af 100644
+--- a/mvp/rkd_mvp/controlled_design_runtime.py
++++ b/mvp/rkd_mvp/controlled_design_runtime.py
+@@ -23,7 +23,7 @@ of scope, as stated in the review packet.
+ """
+ from __future__ import annotations
+ 
+-import copy
++import os
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -31,6 +31,15 @@ from . import realmodel_spatial_adapter as A
+ from . import site_snapshot as SS
+ from .admission import admit_document
+ from .controlled_run_ledger import ControlledRunService
++from .ai_design_option_provider import DesignOptionConfig, load_design_option_config
++
++
++class ControlledRuntimeSetupError(Exception):
++    """Startup configuration cannot support a controlled real-model chain."""
++
++    def __init__(self, code: str, message: str) -> None:
++        self.code, self.message = code, message
++        super().__init__(f"{code}: {message}")
+ 
+ DEFAULT_BASEMAP = (Path(__file__).resolve().parents[2]
+                    / "deliverables-for-review/roadmap/W2-R4-表达收口/basemap")
+@@ -45,9 +54,10 @@ class ControlledDesignRuntime:
+                  basemap_dir: str | Path | None = None,
+                  entrance_point_m: list[float] | None = None,
+                  entrance_reason: str = DEFAULT_ENTRANCE_REASON,
+-                 isolated_test: bool = False) -> None:
++                 isolated_test: bool = False,
++                 transport: str = "local_protocol_stub") -> None:
+         self.run_service = ControlledRunService(
+-            store_dir, opener=opener, transport="local_protocol_stub",
++            store_dir, opener=opener, transport=transport,
+             isolated_test=isolated_test)
+         self.basemap_dir = Path(basemap_dir) if basemap_dir else DEFAULT_BASEMAP
+         facts = A._load_basemap_facts(self.basemap_dir)
+@@ -95,6 +105,14 @@ class ControlledDesignRuntime:
+             basemap_files_sha256=self.snapshot["basemap_files_sha256"],
+             parent_revision_id=parent_revision_id,
+             details={"transport_note": "受控传输实际交换；注入桩恒为模拟，不是真实模型"})
++        # Origin declaration follows the SIGNED run record, never a hard-coded
++        # claim: a stub exchange stays fixture/simulated, a verified live run
++        # may be declared real_model by a separate authorized path.
++        declared_kind = "real_model" if (record.get("kind") == "real_model_run"
++                                        and record.get("simulated") is False) else "fixture"
++        declaration = ("受控服务观测真实 HTTP 交换并签发；按运行记录声明真实来源"
++                       if declared_kind == "real_model" else
++                       "本地协议桩/未核验传输：来源为 fixture，不冒充真实模型")
+         provenance = {
+             "sha256": candidate_sha,
+             "artifact_id": revision_id,
+@@ -105,14 +123,14 @@ class ControlledDesignRuntime:
+             "actor_id": candidate_model.get("actor_id"),
+             "model_site_boundary_m": [self.snapshot["width_m"], self.snapshot["length_m"]],
+             "project_id": project_id,
+-            "provider_kind": "local_protocol_stub",
++            "provider_kind": str(record.get("transport") or "local_protocol_stub"),
+             "prompt_version": str(config.prompt_version),
+             "model_id": str(config.model_id or "stub-model"),
+             "site_snapshot_sha256": self.snapshot["sha256"],
+             "basemap_files_sha256": self.snapshot["basemap_files_sha256"],
+             "design_origin": {
+-                "kind": "fixture", "declared_by": "controlled-design-runtime",
+-                "declaration": "本地协议桩模拟；来源为 fixture，不冒充真实模型",
++                "kind": declared_kind, "declared_by": "controlled-design-runtime",
++                "declaration": declaration,
+                 "run_refs": [record["run_id"]]},
+         }
+         return record, provenance
+@@ -137,3 +155,46 @@ class ControlledDesignRuntime:
+     @staticmethod
+     def fresh_observation(observations: list[Any]) -> Any | None:
+         return observations[-1] if observations else None
++
++
++def build_controlled_runtime(*, runtime_root: str | Path,
++                             config: DesignOptionConfig | None = None,
++                             opener: Any | None = None,
++                             basemap_dir: str | Path | None = None,
++                             environ: dict[str, str] | None = None) -> ControlledDesignRuntime:
++    """Create the controlled runtime from the REAL application configuration.
++
++    Called by the application composition roots (``ApiService`` /
++    ``PostgresApiService``) when the configured design provider is a real model.
++    It never fabricates a real source:
++
++    * a real-model config with missing base_url/model/key FAILS CLOSED here;
++    * the transport opener is injected by the composition root (an injected
++      opener is a local stub => every run is simulated); with no opener the
++      live HTTP opener is used and only a non-loopback endpoint can be real;
++    * the basemap comes from the confirmed v2 files, never from the request.
++
++    ``environ`` is only for tests; production reads ``os.environ``.  The API key
++    is never copied into the runtime, a file or a log — it stays in the process
++    environment and is read by the provider at call time.
++    """
++    env = dict(os.environ if environ is None else environ)
++    cfg = config or load_design_option_config(env)
++    if cfg.kind != "openai_compatible":
++        raise ControlledRuntimeSetupError(
++            "REAL_MODEL_REQUIRED",
++            "受控运行时只服务真实模型配置（openai_compatible）；合成通道保持原有非 AI 路径")
++    if cfg.configuration_errors:
++        raise ControlledRuntimeSetupError(
++            "DESIGN_CONFIG_INCOMPLETE",
++            "真实模型配置不完整，拒绝以不完整配置启动受控链：" + "；".join(cfg.configuration_errors))
++    if not cfg.api_key_present and not (env.get("RKD_AI_API_KEY") or "").strip():
++        raise ControlledRuntimeSetupError(
++            "API_KEY_REQUIRED",
++            "真实模型运行必须提供会话环境变量 RKD_AI_API_KEY；不写入文件/日志/仓储")
++    from .controlled_run_ledger import build_live_opener
++    transport = "local_protocol_stub" if opener is not None else "live_http"
++    store_dir = Path(runtime_root) / "controlled-runs"
++    return ControlledDesignRuntime(
++        store_dir=store_dir, opener=opener if opener is not None else build_live_opener(),
++        transport=transport, basemap_dir=basemap_dir, isolated_test=False)
+diff --git a/mvp/rkd_mvp/postgres_api_service.py b/mvp/rkd_mvp/postgres_api_service.py
+index 5e700c1..3c37d53 100644
+--- a/mvp/rkd_mvp/postgres_api_service.py
++++ b/mvp/rkd_mvp/postgres_api_service.py
+@@ -45,7 +45,8 @@ class PostgresApiService(ApiService):
+     runtime_info = {"backend": "postgresql", "scope": "business-pilot", "team_ready": False,
+                     "capabilities": ["projects", "files", "decisions", "requirements", "design", "production", "procurement", "changes", "jobs", "issues", "estimates", "spatial", "ai_requirement_understanding", "ai_design_options", "ai_development_production", "ai_source_extractions", "ai_technical_delivery"]}
+ 
+-    def __init__(self, store, runtime_root):
++    def __init__(self, store, runtime_root, *, design_option_config=None,
++                 design_transport_opener=None, controlled_runtime=None):
+         # Deliberately no MVPApp: its legacy simulated command gateway is not
+         # a PostgreSQL business implementation.
+         self.app = SimpleNamespace(store=store)
+@@ -81,8 +82,22 @@ class PostgresApiService(ApiService):
+                                 "boundary_source": program.get("boundary_source", context["boundary_source"])})
+             return context
+ 
++        # W3 R1: same composition-root wiring as ApiService. A real-model
++        # config always gets the controlled runtime; incomplete config fails
++        # at startup instead of producing an unadoptable candidate.
++        from .ai_design_option_provider import load_design_option_config
++        from .controlled_design_runtime import build_controlled_runtime
++        cfg = design_option_config or load_design_option_config()
++        self.design_option_config = cfg
++        runtime = controlled_runtime
++        if runtime is None and cfg.kind == "openai_compatible":
++            runtime = build_controlled_runtime(
++                runtime_root=runtime_root, config=cfg,
++                opener=design_transport_opener, basemap_dir=None)
++        self.controlled_design_runtime = runtime
+         self.ai_design_option_service = AIDesignOptionService(
+             PostgresAIDesignOptionRepository(store), brief_provider, context_provider, runtime_root,
++            config=cfg, controlled_runtime=runtime,
+         )
+         self.ai_development_service = AIDevelopmentService(
+             PostgresAIDevelopmentRepository(store), self.ai_design_option_service, runtime_root,
+diff --git a/mvp/tests/test_w3_composition_root.py b/mvp/tests/test_w3_composition_root.py
+new file mode 100644
+index 0000000..2ddaef7
+--- /dev/null
++++ b/mvp/tests/test_w3_composition_root.py
+@@ -0,0 +1,311 @@
++"""W3 R1 永久回归：必须经真实应用/API 组合根执行（ApiService 公共方法）。
++
++覆盖 GPT-6 Astra R1 追加要求：
++  * 真实组合根创建并注入 ControlledDesignRuntime（全仓唯一生产注入点）；
++  * 用户 API submit -> 场地快照 -> 受控 provider -> SQLite 候选 -> 适配/准入
++    -> adopt 全链路；
++  * 真实模型配置未注入 runtime 不得回退旧路径 / 产生无法采用候选；
++  * 启动配置不完整清晰失败；
++  * 反馈路径不支持时明确拒绝且原修订不变；
++  * 成果登记/下载经 ApiService 公共 API 覆盖完整、无渲染、失败、取消四态，
++    并核对 ZIP 字节与 manifest；无渲染只标 preview_incomplete。
++
++测试只调用 ApiService 的公共方法与组合根构造参数（transport opener / renderer
++作为组合根依赖注入，与生产注入点一致），不调用任何私有 helper 代替产品入口。
++所有模型交换均为本地协议桩，simulated=True，无付费外部调用、无真实密钥。
++"""
++from __future__ import annotations
++
++import hashlib
++import io
++import json
++import sys
++import time
++import tempfile
++import threading
++import unittest
++import zipfile
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[2]
++for _p in (ROOT / "mvp", ROOT / "scripts", ROOT):
++    if str(_p) not in sys.path:
++        sys.path.insert(0, str(_p))
++
++from rkd_mvp.ai_design_option_provider import DesignOptionConfig  # noqa: E402
++from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider  # noqa: E402
++from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository  # noqa: E402
++from rkd_mvp.ai_requirement_service import AIRequirementService  # noqa: E402
++from rkd_mvp.api_service import ApiError, ApiService  # noqa: E402
++from rkd_mvp.controlled_design_runtime import ControlledRuntimeSetupError  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from w3_trust_findings import CapturingOpener, candidate  # noqa: E402
++
++ORG = "org-local"
++PROJECT = NINGBO_PROJECT_ID
++FIXTURE = ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09"
++
++
++def real_config(*, complete: bool = True) -> DesignOptionConfig:
++    return DesignOptionConfig(
++        kind="openai_compatible", name="本地协议桩（模拟）", adapter_version="stub",
++        prompt_version="pv", schema_version="rkd-ai-design-option.v1", max_candidates=2,
++        real_model=True,
++        configuration_errors=[] if complete else ["RKD_AI_MODEL 未配置"],
++        base_url="http://127.0.0.1:9/stub" if complete else None,
++        model_id="stub-model" if complete else None,
++        api_key_present=complete, max_attempts=2, timeout_seconds=5,
++        external_context_allowed=False)
++
++
++def unconfigured_config() -> DesignOptionConfig:
++    return DesignOptionConfig(
++        kind="unconfigured", name="未配置", adapter_version="stub", prompt_version="pv",
++        schema_version="rkd-ai-design-option.v1", max_candidates=2, real_model=False,
++        configuration_errors=["设计候选模型通道未配置"])
++
++
++def stub_opener() -> CapturingOpener:
++    return CapturingOpener({"branch": candidate("branch", 10.3),
++                            "loop": candidate("loop", 10.3)})
++
++
++def ok_renderer(scene_path, out_png, width, height, samples):
++    out_png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"W3-composition-stub" * 40)
++    return {"engine": "stub-renderer", "width": width, "height": height, "samples": samples}
++
++
++class FailingRenderer:
++    def __call__(self, *args, **kwargs):
++        raise RuntimeError("stub render failure")
++
++
++class BlockingRenderer:
++    def __init__(self) -> None:
++        self.release = threading.Event()
++
++    def __call__(self, *args, **kwargs):
++        self.release.wait(timeout=15)
++        return {"engine": "blocking-stub"}
++
++
++class CompositionRootTests(unittest.TestCase):
++    """All cases drive the REAL ApiService composition root and public API."""
++
++    def setUp(self):
++        self.directory = tempfile.TemporaryDirectory()
++        self.root = Path(self.directory.name)
++        self.db = self.root / "app.sqlite3"
++        self.store = SQLiteStore(self.db)
++        self.files = FileService(self.db, self.root)
++        self.requirements = RequirementService(self.db)
++        req_cfg = AIProviderConfig(
++            kind="synthetic", name="本地合成需求通道（非真实 AI）", model_id=None,
++            base_url=None, api_key_present=False, adapter_version="rkd-model-provider.v1",
++            prompt_version="requirement-understanding.zh-CN.v1",
++            schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++            max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++            real_model=False, configuration_errors=[])
++        self.requirement_ai = AIRequirementService(
++            SQLiteAIRequirementRepository(self.db), self.requirements, config=req_cfg,
++            provider_factory=lambda config: build_provider(config))
++
++    def tearDown(self):
++        try:
++            self.requirement_ai.wait_for_idle()
++        except Exception:  # noqa: BLE001
++            pass
++        self.store.close()
++        self.directory.cleanup()
++
++    def build_service(self, *, config, opener=None, controlled_runtime=None,
++                      renderer=ok_renderer):
++        """The ONLY service construction path used by these tests: the real
++        ApiService composition root with dependency seams injected there."""
++        return ApiService(
++            MVPApp(self.store), self.files, requirement_service=self.requirements,
++            ai_requirement_service=self.requirement_ai, runtime_root=self.root,
++            design_option_config=config, design_transport_opener=opener,
++            controlled_runtime=controlled_runtime, spatial_renderer=renderer)
++
++    def brief(self, service):
++        item = service.submit_ai_requirement(
++            ORG, PROJECT, "tester", {"natural_language": "开放交流，入口在左侧，暖木色"},
++            "brief-composition-0001")["item"]
++        self.requirement_ai.wait_for_job(ORG, PROJECT, item["job_id"])
++
++    def options(self, service, key="options-composition-001"):
++        item = service.submit_ai_design_options(ORG, PROJECT, "tester", {}, key)["item"]
++        service.ai_design_option_service.wait_for_set(ORG, PROJECT, item["set_id"])
++        return service.get_ai_design_options(ORG, PROJECT)
++
++    def adopted_option(self, service):
++        self.brief(service)
++        state = self.options(service)
++        option = state["item"]["options"][0]
++        service.adopt_ai_design_option(ORG, PROJECT, "tester", {
++            "option_id": option["option_id"], "expected_revision": 1, "expected_version": 0})
++        return option
++
++    # ------------------------------------------------------------ R1 happy path
++    def test_real_composition_root_generates_and_adopts_through_controlled_chain(self):
++        service = self.build_service(config=real_config(), opener=stub_opener())
++        self.files.seed_ningbo(service, FIXTURE)
++        self.assertIsNotNone(service.controlled_design_runtime,
++                             "真实组合根必须创建受控运行时")
++        self.assertIs(service.ai_design_option_service.controlled_runtime,
++                      service.controlled_design_runtime,
++                      "受控运行时必须注入真实设计服务")
++        self.brief(service)
++        state = self.options(service)
++        self.assertEqual(state["sets"][0]["status"], "succeeded")
++        option = state["item"]["options"][0]
++        model = option["model"]
++        self.assertEqual(model["schema_version"], "rkd-ai-design-option.v2")
++        self.assertTrue(model.get("spatial"))
++        self.assertFalse(model["generation"]["real_model"])
++        self.assertEqual(model["spatial"]["source"]["design_origin"]["kind"], "fixture")
++        runs = service.controlled_design_runtime.run_service.export_public()
++        self.assertTrue(runs)
++        self.assertTrue(all(r["simulated"] is True and
++                            r["kind"] == "local_protocol_stub_run" for r in runs))
++        result = service.adopt_ai_design_option(ORG, PROJECT, "tester", {
++            "option_id": option["option_id"], "expected_revision": 1,
++            "expected_version": 0})
++        self.assertEqual(result["item"]["status"], "adopted_draft")
++        self.assertFalse(result["formal_approval"])
++
++    # ------------------------------------------------------- R1 missing runtime
++    def test_real_model_config_without_runtime_fails_clearly(self):
++        service = self.build_service(config=real_config(), opener=stub_opener())
++        self.files.seed_ningbo(service, FIXTURE)
++        # Remove only the injected runtime from the real service to emulate an
++        # unwired composition; submit must fail closed, never fall back.
++        service.ai_design_option_service.controlled_runtime = None
++        self.brief(service)
++        with self.assertRaises(ApiError) as error:
++            service.submit_ai_design_options(
++                ORG, PROJECT, "tester", {}, "options-no-runtime-001")
++        self.assertEqual(error.exception.code, "CONTROLLED_RUNTIME_REQUIRED")
++        self.assertEqual(service.get_ai_design_options(ORG, PROJECT)["item"], None)
++
++    # -------------------------------------------------- R1 incomplete at startup
++    def test_incomplete_real_config_fails_at_composition_root(self):
++        with self.assertRaises(ControlledRuntimeSetupError) as error:
++            self.build_service(config=real_config(complete=False), opener=stub_opener())
++        self.assertEqual(error.exception.code, "DESIGN_CONFIG_INCOMPLETE")
++
++    def test_unconfigured_does_not_create_controlled_runtime(self):
++        service = self.build_service(config=unconfigured_config(), opener=stub_opener())
++        self.assertIsNone(service.controlled_design_runtime)
++
++    # --------------------------------------------------------- R1 feedback gate
++    def test_unsupported_feedback_rejected_and_original_revision_preserved(self):
++        service = self.build_service(config=real_config(), opener=stub_opener())
++        self.files.seed_ningbo(service, FIXTURE)
++        option = self.adopted_option(service)
++        before = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
++        with self.assertRaises(ApiError) as error:
++            service.revise_ai_design_option(ORG, PROJECT, "tester", {
++                "option_id": option["option_id"], "expected_revision": 1,
++                "feedback": "把中岛移到右侧", "locks": []})
++        self.assertEqual(error.exception.code, "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED")
++        after = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
++        self.assertEqual(after["option_revision_id"], before["option_revision_id"])
++        self.assertEqual(after["revision_no"], 1)
++        self.assertTrue(after["validation"]["controlled"]["admission"]["adoptable"])
++
++    # ------------------------------------------- R5 via real API: four states
++    def _output_request(self, option, settings, key):
++        return {"option_revision_id": option["option_revision_id"],
++                "expected_version": 1, "settings": settings}, key
++
++    def wait_output(self, service, job_id, timeout=10.0):
++        """Poll the PUBLIC status API until the job reaches a terminal state."""
++        deadline = time.monotonic() + timeout
++        while time.monotonic() < deadline:
++            job = service.get_ai_spatial_outputs(ORG, PROJECT, job_id=job_id)["job"]
++            if job and job["status"] in {"succeeded", "failed", "cancelled"}:
++                return job
++            time.sleep(0.02)
++        self.fail(f"输出任务 {job_id} 未在 {timeout}s 内结束")
++
++    def test_output_registration_and_download_four_states(self):
++        service = self.build_service(config=real_config(), opener=stub_opener(),
++                                     renderer=ok_renderer)
++        self.files.seed_ningbo(service, FIXTURE)
++        option = self.adopted_option(service)
++
++        # complete
++        request, key = self._output_request(option, {"render": True}, "out-complete-0001")
++        pending = service.submit_ai_spatial_outputs(ORG, PROJECT, "tester", request, key)["item"]
++        job = self.wait_output(service, pending["job_id"])
++        self.assertEqual(job["status"], "succeeded")
++        state = service.get_ai_spatial_outputs(ORG, PROJECT, job_id=job["job_id"])
++        revision_id = state["revision"]["production_revision_id"]
++        meta, data = service.get_ai_spatial_output_file(ORG, PROJECT, revision_id, "package.zip")
++        self.assertTrue(meta["complete"])
++        self.assertEqual(meta["delivery_status"], "complete")
++        with zipfile.ZipFile(io.BytesIO(data)) as archive:
++            manifest_bytes = archive.read("manifest.json")
++            self.assertNotIn("package.zip", archive.namelist())
++        manifest = json.loads(manifest_bytes.decode("utf-8"))
++        self.assertTrue(manifest["files"])
++        for entry in manifest["files"]:
++            with zipfile.ZipFile(io.BytesIO(data)) as archive:
++                self.assertEqual(hashlib.sha256(archive.read(entry["filename"])).hexdigest(),
++                                 entry["sha256"])
++        self.assertIn(b"PK", data[:2])
++
++        # no render -> preview only
++        request, key = self._output_request(option, {"render": False}, "out-preview-0002")
++        pending2 = service.submit_ai_spatial_outputs(ORG, PROJECT, "tester", request, key)["item"]
++        job2 = self.wait_output(service, pending2["job_id"])
++        self.assertEqual(job2["status"], "succeeded")
++        rev2 = service.get_ai_spatial_outputs(ORG, PROJECT, job_id=job2["job_id"])["revision"]["production_revision_id"]
++        meta2, data2 = service.get_ai_spatial_output_file(ORG, PROJECT, rev2, "package.zip")
++        self.assertFalse(meta2["complete"])
++        self.assertEqual(meta2["delivery_status"], "preview_incomplete")
++        with zipfile.ZipFile(io.BytesIO(data2)) as archive:
++            manifest2 = json.loads(archive.read("manifest.json").decode("utf-8"))
++        self.assertEqual(manifest2["package_completeness"]["status"], "incomplete")
++
++        # render failed -> no complete package registered.
++        # Reuse the same persisted option through a fresh composition root over
++        # the SAME store (public root construction), with a failing renderer.
++        fail_service = ApiService(
++            MVPApp(self.store), self.files, requirement_service=self.requirements,
++            ai_requirement_service=self.requirement_ai, runtime_root=self.root,
++            design_option_config=real_config(), design_transport_opener=stub_opener(),
++            spatial_renderer=FailingRenderer())
++        request, key = self._output_request(option, {"render": True}, "out-failed-0003")
++        pending_failed = fail_service.submit_ai_spatial_outputs(ORG, PROJECT, "tester", request, key)["item"]
++        failed = self.wait_output(fail_service, pending_failed["job_id"])
++        self.assertEqual(failed["status"], "failed")
++        self.assertIn(failed["error_code"], {"RENDER_FAILED", "SPATIAL_OUTPUT_FAILED"})
++        self.assertIsNone(fail_service.get_ai_spatial_outputs(
++            ORG, PROJECT, job_id=pending_failed["job_id"])["revision"])
++
++        # cancel while rendering -> terminal cancelled, no complete package
++        blocking = BlockingRenderer()
++        cancel_service = ApiService(
++            MVPApp(self.store), self.files, requirement_service=self.requirements,
++            ai_requirement_service=self.requirement_ai, runtime_root=self.root,
++            design_option_config=real_config(), design_transport_opener=stub_opener(),
++            spatial_renderer=blocking)
++        request, key = self._output_request(option, {"render": True}, "out-cancel-0004")
++        pending = cancel_service.submit_ai_spatial_outputs(ORG, PROJECT, "tester", request, key)["item"]
++        cancelled = cancel_service.cancel_ai_spatial_output(ORG, PROJECT, pending["job_id"])["item"]
++        self.assertEqual(cancelled["status"], "cancelled")
++        blocking.release.set()
++        cancel_service.ai_spatial_output_service.wait_for_idle()
++        # Cancellation is terminal for THIS job: no complete package registered.
++        self.assertIsNone(cancel_service.get_ai_spatial_outputs(
++            ORG, PROJECT, job_id=pending["job_id"])["revision"])
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/scripts/w3_composition_findings.py b/scripts/w3_composition_findings.py
+new file mode 100644
+index 0000000..6062385
+--- /dev/null
++++ b/scripts/w3_composition_findings.py
+@@ -0,0 +1,268 @@
++"""Reproduce the R1 composition-root gap against a given code root.
++
++Same harness on the frozen baseline (446a6f6) and the fixed tree.  It drives
++ONLY the real application API (``ApiService`` public methods) against an
++isolated SQLite store and a local protocol stub opener injected at the
++composition root seam.  No private helper is called in place of the product
++entry point, no paid model call, no real key.
++
++    python scripts/w3_composition_findings.py --code-root <dir> \
++        --label before|after --out <dir> [--expect vulnerable|fixed]
++"""
++from __future__ import annotations
++
++import argparse
++import hashlib
++import io
++import json
++import sys
++import tempfile
++import threading
++import time
++import zipfile
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++BASEMAP = ROOT / "deliverables-for-review/roadmap/W2-R4-表达收口/basemap"
++FIXTURE = ROOT / "fixtures/ningbo-xiecheng/2026-09"
++ORG = "org-local"
++PROJECT = "project_ningbo_xiecheng_2026"
++
++
++def canon(value) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
++
++
++class FailingRenderer:
++    def __call__(self, *args, **kwargs):
++        raise RuntimeError("stub render failure")
++
++
++class BlockingRenderer:
++    def __init__(self) -> None:
++        self.release = threading.Event()
++
++    def __call__(self, *args, **kwargs):
++        self.release.wait(timeout=15)
++        return {"engine": "blocking-stub"}
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--code-root", required=True)
++    ap.add_argument("--label", required=True)
++    ap.add_argument("--out", required=True)
++    ap.add_argument("--expect", choices=("vulnerable", "fixed"), default=None)
++    args = ap.parse_args()
++    code_root = Path(args.code_root).resolve()
++    out = Path(args.out).resolve()
++    out.mkdir(parents=True, exist_ok=True)
++    for p in (code_root / "mvp", code_root, ROOT / "scripts"):
++        if str(p) not in sys.path:
++            sys.path.insert(0, str(p))
++
++    from rkd_mvp.sqlite_store import SQLiteStore
++    from rkd_mvp.file_service import FileService
++    from rkd_mvp.requirement_service import RequirementService
++    from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository
++    from rkd_mvp.ai_requirement_service import AIRequirementService
++    from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider
++    from rkd_mvp.api_service import ApiService, ApiError
++    from rkd_mvp.engine import MVPApp
++    from rkd_mvp.ai_design_option_provider import DesignOptionConfig
++    from w3_trust_findings import CapturingOpener, candidate
++
++    # Does the target composition root support the seams needed to wire a real
++    # provider without an external call?  Baseline 446a6f6 does NOT.
++    import inspect
++    api_params = inspect.signature(ApiService.__init__).parameters
++    seam_supported = ("design_transport_opener" in api_params and
++                      "design_option_config" in api_params)
++    results: dict[str, dict] = {}
++
++    cfg = DesignOptionConfig(
++        kind="openai_compatible", name="stub", adapter_version="stub", prompt_version="pv",
++        schema_version="rkd-ai-design-option.v1", max_candidates=2, real_model=True,
++        configuration_errors=[], base_url="http://127.0.0.1:9/stub", model_id="stub-model",
++        api_key_present=True, max_attempts=2, timeout_seconds=5, external_context_allowed=False)
++
++    directory = Path(tempfile.mkdtemp())
++    db = directory / "app.sqlite3"
++    store = SQLiteStore(db)
++    files = FileService(db, directory)
++    reqs = RequirementService(db)
++    req_cfg = AIProviderConfig(
++        kind="synthetic", name="s", model_id=None, base_url=None, api_key_present=False,
++        adapter_version="v1", prompt_version="pv", schema_version="rkd-ai-design-brief.v1",
++        max_input_chars=8000, max_output_tokens=2000, timeout_seconds=20,
++        external_context_allowed=False, real_model=False, configuration_errors=[])
++    req_ai = AIRequirementService(SQLiteAIRequirementRepository(db), reqs, config=req_cfg,
++                                  provider_factory=lambda c: build_provider(c))
++    opener = CapturingOpener({"branch": candidate("branch", 10.3),
++                              "loop": candidate("loop", 10.3)})
++
++    def renderer(scene_path, out_png, width, height, samples):
++        out_png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 300)
++        return {"engine": "stub-renderer", "width": width, "height": height, "samples": samples}
++
++    kwargs: dict = {}
++    if seam_supported:
++        kwargs = {"design_option_config": cfg, "design_transport_opener": opener,
++                  "spatial_renderer": renderer}
++    service = ApiService(
++        MVPApp(store), files, requirement_service=reqs, ai_requirement_service=req_ai,
++        runtime_root=directory, **kwargs)
++    files.seed_ningbo(service, FIXTURE)
++    results["runtime_injected"] = {
++        "ok": getattr(service, "controlled_design_runtime", None) is not None,
++        "detail": {"seam_supported": seam_supported,
++                   "runtime": getattr(service, "controlled_design_runtime", None) is not None}}
++
++    brief_item = service.submit_ai_requirement(
++        ORG, PROJECT, "tester", {"natural_language": "开放交流，入口在左侧"}, "brief-000001")["item"]
++    req_ai.wait_for_job(ORG, PROJECT, brief_item["job_id"])
++
++    # C1: submit -> succeeded -> adopt through public API
++    chain = {"succeeded": False, "adopted": False, "schema": None, "origin": None,
++             "runs_all_simulated": False}
++    try:
++        item = service.submit_ai_design_options(ORG, PROJECT, "tester", {}, "options-000001")["item"]
++        if hasattr(service.ai_design_option_service, "wait_for_set"):
++            service.ai_design_option_service.wait_for_set(ORG, PROJECT, item["set_id"])
++        state = service.get_ai_design_options(ORG, PROJECT)
++        set_row = next((s for s in state["sets"] if s["set_id"] == item["set_id"]), None)
++        chain["succeeded"] = bool(set_row and set_row["status"] == "succeeded")
++        chain["set_status"] = (set_row or {}).get("status")
++        chain["set_error_code"] = (set_row or {}).get("error_code")
++        if chain["succeeded"] and state.get("item"):
++            option = state["item"]["options"][0]
++            chain["schema"] = option["model"]["schema_version"]
++            chain["origin"] = (option["model"].get("spatial", {}).get("source", {})
++                               .get("design_origin", {}).get("kind"))
++            runtime = getattr(service, "controlled_design_runtime", None)
++            runs = runtime.run_service.export_public() if runtime is not None else []
++            chain["runs_all_simulated"] = bool(runs) and all(
++                r.get("simulated") is True for r in runs)
++            result = service.adopt_ai_design_option(ORG, PROJECT, "tester", {
++                "option_id": option["option_id"], "expected_revision": 1, "expected_version": 0})
++            chain["adopted"] = result["item"]["status"] == "adopted_draft"
++    except Exception as error:  # noqa: BLE001
++        chain["error"] = f"{type(error).__name__}: {getattr(error, 'code', '')}"
++    results["chain"] = {"ok": chain["succeeded"] and chain["adopted"], "detail": chain}
++
++    # C2: real config without runtime must fail clearly, not fall back.
++    missing = {"failed_clearly": False}
++    if hasattr(service.ai_design_option_service, "controlled_runtime"):
++        saved = service.ai_design_option_service.controlled_runtime
++        service.ai_design_option_service.controlled_runtime = None
++        try:
++            service.submit_ai_design_options(ORG, PROJECT, "tester", {}, "options-000002")
++        except ApiError as error:
++            missing["failed_clearly"] = error.code == "CONTROLLED_RUNTIME_REQUIRED"
++            missing["code"] = error.code
++        service.ai_design_option_service.controlled_runtime = saved
++    results["missing_runtime"] = {"ok": missing["failed_clearly"], "detail": missing}
++
++    # C3: feedback rejection preserves original revision.
++    feedback = {"rejected": False, "original_preserved": False}
++    if results["chain"]["ok"]:
++        option = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
++        before = option["option_revision_id"]
++        try:
++            service.revise_ai_design_option(ORG, PROJECT, "tester", {
++                "option_id": option["option_id"], "expected_revision": 1,
++                "feedback": "改成右侧中岛", "locks": []})
++        except ApiError as error:
++            feedback["rejected"] = error.code == "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED"
++        after = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
++        feedback["original_preserved"] = after["option_revision_id"] == before and after["revision_no"] == 1
++    results["feedback"] = {"ok": feedback["rejected"] and feedback["original_preserved"],
++                           "detail": feedback}
++
++    # C4: output four states driven by public API (only when chain succeeded).
++    outputs = {"complete": False, "preview": False, "failed": False, "cancelled": False}
++    if results["chain"]["ok"] and "spatial_renderer" in api_params:
++        option = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
++
++        def wait(svc, job_id, timeout=10.0):
++            deadline = time.monotonic() + timeout
++            row = None
++            while time.monotonic() < deadline:
++                row = svc.get_ai_spatial_outputs(ORG, PROJECT, job_id=job_id)["job"]
++                if row and row["status"] in {"succeeded", "failed", "cancelled"}:
++                    return row
++                time.sleep(0.02)
++            return row
++
++        req = {"option_revision_id": option["option_revision_id"],
++               "expected_version": 1, "settings": {"render": True}}
++        job = wait(service, service.submit_ai_spatial_outputs(
++            ORG, PROJECT, "tester", req, "out-ok-00001")["item"]["job_id"])
++        if job["status"] == "succeeded":
++            rev = service.get_ai_spatial_outputs(ORG, PROJECT, job_id=job["job_id"])["revision"]["production_revision_id"]
++            meta, data = service.get_ai_spatial_output_file(ORG, PROJECT, rev, "package.zip")
++            with zipfile.ZipFile(io.BytesIO(data)) as zf:
++                manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
++                byte_ok = all(hashlib.sha256(zf.read(e["filename"])).hexdigest() == e["sha256"]
++                              for e in manifest["files"])
++            outputs["complete"] = bool(meta.get("complete") and byte_ok
++                                       and meta.get("delivery_status") == "complete")
++
++        req2 = {**req, "settings": {"render": False}}
++        job2 = wait(service, service.submit_ai_spatial_outputs(
++            ORG, PROJECT, "tester", req2, "out-no-00002")["item"]["job_id"])
++        if job2["status"] == "succeeded":
++            rev2 = service.get_ai_spatial_outputs(ORG, PROJECT, job_id=job2["job_id"])["revision"]["production_revision_id"]
++            meta2, data2 = service.get_ai_spatial_output_file(ORG, PROJECT, rev2, "package.zip")
++            with zipfile.ZipFile(io.BytesIO(data2)) as zf:
++                manifest2 = json.loads(zf.read("manifest.json").decode("utf-8"))
++            outputs["preview"] = (not meta2.get("complete")
++                                  and meta2.get("delivery_status") == "preview_incomplete"
++                                  and manifest2["package_completeness"]["status"] == "incomplete")
++
++        # render failure: same store, fresh public composition root, failing renderer
++        fail_service = ApiService(
++            MVPApp(store), files, requirement_service=reqs, ai_requirement_service=req_ai,
++            runtime_root=directory, design_option_config=cfg,
++            design_transport_opener=opener, spatial_renderer=FailingRenderer())
++        pending = fail_service.submit_ai_spatial_outputs(
++            ORG, PROJECT, "tester", req, "out-failed-00003")["item"]
++        failed = wait(fail_service, pending["job_id"])
++        outputs["failed"] = bool(failed["status"] == "failed"
++                                 and failed.get("error_code") in {"RENDER_FAILED", "SPATIAL_OUTPUT_FAILED"}
++                                 and fail_service.get_ai_spatial_outputs(
++                                     ORG, PROJECT, job_id=pending["job_id"])["revision"] is None)
++
++        # cancel while rendering
++        blocking = BlockingRenderer()
++        cancel_service = ApiService(
++            MVPApp(store), files, requirement_service=reqs, ai_requirement_service=req_ai,
++            runtime_root=directory, design_option_config=cfg,
++            design_transport_opener=opener, spatial_renderer=blocking)
++        pending_c = cancel_service.submit_ai_spatial_outputs(
++            ORG, PROJECT, "tester", req, "out-cancel-00004")["item"]
++        cancelled = cancel_service.cancel_ai_spatial_output(ORG, PROJECT, pending_c["job_id"])["item"]
++        blocking.release.set()
++        cancel_service.ai_spatial_output_service.wait_for_idle()
++        outputs["cancelled"] = bool(cancelled["status"] == "cancelled"
++                                    and cancel_service.get_ai_spatial_outputs(
++                                        ORG, PROJECT, job_id=pending_c["job_id"])["revision"] is None)
++    results["outputs"] = {"ok": all(outputs.values()), "detail": outputs}
++
++    summary = {name: ("fixed" if value["ok"] else "vulnerable")
++               for name, value in results.items()}
++    audit = {"schema_version": "rkd-w3-composition-findings.v1",
++             "baseline": "446a6f6", "code_root": str(code_root), "label": args.label,
++             "results": results, "summary": summary,
++             "external_calls": 0, "cost_cny": 0, "keys_used": False}
++    (out / "findings.json").write_bytes(canon(audit))
++    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
++    if args.expect == "vulnerable":
++        return 0 if all(v == "vulnerable" for v in summary.values()) else 2
++    if args.expect == "fixed":
++        return 0 if all(v == "fixed" for v in summary.values()) else 2
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

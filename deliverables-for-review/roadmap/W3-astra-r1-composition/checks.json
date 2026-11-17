@@ -1,0 +1,190 @@
+{
+  "baseline": "446a6f6",
+  "checks": [
+    {
+      "evidence": {
+        "after": {
+          "runtime": true,
+          "seam_supported": true
+        },
+        "before": {
+          "runtime": false,
+          "seam_supported": false
+        },
+        "injection_sites": [
+          "mvp/rkd_mvp/api_service.py:112-127",
+          "mvp/rkd_mvp/postgres_api_service.py:92-101"
+        ]
+      },
+      "id": "B-01",
+      "name": "真实组合根创建并注入 ControlledDesignRuntime（唯一生产注入点）",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": {
+          "adopted": true,
+          "origin": "fixture",
+          "runs_all_simulated": true,
+          "schema": "rkd-ai-design-option.v2",
+          "set_error_code": null,
+          "set_status": "succeeded",
+          "succeeded": true
+        },
+        "before": {
+          "adopted": false,
+          "origin": null,
+          "runs_all_simulated": false,
+          "schema": null,
+          "set_error_code": "DESIGN_PROVIDER_NOT_CONFIGURED",
+          "set_status": "failed",
+          "succeeded": false
+        }
+      },
+      "id": "B-02",
+      "name": "用户 API submit→场地快照→受控 provider→持久候选→适配/准入→adopt 全链走受控运行时",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": {
+          "code": "CONTROLLED_RUNTIME_REQUIRED",
+          "failed_clearly": true
+        },
+        "before": {
+          "failed_clearly": false
+        },
+        "guard": "mvp/rkd_mvp/ai_design_option_service.py:259-264"
+      },
+      "id": "B-03",
+      "name": "真实模型配置拿不到 runtime 时清晰失败、不退回旧路径",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "code": "DESIGN_CONFIG_INCOMPLETE",
+        "fail_closed": "mvp/rkd_mvp/controlled_design_runtime.py:187-190",
+        "postgres_root": "test_postgres_composition_root_wires_runtime_and_fails_closed",
+        "sqlite_root": "test_incomplete_real_config_fails_at_composition_root"
+      },
+      "id": "B-04",
+      "name": "启动配置不完整在组合根构造期失败（不伪造结果）",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": {
+          "original_preserved": true,
+          "rejected": true
+        },
+        "before": {
+          "original_preserved": false,
+          "rejected": false
+        },
+        "code": "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED",
+        "guard": "mvp/rkd_mvp/ai_design_option_service.py:908"
+      },
+      "id": "B-05",
+      "name": "不支持的反馈路径明确拒绝且原修订不变",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "delivery_status": "complete",
+        "every_entry_sha_matches": true,
+        "job": "succeeded",
+        "manifest_entries": 6,
+        "render_listed": true,
+        "zip_bytes": 12081,
+        "zip_sha256": "f69416ddbfd6b24e51eae18af56fc80d4388ce82062c8926c660d59a9d81c6ee"
+      },
+      "id": "B-06",
+      "name": "成果完整态：组合根-服务链登记 complete，下载 ZIP 字节与清单逐条一致",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "complete": false,
+        "delivery_status": "preview_incomplete",
+        "job": "succeeded",
+        "manifest_completeness": {
+          "reason": "render 未运行/失败/取消；仅作 preview，不得冒充完整交付",
+          "render_status": "not_run",
+          "status": "incomplete"
+        },
+        "zip_sha256": "d380df2fb83b1f05b5c171910102c4dcc85704384cfcb05e594760db1bab42f3"
+      },
+      "id": "B-07",
+      "name": "无渲染只能 preview_incomplete，不得报告完整交付",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "error_code": "SPATIAL_OUTPUT_FAILED",
+        "job": "failed",
+        "revision_registered": false
+      },
+      "id": "B-08",
+      "name": "渲染失败不登记完整包",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "job": "cancelled",
+        "revision_registered": false
+      },
+      "id": "B-09",
+      "name": "取消不登记完整包",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "data_plane": "not_run",
+        "reason": "本机无活动 PG 实例，未用桩冒充数据面",
+        "test": "test_postgres_composition_root_wires_runtime_and_fails_closed"
+      },
+      "id": "B-10",
+      "name": "PG 组合根启动期同构接线与 fail-closed",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "reason": "本批未启动 HTTP 服务进程与浏览器；下载仅在服务层与内存字节层校验"
+      },
+      "id": "B-11",
+      "name": "HTTP 服务进程级下载 / 浏览器 UI 可操作链",
+      "result": "not_run"
+    },
+    {
+      "evidence": {
+        "reason": "本轮无授权；全部交换为本地协议桩，simulated=True，来源 fixture"
+      },
+      "id": "B-12",
+      "name": "真实模型调用（外部）",
+      "result": "not_run"
+    }
+  ],
+  "cost_cny": 0,
+  "external_calls": 0,
+  "finished_at": "2026-11-17T22:49:19+08:00",
+  "keys_used": false,
+  "not_run": [
+    "HTTP 下载",
+    "PG 数据面",
+    "真实模型调用",
+    "正式采用/发布",
+    "浏览器 UI",
+    "专业签核"
+  ],
+  "schema_version": "rkd-w3-astra-r1-composition.v1",
+  "summary": {
+    "fail": 0,
+    "not_run": 2,
+    "observed_pass": 10
+  },
+  "tests": {
+    "astra_remediation": "4/4 OK",
+    "composition_root": "7/7 OK",
+    "full_suite": "273 tests OK"
+  }
+}

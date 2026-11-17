@@ -1,0 +1,70 @@
+{
+  "schema_version": "rkd-w3-composition-entrypoints.v1",
+  "purpose": "真实应用组合根与启动入口清单（本轮 R1 接线位置，逐条给出文件与行号）",
+  "composition_roots": [
+    {
+      "file": "mvp/rkd_mvp/api_service.py",
+      "class": "ApiService",
+      "role": "SQLite 生产组合根（HTTP 服务 run_api_server.py 使用）",
+      "lines": {
+        "seams": "58-61  (design_option_config / design_transport_opener / controlled_runtime / spatial_renderer)",
+        "config_load": "107-111  load_design_option_config() -> self.design_option_config",
+        "runtime_build": "112-120  真实模型配置未注入 runtime 时 build_controlled_runtime(...)",
+        "runtime_inject": "121-127  AIDesignOptionService(..., controlled_runtime=runtime)",
+        "output_renderer": "133-137  AISpatialOutputService(..., renderer=spatial_renderer)"
+      }
+    },
+    {
+      "file": "mvp/rkd_mvp/postgres_api_service.py",
+      "class": "PostgresApiService",
+      "role": "PostgreSQL 生产组合根（run_postgres_api.py / run_team_api.py 使用）",
+      "lines": {
+        "seams": "48-49  (design_option_config / design_transport_opener / controlled_runtime)",
+        "config_load": "88-91  load_design_option_config() -> self.design_option_config",
+        "runtime_build": "92-96  build_controlled_runtime(...)",
+        "runtime_inject": "97-101  AIDesignOptionService(..., controlled_runtime=runtime)"
+      }
+    }
+  ],
+  "startup_entries": [
+    {"file": "mvp/run_api_server.py", "line": 29, "calls": "ApiService(...)", "note": "SQLite HTTP 服务入口；未传 design_option_config，由组合根自行 load + build"},
+    {"file": "mvp/run_postgres_api.py", "line": 37, "calls": "PostgresApiService(store, root)", "note": "PG HTTP 服务入口"},
+    {"file": "mvp/run_team_api.py", "line": 21, "calls": "PostgresApiService(store, runtime)", "note": "团队部署入口"}
+  ],
+  "fail_closed": {
+    "file": "mvp/rkd_mvp/controlled_design_runtime.py",
+    "function": "build_controlled_runtime",
+    "lines": "160-200",
+    "codes": {
+      "REAL_MODEL_REQUIRED": "183-186 非 openai_compatible 配置不建受控链",
+      "DESIGN_CONFIG_INCOMPLETE": "187-190 配置不完整（缺 base_url/model 等）启动即失败",
+      "API_KEY_REQUIRED": "191-194 无 RKD_AI_API_KEY 不启动真实链",
+      "RUNTIME_ROOT_REQUIRED": "mvp/rkd_mvp/api_service.py:114-116 真实模型但无运行时根目录"
+    }
+  },
+  "submit_guard": {
+    "file": "mvp/rkd_mvp/ai_design_option_service.py",
+    "lines": "259-264",
+    "code": "CONTROLLED_RUNTIME_REQUIRED",
+    "meaning": "真实模型配置未得到受控运行时，submit 直接 503，绝不退回旧候选路径"
+  },
+  "feedback_guard": {
+    "file": "mvp/rkd_mvp/ai_design_option_service.py",
+    "line": 908,
+    "code": "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED",
+    "meaning": "受控候选不支持反馈修订；明确拒绝且原修订不变"
+  },
+  "adopt_revalidation": {
+    "file": "mvp/rkd_mvp/ai_design_option_service.py",
+    "lines": "975-1008",
+    "code": "ADMISSION_NOT_VALIDATED",
+    "meaning": "采用边界用持久化的不可变源候选 + provenance 重新准入，不信任存量布尔值"
+  },
+  "output_lifecycle": {
+    "file": "mvp/rkd_mvp/ai_spatial_output_service.py",
+    "lines": "494-502",
+    "symbol": "wait_for_idle",
+    "meaning": "公开的生命周期等待，供组合根与测试在取消/失败后安全收尾"
+  },
+  "note": "本轮不新增组合根、不改 HTTP 路由表；只把已有生产组合根接上受控运行时并补齐 fail-closed。"
+}

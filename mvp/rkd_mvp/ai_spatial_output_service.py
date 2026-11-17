@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable
@@ -489,6 +490,17 @@ class AISpatialOutputService:
             tx.close_job(job_id, "failed", "failed", now_iso(),
                          error_code=code, error_message=message,
                          only_status=("queued", "running"))
+
+    def wait_for_idle(self, timeout_seconds: float = 15.0) -> None:
+        """Wait for this instance's background output workers to finish.
+
+        Public lifecycle helper used by the API composition root and by tests
+        to avoid tearing down a runtime directory while a cancelled renderer is
+        still discarding its late bytes.
+        """
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline and self._active:
+            time.sleep(0.02)
 
     # ------------------------------------------------------------------ recovery
     def recover(self, organization_id: str, project_id: str) -> dict[str, Any]:
