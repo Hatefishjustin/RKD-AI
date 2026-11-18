@@ -1,0 +1,65 @@
+{
+  "baseline": "9dca78bc0166a696e71bf65eddf8c665eb3436e4",
+  "code_commit": "26ae391",
+  "counts": {
+    "checks": {
+      "fail": 0,
+      "not_run": 1,
+      "observed_pass": 6
+    },
+    "files": 8,
+    "tests": {
+      "ai_design_options": "8/8 OK",
+      "astra_harness": "5/5 fixed",
+      "full_suite": "278/278 OK",
+      "w3_astra_remediation": "4/4 OK",
+      "w3_composition_root": "7/7 OK",
+      "w3_r1r2_source_records": "5/5 OK"
+    }
+  },
+  "files": {
+    "changes.patch": {
+      "bytes": 28529,
+      "sha256": "a891d1d010f4f579553527d53593e8cd3bd4882680eb436570c4b9fc3c35101b"
+    },
+    "checks.json": {
+      "bytes": 2574,
+      "sha256": "13a3c3b8b7bf1fa92fdb37d51c39036cbcdcaf3a7392b2b8b626a9be1d23f90d"
+    },
+    "code-diff.md": {
+      "bytes": 2407,
+      "sha256": "ef4c508f267ee65ae93f4a087f513d2b63b802b511a1aa9b862db05fd26af957"
+    },
+    "commit-reference.md": {
+      "bytes": 3025,
+      "sha256": "23d3bfbae9ce295aed13887559a14d33d82699d549d814856c92aefdfb430687"
+    },
+    "decision-request.md": {
+      "bytes": 1934,
+      "sha256": "8b2b75d28ad20084ff2449c4ef446c81e6c46ee9a50252c89567cd9372fa5d79"
+    },
+    "outputs/findings-after.json": {
+      "bytes": 1039,
+      "sha256": "fa70c99071c75f891ccc1fb07032250fd68a7dee81988ad452b0f411a8cb6932"
+    },
+    "outputs/findings-before.json": {
+      "bytes": 1154,
+      "sha256": "696f0dfe73c93571b64b916ef4097ab0b253731679c4c14b5f86c717c81b3356"
+    },
+    "review-packet.md": {
+      "bytes": 6326,
+      "sha256": "3ab543c1595e125be0e7c1b850c48cc438ad2460958645d5e6cf274cb2aec2a5"
+    }
+  },
+  "generated_at": "2026-11-18",
+  "not_run": [
+    "HTTP 下载",
+    "PG 数据面",
+    "真实模型调用",
+    "正式采用/发布",
+    "浏览器 UI",
+    "专业签核"
+  ],
+  "review": "W3-r1r2-scope-required",
+  "schema_version": "rkd-w3-scope-required-manifest.v1"
+}
