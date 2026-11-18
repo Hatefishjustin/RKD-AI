@@ -204,7 +204,8 @@ def main() -> int:
             "option_id": option["option_id"], "expected_revision": 1,
             "feedback": "把中岛移到右侧", "locks": []})
     except Exception as error:  # noqa: BLE001
-        feedback_rejected = getattr(error, "code", "") == "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED"
+        feedback_rejected = getattr(error, "code", "") in {
+            "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED", "INVALID_FEEDBACK_BASELINE"}
     after = service.revision_by_id(ORG, PROJECT, option["option_revision_id"])
     record("A-06", "R1：不受支持的反馈路径明确拒绝、不复用父版准入、保留原版本",
            feedback_rejected and after is not None and

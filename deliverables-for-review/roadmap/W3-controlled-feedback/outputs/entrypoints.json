@@ -1,0 +1,39 @@
+{
+  "schema_version": "rkd-w3-controlled-feedback-entrypoints.v1",
+  "baseline": "902952e",
+  "review": "W3-controlled-feedback",
+  "purpose": "受控反馈修订闭环的实际实现位置（文件 + 行号）与复现入口",
+  "service": {
+    "file": "mvp/rkd_mvp/ai_design_option_service.py",
+    "locations": [
+      {"lines": "204-253", "symbol": "_controlled_finalize", "note": "新增 parent_revision_id / parent_evidence 透传"},
+      {"lines": "908-925", "symbol": "_feedback_lock_targets", "note": "锁定令牌 → 父版权威对象"},
+      {"lines": "927-993", "symbol": "_check_feedback_locks", "note": "v1 源候选 + v2 mm 投影双层锁定/场地/来源检查"},
+      {"lines": "994-1166", "symbol": "_controlled_revise", "note": "新 scope → provider → 适配/准入 → CAS 写入 → 提交后登记"},
+      {"lines": "1169-1215", "symbol": "revise", "note": "受控分支与三基线必填；非受控旧路径不变"}
+    ]
+  },
+  "provider": {
+    "file": "mvp/rkd_mvp/ai_design_option_provider.py",
+    "locations": [
+      {"lines": "1142-1157", "symbol": "revise(site=None, brief=None)", "note": "受控服务传权威场地快照与任务书；不传保持旧行为"}
+    ]
+  },
+  "runtime": {
+    "file": "mvp/rkd_mvp/controlled_design_runtime.py",
+    "locations": [
+      {"lines": "97-150", "symbol": "register_and_issue(parent_evidence=...)", "note": "provenance 记录父修订与父候选摘要；scope 仍必填"}
+    ]
+  },
+  "api": {
+    "files": [
+      "mvp/rkd_mvp/api_service.py:422-428  revise_ai_design_option（公共 API，未改路由契约）",
+      "mvp/rkd_mvp/postgres_api_service.py  使用同一 AIDesignOptionService.revise"
+    ]
+  },
+  "reproduce": {
+    "before": "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/w3_feedback_revision_findings.py --code-root \"var/evidence/roadmap/W3-controlled-feedback/before\" --label before --out \"var/evidence/roadmap/W3-controlled-feedback/before/harness\" --expect vulnerable",
+    "after": "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/w3_feedback_revision_findings.py --code-root \".\" --label after --out \"var/evidence/roadmap/W3-controlled-feedback/after\" --expect fixed",
+    "tests": "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe -m unittest discover -s mvp/tests -p \"test_w3_controlled_feedback.py\""
+  }
+}

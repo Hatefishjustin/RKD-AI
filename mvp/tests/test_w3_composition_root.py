@@ -205,7 +205,12 @@ class CompositionRootTests(unittest.TestCase):
         self.assertIsNone(service.controlled_design_runtime)
 
     # --------------------------------------------------------- R1 feedback gate
-    def test_unsupported_feedback_rejected_and_original_revision_preserved(self):
+    def test_feedback_without_baseline_rejected_and_original_revision_preserved(self):
+        """A controlled revision requires explicit parent/input/adoption baselines.
+
+        The controlled feedback path is now implemented; this case keeps the
+        old negative semantics by omitting all three required baseline fields.
+        """
         service = self.build_service(config=real_config(), opener=stub_opener())
         self.files.seed_ningbo(service, FIXTURE)
         option = self.adopted_option(service)
@@ -214,7 +219,7 @@ class CompositionRootTests(unittest.TestCase):
             service.revise_ai_design_option(ORG, PROJECT, "tester", {
                 "option_id": option["option_id"], "expected_revision": 1,
                 "feedback": "把中岛移到右侧", "locks": []})
-        self.assertEqual(error.exception.code, "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED")
+        self.assertEqual(error.exception.code, "INVALID_FEEDBACK_BASELINE")
         after = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
         self.assertEqual(after["option_revision_id"], before["option_revision_id"])
         self.assertEqual(after["revision_no"], 1)

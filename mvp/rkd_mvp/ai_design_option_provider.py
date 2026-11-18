@@ -1140,18 +1140,20 @@ class RealModelDesignOptionProvider:
                                           message=f"真实模型在 {self.config.max_attempts} 次设计复核内未产出通过硬检查的两个不同候选；未写入任何候选：{last_problems[:3]}")
 
     def revise(self, *, current: dict[str, Any], feedback: str, locks: list[str], revision_no: int,
-               parent_revision_id: str, input_hash: str, generated_at: str, actor_id: str) -> dict[str, Any]:
+               parent_revision_id: str, input_hash: str, generated_at: str, actor_id: str,
+               site: dict[str, Any] | None = None,
+               brief: dict[str, Any] | None = None) -> dict[str, Any]:
         if self.config.kind != "openai_compatible" or self.config.configuration_errors:
             raise DesignOptionProviderFailure(category="configuration", code="DESIGN_PROVIDER_NOT_CONFIGURED",
                                               message="真实设计模型通道未配置；未修订候选")
         text = feedback.strip()
         if not text:
             raise DesignOptionProviderFailure(category="validation", code="EMPTY_FEEDBACK", message="反馈不能为空")
-        brief = {"requirements": [{"statement": str(item)} for item in current.get("strategy", {}).get("tradeoffs", [])],
+        brief = brief or {"requirements": [{"statement": str(item)} for item in current.get("strategy", {}).get("tradeoffs", [])],
                  "design_intent": [], "conflicts": current.get("conflicts", []),
                  "cost": {}, "source_refs": [{"source_id": "synthetic-input"}],
                  "project_context": {"source_status": "synthetic_input_only"}}
-        site = {"width": current["boundary"]["width"], "length": current["boundary"]["length"],
+        site = site or {"width": current["boundary"]["width"], "length": current["boundary"]["length"],
                 "boundary_source": current["boundary"]["boundary_source"],
                 "obstacles": [{"object_id": item["object_id"], "name": item["name"], "shape": item["shape"]}
                               for item in current["boundary"]["obstacles"]]}

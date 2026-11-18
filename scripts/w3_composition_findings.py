@@ -173,7 +173,8 @@ def main() -> int:
                 "option_id": option["option_id"], "expected_revision": 1,
                 "feedback": "改成右侧中岛", "locks": []})
         except ApiError as error:
-            feedback["rejected"] = error.code == "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED"
+            feedback["rejected"] = error.code in {
+                "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED", "INVALID_FEEDBACK_BASELINE"}
         after = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
         feedback["original_preserved"] = after["option_revision_id"] == before and after["revision_no"] == 1
     results["feedback"] = {"ok": feedback["rejected"] and feedback["original_preserved"],

@@ -1,0 +1,106 @@
+{
+  "baseline": "902952e",
+  "checks": [
+    {
+      "evidence": {
+        "baseline": "902952e",
+        "code": "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED",
+        "status": 422,
+        "stub_revising_calls": 0,
+        "summary": "vulnerable"
+      },
+      "id": "F-01",
+      "name": "冻结基线上受控反馈被明确拒绝（before）",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "adoptable": true,
+        "fresh_admission": true,
+        "parent_unchanged": true,
+        "result": {
+          "option_revision_id": "ai-option-revision_b8c2d0c58eb5",
+          "parent_revision_id": "ai-option-revision_e7479bc2994c",
+          "revision_no": 2,
+          "run_id": "rkd-controlled-run-service.v2-run-000003"
+        },
+        "stub_revising_calls": 1,
+        "summary": "fixed",
+        "visible_in_store": true
+      },
+      "id": "F-02",
+      "name": "同一公共 API 在修复后生成新修订（after）",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "file": "var/evidence/roadmap/W3-controlled-feedback/after/feedback-tests.log",
+        "result": "9/9 OK",
+        "test": "mvp/tests/test_w3_controlled_feedback.py"
+      },
+      "id": "F-03",
+      "name": "九项永久回归（正例/锁定/基线/并发/几何/错误/scope/幽灵父链/CAS）",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "ai_design_options": "8/8 OK",
+        "commands": "see review-packet.md §5",
+        "w3_astra_remediation": "4/4 OK",
+        "w3_composition_root": "7/7 OK",
+        "w3_r1r2_source_records": "5/5 OK"
+      },
+      "id": "F-04",
+      "name": "相关回归",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "command": "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe -m unittest discover -s mvp/tests",
+        "exit_code": 0,
+        "log": "var/evidence/roadmap/W3-controlled-feedback/after/full-regression.log",
+        "result": "Ran 287 tests in 532.470s / OK"
+      },
+      "id": "F-05",
+      "name": "全量回归",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "reason": "本机无活动 PG 实例、未起 HTTP/浏览器，无外部模型授权；全部交换为本地桩"
+      },
+      "id": "F-06",
+      "name": "PG 数据面 / HTTP 进程与浏览器 UI / 真实模型调用",
+      "result": "not_run"
+    }
+  ],
+  "cost_cny": 0,
+  "external_calls": 0,
+  "external_disclosures": 0,
+  "finished_at": "2026-11-18T22:54:33+08:00",
+  "images": 0,
+  "keys_used": false,
+  "not_run": [
+    "PG 数据面",
+    "HTTP 下载",
+    "浏览器 UI",
+    "真实模型调用",
+    "正式采用/发布",
+    "专业签核"
+  ],
+  "schema_version": "rkd-w3-controlled-feedback.v1",
+  "summary": {
+    "fail": 0,
+    "not_run": 1,
+    "observed_pass": 5
+  },
+  "tests": {
+    "ai_design_options": "8/8 OK",
+    "controlled_feedback": "9/9 OK",
+    "full_suite": "287/287 OK",
+    "w3_astra_remediation": "4/4 OK",
+    "w3_composition_root": "7/7 OK",
+    "w3_r1r2_source_records": "5/5 OK"
+  },
+  "tokens": 0
+}

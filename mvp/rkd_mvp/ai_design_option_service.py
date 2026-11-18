@@ -204,7 +204,9 @@ class AIDesignOptionService:
     def _controlled_finalize(self, *, model: dict[str, Any], set_id: str,
                              option_revision_id: str, config: DesignOptionConfig,
                              input_hash: str, organization_id: str,
-                             project_id: str, created_at: str, scope: Any
+                             project_id: str, created_at: str, scope: Any,
+                             parent_revision_id: str | None = None,
+                             parent_evidence: dict | None = None
                              ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
         """Take a validated provider candidate through the controlled chain.
 
@@ -228,7 +230,8 @@ class AIDesignOptionService:
         record, provenance = runtime.register_and_issue(
             project_id=project_id, revision_id=option_revision_id,
             candidate_model=source_candidate, observation=observation,
-            config=config, input_hash=input_hash, scope=scope)
+            config=config, input_hash=input_hash, scope=scope,
+            parent_revision_id=parent_revision_id, parent_evidence=parent_evidence)
         adapted, note = runtime.adapt(source_candidate, provenance=provenance,
                                       created_at=created_at)
         # Preserve the identity fields the service assigned to the candidate.
@@ -900,6 +903,269 @@ class AIDesignOptionService:
             return self.provider
         return build_design_option_provider(config or self.config)
 
+    # ------------------------------------------------- controlled feedback (AI-DESIGN-03)
+    @staticmethod
+    def _feedback_lock_targets(parent_source: dict[str, Any], locks: list[str]) -> dict[str, dict]:
+        """Resolve lock tokens to the parent's authoritative source objects."""
+        tokens = {str(item) for item in locks}
+        display_locked = bool(tokens & {"display", "保留展柜", "保留展示", "保留主展台", "保留展陈"})
+        entrance_locked = bool(tokens & {"entrance", "保留入口", "入口"})
+        targets: dict[str, dict] = {}
+        for obj in parent_source.get("objects") or []:
+            if not isinstance(obj, dict):
+                continue
+            object_id = str(obj.get("object_id") or "")
+            if not object_id:
+                continue
+            protected = object_id in tokens or (
+                display_locked and str(obj.get("kind")) == "display_object")
+            if protected:
+                targets[object_id] = {"shape": copy.deepcopy(obj.get("shape")),
+                                      "material_id": obj.get("material_id")}
+        return {"objects": targets, "entrance": entrance_locked}
+
+    def _check_feedback_locks(self, *, parent_source: dict[str, Any],
+                              parent_model: dict[str, Any], revised: dict[str, Any],
+                              adapted: dict[str, Any], locks: list[str]) -> None:
+        """Reject a model that changed locks, deleted protected objects or rewrote the site.
+
+        The provider's own lock restoration is NOT trusted: it reports what it
+        had to restore as a ``lock-conflict-*`` entry, and that is itself a
+        failed requirement, not something to silently accept.
+        """
+        reported = [str(item.get("statement") or item.get("conflict_id") or item)
+                    for item in (revised.get("conflicts") or [])
+                    if isinstance(item, dict) and
+                    str(item.get("conflict_id") or "").startswith("lock-conflict-")]
+        if reported:
+            raise AIDesignOptionServiceError(
+                409, "LOCK_FIELD_MODIFIED",
+                "模型改写了锁定字段，不能作为修订：" + "；".join(reported[:3]))
+
+        targets = self._feedback_lock_targets(parent_source, locks)
+        by_id = {str(obj.get("object_id") or ""): obj
+                 for obj in (revised.get("objects") or []) if isinstance(obj, dict)}
+        for object_id, expected in targets["objects"].items():
+            counterpart = by_id.get(object_id)
+            if counterpart is None:
+                raise AIDesignOptionServiceError(
+                    409, "LOCK_OBJECT_DELETED", f"锁定对象 {object_id} 在新候选中缺失")
+            if counterpart.get("shape") != expected["shape"] or \
+                    counterpart.get("material_id") != expected["material_id"]:
+                raise AIDesignOptionServiceError(
+                    409, "LOCK_FIELD_MODIFIED", f"锁定对象 {object_id} 的形状或材料被模型改写")
+
+        if targets["entrance"]:
+            before = (parent_source.get("boundary") or {}).get("entrance") or {}
+            after = (revised.get("boundary") or {}).get("entrance") or {}
+            if before != after:
+                raise AIDesignOptionServiceError(
+                    409, "LOCK_FIELD_MODIFIED", "反馈要求保留入口，但模型改写了入口定义")
+
+        parent_snapshot = str(((parent_model.get("spatial") or {}).get("source") or {})
+                              .get("site_snapshot_sha256") or "")
+        new_snapshot = str(((adapted.get("spatial") or {}).get("source") or {})
+                           .get("site_snapshot_sha256") or "")
+        if not parent_snapshot or new_snapshot != parent_snapshot:
+            raise AIDesignOptionServiceError(
+                409, "SITE_SNAPSHOT_MODIFIED", "修订改写了场地快照摘要，不能作为父版的后继")
+
+        # mm-level spatial projection must preserve locked objects too
+        def spatial_index(model: dict[str, Any]) -> dict[str, dict]:
+            spatial = model.get("spatial") or {}
+            result: dict[str, dict] = {}
+            for key in ("zones", "circulation", "furniture", "platforms"):
+                for item in spatial.get(key) or []:
+                    if isinstance(item, dict) and item.get("object_id"):
+                        result[str(item["object_id"])] = item
+            return result
+
+        before_spatial, after_spatial = spatial_index(parent_model), spatial_index(adapted)
+        for object_id in targets["objects"]:
+            old, new = before_spatial.get(object_id), after_spatial.get(object_id)
+            if old is None or new is None:
+                continue  # lock tokens are resolved against the authoritative v1 source
+            if old.get("polygon_mm") != new.get("polygon_mm") or \
+                    old.get("path_mm") != new.get("path_mm") or \
+                    old.get("width_mm") != new.get("width_mm"):
+                raise AIDesignOptionServiceError(
+                    409, "LOCK_FIELD_MODIFIED", f"锁定对象 {object_id} 的 mm 投影被模型改写")
+
+    def _controlled_revise(self, *, organization_id: str, project_id: str, actor_id: str,
+                           current: dict[str, Any], set_row: dict[str, Any],
+                           feedback: str, locks: list[str], input_hash_requested: str,
+                           expected_version: int, now: str) -> dict[str, Any]:
+        """Natural-language revision of a controlled spatial candidate.
+
+        A fresh provider invocation (and therefore a fresh mandatory scope)
+        produces a NEW source candidate; it is adapted, re-admitted and bound to
+        a NEW run.  Nothing is copied from the parent's admission or run.  The
+        write is CAS-guarded and the parent chain is registered only after the
+        repository transaction commits.
+        """
+        runtime = self.controlled_runtime
+        if runtime is None:
+            raise AIDesignOptionServiceError(503, "CONTROLLED_RUNTIME_REQUIRED",
+                                             "受控候选修订必须在受控运行时上执行")
+        controlled = (current.get("validation") or {}).get("controlled") or {}
+        parent_source = controlled.get("source_candidate")
+        parent_provenance = controlled.get("provenance")
+        if not isinstance(parent_source, dict) or not isinstance(parent_provenance, dict):
+            raise AIDesignOptionServiceError(
+                422, "CONTROLLED_SOURCE_MISSING", "父候选缺少不可变来源与来源记录，不能修订")
+        if (current.get("model") or {}).get("schema_version") != "rkd-ai-design-option.v2":
+            raise AIDesignOptionServiceError(
+                422, "SPATIAL_MODEL_REQUIRES_PRECISE_PATH", "受控修订只处理 v2 spatial 候选")
+
+        project_input_hash = str(set_row.get("input_hash") or "")
+        if input_hash_requested != project_input_hash:
+            raise AIDesignOptionServiceError(
+                409, "STALE_INPUT_SNAPSHOT", "项目输入快照已变化，请重新读取后再提交反馈")
+        config = DesignOptionConfig.from_public(set_row["config"])
+        if config.kind != "openai_compatible" or not config.real_model:
+            raise AIDesignOptionServiceError(
+                422, "REAL_MODEL_REQUIRED", "受控反馈修订只服务真实模型配置")
+        input_hash = _digest({"parent": current["option_revision_id"],
+                              "revision_no": current["revision_no"],
+                              "project_input_hash": project_input_hash,
+                              "adoption_version": expected_version,
+                              "feedback": feedback, "locks": list(locks)})
+        parent_model_sha = hashlib.sha256(_json(current["model"]).encode("utf-8")).hexdigest()
+
+        scope = runtime.begin_invocation(project_id)
+        from .ai_design_option_provider import RealModelDesignOptionProvider
+        provider = RealModelDesignOptionProvider(
+            config, self.api_key, opener=scope.opener())
+        try:
+            revised = provider.revise(
+                current=copy.deepcopy(parent_source), feedback=feedback, locks=list(locks),
+                revision_no=current["revision_no"] + 1,
+                parent_revision_id=current["option_revision_id"],
+                input_hash=input_hash, generated_at=now, actor_id=actor_id,
+                site=runtime.provider_site(), brief=set_row["context"]["brief"])
+            revised = self._validate_candidate(
+                revised, brief=set_row["context"]["brief"], config=config,
+                input_hash=input_hash)
+        except DesignOptionProviderFailure as failure:
+            status = 503 if (failure.category in {"network", "authorization", "quota"}
+                             or bool(getattr(failure, "retryable", False))) else \
+                409 if failure.category == "conflict" else 422
+            raise AIDesignOptionServiceError(status, failure.code, failure.message) from failure
+
+        if str(revised.get("source_kind") or "") != "human_feedback":
+            raise AIDesignOptionServiceError(
+                422, "FEEDBACK_SOURCE_MISSING", "模型输出未标记为用户反馈修订来源")
+        if list((revised.get("feedback") or {}).get("locks") or []) != list(locks):
+            raise AIDesignOptionServiceError(
+                422, "FEEDBACK_LOCKS_MISMATCH", "模型输出未保留用户提交的锁定条件")
+        if not (revised.get("feedback") or {}).get("parsed_intents") and \
+                not (revised.get("conflicts") or []):
+            raise AIDesignOptionServiceError(
+                422, "FEEDBACK_UNPARSED", "模型没有解析反馈意图也没有说明冲突，不能作为修订")
+
+        option_revision_id = new_id("ai-option-revision")
+        adapted, metadata, _source, _prov = self._controlled_finalize(
+            model=revised, set_id=current["set_id"], option_revision_id=option_revision_id,
+            config=config, input_hash=input_hash, organization_id=organization_id,
+            project_id=project_id, created_at=now, scope=scope,
+            parent_revision_id=current["option_revision_id"],
+            parent_evidence={"revision_id": current["option_revision_id"],
+                             "candidate_sha256": str(parent_provenance.get("sha256") or "")})
+        # The generic adapter has no feedback semantics; carry the ACTUAL user
+        # feedback/locks from the newly generated source model into the v2 record
+        # so the revision shows what was requested and what was protected.
+        adapted["feedback"] = copy.deepcopy(revised["feedback"])
+        adapted["change_reason"] = str(revised.get("change_reason") or feedback[:500])
+        self._check_feedback_locks(parent_source=parent_source, parent_model=current["model"],
+                                   revised=revised, adapted=adapted, locks=locks)
+        spatial_source = (adapted.get("spatial") or {}).get("source") or {}
+        if adapted.get("parent_revision_id") != current["option_revision_id"] or \
+                spatial_source.get("parent_revision_uid") != current["option_revision_id"] or \
+                spatial_source.get("parent_link_status") != "resolved":
+            raise AIDesignOptionServiceError(
+                422, "PARENT_LINK_UNVERIFIED", "新修订的父链未经核验，不能写入")
+        origin = spatial_source.get("design_origin") or {}
+        if [str(item) for item in (origin.get("run_refs") or [])] != [metadata["run_id"]]:
+            raise AIDesignOptionServiceError(
+                422, "RUN_REUSE_DETECTED", "新修订必须绑定本次调用自己的运行记录")
+        if parent_provenance.get("design_origin", {}).get("run_refs") and \
+                str(parent_provenance["design_origin"]["run_refs"][0]) == metadata["run_id"]:
+            raise AIDesignOptionServiceError(
+                422, "RUN_REUSE_DETECTED", "新修订复用了父版运行记录")
+
+        attempt_dir = self.runtime_root / "projects" / "ai-design-options" / current["set_id"] \
+            / f"revision-{option_revision_id}"
+        attempt_dir.mkdir(parents=True, exist_ok=False)
+        data = render_svg(adapted)
+        relative = (attempt_dir / f"layout-{option_revision_id}.svg").relative_to(
+            self.runtime_root).as_posix()
+        (self.runtime_root / relative).write_bytes(data)
+        try:
+            with self.repository.transaction(organization_id, project_id, write=True) as tx:
+                latest = tx.latest_revision(current["option_id"])
+                if not latest or latest["option_revision_id"] != current["option_revision_id"] \
+                        or latest["revision_no"] != current["revision_no"]:
+                    raise AIDesignOptionServiceError(
+                        409, "STALE_OPTION_REVISION", "反馈处理期间候选版本已变化，未写入")
+                row_now = tx.set_row(current["set_id"])
+                if not row_now or row_now["status"] != "succeeded":
+                    raise AIDesignOptionServiceError(
+                        409, "OPTION_SET_UNAVAILABLE", "候选集已被取消或丢弃，未写入修订")
+                adoption_now = tx.adoption()
+                version_now = int(adoption_now["expected_revision"]) if adoption_now else 0
+                if version_now != expected_version:
+                    raise AIDesignOptionServiceError(
+                        409, "STALE_ADOPTION_VERSION", "采用基线已变化，未写入修订")
+                parent_now = tx.revision(current["option_revision_id"])
+                if not parent_now or hashlib.sha256(_json(parent_now["model"]).encode("utf-8")).hexdigest() \
+                        != parent_model_sha:
+                    raise AIDesignOptionServiceError(
+                        409, "PARENT_CONTENT_CHANGED", "父候选内容已变化，未写入修订")
+                validation = dict(adapted["validation"])
+                validation["controlled"] = {
+                    "admission": metadata["admission"],
+                    "source_candidate": metadata["source_candidate"],
+                    "provenance": metadata["provenance"],
+                    "run_id": metadata["run_id"],
+                }
+                tx.insert_revision({
+                    "option_revision_id": option_revision_id, "set_id": current["set_id"],
+                    "option_id": current["option_id"], "revision_no": current["revision_no"] + 1,
+                    "parent_revision_id": current["option_revision_id"],
+                    "strategy_id": adapted["strategy"]["strategy_id"], "strategy": adapted["strategy"],
+                    "model": adapted, "validation": validation, "materials": adapted["materials"],
+                    "cost": adapted["cost"], "feedback": adapted["feedback"],
+                    "diff": adapted["diff"], "conflicts": adapted["conflicts"],
+                    "structure_signature": adapted["structure_signature"],
+                    "lifecycle_status": "candidate", "source_kind": adapted["source_kind"],
+                    "change_reason": adapted["change_reason"], "actor_id": actor_id,
+                    "created_at": now,
+                })
+                tx.insert_artifact({
+                    "artifact_id": new_id("ai-option-artifact"), "option_revision_id": option_revision_id,
+                    "artifact_kind": "layout_svg", "filename": f"layout-{option_revision_id}.svg",
+                    "content_type": "image/svg+xml", "relative_path": relative,
+                    "sha256": hashlib.sha256(data).hexdigest(), "size_bytes": len(data),
+                    "created_at": now,
+                })
+                stored = tx.revision(option_revision_id)
+            # Parent chain becomes usable ONLY after the business commit.
+            try:
+                runtime.commit_revision(
+                    project_id=project_id, revision_id=option_revision_id,
+                    candidate_sha256=metadata["provenance"]["sha256"])
+            except Exception as error:  # noqa: BLE001 - fail closed
+                with self.repository.transaction(organization_id, project_id, write=True) as tx:
+                    tx.update_set(current["set_id"], status="failed", phase="failed",
+                                  updated_at=now_iso(), error_code="REVISION_REGISTRATION_FAILED",
+                                  error_message=f"反馈修订已写入但父链登记失败：{error}")
+                raise AIDesignOptionServiceError(
+                    503, "REVISION_REGISTRATION_FAILED", "修订已写入但父链登记失败，不能作为后续父修订") from error
+            return {"item": stored, "diff": adapted["diff"], "conflicts": adapted["conflicts"]}
+        except Exception:
+            shutil.rmtree(attempt_dir, ignore_errors=True)
+            raise
+
     def revise(self, organization_id: str, project_id: str, actor_id: str, request: dict[str, Any]) -> dict[str, Any]:
         option_id = request.get("option_id")
         expected = request.get("expected_revision")
@@ -909,6 +1175,45 @@ class AIDesignOptionService:
                 or not isinstance(locks, list) or not all(isinstance(item, str) for item in locks):
             raise AIDesignOptionServiceError(400, "INVALID_FEEDBACK", "请提供候选、预期版本、反馈文字和锁定范围")
         now = now_iso()
+
+        # Controlled spatial candidates take the precise feedback path.  Baseline
+        # fields are REQUIRED here: parent revision, project input snapshot and
+        # adoption version all have to be explicit before a model call happens.
+        if self.controlled_runtime is not None:
+            with self.repository.transaction(organization_id, project_id) as tx:
+                probe = tx.latest_revision(option_id)
+            if probe and (probe.get("validation") or {}).get("controlled"):
+                parent_id_requested = request.get("parent_revision_id")
+                baseline_version = request.get("expected_version")
+                baseline_input = request.get("expected_input_hash")
+                if not isinstance(parent_id_requested, str) or not isinstance(baseline_version, int) \
+                        or not isinstance(baseline_input, str) or not baseline_input:
+                    raise AIDesignOptionServiceError(
+                        400, "INVALID_FEEDBACK_BASELINE",
+                        "受控反馈必须提供 parent_revision_id、expected_version 与 expected_input_hash")
+                with self.repository.transaction(organization_id, project_id) as tx:
+                    controlled_current = tx.latest_revision(option_id)
+                    if not controlled_current or controlled_current["revision_no"] != expected:
+                        raise AIDesignOptionServiceError(
+                            409, "STALE_OPTION_REVISION", "候选版本已变化，请重新读取")
+                    if parent_id_requested != controlled_current["option_revision_id"]:
+                        raise AIDesignOptionServiceError(
+                            409, "STALE_PARENT_REVISION", "指定父修订已不是当前版本，反馈不能覆盖新版本")
+                    controlled_set = tx.set_row(controlled_current["set_id"])
+                    if not controlled_set or controlled_set["status"] != "succeeded":
+                        raise AIDesignOptionServiceError(
+                            409, "OPTION_SET_UNAVAILABLE", "候选集不可修订")
+                    adoption = tx.adoption()
+                    current_version = int(adoption["expected_revision"]) if adoption else 0
+                    if baseline_version != current_version:
+                        raise AIDesignOptionServiceError(
+                            409, "STALE_ADOPTION_VERSION", "采用版本基线已变化，请重新读取")
+                return self._controlled_revise(
+                    organization_id=organization_id, project_id=project_id, actor_id=actor_id,
+                    current=controlled_current, set_row=controlled_set, feedback=feedback,
+                    locks=locks, input_hash_requested=baseline_input,
+                    expected_version=baseline_version, now=now)
+
         with self.repository.transaction(organization_id, project_id, write=True) as tx:
             current = tx.latest_revision(option_id)
             if not current or current["revision_no"] != expected:

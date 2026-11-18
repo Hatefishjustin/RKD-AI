@@ -23,6 +23,7 @@ of scope, as stated in the review packet.
 """
 from __future__ import annotations
 
+import copy
 import os
 from pathlib import Path
 from typing import Any
@@ -97,7 +98,8 @@ class ControlledDesignRuntime:
     def register_and_issue(self, *, project_id: str, revision_id: str,
                            candidate_model: dict, observation: Any, config: Any,
                            input_hash: str, scope: Any,
-                           parent_revision_id: str | None = None) -> tuple[dict, dict]:
+                           parent_revision_id: str | None = None,
+                           parent_evidence: dict | None = None) -> tuple[dict, dict]:
         """Issue a run bound to the immutable candidate + its OWN invocation's exchange.
 
         ``scope`` is MANDATORY.  Passing only an observation (even one this ledger
@@ -142,6 +144,7 @@ class ControlledDesignRuntime:
             "option_id": candidate_model.get("option_id"),
             "revision_no": candidate_model.get("revision_no"),
             "parent_revision_id": parent_revision_id,
+            "parent_evidence": copy.deepcopy(parent_evidence) if parent_evidence else {},
             "actor_id": candidate_model.get("actor_id"),
             "model_site_boundary_m": [self.snapshot["width_m"], self.snapshot["length_m"]],
             "project_id": project_id,
