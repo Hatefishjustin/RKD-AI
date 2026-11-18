@@ -1,0 +1,205 @@
+{
+  "baseline": "f473c92",
+  "checks": [
+    {
+      "evidence": {
+        "after": {
+          "bound_markers": {
+            "43e317": [
+              "A"
+            ],
+            "d011ac": [
+              "B1"
+            ]
+          },
+          "distinct_run_ids": 4,
+          "problems": []
+        },
+        "before": {
+          "bound_markers": {
+            "5cba68": [
+              "B1"
+            ],
+            "83c35e": [
+              "A",
+              "B1"
+            ]
+          },
+          "problems": [
+            "83c35e 同一候选集内不同候选绑定到不同交换"
+          ]
+        },
+        "fix": [
+          "mvp/rkd_mvp/controlled_run_ledger.py:264-300",
+          "mvp/rkd_mvp/ai_design_option_service.py:327-340"
+        ]
+      },
+      "id": "C-01",
+      "name": "R1 同项目两个并发 invocation 各自绑定自己的交换",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after_sample": {
+          "43e317": {
+            "bindings": [
+              {
+                "bound_response": "A",
+                "candidate_sha_matches_own_source": true,
+                "input_hash": "0ee62ed7ad65afbc48d56c19ce7e4d09e5f6f5164223b3b250358951fc833603",
+                "option": "loop-stub",
+                "request_sha256": "c6dc71ae1965719369451b6b97ed8c29a2a221fa8d724b2196265f0ebeb253e5",
+                "response_sha256": "d096f91a5001f34f9cd73e793ebf57019fbaa7ccc52393c0f6da3688489f6390",
+                "run_id": "rkd-controlled-run-service.v2-run-000002"
+              },
+              {
+                "bound_response": "A",
+                "candidate_sha_matches_own_source": true,
+                "input_hash": "0ee62ed7ad65afbc48d56c19ce7e4d09e5f6f5164223b3b250358951fc833603",
+                "option": "branch-stub",
+                "request_sha256": "c6dc71ae1965719369451b6b97ed8c29a2a221fa8d724b2196265f0ebeb253e5",
+                "response_sha256": "d096f91a5001f34f9cd73e793ebf57019fbaa7ccc52393c0f6da3688489f6390",
+                "run_id": "rkd-controlled-run-service.v2-run-000001"
+              }
+            ],
+            "revisions": 2,
+            "status": "succeeded"
+          },
+          "d011ac": {
+            "bindings": [
+              {
+                "bound_response": "B1",
+                "candidate_sha_matches_own_source": true,
+                "input_hash": "0ee62ed7ad65afbc48d56c19ce7e4d09e5f6f5164223b3b250358951fc833603",
+                "option": "loop-stub",
+                "request_sha256": "c6dc71ae1965719369451b6b97ed8c29a2a221fa8d724b2196265f0ebeb253e5",
+                "response_sha256": "89eabf0a24ac9c58843d5646dd8866fc3e22f40c24ecba4fdf8ace9152c6eaf5",
+                "run_id": "rkd-controlled-run-service.v2-run-000004"
+              },
+              {
+                "bound_response": "B1",
+                "candidate_sha_matches_own_source": true,
+                "input_hash": "0ee62ed7ad65afbc48d56c19ce7e4d09e5f6f5164223b3b250358951fc833603",
+                "option": "branch-stub",
+                "request_sha256": "c6dc71ae1965719369451b6b97ed8c29a2a221fa8d724b2196265f0ebeb253e5",
+                "response_sha256": "89eabf0a24ac9c58843d5646dd8866fc3e22f40c24ecba4fdf8ace9152c6eaf5",
+                "run_id": "rkd-controlled-run-service.v2-run-000003"
+              }
+            ],
+            "revisions": 2,
+            "status": "succeeded"
+          }
+        },
+        "asserted_by": "test_concurrent_invocations_each_bind_their_own_exchange",
+        "fields": [
+          "response_sha256 -> 本次交换",
+          "request_sha256 -> 实际请求",
+          "input_hash -> 本人候选集",
+          "candidate_sha256 -> 本人不可变来源重算"
+        ]
+      },
+      "id": "C-02",
+      "name": "R1 每个持久候选的 run_id/请求/响应/input_hash/候选摘要对应自己的调用",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": {
+          "foreign_observation": "OBSERVATION_NOT_FROM_INVOCATION",
+          "missing_observation": "CONTROLLED_EXCHANGE_MISSING",
+          "own_binds_own_exchange": true
+        },
+        "before": {
+          "invocation_scope_api": false
+        },
+        "codes": [
+          "CONTROLLED_EXCHANGE_MISSING",
+          "OBSERVATION_NOT_FROM_INVOCATION"
+        ]
+      },
+      "id": "C-03",
+      "name": "R1 缺失观测与串用观测 fail closed",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": {
+          "business_revisions": 0,
+          "ledger_registered": 0
+        },
+        "before": {
+          "business_revisions": 0,
+          "ledger_registered": 2
+        },
+        "fix": "mvp/rkd_mvp/ai_design_option_service.py:421-437"
+      },
+      "id": "C-04",
+      "name": "R2 业务候选未提交时账本不留父修订",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": "PARENT_UNREGISTERED",
+        "before": "accepted",
+        "target_after": "ai-option-revision_6027955ed03b"
+      },
+      "id": "C-05",
+      "name": "R2 以未持久化的 revision_id 作父链必须拒绝",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "digest": "登记摘要 = 该候选不可变来源重算摘要",
+        "healthy_registered": 2,
+        "test": "test_registration_happens_only_after_commit"
+      },
+      "id": "C-06",
+      "name": "R2 正常候选提交后仍登记为可用父链",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "ai_design_options": "8/8 OK",
+        "w3_astra_remediation": "4/4 OK",
+        "w3_composition_root": "7/7 OK",
+        "w3_r1r2_source_records": "4/4 OK"
+      },
+      "id": "C-07",
+      "name": "组合根与设计候选相关回归",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "reason": "本轮未起 HTTP 服务与浏览器，无活动 PG 实例，无真实模型授权；全部交换为本地协议桩"
+      },
+      "id": "C-08",
+      "name": "HTTP 进程级下载 / 浏览器 UI / PG 数据面 / 真实模型调用",
+      "result": "not_run"
+    }
+  ],
+  "cost_cny": 0,
+  "external_calls": 0,
+  "finished_at": "2026-11-18T21:23:25+08:00",
+  "keys_used": false,
+  "not_run": [
+    "HTTP 下载",
+    "PG 数据面",
+    "真实模型调用",
+    "正式采用/发布",
+    "浏览器 UI",
+    "专业签核"
+  ],
+  "schema_version": "rkd-w3-r1r2-source-records.v1",
+  "summary": {
+    "fail": 0,
+    "not_run": 1,
+    "observed_pass": 7
+  },
+  "tests": {
+    "ai_design_options": "8/8 OK",
+    "full_suite": "277/277 OK",
+    "w3_astra_remediation": "4/4 OK",
+    "w3_composition_root": "7/7 OK",
+    "w3_r1r2_source_records": "4/4 OK"
+  }
+}

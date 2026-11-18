@@ -20,10 +20,12 @@ v2 rules:
    request/response bytes.  ``simulated`` is DERIVED by the service:
    an injected protocol stub is always simulated; only a live transport to a
    non-loopback endpoint can produce ``kind="real_model_run"``.
-3. **A parent must exist in the same project.**  ``register_revision()`` is
-   called by the real repository when a revision is persisted.  An invented
-   parent id fails ``PARENT_UNREGISTERED``; a mismatched parent digest fails
-   ``PARENT_CANDIDATE_MISMATCH``.
+3. **A parent must exist in the same project AND have been committed.**  A
+   revision becomes a parent only after the business repository transaction
+   committed and the service registered it (``commit_revision``).  An invented
+   or never-persisted parent id fails ``PARENT_UNREGISTERED``; a mismatched
+   parent digest fails ``PARENT_CANDIDATE_MISMATCH``.  Registering before
+   persistence would leave a phantom parent chain (fixed in this batch).
 4. **Restart policy.**  The key and an append-only record log persist under the
    service directory, so records issued before a restart still verify.  If the
    key is missing/unreadable, the service refuses to verify anything issued
@@ -35,6 +37,12 @@ v2 rules:
 5. **Isolation.**  ``isolated_test`` mode exists for negative tests only; its
    records are marked ``admission_scope=not_validated`` and can never be used
    as adoptable evidence.
+6. **One invocation, one observation scope.**  ``begin_invocation()`` returns an
+   ``ObservationScope``; the provider only gets ``scope.opener()`` and a
+   candidate may only be signed from ``scope.latest()``.  A run signed with
+   another invocation's observation fails ``OBSERVATION_NOT_FROM_INVOCATION``,
+   so concurrent invocations on the same project cannot cross-bind their
+   request/response bytes.
 
 No network calls, no external keys, no reads outside the service directory.
 """
@@ -223,7 +231,8 @@ class ControlledTransport:
         """
         return BoundControlledOpener(self, str(project_id))
 
-    def send(self, *, project_id: str, request: Any) -> ControlledResponse:
+    def send(self, *, project_id: str, request: Any,
+             scope: "ObservationScope | None" = None) -> ControlledResponse:
         url = str(getattr(request, "full_url", "") or "")
         endpoint = url
         body = bytes(getattr(request, "data", b"") or b"")
@@ -243,8 +252,53 @@ class ControlledTransport:
             project_id=project_id, transport=self._transport, endpoint=endpoint,
             request_bytes=body, response_bytes=raw, simulated=simulated,
             exec_token=_EXECUTION_TOKEN)
+        if scope is not None:
+            # R1: the observation belongs to THIS invocation only.  Binding a
+            # candidate reads the invocation scope, never "the project's last
+            # observation", so concurrent invocations cannot cross-bind.
+            scope._record(observation)
         return ControlledResponse(raw, headers,
                                   response_sha256=observation.response_sha256)
+
+
+class ObservationScope:
+    """Per-invocation observation handle (R1).
+
+    One provider invocation owns one scope; every exchange that invocation
+    performs is recorded here and nowhere else.  Issuing a candidate may only
+    use an observation from its own scope, which removes the "last observation
+    of the project" race between concurrent invocations.
+    """
+
+    def __init__(self, transport: ControlledTransport, project_id: str) -> None:
+        self._transport = transport
+        self.project_id = str(project_id)
+        self.observations: list[ExchangeObservation] = []
+        self._lock = threading.Lock()
+
+    def opener(self) -> "BoundControlledOpener":
+        return BoundControlledOpener(self._transport, self.project_id, scope=self)
+
+    def _record(self, observation: ExchangeObservation) -> None:
+        with self._lock:
+            self.observations.append(observation)
+
+    def latest(self) -> ExchangeObservation | None:
+        """The LAST exchange of this invocation (retries precede the success)."""
+        with self._lock:
+            return self.observations[-1] if self.observations else None
+
+    def owns(self, observation: ExchangeObservation | None) -> bool:
+        if observation is None:
+            return False
+        with self._lock:
+            return any(item.observation_id == observation.observation_id
+                       for item in self.observations)
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self.observations)
+
 
 
 class BoundControlledOpener:
@@ -252,16 +306,20 @@ class BoundControlledOpener:
 
     Only ``open`` is exposed.  Response bytes come from the actual exchange the
     controlled transport performs; no self-report surface is available here.
+    Each opener belongs to ONE invocation scope, which is where the exchanges it
+    causes are recorded.
     """
 
-    def __init__(self, transport: ControlledTransport, project_id: str) -> None:
+    def __init__(self, transport: ControlledTransport, project_id: str,
+                 scope: ObservationScope | None = None) -> None:
         self._transport = transport
         self._project_id = project_id
-        self.observations: list[ExchangeObservation] = []
+        self._scope = scope if scope is not None else ObservationScope(transport, project_id)
+        self.observations = self._scope.observations
 
     def open(self, request: Any, timeout: float | None = None) -> ControlledResponse:
-        response = self._transport.send(project_id=self._project_id, request=request)
-        return response
+        return self._transport.send(project_id=self._project_id, request=request,
+                                    scope=self._scope)
 
 
 def build_live_opener() -> Any:
@@ -411,6 +469,15 @@ class ControlledRunService:
         """
         return self._transport
 
+    def begin_invocation(self, project_id: str) -> ObservationScope:
+        """Open a per-invocation observation scope for one provider call.
+
+        The provider receives ``scope.opener()``; the candidate signed after the
+        call reads ``scope.latest()``.  Two concurrent invocations on the same
+        project therefore never share an observation (R1).
+        """
+        return ObservationScope(self._transport, str(project_id))
+
     def _record_exchange(self, *, project_id: str, transport: str, endpoint: str,
                          request_bytes: bytes, response_bytes: bytes, simulated: bool,
                          exec_token: object) -> ExchangeObservation:
@@ -476,7 +543,8 @@ class ControlledRunService:
               model: str, prompt_version: str, site_snapshot_sha256: str,
               basemap_files_sha256: str,
               parent_revision_id: str | None = None,
-              details: dict | None = None) -> dict:
+              details: dict | None = None,
+              scope: ObservationScope | None = None) -> dict:
         """Issue a run record. Only THIS service can turn an observation into one."""
         if _OBSERVATION_TOKEN is None:  # pragma: no cover - never true
             raise RunLedgerError("OBSERVATION_REQUIRED", "缺少观测")
@@ -486,6 +554,16 @@ class ControlledRunService:
                 self._observations.get(observation.observation_id) is not observation:
             raise RunLedgerError("OBSERVATION_FORGED",
                                  "只能由本服务受控传输实际观测到的请求/响应签发运行记录")
+        if scope is not None:
+            # R1: the exchange must belong to THIS invocation, not merely to the
+            # same project (that was the cross-binding defect).
+            if scope.project_id != str(project_id):
+                raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH",
+                                     "invocation 句柄的项目与运行项目不一致")
+            if not scope.owns(observation):
+                raise RunLedgerError(
+                    "OBSERVATION_NOT_FROM_INVOCATION",
+                    "只能用本次调用自己产生的观测签发运行记录；不接受同项目其他调用的交换")
         if observation.project_id != str(project_id):
             raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH", "观测项目与运行项目不一致")
         if observation.transport == "live_http" and observation.simulated is False and \

@@ -1,0 +1,49 @@
+{
+  "schema_version": "rkd-w3-r1r2-entrypoints.v1",
+  "review": "W3-r1r2-source-records",
+  "baseline": "f473c92",
+  "purpose": "本轮两处 P1 的实际修复位置（逐条文件行号）与复现入口",
+  "R1_concurrent_cross_binding": {
+    "defect": "AIDesignOptionService._controlled_finalize 取项目最后一条观测，同项目并发调用会互相串线",
+    "fix": [
+      {"file": "mvp/rkd_mvp/controlled_run_ledger.py", "lines": "264-300", "symbol": "ObservationScope",
+       "note": "invocation 级观测句柄：observations / latest() / owns() / opener()"},
+      {"file": "mvp/rkd_mvp/controlled_run_ledger.py", "lines": "234-262", "symbol": "ControlledTransport.send(scope=)",
+       "note": "交换完成后只记入本次 invocation 的 scope"},
+      {"file": "mvp/rkd_mvp/controlled_run_ledger.py", "lines": "472-480", "symbol": "ControlledRunService.begin_invocation",
+       "note": "为一次 provider 调用开一个 scope"},
+      {"file": "mvp/rkd_mvp/controlled_run_ledger.py", "lines": "557-566", "symbol": "issue(scope=...) 归属校验",
+       "note": "OBSERVATION_NOT_FROM_INVOCATION / OBSERVATION_PROJECT_MISMATCH"},
+      {"file": "mvp/rkd_mvp/controlled_design_runtime.py", "lines": "84-92", "symbol": "ControlledDesignRuntime.begin_invocation",
+       "note": "组合根暴露的运行入口"},
+      {"file": "mvp/rkd_mvp/controlled_design_runtime.py", "lines": "97-113", "symbol": "register_and_issue(scope=...)",
+       "note": "缺失观测 fail closed（CONTROLLED_EXCHANGE_MISSING），并把 scope 传给 issue"},
+      {"file": "mvp/rkd_mvp/ai_design_option_service.py", "lines": "327-340", "symbol": "_run_set 建 scope",
+       "note": "每个 provider invocation 一个 scope，provider 只拿到 scope.opener()"},
+      {"file": "mvp/rkd_mvp/ai_design_option_service.py", "lines": "204-253", "symbol": "_controlled_finalize(scope=…)",
+       "note": "读 scope.latest()，不再读项目最后一条观测"}
+    ]
+  },
+  "R2_phantom_parent_revision": {
+    "defect": "register_and_issue 在候选持久化前就调用 register_revision，持久化失败后账本留下幽灵父修订",
+    "fix": [
+      {"file": "mvp/rkd_mvp/controlled_design_runtime.py", "lines": "97-135", "symbol": "register_and_issue",
+       "note": "不再登记父修订；只把 revision_id 写进运行记录 details 便于追责"},
+      {"file": "mvp/rkd_mvp/controlled_design_runtime.py", "lines": "155-171", "symbol": "commit_revision",
+       "note": "提交后登记的唯一入口，必须带候选不可变来源摘要"},
+      {"file": "mvp/rkd_mvp/ai_design_option_service.py", "lines": "421-437", "symbol": "_run_set 提交后登记",
+       "note": "仓储事务提交后才 commit_revision；登记失败标 REVISION_REGISTRATION_FAILED 且不伪造父链"},
+      {"file": "mvp/rkd_mvp/controlled_run_ledger.py", "lines": "23-28", "symbol": "账本规则 3",
+       "note": "父修订必须存在且已提交；PARENT_UNREGISTERED / PARENT_CANDIDATE_MISMATCH 保持"}
+    ]
+  },
+  "tests": {
+    "permanent": "mvp/tests/test_w3_r1r2_source_records.py（4 项）",
+    "harness": "scripts/w3_r1r2_findings.py（before/after 同例，能力探测）"
+  },
+  "reproduce": {
+    "before": "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/w3_r1r2_findings.py --code-root \"var/evidence/roadmap/W3-r1r2-source-records/before\" --label before --out \"var/evidence/roadmap/W3-r1r2-source-records/before/harness\" --expect vulnerable",
+    "after": "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe scripts/w3_r1r2_findings.py --code-root \".\" --label after --out \"var/evidence/roadmap/W3-r1r2-source-records/after\" --expect fixed",
+    "tests": "PYTHONPATH=\"mvp;scripts;.\" ./.venv/Scripts/python.exe -m unittest discover -s mvp/tests -p \"test_w3_r1r2_source_records.py\""
+  }
+}

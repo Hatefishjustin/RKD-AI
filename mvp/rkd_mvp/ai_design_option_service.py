@@ -204,29 +204,31 @@ class AIDesignOptionService:
     def _controlled_finalize(self, *, model: dict[str, Any], set_id: str,
                              option_revision_id: str, config: DesignOptionConfig,
                              input_hash: str, organization_id: str,
-                             project_id: str, created_at: str
+                             project_id: str, created_at: str, scope: Any
                              ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
         """Take a validated provider candidate through the controlled chain.
 
-        register immutable candidate -> issue a run from the ACTUAL observed
-        exchange -> controlled spatial adaptation -> trusted admission.  The
-        returned adapted model is what gets persisted, so the stored revision
-        carries both the spatial payload and its admission.  No gate is disabled
-        and no source is fabricated: with a stub, runs are simulated and the
-        origin is ``fixture``.
+        issue a run from THIS invocation's observed exchange -> controlled spatial
+        adaptation -> trusted admission.  The returned adapted model is what gets
+        persisted, so the stored revision carries both the spatial payload and its
+        admission.  Parent-chain registration happens only after the repository
+        transaction commits (``runtime.commit_revision``), never here.  No gate is
+        disabled and no source is fabricated: with a stub, runs are simulated and
+        the origin is ``fixture``.
         """
         runtime = self.controlled_runtime
         source_candidate = copy.deepcopy(model)
-        observations = runtime.run_service.controlled_observations(project_id=project_id)
-        observation = runtime.fresh_observation(observations)
+        # R1: read the observation of THIS provider invocation, never "the last
+        # observation of the project" (that bound another task's exchange).
+        observation = scope.latest() if scope is not None else None
         if observation is None:
             raise DesignOptionProviderFailure(
                 category="execution", code="CONTROLLED_EXCHANGE_MISSING",
-                message="受控传输没有观测到实际模型交换，不能签发运行记录")
+                message="受控传输没有观测到本次调用的实际模型交换，不能签发运行记录")
         record, provenance = runtime.register_and_issue(
             project_id=project_id, revision_id=option_revision_id,
             candidate_model=source_candidate, observation=observation,
-            config=config, input_hash=input_hash)
+            config=config, input_hash=input_hash, scope=scope)
         adapted, note = runtime.adapt(source_candidate, provenance=provenance,
                                       created_at=created_at)
         # Preserve the identity fields the service assigned to the candidate.
@@ -321,14 +323,15 @@ class AIDesignOptionService:
                 tx.start_set(set_id, attempt, now_iso())
                 context = item["context"]
                 config = DesignOptionConfig.from_public(item["config"])
+            scope = None
             if self.controlled_runtime is not None:
-                # The provider performs transport ONLY through the service-bound
-                # opener, so every exchange is observed by the controlled run
-                # service.  No caller can assert bytes or transport here.
+                # R1: every provider invocation gets its OWN observation scope,
+                # so the exchange observed for this candidate cannot come from a
+                # concurrent invocation of the same project.
                 from .ai_design_option_provider import RealModelDesignOptionProvider
+                scope = self.controlled_runtime.begin_invocation(project_id)
                 provider = RealModelDesignOptionProvider(
-                    config, self.api_key,
-                    opener=self.controlled_runtime.bound_opener(project_id))
+                    config, self.api_key, opener=scope.opener())
             elif self.provider is not None:
                 provider = self.provider
             else:
@@ -368,7 +371,7 @@ class AIDesignOptionService:
                         model=model, set_id=set_id, option_revision_id=option_revision_id,
                         config=config, input_hash=item["input_hash"],
                         organization_id=organization_id, project_id=project_id,
-                        created_at=now_iso())
+                        created_at=now_iso(), scope=scope)
                 data = render_svg(model)
                 relative = (attempt_dir / f"layout-{option_revision_id}.svg").relative_to(self.runtime_root).as_posix()
                 (self.runtime_root / relative).write_bytes(data)
@@ -381,6 +384,7 @@ class AIDesignOptionService:
                 if not current or current["status"] != "running" or int(current["attempt_count"]) != attempt:
                     raise DesignOptionProviderFailure(category="conflict", code="LATE_RESULT_DISCARDED",
                                                       message="候选集状态已变化，迟到结果未写入")
+                committed: list[tuple[str, str]] = []
                 for option_revision_id, model, relative, data, metadata in prepared:
                     if metadata is not None:
                         # Controlled chain: the model already carries its
@@ -414,7 +418,23 @@ class AIDesignOptionService:
                         "content_type": "image/svg+xml", "relative_path": relative,
                         "sha256": hashlib.sha256(data).hexdigest(), "size_bytes": len(data), "created_at": now_iso(),
                     })
+                    if metadata is not None:
+                        committed.append((option_revision_id, metadata["provenance"]["sha256"]))
                 tx.update_set(set_id, status="succeeded", phase="completed", updated_at=now_iso())
+            # R2: parent-chain registration happens ONLY after the repository
+            # transaction committed, so a discarded candidate can never leave a
+            # phantom parent in the run ledger.
+            for revision_id, candidate_sha256 in committed:
+                try:
+                    self.controlled_runtime.commit_revision(
+                        project_id=project_id, revision_id=revision_id,
+                        candidate_sha256=candidate_sha256)
+                except Exception as error:  # noqa: BLE001 - fail closed, never fake a parent
+                    with self.repository.transaction(organization_id, project_id, write=True) as tx:
+                        tx.update_set(set_id, status="failed", phase="failed", updated_at=now_iso(),
+                                      error_code="REVISION_REGISTRATION_FAILED",
+                                      error_message=f"候选已写入但父链登记失败，不能作为后续父修订：{error}")
+                    raise
             attempt_dir = None
         except DesignOptionProviderFailure as failure:
             self._finish_failure(organization_id, project_id, set_id, failure)

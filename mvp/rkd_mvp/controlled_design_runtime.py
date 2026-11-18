@@ -30,7 +30,7 @@ from typing import Any
 from . import realmodel_spatial_adapter as A
 from . import site_snapshot as SS
 from .admission import admit_document
-from .controlled_run_ledger import ControlledRunService
+from .controlled_run_ledger import ControlledRunService, RunLedgerError
 from .ai_design_option_provider import DesignOptionConfig, load_design_option_config
 
 
@@ -81,20 +81,34 @@ class ControlledDesignRuntime:
     def bound_opener(self, project_id: str) -> Any:
         return self.run_service.transport().bind(project_id)
 
+    def begin_invocation(self, project_id: str) -> Any:
+        """One provider invocation -> one observation scope (R1).
+
+        The provider may only use ``scope.opener()`` and the candidate may only
+        be signed from ``scope.latest()``, so concurrent invocations on the same
+        project cannot bind each other's exchange.
+        """
+        return self.run_service.begin_invocation(str(project_id))
+
     def verifier(self) -> Any:
         return self.run_service.verifier()
 
     # -- controlled run issuance --------------------------------------------
     def register_and_issue(self, *, project_id: str, revision_id: str,
                            candidate_model: dict, observation: Any, config: Any,
-                           input_hash: str,
+                           input_hash: str, scope: Any = None,
                            parent_revision_id: str | None = None) -> tuple[dict, dict]:
-        """Issue a run bound to the immutable candidate + observed exchange."""
+        """Issue a run bound to the immutable candidate + its OWN invocation's exchange.
+
+        The revision is deliberately NOT registered here (R2): a revision may only
+        become a parent after the business candidate is committed, which is what
+        :meth:`commit_revision` records.
+        """
         cand, _ = A.candidate_from_persisted(candidate_model)
         candidate_sha = A.sha256_hex(cand)
-        self.run_service.register_revision(
-            project_id=project_id, revision_id=revision_id,
-            candidate_sha256=candidate_sha)
+        if observation is None:
+            raise RunLedgerError("CONTROLLED_EXCHANGE_MISSING",
+                                 "受控传输没有观测到本次调用的实际模型交换，不能签发运行记录")
         record = self.run_service.issue(
             observation=observation, project_id=project_id,
             candidate_sha256=candidate_sha, input_hash=input_hash,
@@ -104,7 +118,9 @@ class ControlledDesignRuntime:
             site_snapshot_sha256=self.snapshot["sha256"],
             basemap_files_sha256=self.snapshot["basemap_files_sha256"],
             parent_revision_id=parent_revision_id,
-            details={"transport_note": "受控传输实际交换；注入桩恒为模拟，不是真实模型"})
+            details={"revision_id": revision_id,
+                     "transport_note": "受控传输实际交换；注入桩恒为模拟，不是真实模型"},
+            scope=scope)
         # Origin declaration follows the SIGNED run record, never a hard-coded
         # claim: a stub exchange stays fixture/simulated, a verified live run
         # may be declared real_model by a separate authorized path.
@@ -135,6 +151,22 @@ class ControlledDesignRuntime:
         }
         return record, provenance
 
+    # -- post-commit parent-chain registration (R2) --------------------------
+    def commit_revision(self, *, project_id: str, revision_id: str,
+                        candidate_sha256: str) -> dict:
+        """Register a revision as a valid parent ONLY after the business row exists.
+
+        Called by the service after its repository transaction committed.  A
+        candidate that never persisted therefore never becomes a parent, so the
+        ledger cannot hold a phantom revision (R2).
+        """
+        if not candidate_sha256:
+            raise RunLedgerError("REVISION_REGISTRATION_INVALID",
+                                 "登记父修订必须带该候选不可变来源摘要")
+        return self.run_service.register_revision(
+            project_id=project_id, revision_id=revision_id,
+            candidate_sha256=candidate_sha256)
+
     # -- controlled adaptation ----------------------------------------------
     def adapt(self, persisted_candidate: dict, *, provenance: dict,
               created_at: str) -> tuple[dict, dict]:
@@ -151,10 +183,6 @@ class ControlledDesignRuntime:
             basemap_dir=self.basemap_dir, run_verifier=self.verifier(),
             organization_id=organization_id, project_id=project_id,
             source_candidate=source_candidate, provenance=provenance)
-
-    @staticmethod
-    def fresh_observation(observations: list[Any]) -> Any | None:
-        return observations[-1] if observations else None
 
 
 def build_controlled_runtime(*, runtime_root: str | Path,
