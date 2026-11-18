@@ -1,0 +1,53 @@
+{
+  "baseline": "26ae391",
+  "code_commit": "d5d2d16",
+  "counts": {
+    "checks": {
+      "fail": 0,
+      "not_run": 1,
+      "observed_pass": 5
+    },
+    "files": 6,
+    "tests": {
+      "full_suite": "278/278 OK",
+      "repeated_hygiene": "5 clean / 0 dirty",
+      "source_records": "5/5 OK"
+    }
+  },
+  "files": {
+    "changes.patch": {
+      "bytes": 17136,
+      "sha256": "3e1d932f40d4b7b9210a9541833bf78b6535b3e2a9f3597198ca2453d7ff301a"
+    },
+    "checks.json": {
+      "bytes": 3268,
+      "sha256": "6ce6ef2b7c089489e43af7655f001209ad2a31ca0c0dca44a592e079b0f6642a"
+    },
+    "code-diff.md": {
+      "bytes": 1465,
+      "sha256": "4339162a44437349b70d290ed138f0fc98c8824676ae32af3db7677855d20db2"
+    },
+    "commit-reference.md": {
+      "bytes": 1431,
+      "sha256": "7274497d1f4d63d664f2310da374889663cb1f023c2ff79c00b9a963e2de64d1"
+    },
+    "decision-request.md": {
+      "bytes": 1437,
+      "sha256": "51c8edaa92fc645d60060781bcdf925fd675f04cb861fa11c5b327fd770c0c24"
+    },
+    "review-packet.md": {
+      "bytes": 5228,
+      "sha256": "a514ee9fb1ab19472000e779d13d9aa045d03ea448cf9098f706792bb096092a"
+    }
+  },
+  "generated_at": "2026-11-18",
+  "not_run": [
+    "HTTP 下载",
+    "PG 数据面",
+    "真实模型调用",
+    "浏览器 UI",
+    "专业签核"
+  ],
+  "review": "W3-test-hygiene",
+  "schema_version": "rkd-w3-test-hygiene-manifest.v1"
+}
