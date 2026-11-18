@@ -96,14 +96,20 @@ class ControlledDesignRuntime:
     # -- controlled run issuance --------------------------------------------
     def register_and_issue(self, *, project_id: str, revision_id: str,
                            candidate_model: dict, observation: Any, config: Any,
-                           input_hash: str, scope: Any = None,
+                           input_hash: str, scope: Any,
                            parent_revision_id: str | None = None) -> tuple[dict, dict]:
         """Issue a run bound to the immutable candidate + its OWN invocation's exchange.
 
-        The revision is deliberately NOT registered here (R2): a revision may only
-        become a parent after the business candidate is committed, which is what
+        ``scope`` is MANDATORY.  Passing only an observation (even one this ledger
+        captured) is no longer enough: the exchange must belong to the specific
+        provider invocation that produced this candidate.  The revision is
+        deliberately NOT registered here (R2): a revision may only become a
+        parent after the business candidate is committed, which is what
         :meth:`commit_revision` records.
         """
+        if scope is None:
+            raise RunLedgerError("OBSERVATION_SCOPE_REQUIRED",
+                                 "签发候选必须提供本次 invocation 的观测句柄")
         cand, _ = A.candidate_from_persisted(candidate_model)
         candidate_sha = A.sha256_hex(cand)
         if observation is None:

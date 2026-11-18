@@ -146,12 +146,20 @@ def main() -> int:
         run_service = ControlledRunService(out / "runtime" / "runs")
     cand, _ = A.candidate_from_persisted(src)
     run_refs: list[str] = []
+    scope = None
     if has_transport:
         from urllib.request import Request
         req = Request("http://127.0.0.1:9/stub/chat/completions",
                       data=canon({"model": "stub-model"}), method="POST")
-        run_service.transport().send(project_id=PROJECT, request=req)
-        observations = run_service.controlled_observations(project_id=PROJECT)
+        if hasattr(run_service, "begin_invocation"):
+            # scope is mandatory on current code: bind the exchange to this
+            # invocation, do not fall back to "any observation in the ledger".
+            scope = run_service.begin_invocation(PROJECT)
+            scope.opener().open(req)
+            observations = scope.observations
+        else:
+            run_service.transport().send(project_id=PROJECT, request=req)
+            observations = run_service.controlled_observations(project_id=PROJECT)
     else:
         from rkd_mvp import realmodel_spatial_adapter as _A  # noqa: F401
         exchanges = []
@@ -164,11 +172,14 @@ def main() -> int:
                         for x in exchanges]
     run_service.register_revision(project_id=PROJECT, revision_id="r1",
                                   candidate_sha256=sha(cand))
+    issue_kwargs = {}
+    if scope is not None:
+        issue_kwargs["scope"] = scope
     record = run_service.issue(
         observation=observations[-1], project_id=PROJECT, candidate_sha256=sha(cand),
         input_hash=snap["sha256"], output_sha256=sha(src), model="stub-model",
         prompt_version="pv", site_snapshot_sha256=snap["sha256"],
-        basemap_files_sha256=snap["basemap_files_sha256"])
+        basemap_files_sha256=snap["basemap_files_sha256"], **issue_kwargs)
     run_refs.append(record["run_id"])
     prov = {"sha256": sha(cand), "model_site_boundary_m": [26.17, 17.92],
             "project_id": PROJECT, "provider_kind": "local_protocol_stub",

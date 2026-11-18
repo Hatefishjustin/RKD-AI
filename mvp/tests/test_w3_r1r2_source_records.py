@@ -324,6 +324,63 @@ class SourceRecordTests(unittest.TestCase):
         self.assertEqual(record["response_sha256"], scope_a.latest().response_sha256)
         self.assertEqual(provenance["design_origin"]["run_refs"], [record["run_id"]])
 
+    # ------------------------------------------------------- R1 scope REQUIRED
+    def test_issuance_rejects_omitted_or_null_scope(self):
+        """Both issuance APIs must require scope; observation alone is not enough."""
+        from rkd_mvp.controlled_run_ledger import RunLedgerError
+
+        service = self.build_service(opener=PerCallOpener(pad_first=0))
+        self.brief(service, "brief-r1-scope-required")
+        item = service.submit_ai_design_options(
+            ORG, PROJECT, "tester", {}, "options-r1-scope-required")["item"]
+        service.ai_design_option_service.wait_for_set(ORG, PROJECT, item["set_id"],
+                                                      timeout_seconds=120)
+        model = self.revisions(service, item["set_id"])[0]["validation"]["controlled"]["source_candidate"]
+        runtime = service.controlled_design_runtime
+        scope = self.exchange(runtime, "scope-required")
+        source_sha = adapter.sha256_hex(adapter.candidate_from_persisted(model)[0])
+
+        # 1) runtime API: omitting scope is rejected by the call boundary;
+        #    explicit None is rejected with a stable ledger code.
+        runtime_kwargs = dict(
+            project_id=PROJECT, revision_id="rev-no-scope-00001", candidate_model=model,
+            observation=scope.latest(), config=real_config(), input_hash="h" * 64)
+        registered_before = [key for key in runtime.run_service._revisions
+                             if key[0] == PROJECT]
+        with self.assertRaises(TypeError):
+            runtime.register_and_issue(**runtime_kwargs)
+        with self.assertRaises(RunLedgerError) as missing:
+            runtime.register_and_issue(**runtime_kwargs, scope=None)
+        self.assertEqual(missing.exception.code, "OBSERVATION_SCOPE_REQUIRED")
+        self.assertEqual([key for key in runtime.run_service._revisions if key[0] == PROJECT],
+                         registered_before, "省略 scope 的调用不得留下任何登记")
+
+        # 2) ledger API: same rule even for a genuine observation of this ledger.
+        ledger_kwargs = dict(
+            observation=scope.latest(), project_id=PROJECT, candidate_sha256=source_sha,
+            input_hash="h" * 64, output_sha256=hashlib.sha256(canon(model)).hexdigest(),
+            model="stub-model", prompt_version="pv", site_snapshot_sha256="s" * 64,
+            basemap_files_sha256="b" * 64)
+        with self.assertRaises(TypeError):
+            runtime.run_service.issue(**ledger_kwargs)
+        with self.assertRaises(RunLedgerError) as null_scope:
+            runtime.run_service.issue(**ledger_kwargs, scope=None)
+        self.assertEqual(null_scope.exception.code, "OBSERVATION_SCOPE_REQUIRED")
+
+        # 3) a scope from another service instance is not accepted either.
+        other_runtime = self.build_service(
+            self.root / "other", opener=PerCallOpener(pad_first=0)
+        ).controlled_design_runtime
+        other_scope = self.exchange(other_runtime, "other-service")
+        with self.assertRaises(RunLedgerError) as foreign_scope:
+            runtime.run_service.issue(**ledger_kwargs, scope=other_scope)
+        self.assertEqual(foreign_scope.exception.code, "OBSERVATION_SCOPE_INVALID")
+
+        # 4) the real product path still issues with a scope from its own runtime.
+        record, _provenance = runtime.register_and_issue(
+            **{**runtime_kwargs, "revision_id": "rev-with-scope-0001"}, scope=scope)
+        self.assertEqual(record["observation_id"], scope.latest().observation_id)
+
     # ---------------------------------------------------------------- R2
     def test_phantom_parent_revision_rejected(self):
         healthy = PerCallOpener(pad_first=0)

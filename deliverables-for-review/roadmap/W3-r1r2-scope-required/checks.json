@@ -1,0 +1,97 @@
+{
+  "baseline": "9dca78b",
+  "checks": [
+    {
+      "evidence": {
+        "after": "TypeError",
+        "before": "accepted"
+      },
+      "id": "S-01",
+      "name": "ControlledRunService.issue 省略 scope 被拒绝",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": "OBSERVATION_SCOPE_REQUIRED",
+        "before": "accepted",
+        "code": "OBSERVATION_SCOPE_REQUIRED"
+      },
+      "id": "S-02",
+      "name": "ControlledRunService.issue 显式 scope=None 被拒绝",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": "TypeError",
+        "before": "accepted"
+      },
+      "id": "S-03",
+      "name": "ControlledDesignRuntime.register_and_issue 省略 scope 被拒绝",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": "OBSERVATION_SCOPE_REQUIRED",
+        "before": "accepted",
+        "code": "OBSERVATION_SCOPE_REQUIRED"
+      },
+      "id": "S-04",
+      "name": "ControlledDesignRuntime.register_and_issue 显式 scope=None 被拒绝",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": "OBSERVATION_SCOPE_INVALID",
+        "before": "OBSERVATION_NOT_FROM_INVOCATION",
+        "test": "test_issuance_rejects_omitted_or_null_scope"
+      },
+      "id": "S-05",
+      "name": "异服务 scope 被拒绝，且被拒调用未留下登记",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "after": true,
+        "before": true,
+        "composition_root_tests": "7/7 OK"
+      },
+      "id": "S-06",
+      "name": "真实 ApiService 组合根路径在 scope 必填后仍生成并采用候选",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "reason": "本轮未起服务/浏览器，无活动 PG，无外部模型授权"
+      },
+      "id": "S-07",
+      "name": "HTTP 进程级下载/浏览器/PG 数据面/真实模型调用",
+      "result": "not_run"
+    }
+  ],
+  "cost_cny": 0,
+  "external_calls": 0,
+  "finished_at": "2026-11-18T21:41:54+08:00",
+  "keys_used": false,
+  "not_run": [
+    "HTTP 下载",
+    "PG 数据面",
+    "真实模型调用",
+    "正式采用/发布",
+    "浏览器 UI",
+    "专业签核"
+  ],
+  "schema_version": "rkd-w3-scope-required.v1",
+  "summary": {
+    "fail": 0,
+    "not_run": 1,
+    "observed_pass": 6
+  },
+  "tests": {
+    "ai_design_options": "8/8 OK",
+    "astra_harness": "5/5 fixed",
+    "full_suite": "278/278 OK",
+    "w3_astra_remediation": "4/4 OK",
+    "w3_composition_root": "7/7 OK",
+    "w3_r1r2_source_records": "5/5 OK"
+  }
+}

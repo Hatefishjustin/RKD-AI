@@ -544,8 +544,20 @@ class ControlledRunService:
               basemap_files_sha256: str,
               parent_revision_id: str | None = None,
               details: dict | None = None,
-              scope: ObservationScope | None = None) -> dict:
-        """Issue a run record. Only THIS service can turn an observation into one."""
+              scope: ObservationScope) -> dict:
+        """Issue a run record. Only THIS service can turn an observation into one.
+
+        ``scope`` is MANDATORY: an observation alone only proves the ledger saw
+        some exchange, not that it belonged to this invocation.  Omitting the
+        scope must be rejected at the call boundary, never silently fall back
+        to the old observation-only check.
+        """
+        if scope is None:
+            raise RunLedgerError("OBSERVATION_SCOPE_REQUIRED",
+                                 "签发运行记录必须提供本次 invocation 的观测句柄")
+        if not isinstance(scope, ObservationScope) or scope._transport is not self._transport:
+            raise RunLedgerError("OBSERVATION_SCOPE_INVALID",
+                                 "观测句柄必须由本受控服务的 begin_invocation 产生")
         if _OBSERVATION_TOKEN is None:  # pragma: no cover - never true
             raise RunLedgerError("OBSERVATION_REQUIRED", "缺少观测")
         if not isinstance(observation, ExchangeObservation) or \
@@ -554,16 +566,15 @@ class ControlledRunService:
                 self._observations.get(observation.observation_id) is not observation:
             raise RunLedgerError("OBSERVATION_FORGED",
                                  "只能由本服务受控传输实际观测到的请求/响应签发运行记录")
-        if scope is not None:
-            # R1: the exchange must belong to THIS invocation, not merely to the
-            # same project (that was the cross-binding defect).
-            if scope.project_id != str(project_id):
-                raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH",
-                                     "invocation 句柄的项目与运行项目不一致")
-            if not scope.owns(observation):
-                raise RunLedgerError(
-                    "OBSERVATION_NOT_FROM_INVOCATION",
-                    "只能用本次调用自己产生的观测签发运行记录；不接受同项目其他调用的交换")
+        # R1: the exchange must belong to THIS invocation, not merely to the
+        # same project (that was the cross-binding defect).
+        if scope.project_id != str(project_id):
+            raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH",
+                                 "invocation 句柄的项目与运行项目不一致")
+        if not scope.owns(observation):
+            raise RunLedgerError(
+                "OBSERVATION_NOT_FROM_INVOCATION",
+                "只能用本次调用自己产生的观测签发运行记录；不接受同项目其他调用的交换")
         if observation.project_id != str(project_id):
             raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH", "观测项目与运行项目不一致")
         if observation.transport == "live_http" and observation.simulated is False and \
