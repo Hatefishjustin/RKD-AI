@@ -1,0 +1,112 @@
+{
+  "baseline": "26ae391",
+  "checks": [
+    {
+      "evidence": {
+        "before": "mvp/tests/test_w3_r1r2_source_records.py 旧 build_service 用 getattr(self, '_services', []).append(service)，setUp 未初始化该属性",
+        "effect": "tearDown 空循环，worker 仍在写 SVG/SQLite 时清理临时目录",
+        "observation": "本机 15 次重复运行未必然复现打印（竞态），结构性缺陷确定存在"
+      },
+      "id": "H-01",
+      "name": "定位根因：_services 未初始化导致 service/store 未被等待",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "assertions": [
+          "_active() 为空",
+          "临时目录在最后清理",
+          "所有 store 逆序 close"
+        ],
+        "locations": [
+          "mvp/tests/test_w3_r1r2_source_records.py:139-157",
+          "173-189",
+          "191-212",
+          "215-226",
+          "470-474"
+        ]
+      },
+      "id": "H-02",
+      "name": "owner/shadow/其他 ApiService 全部等待 worker 后再关库与清理",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "mechanism": "threading.excepthook collector + tearDown self.fail",
+        "probe": "注入故意抛错的后台线程 → AssertionError: 后台线程出现未处理异常（1 条），测试 FAILED",
+        "probe_file_removed": true
+      },
+      "id": "H-03",
+      "name": "后台线程异常被收集并使测试失败（不再只打印）",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "bad_patterns_checked": [
+          "Exception in thread",
+          "Unhandled exception in thread",
+          "FileNotFoundError",
+          "OperationalError: unable to open database file",
+          "Traceback (most recent call last)"
+        ],
+        "per_run_ok": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "script": "scripts/verify_w3_test_thread_hygiene.py",
+        "summary": {
+          "clean_runs": 5,
+          "dirty_runs": 0
+        }
+      },
+      "id": "H-04",
+      "name": "重复运行 5 次无未处理线程异常输出且每次 5/5 OK",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "replaced": "time.sleep(0.3)",
+        "with": "owner/shadow wait_for_idle + _active() 为空 + stored_phase==failed"
+      },
+      "id": "H-05",
+      "name": "幽灵父修订测试显式等待并验证终态 failed",
+      "result": "observed_pass"
+    },
+    {
+      "evidence": {
+        "reason": "本轮仅测试清理，无外部调用、无费用、无密钥；PG 数据面/浏览器未运行"
+      },
+      "id": "H-06",
+      "name": "HTTP/PG/真实模型",
+      "result": "not_run"
+    }
+  ],
+  "cost_cny": 0,
+  "external_calls": 0,
+  "finished_at": "2026-11-18T22:01:22+08:00",
+  "keys_used": false,
+  "not_run": [
+    "HTTP 下载",
+    "PG 数据面",
+    "真实模型调用",
+    "浏览器 UI",
+    "专业签核"
+  ],
+  "schema_version": "rkd-w3-test-hygiene.v1",
+  "summary": {
+    "fail": 0,
+    "not_run": 1,
+    "observed_pass": 5
+  },
+  "tests": {
+    "full_suite": "278/278 OK",
+    "repeated_hygiene": {
+      "clean_runs": 5,
+      "dirty_runs": 0
+    },
+    "source_records": "5/5 OK"
+  }
+}

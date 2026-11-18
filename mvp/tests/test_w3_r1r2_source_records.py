@@ -24,6 +24,7 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
 import unittest
 from pathlib import Path
 from urllib.request import Request
@@ -139,7 +140,23 @@ class SourceRecordTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
         self.db = self.root / "app.sqlite3"
+        # Track EVERY service and store created by a test: teardown must wait
+        # for their workers before closing connections or deleting the tree.
+        self._services: list[ApiService] = []
+        self._stores: list[SQLiteStore] = []
+        self._thread_exceptions: list[str] = []
+        self._old_thread_excepthook = threading.excepthook
+
+        def collect_thread_failure(args):
+            self._thread_exceptions.append(
+                f"[{args.thread.name}] {args.exc_type.__name__}: {args.exc_value}\n"
+                + "".join(traceback.format_exception(
+                    args.exc_type, args.exc_value, args.exc_traceback)))
+            self._old_thread_excepthook(args)
+
+        threading.excepthook = collect_thread_failure
         self.store = SQLiteStore(self.db)
+        self._stores.append(self.store)
         self.files = FileService(self.db, self.root)
         self.requirements = RequirementService(self.db)
         req_cfg = AIProviderConfig(
@@ -153,18 +170,46 @@ class SourceRecordTests(unittest.TestCase):
             SQLiteAIRequirementRepository(self.db), self.requirements, config=req_cfg,
             provider_factory=lambda config: build_provider(config))
 
+    def _wait_all_workers(self) -> None:
+        """Wait for ALL workers and assert they actually reached idle.
+
+        ``wait_for_idle`` returns silently on timeout, so the private active
+        set is checked too — this is lifecycle verification, not a substitute
+        for any product entry point.
+        """
+        self.requirement_ai.wait_for_idle(timeout_seconds=30)
+        self.assertFalse(self.requirement_ai._active(), "需求通道 worker 未结束")
+        for service in self._services:
+            design = service.ai_design_option_service
+            if design is not None:
+                design.wait_for_idle(timeout_seconds=30)
+                self.assertFalse(design._active(), "设计候选 worker 未结束")
+            output = service.ai_spatial_output_service
+            if output is not None:
+                output.wait_for_idle(timeout_seconds=30)
+
     def tearDown(self):
+        problems: list[str] = []
         try:
-            self.requirement_ai.wait_for_idle()
-        except Exception:  # noqa: BLE001
-            pass
-        for service in getattr(self, "_services", []):
+            self._wait_all_workers()
+        except Exception as error:  # noqa: BLE001 - surface as a test failure
+            problems.append(f"worker 未安全收尾：{type(error).__name__}: {error}")
+        for store in reversed(self._stores):
             try:
-                service.ai_design_option_service.wait_for_idle(timeout_seconds=20)
-            except Exception:  # noqa: BLE001
-                pass
-        self.store.close()
-        self.directory.cleanup()
+                store.close()
+            except Exception as error:  # noqa: BLE001
+                problems.append(f"关闭 SQLite 失败：{type(error).__name__}: {error}")
+        try:
+            self.directory.cleanup()
+        except Exception as error:  # noqa: BLE001
+            problems.append(f"清理临时目录失败：{type(error).__name__}: {error}")
+        finally:
+            threading.excepthook = self._old_thread_excepthook
+        if self._thread_exceptions:
+            detail = "\n---\n".join(self._thread_exceptions)
+            problems.append(f"后台线程出现未处理异常（{len(self._thread_exceptions)} 条）：\n{detail}")
+        if problems:
+            self.fail("\n".join(problems))
 
     # ---------------------------------------------------------------- helpers
     def build_service(self, root: Path | None = None, *, opener,
@@ -173,11 +218,13 @@ class SourceRecordTests(unittest.TestCase):
         root.mkdir(parents=True, exist_ok=True)
         db = db or self.db
         store = SQLiteStore(db) if db != self.db else self.store
+        if db != self.db:
+            self._stores.append(store)
         service = ApiService(
             MVPApp(store), FileService(db, root), requirement_service=RequirementService(db),
             ai_requirement_service=self.requirement_ai, runtime_root=root,
             design_option_config=real_config(), design_transport_opener=opener)
-        getattr(self, "_services", []).append(service)
+        self._services.append(service)
         return service
 
     def brief(self, service: ApiService, key: str) -> None:
@@ -397,6 +444,7 @@ class SourceRecordTests(unittest.TestCase):
         # second composition root over the same store discards the running set
         # after the controlled finalize (public API only)
         blocking = BlockingOpener()
+        self.addCleanup(blocking.release.set)  # never leave a worker parked on failure
         owner = self.build_service(self.root / "owner", opener=blocking)
         shadow = self.build_service(self.root / "shadow", opener=BlockingOpener())
         owner_runtime = owner.controlled_design_runtime
@@ -416,7 +464,15 @@ class SourceRecordTests(unittest.TestCase):
             if row and row[0] in {"failed", "cancelled", "succeeded"}:
                 break
             time.sleep(0.01)
-        time.sleep(0.3)
+        # Explicitly wait for EVERY worker on the owner/shadow services and
+        # verify the terminal state before asserting or tearing down.  A fixed
+        # sleep here used to let tearDown delete the tree under a live worker.
+        for svc in (owner, shadow):
+            svc.ai_design_option_service.wait_for_idle(timeout_seconds=30)
+            self.assertFalse(svc.ai_design_option_service._active(),
+                             f"{svc} 的设计候选 worker 未结束")
+        self.assertEqual((self.stored_phase(bad_set) or [None])[0], "failed",
+                         "被丢弃的候选集应终态 failed")
 
         self.assertEqual(self.stored_revisions(bad_set), 0,
                          "被丢弃的候选集不应写业务修订")
