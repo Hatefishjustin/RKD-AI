@@ -1,0 +1,1145 @@
+diff --git a/PROJECT_STATUS.md b/PROJECT_STATUS.md
+index 2c97ade..7b6c1ad 100644
+--- a/PROJECT_STATUS.md
++++ b/PROJECT_STATUS.md
+@@ -4,6 +4,8 @@
+ 
+ ## 当前阶段
+ 
++**2026-11-18 W3 受控 spatial 候选反馈修订闭环（AI-DESIGN-03；基线 `902952e`=origin/master；交架构复核，不自行推送、不宣布 W3/设计通过，不改 AD01—AD08、阶段确认、W4、数据库/NAS）：**把受控候选的 `CONTROLLED_FEEDBACK_PATH_UNSUPPORTED` 替换成真实服务路径：`AIDesignOptionService.revise` 对受控候选要求 `parent_revision_id`/`expected_version`/`expected_input_hash` 三基线（缺项 `INVALID_FEEDBACK_BASELINE`），逐项核修订号、父版、候选集状态、采用版本与项目输入摘要；新增 `_controlled_revise`（`ai_design_option_service.py:994-1166`）每次开新 `begin_invocation`，provider 只拿 `scope.opener()`，新源候选经契约/反馈锁定检查后由 `_controlled_finalize`（新增 parent_revision_id/parent_evidence）适配为 v2 spatial 并重新准入，写事务内二次 CAS（修订、集合状态、采用版本、父版字节），**提交后**才 `commit_revision` 登记为可当父链，登记失败 `REVISION_REGISTRATION_FAILED`。锁定校验（`_feedback_lock_targets`/`_check_feedback_locks`, `:908-993`）：锁定字段被改写/受保护对象删除/入口或场地快照改写/mm 投影变化分别拒绝，provider 自报已恢复的 lock-conflict 也视为失败；反馈未解析 `FEEDBACK_UNPARSED`。provider `revise` 增加可选 `site`/`brief`（`:1144-1157`），受控服务传权威场地快照与本次任务书，避免套 v1 边界。`runtime.register_and_issue` 增加 `parent_evidence`（`controlled_design_runtime.py:102,147`）使新父链摘要可核验。`scripts/w3_feedback_revision_findings.py` 冻结基线 `902952e` → `CONTROLLED_FEEDBACK_PATH_UNSUPPORTED`/vulnerable，本批 → 新修订 `revision_no=2`、新 run_id、父版字节不变、新 admission 可采纳/fixed。新增 `mvp/tests/test_w3_controlled_feedback.py` 9 项（正常、锁定改写/删除、父版/输入/采用过期、并发、非法几何、provider 500/超时、scope 缺失串用、提交前丢弃无幽灵父链、提交后父链摘要+采用 CAS），修复前相关组合根用例改为「缺基线拒绝且父版保留」，旧 harness 断言同时接受两种拒绝码。相关：反馈 9/9、组合根 7/7、设计候选 8/8、来源记录 5/5、Astra 4/4；全量 **287/287 OK**（`var/evidence/roadmap/W3-controlled-feedback/after/full-regression.log`，exit 0）。**not_run**：PG 数据面（无实例）、HTTP 进程/浏览器 UI、真实模型调用（0 调用/0 外发/0 tokens/¥0/0 图片）。全部桩来源 `fixture`/`simulated=true`，不是 AI 设计成果、不计 AD01—AD08；复核包 `deliverables-for-review/roadmap/W3-controlled-feedback/`，交架构复核。
++
+ **2026-11-18 W3 测试清理收尾：来源记录测试的 worker/临时目录生命周期（基线 `26ae391`；仅测试文件与校验脚本，不改生产业务语义，不改 AD/阶段/W4/数据库/NAS）：**定位 `test_w3_r1r2_source_records.py` 根因：`build_service()` 用 `getattr(self, "_services", []).append(...)`，而 `setUp()` 从未初始化 `_services`，引用被丢，`tearDown()` 空循环——owner/shadow/其他 ApiService 的后台 worker 全未等待，临时目录与 SQLite 在 worker 仍在写 layout SVG/DB 时被清理，偶发 `FileNotFoundError` / `sqlite3.OperationalError`，后台线程打印后 unittest 仍报 OK（本机 15 次未必然复现，竞态时序依赖）。修复（仅测试）：`setUp` 初始化 `_services`/`_stores`/`_thread_exceptions` 并安装 `threading.excepthook` 收集器（`:139-157`）；新增 `_wait_all_workers()` 等待并断言需求/候选/成果 `_active()` 为空（`:173-189`）；`tearDown` 严格「等 worker→逆序 close 全部 store→删临时目录→恢复钩子」，收集到任何后台异常/关闭/清理失败即 `self.fail()`（`:191-212`）；`build_service` 跟踪 service 与新建 store（`:215-226`）；幽灵父修订测试 `blocking.release` 加 `addCleanup`，终态轮询后显式等待 owner/shadow 并核对 `failed`，替代 `time.sleep(0.3)`（`:447,470-474`）。收集器有效性用一次性注入后台异常的探针验证：测试以「后台线程出现未处理异常（1 条）」FAILED（探针已删）。新增 `scripts/verify_w3_test_thread_hygiene.py` 重复运行 5 次，每次要求 5/5 OK、退出码 0、输出无 `Exception in thread`/`FileNotFoundError`/`OperationalError`/`Traceback` 等特征：实测 `clean_runs=5, dirty_runs=0`。来源记录 5/5 OK；全量单测 **278/278 OK**（日志 `var/evidence/roadmap/W3-test-hygiene/after/full-regression.log`）。**not_run**：HTTP 进程级下载、浏览器 UI、PG 数据面、真实模型调用。复核包 `deliverables-for-review/roadmap/W3-test-hygiene/`，证据 `var/evidence/roadmap/W3-test-hygiene/after/`，交回复核。
+ 
+ **2026-11-18 W3 来源记录小范围收尾：invocation scope 必填（基线 `9dca78b`；不宣布 W3/阶段2/客户设计通过，不改 AD、阶段、W4 或数据库/NAS 范围）：**把 `ControlledRunService.issue()`（`controlled_run_ledger.py`）与 `ControlledDesignRuntime.register_and_issue()`（`controlled_design_runtime.py`）的 `scope` 从可选改为**无默认值的必填关键字参数**；显式 `scope=None` → `OBSERVATION_SCOPE_REQUIRED`，异服务 scope → `OBSERVATION_SCOPE_INVALID`，原来「只有 observation 属于本 ledger 就能签发」的路径彻底关闭。检查全部调用点：生产 `_run_set` 已传 scope；`scripts/w3_astra_findings.py` 当前分支改为 `begin_invocation()` 并传 scope（冻结基线分支不变）；`w3_trust_findings.py` / `verify_w3_trust_remediation.py` 是 before-only 工具，依赖已关闭的 `observe_exchange`，在当前树走不到 `issue()`，保留原样。新增 harness `scripts/w3_scope_required_findings.py`：基线 4 条「省略/None × 两个 API」全部 **accepted**（vulnerable），修复后分别 `TypeError` / `OBSERVATION_SCOPE_REQUIRED`，异服务 scope `OBSERVATION_SCOPE_INVALID`；真实 ApiService 组合根 submit→adopt 前后均通过。新增负例 `test_issuance_rejects_omitted_or_null_scope`，来源记录 5/5、组合根 7/7、设计候选 8/8、Astra 4/4；全量单测 **278/278 OK**（日志 `var/evidence/roadmap/W3-r1r2-scope-required/after/full-regression.log`）。**not_run**：HTTP 进程级下载、浏览器 UI、PG 数据面、真实模型调用（0 授权/0 费用/0 密钥）。残余：省略参数抛 `TypeError` 而显式 None 才是领域码（待裁定）；破坏性签名变更需仓外调用方同步。复核包 `deliverables-for-review/roadmap/W3-r1r2-scope-required/`，证据 `var/evidence/roadmap/W3-r1r2-scope-required/{before,after}/`，交回审查。
+diff --git a/mvp/rkd_mvp/ai_design_option_provider.py b/mvp/rkd_mvp/ai_design_option_provider.py
+index 1717770..15fb5be 100644
+--- a/mvp/rkd_mvp/ai_design_option_provider.py
++++ b/mvp/rkd_mvp/ai_design_option_provider.py
+@@ -1140,18 +1140,20 @@ class RealModelDesignOptionProvider:
+                                           message=f"真实模型在 {self.config.max_attempts} 次设计复核内未产出通过硬检查的两个不同候选；未写入任何候选：{last_problems[:3]}")
+ 
+     def revise(self, *, current: dict[str, Any], feedback: str, locks: list[str], revision_no: int,
+-               parent_revision_id: str, input_hash: str, generated_at: str, actor_id: str) -> dict[str, Any]:
++               parent_revision_id: str, input_hash: str, generated_at: str, actor_id: str,
++               site: dict[str, Any] | None = None,
++               brief: dict[str, Any] | None = None) -> dict[str, Any]:
+         if self.config.kind != "openai_compatible" or self.config.configuration_errors:
+             raise DesignOptionProviderFailure(category="configuration", code="DESIGN_PROVIDER_NOT_CONFIGURED",
+                                               message="真实设计模型通道未配置；未修订候选")
+         text = feedback.strip()
+         if not text:
+             raise DesignOptionProviderFailure(category="validation", code="EMPTY_FEEDBACK", message="反馈不能为空")
+-        brief = {"requirements": [{"statement": str(item)} for item in current.get("strategy", {}).get("tradeoffs", [])],
++        brief = brief or {"requirements": [{"statement": str(item)} for item in current.get("strategy", {}).get("tradeoffs", [])],
+                  "design_intent": [], "conflicts": current.get("conflicts", []),
+                  "cost": {}, "source_refs": [{"source_id": "synthetic-input"}],
+                  "project_context": {"source_status": "synthetic_input_only"}}
+-        site = {"width": current["boundary"]["width"], "length": current["boundary"]["length"],
++        site = site or {"width": current["boundary"]["width"], "length": current["boundary"]["length"],
+                 "boundary_source": current["boundary"]["boundary_source"],
+                 "obstacles": [{"object_id": item["object_id"], "name": item["name"], "shape": item["shape"]}
+                               for item in current["boundary"]["obstacles"]]}
+diff --git a/mvp/rkd_mvp/ai_design_option_service.py b/mvp/rkd_mvp/ai_design_option_service.py
+index 9fa97fa..4c8f8af 100644
+--- a/mvp/rkd_mvp/ai_design_option_service.py
++++ b/mvp/rkd_mvp/ai_design_option_service.py
+@@ -204,7 +204,9 @@ class AIDesignOptionService:
+     def _controlled_finalize(self, *, model: dict[str, Any], set_id: str,
+                              option_revision_id: str, config: DesignOptionConfig,
+                              input_hash: str, organization_id: str,
+-                             project_id: str, created_at: str, scope: Any
++                             project_id: str, created_at: str, scope: Any,
++                             parent_revision_id: str | None = None,
++                             parent_evidence: dict | None = None
+                              ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+         """Take a validated provider candidate through the controlled chain.
+ 
+@@ -228,7 +230,8 @@ class AIDesignOptionService:
+         record, provenance = runtime.register_and_issue(
+             project_id=project_id, revision_id=option_revision_id,
+             candidate_model=source_candidate, observation=observation,
+-            config=config, input_hash=input_hash, scope=scope)
++            config=config, input_hash=input_hash, scope=scope,
++            parent_revision_id=parent_revision_id, parent_evidence=parent_evidence)
+         adapted, note = runtime.adapt(source_candidate, provenance=provenance,
+                                       created_at=created_at)
+         # Preserve the identity fields the service assigned to the candidate.
+@@ -900,6 +903,269 @@ class AIDesignOptionService:
+             return self.provider
+         return build_design_option_provider(config or self.config)
+ 
++    # ------------------------------------------------- controlled feedback (AI-DESIGN-03)
++    @staticmethod
++    def _feedback_lock_targets(parent_source: dict[str, Any], locks: list[str]) -> dict[str, dict]:
++        """Resolve lock tokens to the parent's authoritative source objects."""
++        tokens = {str(item) for item in locks}
++        display_locked = bool(tokens & {"display", "保留展柜", "保留展示", "保留主展台", "保留展陈"})
++        entrance_locked = bool(tokens & {"entrance", "保留入口", "入口"})
++        targets: dict[str, dict] = {}
++        for obj in parent_source.get("objects") or []:
++            if not isinstance(obj, dict):
++                continue
++            object_id = str(obj.get("object_id") or "")
++            if not object_id:
++                continue
++            protected = object_id in tokens or (
++                display_locked and str(obj.get("kind")) == "display_object")
++            if protected:
++                targets[object_id] = {"shape": copy.deepcopy(obj.get("shape")),
++                                      "material_id": obj.get("material_id")}
++        return {"objects": targets, "entrance": entrance_locked}
++
++    def _check_feedback_locks(self, *, parent_source: dict[str, Any],
++                              parent_model: dict[str, Any], revised: dict[str, Any],
++                              adapted: dict[str, Any], locks: list[str]) -> None:
++        """Reject a model that changed locks, deleted protected objects or rewrote the site.
++
++        The provider's own lock restoration is NOT trusted: it reports what it
++        had to restore as a ``lock-conflict-*`` entry, and that is itself a
++        failed requirement, not something to silently accept.
++        """
++        reported = [str(item.get("statement") or item.get("conflict_id") or item)
++                    for item in (revised.get("conflicts") or [])
++                    if isinstance(item, dict) and
++                    str(item.get("conflict_id") or "").startswith("lock-conflict-")]
++        if reported:
++            raise AIDesignOptionServiceError(
++                409, "LOCK_FIELD_MODIFIED",
++                "模型改写了锁定字段，不能作为修订：" + "；".join(reported[:3]))
++
++        targets = self._feedback_lock_targets(parent_source, locks)
++        by_id = {str(obj.get("object_id") or ""): obj
++                 for obj in (revised.get("objects") or []) if isinstance(obj, dict)}
++        for object_id, expected in targets["objects"].items():
++            counterpart = by_id.get(object_id)
++            if counterpart is None:
++                raise AIDesignOptionServiceError(
++                    409, "LOCK_OBJECT_DELETED", f"锁定对象 {object_id} 在新候选中缺失")
++            if counterpart.get("shape") != expected["shape"] or \
++                    counterpart.get("material_id") != expected["material_id"]:
++                raise AIDesignOptionServiceError(
++                    409, "LOCK_FIELD_MODIFIED", f"锁定对象 {object_id} 的形状或材料被模型改写")
++
++        if targets["entrance"]:
++            before = (parent_source.get("boundary") or {}).get("entrance") or {}
++            after = (revised.get("boundary") or {}).get("entrance") or {}
++            if before != after:
++                raise AIDesignOptionServiceError(
++                    409, "LOCK_FIELD_MODIFIED", "反馈要求保留入口，但模型改写了入口定义")
++
++        parent_snapshot = str(((parent_model.get("spatial") or {}).get("source") or {})
++                              .get("site_snapshot_sha256") or "")
++        new_snapshot = str(((adapted.get("spatial") or {}).get("source") or {})
++                           .get("site_snapshot_sha256") or "")
++        if not parent_snapshot or new_snapshot != parent_snapshot:
++            raise AIDesignOptionServiceError(
++                409, "SITE_SNAPSHOT_MODIFIED", "修订改写了场地快照摘要，不能作为父版的后继")
++
++        # mm-level spatial projection must preserve locked objects too
++        def spatial_index(model: dict[str, Any]) -> dict[str, dict]:
++            spatial = model.get("spatial") or {}
++            result: dict[str, dict] = {}
++            for key in ("zones", "circulation", "furniture", "platforms"):
++                for item in spatial.get(key) or []:
++                    if isinstance(item, dict) and item.get("object_id"):
++                        result[str(item["object_id"])] = item
++            return result
++
++        before_spatial, after_spatial = spatial_index(parent_model), spatial_index(adapted)
++        for object_id in targets["objects"]:
++            old, new = before_spatial.get(object_id), after_spatial.get(object_id)
++            if old is None or new is None:
++                continue  # lock tokens are resolved against the authoritative v1 source
++            if old.get("polygon_mm") != new.get("polygon_mm") or \
++                    old.get("path_mm") != new.get("path_mm") or \
++                    old.get("width_mm") != new.get("width_mm"):
++                raise AIDesignOptionServiceError(
++                    409, "LOCK_FIELD_MODIFIED", f"锁定对象 {object_id} 的 mm 投影被模型改写")
++
++    def _controlled_revise(self, *, organization_id: str, project_id: str, actor_id: str,
++                           current: dict[str, Any], set_row: dict[str, Any],
++                           feedback: str, locks: list[str], input_hash_requested: str,
++                           expected_version: int, now: str) -> dict[str, Any]:
++        """Natural-language revision of a controlled spatial candidate.
++
++        A fresh provider invocation (and therefore a fresh mandatory scope)
++        produces a NEW source candidate; it is adapted, re-admitted and bound to
++        a NEW run.  Nothing is copied from the parent's admission or run.  The
++        write is CAS-guarded and the parent chain is registered only after the
++        repository transaction commits.
++        """
++        runtime = self.controlled_runtime
++        if runtime is None:
++            raise AIDesignOptionServiceError(503, "CONTROLLED_RUNTIME_REQUIRED",
++                                             "受控候选修订必须在受控运行时上执行")
++        controlled = (current.get("validation") or {}).get("controlled") or {}
++        parent_source = controlled.get("source_candidate")
++        parent_provenance = controlled.get("provenance")
++        if not isinstance(parent_source, dict) or not isinstance(parent_provenance, dict):
++            raise AIDesignOptionServiceError(
++                422, "CONTROLLED_SOURCE_MISSING", "父候选缺少不可变来源与来源记录，不能修订")
++        if (current.get("model") or {}).get("schema_version") != "rkd-ai-design-option.v2":
++            raise AIDesignOptionServiceError(
++                422, "SPATIAL_MODEL_REQUIRES_PRECISE_PATH", "受控修订只处理 v2 spatial 候选")
++
++        project_input_hash = str(set_row.get("input_hash") or "")
++        if input_hash_requested != project_input_hash:
++            raise AIDesignOptionServiceError(
++                409, "STALE_INPUT_SNAPSHOT", "项目输入快照已变化，请重新读取后再提交反馈")
++        config = DesignOptionConfig.from_public(set_row["config"])
++        if config.kind != "openai_compatible" or not config.real_model:
++            raise AIDesignOptionServiceError(
++                422, "REAL_MODEL_REQUIRED", "受控反馈修订只服务真实模型配置")
++        input_hash = _digest({"parent": current["option_revision_id"],
++                              "revision_no": current["revision_no"],
++                              "project_input_hash": project_input_hash,
++                              "adoption_version": expected_version,
++                              "feedback": feedback, "locks": list(locks)})
++        parent_model_sha = hashlib.sha256(_json(current["model"]).encode("utf-8")).hexdigest()
++
++        scope = runtime.begin_invocation(project_id)
++        from .ai_design_option_provider import RealModelDesignOptionProvider
++        provider = RealModelDesignOptionProvider(
++            config, self.api_key, opener=scope.opener())
++        try:
++            revised = provider.revise(
++                current=copy.deepcopy(parent_source), feedback=feedback, locks=list(locks),
++                revision_no=current["revision_no"] + 1,
++                parent_revision_id=current["option_revision_id"],
++                input_hash=input_hash, generated_at=now, actor_id=actor_id,
++                site=runtime.provider_site(), brief=set_row["context"]["brief"])
++            revised = self._validate_candidate(
++                revised, brief=set_row["context"]["brief"], config=config,
++                input_hash=input_hash)
++        except DesignOptionProviderFailure as failure:
++            status = 503 if (failure.category in {"network", "authorization", "quota"}
++                             or bool(getattr(failure, "retryable", False))) else \
++                409 if failure.category == "conflict" else 422
++            raise AIDesignOptionServiceError(status, failure.code, failure.message) from failure
++
++        if str(revised.get("source_kind") or "") != "human_feedback":
++            raise AIDesignOptionServiceError(
++                422, "FEEDBACK_SOURCE_MISSING", "模型输出未标记为用户反馈修订来源")
++        if list((revised.get("feedback") or {}).get("locks") or []) != list(locks):
++            raise AIDesignOptionServiceError(
++                422, "FEEDBACK_LOCKS_MISMATCH", "模型输出未保留用户提交的锁定条件")
++        if not (revised.get("feedback") or {}).get("parsed_intents") and \
++                not (revised.get("conflicts") or []):
++            raise AIDesignOptionServiceError(
++                422, "FEEDBACK_UNPARSED", "模型没有解析反馈意图也没有说明冲突，不能作为修订")
++
++        option_revision_id = new_id("ai-option-revision")
++        adapted, metadata, _source, _prov = self._controlled_finalize(
++            model=revised, set_id=current["set_id"], option_revision_id=option_revision_id,
++            config=config, input_hash=input_hash, organization_id=organization_id,
++            project_id=project_id, created_at=now, scope=scope,
++            parent_revision_id=current["option_revision_id"],
++            parent_evidence={"revision_id": current["option_revision_id"],
++                             "candidate_sha256": str(parent_provenance.get("sha256") or "")})
++        # The generic adapter has no feedback semantics; carry the ACTUAL user
++        # feedback/locks from the newly generated source model into the v2 record
++        # so the revision shows what was requested and what was protected.
++        adapted["feedback"] = copy.deepcopy(revised["feedback"])
++        adapted["change_reason"] = str(revised.get("change_reason") or feedback[:500])
++        self._check_feedback_locks(parent_source=parent_source, parent_model=current["model"],
++                                   revised=revised, adapted=adapted, locks=locks)
++        spatial_source = (adapted.get("spatial") or {}).get("source") or {}
++        if adapted.get("parent_revision_id") != current["option_revision_id"] or \
++                spatial_source.get("parent_revision_uid") != current["option_revision_id"] or \
++                spatial_source.get("parent_link_status") != "resolved":
++            raise AIDesignOptionServiceError(
++                422, "PARENT_LINK_UNVERIFIED", "新修订的父链未经核验，不能写入")
++        origin = spatial_source.get("design_origin") or {}
++        if [str(item) for item in (origin.get("run_refs") or [])] != [metadata["run_id"]]:
++            raise AIDesignOptionServiceError(
++                422, "RUN_REUSE_DETECTED", "新修订必须绑定本次调用自己的运行记录")
++        if parent_provenance.get("design_origin", {}).get("run_refs") and \
++                str(parent_provenance["design_origin"]["run_refs"][0]) == metadata["run_id"]:
++            raise AIDesignOptionServiceError(
++                422, "RUN_REUSE_DETECTED", "新修订复用了父版运行记录")
++
++        attempt_dir = self.runtime_root / "projects" / "ai-design-options" / current["set_id"] \
++            / f"revision-{option_revision_id}"
++        attempt_dir.mkdir(parents=True, exist_ok=False)
++        data = render_svg(adapted)
++        relative = (attempt_dir / f"layout-{option_revision_id}.svg").relative_to(
++            self.runtime_root).as_posix()
++        (self.runtime_root / relative).write_bytes(data)
++        try:
++            with self.repository.transaction(organization_id, project_id, write=True) as tx:
++                latest = tx.latest_revision(current["option_id"])
++                if not latest or latest["option_revision_id"] != current["option_revision_id"] \
++                        or latest["revision_no"] != current["revision_no"]:
++                    raise AIDesignOptionServiceError(
++                        409, "STALE_OPTION_REVISION", "反馈处理期间候选版本已变化，未写入")
++                row_now = tx.set_row(current["set_id"])
++                if not row_now or row_now["status"] != "succeeded":
++                    raise AIDesignOptionServiceError(
++                        409, "OPTION_SET_UNAVAILABLE", "候选集已被取消或丢弃，未写入修订")
++                adoption_now = tx.adoption()
++                version_now = int(adoption_now["expected_revision"]) if adoption_now else 0
++                if version_now != expected_version:
++                    raise AIDesignOptionServiceError(
++                        409, "STALE_ADOPTION_VERSION", "采用基线已变化，未写入修订")
++                parent_now = tx.revision(current["option_revision_id"])
++                if not parent_now or hashlib.sha256(_json(parent_now["model"]).encode("utf-8")).hexdigest() \
++                        != parent_model_sha:
++                    raise AIDesignOptionServiceError(
++                        409, "PARENT_CONTENT_CHANGED", "父候选内容已变化，未写入修订")
++                validation = dict(adapted["validation"])
++                validation["controlled"] = {
++                    "admission": metadata["admission"],
++                    "source_candidate": metadata["source_candidate"],
++                    "provenance": metadata["provenance"],
++                    "run_id": metadata["run_id"],
++                }
++                tx.insert_revision({
++                    "option_revision_id": option_revision_id, "set_id": current["set_id"],
++                    "option_id": current["option_id"], "revision_no": current["revision_no"] + 1,
++                    "parent_revision_id": current["option_revision_id"],
++                    "strategy_id": adapted["strategy"]["strategy_id"], "strategy": adapted["strategy"],
++                    "model": adapted, "validation": validation, "materials": adapted["materials"],
++                    "cost": adapted["cost"], "feedback": adapted["feedback"],
++                    "diff": adapted["diff"], "conflicts": adapted["conflicts"],
++                    "structure_signature": adapted["structure_signature"],
++                    "lifecycle_status": "candidate", "source_kind": adapted["source_kind"],
++                    "change_reason": adapted["change_reason"], "actor_id": actor_id,
++                    "created_at": now,
++                })
++                tx.insert_artifact({
++                    "artifact_id": new_id("ai-option-artifact"), "option_revision_id": option_revision_id,
++                    "artifact_kind": "layout_svg", "filename": f"layout-{option_revision_id}.svg",
++                    "content_type": "image/svg+xml", "relative_path": relative,
++                    "sha256": hashlib.sha256(data).hexdigest(), "size_bytes": len(data),
++                    "created_at": now,
++                })
++                stored = tx.revision(option_revision_id)
++            # Parent chain becomes usable ONLY after the business commit.
++            try:
++                runtime.commit_revision(
++                    project_id=project_id, revision_id=option_revision_id,
++                    candidate_sha256=metadata["provenance"]["sha256"])
++            except Exception as error:  # noqa: BLE001 - fail closed
++                with self.repository.transaction(organization_id, project_id, write=True) as tx:
++                    tx.update_set(current["set_id"], status="failed", phase="failed",
++                                  updated_at=now_iso(), error_code="REVISION_REGISTRATION_FAILED",
++                                  error_message=f"反馈修订已写入但父链登记失败：{error}")
++                raise AIDesignOptionServiceError(
++                    503, "REVISION_REGISTRATION_FAILED", "修订已写入但父链登记失败，不能作为后续父修订") from error
++            return {"item": stored, "diff": adapted["diff"], "conflicts": adapted["conflicts"]}
++        except Exception:
++            shutil.rmtree(attempt_dir, ignore_errors=True)
++            raise
++
+     def revise(self, organization_id: str, project_id: str, actor_id: str, request: dict[str, Any]) -> dict[str, Any]:
+         option_id = request.get("option_id")
+         expected = request.get("expected_revision")
+@@ -909,6 +1175,45 @@ class AIDesignOptionService:
+                 or not isinstance(locks, list) or not all(isinstance(item, str) for item in locks):
+             raise AIDesignOptionServiceError(400, "INVALID_FEEDBACK", "请提供候选、预期版本、反馈文字和锁定范围")
+         now = now_iso()
++
++        # Controlled spatial candidates take the precise feedback path.  Baseline
++        # fields are REQUIRED here: parent revision, project input snapshot and
++        # adoption version all have to be explicit before a model call happens.
++        if self.controlled_runtime is not None:
++            with self.repository.transaction(organization_id, project_id) as tx:
++                probe = tx.latest_revision(option_id)
++            if probe and (probe.get("validation") or {}).get("controlled"):
++                parent_id_requested = request.get("parent_revision_id")
++                baseline_version = request.get("expected_version")
++                baseline_input = request.get("expected_input_hash")
++                if not isinstance(parent_id_requested, str) or not isinstance(baseline_version, int) \
++                        or not isinstance(baseline_input, str) or not baseline_input:
++                    raise AIDesignOptionServiceError(
++                        400, "INVALID_FEEDBACK_BASELINE",
++                        "受控反馈必须提供 parent_revision_id、expected_version 与 expected_input_hash")
++                with self.repository.transaction(organization_id, project_id) as tx:
++                    controlled_current = tx.latest_revision(option_id)
++                    if not controlled_current or controlled_current["revision_no"] != expected:
++                        raise AIDesignOptionServiceError(
++                            409, "STALE_OPTION_REVISION", "候选版本已变化，请重新读取")
++                    if parent_id_requested != controlled_current["option_revision_id"]:
++                        raise AIDesignOptionServiceError(
++                            409, "STALE_PARENT_REVISION", "指定父修订已不是当前版本，反馈不能覆盖新版本")
++                    controlled_set = tx.set_row(controlled_current["set_id"])
++                    if not controlled_set or controlled_set["status"] != "succeeded":
++                        raise AIDesignOptionServiceError(
++                            409, "OPTION_SET_UNAVAILABLE", "候选集不可修订")
++                    adoption = tx.adoption()
++                    current_version = int(adoption["expected_revision"]) if adoption else 0
++                    if baseline_version != current_version:
++                        raise AIDesignOptionServiceError(
++                            409, "STALE_ADOPTION_VERSION", "采用版本基线已变化，请重新读取")
++                return self._controlled_revise(
++                    organization_id=organization_id, project_id=project_id, actor_id=actor_id,
++                    current=controlled_current, set_row=controlled_set, feedback=feedback,
++                    locks=locks, input_hash_requested=baseline_input,
++                    expected_version=baseline_version, now=now)
++
+         with self.repository.transaction(organization_id, project_id, write=True) as tx:
+             current = tx.latest_revision(option_id)
+             if not current or current["revision_no"] != expected:
+diff --git a/mvp/rkd_mvp/controlled_design_runtime.py b/mvp/rkd_mvp/controlled_design_runtime.py
+index 6b3d62d..8347909 100644
+--- a/mvp/rkd_mvp/controlled_design_runtime.py
++++ b/mvp/rkd_mvp/controlled_design_runtime.py
+@@ -23,6 +23,7 @@ of scope, as stated in the review packet.
+ """
+ from __future__ import annotations
+ 
++import copy
+ import os
+ from pathlib import Path
+ from typing import Any
+@@ -97,7 +98,8 @@ class ControlledDesignRuntime:
+     def register_and_issue(self, *, project_id: str, revision_id: str,
+                            candidate_model: dict, observation: Any, config: Any,
+                            input_hash: str, scope: Any,
+-                           parent_revision_id: str | None = None) -> tuple[dict, dict]:
++                           parent_revision_id: str | None = None,
++                           parent_evidence: dict | None = None) -> tuple[dict, dict]:
+         """Issue a run bound to the immutable candidate + its OWN invocation's exchange.
+ 
+         ``scope`` is MANDATORY.  Passing only an observation (even one this ledger
+@@ -142,6 +144,7 @@ class ControlledDesignRuntime:
+             "option_id": candidate_model.get("option_id"),
+             "revision_no": candidate_model.get("revision_no"),
+             "parent_revision_id": parent_revision_id,
++            "parent_evidence": copy.deepcopy(parent_evidence) if parent_evidence else {},
+             "actor_id": candidate_model.get("actor_id"),
+             "model_site_boundary_m": [self.snapshot["width_m"], self.snapshot["length_m"]],
+             "project_id": project_id,
+diff --git a/mvp/tests/test_w3_composition_root.py b/mvp/tests/test_w3_composition_root.py
+index 6ab0697..238895d 100644
+--- a/mvp/tests/test_w3_composition_root.py
++++ b/mvp/tests/test_w3_composition_root.py
+@@ -205,7 +205,12 @@ class CompositionRootTests(unittest.TestCase):
+         self.assertIsNone(service.controlled_design_runtime)
+ 
+     # --------------------------------------------------------- R1 feedback gate
+-    def test_unsupported_feedback_rejected_and_original_revision_preserved(self):
++    def test_feedback_without_baseline_rejected_and_original_revision_preserved(self):
++        """A controlled revision requires explicit parent/input/adoption baselines.
++
++        The controlled feedback path is now implemented; this case keeps the
++        old negative semantics by omitting all three required baseline fields.
++        """
+         service = self.build_service(config=real_config(), opener=stub_opener())
+         self.files.seed_ningbo(service, FIXTURE)
+         option = self.adopted_option(service)
+@@ -214,7 +219,7 @@ class CompositionRootTests(unittest.TestCase):
+             service.revise_ai_design_option(ORG, PROJECT, "tester", {
+                 "option_id": option["option_id"], "expected_revision": 1,
+                 "feedback": "把中岛移到右侧", "locks": []})
+-        self.assertEqual(error.exception.code, "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED")
++        self.assertEqual(error.exception.code, "INVALID_FEEDBACK_BASELINE")
+         after = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
+         self.assertEqual(after["option_revision_id"], before["option_revision_id"])
+         self.assertEqual(after["revision_no"], 1)
+diff --git a/mvp/tests/test_w3_controlled_feedback.py b/mvp/tests/test_w3_controlled_feedback.py
+new file mode 100644
+index 0000000..3266806
+--- /dev/null
++++ b/mvp/tests/test_w3_controlled_feedback.py
+@@ -0,0 +1,449 @@
++"""W3 controlled spatial feedback revision (AI-DESIGN-03) permanent regression.
++
++All cases drive the real ApiService composition root, the real
++ControlledDesignRuntime, a real isolated SQLite store and a local protocol stub
++(every run is simulated=True / fixture).  No manual record insertion replaces
++the product path, no external model call, no real key.
++
++Covers: normal revision; lock rewrite/deletion; stale parent/input/adoption
++baselines; two concurrent feedbacks; invalid geometry; provider failure;
++missing/foreign scope; discarded-before-commit (no phantom parent); post-commit
++parent digest; adoption CAS; immutable parent bytes.
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import sys
++import tempfile
++import threading
++import time
++import traceback
++import unittest
++from pathlib import Path
++from urllib.error import HTTPError, URLError
++from urllib.request import Request
++
++ROOT = Path(__file__).resolve().parents[2]
++for _p in (ROOT / "mvp", ROOT / "scripts", ROOT):
++    if str(_p) not in sys.path:
++        sys.path.insert(0, str(_p))
++
++from rkd_mvp.ai_design_option_provider import DesignOptionConfig  # noqa: E402
++from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider  # noqa: E402
++from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository  # noqa: E402
++from rkd_mvp.ai_requirement_service import AIRequirementService  # noqa: E402
++from rkd_mvp.api_service import ApiError, ApiService  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from w3_trust_findings import candidate  # noqa: E402
++
++ORG = "org-local"
++PROJECT = NINGBO_PROJECT_ID
++FIXTURE = ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09"
++
++
++def canon(value) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True,
++                      separators=(",", ":")).encode("utf-8")
++
++
++def sha(value) -> str:
++    return hashlib.sha256(canon(value)).hexdigest()
++
++
++class StubResponse:
++    def __init__(self, payload) -> None:
++        self._raw = canon(payload)
++        self.headers = {}
++        self.status = 200
++
++    def read(self, _n=None) -> bytes:
++        return self._raw
++
++    def __enter__(self):
++        return self
++
++    def __exit__(self, *args):
++        return False
++
++
++class FeedbackOpener:
++    """Generate = 2 candidates; revise = one candidate whose shape depends on mode."""
++
++    def __init__(self, mode: str = "ok", on_revise=None) -> None:
++        self.mode = mode
++        self.on_revise = on_revise
++        self.lock = threading.Lock()
++        self.calls: list[dict] = []
++
++    def open(self, request, timeout=None):
++        body = bytes(getattr(request, "data", b"") or b"")
++        payload = json.loads(body.decode("utf-8"))
++        user_text = " ".join(str(item.get("content") or "")
++                             for item in payload.get("messages", []))
++        revising = "feedback_task" in user_text
++        with self.lock:
++            self.calls.append({"body": payload, "revising": revising,
++                               "request_sha256": hashlib.sha256(body).hexdigest()})
++        if not revising:
++            content = canon({"candidates": [candidate("branch", 10.3),
++                                            candidate("loop", 10.3)]}).decode("utf-8")
++        else:
++            if self.on_revise is not None:
++                self.on_revise()
++            if self.mode == "http_error":
++                raise HTTPError("http://127.0.0.1:9/stub", 500, "stub failure", {}, None)
++            if self.mode == "timeout":
++                raise URLError("stub timeout")
++            revised = candidate("loop", 10.3)
++            revised["strategy_id"] = "feedback-revised"
++            revised["concept"] = "反馈修订桩候选，不是设计成果"
++            if self.mode == "lock_change":
++                for zone in revised["zones"]:
++                    if zone["object_id"] == "zone:display":
++                        zone["x"] = 9.8
++            elif self.mode == "delete_object":
++                revised["zones"] = [zone for zone in revised["zones"]
++                                    if zone["object_id"] != "zone:display"]
++            elif self.mode == "bad_geometry":
++                revised["zones"][0]["x"] = 999
++            locks_out = [] if self.mode == "locks_dropped" else ["entrance", "zone:display"]
++            content = canon({"candidate": revised, "parsed_intents": ["more_open"],
++                             "locked_conflicts": [], "locks": locks_out}).decode("utf-8")
++        return StubResponse({"choices": [{"message": {"content": content}}],
++                             "model": payload.get("model"), "usage": {}})
++
++
++class ControlledFeedbackTests(unittest.TestCase):
++    def setUp(self):
++        self.directory = tempfile.TemporaryDirectory()
++        self.root = Path(self.directory.name)
++        self.db = self.root / "app.sqlite3"
++        self._services: list[ApiService] = []
++        self._stores: list[SQLiteStore] = []
++        self._thread_errors: list[str] = []
++        self._old_hook = threading.excepthook
++
++        def collect(args):
++            self._thread_errors.append(
++                f"[{args.thread.name}] {args.exc_type.__name__}: {args.exc_value}\n"
++                + "".join(traceback.format_exception(
++                    args.exc_type, args.exc_value, args.exc_traceback)))
++            self._old_hook(args)
++
++        threading.excepthook = collect
++        self.store = SQLiteStore(self.db)
++        self._stores.append(self.store)
++        self.files = FileService(self.db, self.root)
++        self.requirements = RequirementService(self.db)
++        cfg = AIProviderConfig(
++            kind="synthetic", name="本地合成需求通道（非真实 AI）", model_id=None,
++            base_url=None, api_key_present=False, adapter_version="v1", prompt_version="pv",
++            schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++            max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++            real_model=False, configuration_errors=[])
++        self.requirement_ai = AIRequirementService(
++            SQLiteAIRequirementRepository(self.db), self.requirements, config=cfg,
++            provider_factory=lambda config: build_provider(config))
++
++    def tearDown(self):
++        problems: list[str] = []
++        try:
++            self.requirement_ai.wait_for_idle(timeout_seconds=30)
++            self.assertFalse(self.requirement_ai._active())
++            for service in self._services:
++                design = service.ai_design_option_service
++                if design is not None:
++                    design.wait_for_idle(timeout_seconds=30)
++                    self.assertFalse(design._active())
++                output = service.ai_spatial_output_service
++                if output is not None:
++                    output.wait_for_idle(timeout_seconds=30)
++        except Exception as error:  # noqa: BLE001
++            problems.append(f"worker 未收尾：{type(error).__name__}: {error}")
++        for store in reversed(self._stores):
++            try:
++                store.close()
++            except Exception as error:  # noqa: BLE001
++                problems.append(f"关库失败：{error}")
++        try:
++            self.directory.cleanup()
++        except Exception as error:  # noqa: BLE001
++            problems.append(f"清理失败：{error}")
++        finally:
++            threading.excepthook = self._old_hook
++        if self._thread_errors:
++            problems.append("后台线程异常：\n" + "\n---\n".join(self._thread_errors))
++        if problems:
++            self.fail("\n".join(problems))
++
++    # --------------------------------------------------------------- helpers
++    def build_service(self, opener, *, root: Path | None = None) -> ApiService:
++        root = root or self.root
++        root.mkdir(parents=True, exist_ok=True)
++        config = DesignOptionConfig(
++            kind="openai_compatible", name="本地协议桩（模拟）", adapter_version="stub",
++            prompt_version="pv", schema_version="rkd-ai-design-option.v1", max_candidates=2,
++            real_model=True, configuration_errors=[], base_url="http://127.0.0.1:9/stub",
++            model_id="stub-model", api_key_present=True, max_attempts=2, timeout_seconds=5,
++            external_context_allowed=False)
++        store = self.store if root == self.root else SQLiteStore(self.db)
++        if store is not self.store:
++            self._stores.append(store)
++        service = ApiService(
++            MVPApp(store), FileService(self.db, root), requirement_service=self.requirements,
++            ai_requirement_service=self.requirement_ai, runtime_root=root,
++            design_option_config=config, design_transport_opener=opener)
++        self._services.append(service)
++        return service
++
++    def prepare(self, opener):
++        service = self.build_service(opener)
++        self.files.seed_ningbo(service, FIXTURE)
++        brief = service.submit_ai_requirement(
++            ORG, PROJECT, "tester", {"natural_language": "开放交流，入口在左侧，暖木色"},
++            "brief-feedback-regression")["item"]
++        self.requirement_ai.wait_for_job(ORG, PROJECT, brief["job_id"])
++        item = service.submit_ai_design_options(
++            ORG, PROJECT, "tester", {}, "options-feedback-regression")["item"]
++        service.ai_design_option_service.wait_for_set(ORG, PROJECT, item["set_id"],
++                                                     timeout_seconds=120)
++        state = service.get_ai_design_options(ORG, PROJECT)
++        parent = state["item"]["options"][0]
++        baseline = {"option_id": parent["option_id"],
++                    "expected_revision": parent["revision_no"],
++                    "parent_revision_id": parent["option_revision_id"],
++                    "expected_version": int(state["adoption"]["expected_revision"])
++                    if state.get("adoption") else 0,
++                    "expected_input_hash": next(row["input_hash"] for row in state["sets"]
++                                                if row["set_id"] == item["set_id"]),
++                    "feedback": "更开放但保留入口",
++                    "locks": ["entrance", "zone:display"]}
++        return service, parent, baseline
++
++    def request(self, baseline, **overrides):
++        return {**baseline, **overrides}
++
++    # ----------------------------------------------------------------- tests
++    def test_successful_feedback_creates_new_revision_with_fresh_binding(self):
++        opener = FeedbackOpener()
++        service, parent, baseline = self.prepare(opener)
++        before_sha = sha(parent["model"])
++        parent_run = parent["validation"]["controlled"]["run_id"]
++        result = service.revise_ai_design_option(
++            ORG, PROJECT, "tester", self.request(baseline))
++        revision = result["item"]
++        self.assertEqual(revision["revision_no"], 2)
++        self.assertEqual(revision["parent_revision_id"], parent["option_revision_id"])
++        self.assertNotEqual(revision["option_revision_id"], parent["option_revision_id"])
++        controlled = revision["validation"]["controlled"]
++        self.assertNotEqual(controlled["run_id"], parent_run)
++        runtime = service.controlled_design_runtime
++        record = next(row for row in runtime.run_service.export_public()
++                      if row["run_id"] == controlled["run_id"])
++        self.assertEqual(record["project_id"], PROJECT)
++        self.assertEqual(record["parent_revision_id"], parent["option_revision_id"])
++        self.assertEqual(record["input_hash"], controlled["provenance"]["input_hash"]
++                         if "input_hash" in controlled["provenance"] else record["input_hash"])
++        observing = [call for call in opener.calls
++                     if call["revising"] and
++                     hashlib.sha256(canon(call["body"])).hexdigest() == record["request_sha256"]]
++        # request bytes are captured by the ledger; check the recorded digest is
++        # the digest of a real revise exchange, not the parent's generation call.
++        self.assertEqual(sum(1 for call in opener.calls if call["revising"]), 1)
++        self.assertEqual(record["site_snapshot_sha256"],
++                         parent["model"]["spatial"]["source"]["site_snapshot_sha256"])
++        self.assertTrue(controlled["admission"]["adoptable"])
++        self.assertTrue(runtime.verifier().revision_registered(
++            PROJECT, revision["option_revision_id"]))
++        self.assertEqual(
++            runtime.run_service._revisions[(PROJECT, revision["option_revision_id"])],
++            controlled["provenance"]["sha256"])
++        self.assertEqual(
++            record["parent_candidate_sha256"],
++            parent["validation"]["controlled"]["provenance"]["sha256"])
++        after = service.get_ai_design_options(ORG, PROJECT)
++        unchanged = next(row for row in after["item"]["revisions"]
++                         if row["option_revision_id"] == parent["option_revision_id"])
++        self.assertEqual(sha(unchanged["model"]), before_sha, "父候选内容被改写")
++        self.assertIn(revision["option_revision_id"],
++                      [row["option_revision_id"] for row in after["item"]["revisions"]])
++        visible = next(row for row in after["item"]["options"]
++                       if row["option_revision_id"] == revision["option_revision_id"])
++        self.assertTrue(visible["artifacts"])
++        artifact = visible["artifacts"][0]
++        meta, path = service.get_ai_design_option_artifact(
++            ORG, PROJECT, artifact["artifact_id"])
++        self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), meta["sha256"])
++        self.assertEqual(meta["sha256"], artifact["sha256"])
++
++    def test_lock_field_rewritten_by_model_is_rejected(self):
++        service, _parent, baseline = self.prepare(FeedbackOpener(mode="lock_change"))
++        with self.assertRaises(ApiError) as error:
++            service.revise_ai_design_option(ORG, PROJECT, "tester",
++                                            self.request(baseline))
++        self.assertIn(error.exception.code, {"LOCK_FIELD_MODIFIED", "MODEL_REVISION_UNRESOLVED"})
++        self.assertEqual(len(service.get_ai_design_options(
++            ORG, PROJECT)["item"]["revisions"]), 2)
++
++    def test_locked_object_deleted_is_rejected(self):
++        service, _parent, baseline = self.prepare(FeedbackOpener(mode="delete_object"))
++        with self.assertRaises(ApiError) as error:
++            service.revise_ai_design_option(ORG, PROJECT, "tester",
++                                            self.request(baseline))
++        self.assertIn(error.exception.code, {"LOCK_OBJECT_DELETED", "MODEL_REVISION_UNRESOLVED"})
++
++    def test_stale_parent_and_input_and_adoption_baselines_rejected(self):
++        service, parent, baseline = self.prepare(FeedbackOpener())
++        with self.assertRaises(ApiError) as stale_parent:
++            service.revise_ai_design_option(ORG, PROJECT, "tester", self.request(
++                baseline, parent_revision_id="invented-parent"))
++        self.assertEqual(stale_parent.exception.code, "STALE_PARENT_REVISION")
++        with self.assertRaises(ApiError) as stale_input:
++            service.revise_ai_design_option(ORG, PROJECT, "tester", self.request(
++                baseline, expected_input_hash="0" * 64))
++        self.assertEqual(stale_input.exception.code, "STALE_INPUT_SNAPSHOT")
++        with self.assertRaises(ApiError) as stale_version:
++            service.revise_ai_design_option(ORG, PROJECT, "tester", self.request(
++                baseline, expected_version=99))
++        self.assertEqual(stale_version.exception.code, "STALE_ADOPTION_VERSION")
++        with self.assertRaises(ApiError) as stale_revision:
++            service.revise_ai_design_option(ORG, PROJECT, "tester", self.request(
++                baseline, expected_revision=parent["revision_no"] + 2))
++        self.assertEqual(stale_revision.exception.code, "STALE_OPTION_REVISION")
++        self.assertEqual(len(service.get_ai_design_options(
++            ORG, PROJECT)["item"]["revisions"]), 2)
++
++    def test_two_concurrent_feedbacks_only_one_wins(self):
++        service, _parent, baseline = self.prepare(FeedbackOpener())
++        outcomes: list[str] = []
++
++        def invoke(index):
++            try:
++                service.revise_ai_design_option(
++                    ORG, PROJECT, "tester",
++                    self.request(baseline, feedback=f"反馈{index}"))
++                outcomes.append("ok")
++            except ApiError as error:
++                outcomes.append(error.code)
++
++        threads = [threading.Thread(target=invoke, args=(index,)) for index in (1, 2)]
++        for thread in threads:
++            thread.start()
++        for thread in threads:
++            thread.join(timeout=60)
++        service.ai_design_option_service.wait_for_idle(timeout_seconds=30)
++        self.assertEqual(sorted(outcomes), ["STALE_OPTION_REVISION", "ok"],
++                         f"并发反馈结果异常：{outcomes}")
++        self.assertEqual(len(service.get_ai_design_options(
++            ORG, PROJECT)["item"]["revisions"]), 3)
++
++    def test_invalid_geometry_and_provider_errors_do_not_persist(self):
++        service, _parent, baseline = self.prepare(FeedbackOpener(mode="bad_geometry"))
++        with self.assertRaises(ApiError) as invalid:
++            service.revise_ai_design_option(ORG, PROJECT, "tester",
++                                            self.request(baseline))
++        self.assertEqual(invalid.exception.code, "MODEL_REVISION_UNRESOLVED")
++        for mode in ("http_error", "timeout"):
++            failing, _parent, failing_baseline = self.prepare(FeedbackOpener(mode=mode))
++            with self.assertRaises(ApiError) as failure:
++                failing.revise_ai_design_option(
++                    ORG, PROJECT, "tester", self.request(failing_baseline))
++            self.assertEqual(failure.exception.status, 503)
++            self.assertEqual(len(failing.get_ai_design_options(
++                ORG, PROJECT)["item"]["revisions"]), 2)
++
++    def test_missing_and_foreign_scope_fail_closed(self):
++        service, _parent, baseline = self.prepare(FeedbackOpener())
++        service.revise_ai_design_option(ORG, PROJECT, "tester", self.request(baseline))
++        runtime = service.controlled_design_runtime
++        revisions = service.get_ai_design_options(ORG, PROJECT)["item"]["revisions"]
++        model = revisions[0]["validation"]["controlled"]["source_candidate"]
++        scope = runtime.begin_invocation(PROJECT)
++        scope.opener().open(Request("http://127.0.0.1:9/stub?scope", b"{}"))
++        kwargs = dict(project_id=PROJECT, revision_id="rev-feedback-scope-001",
++                      candidate_model=model, observation=scope.latest(),
++                      config=DesignOptionConfig.from_public(
++                          service.get_ai_design_options(ORG, PROJECT)["provider"]),
++                      input_hash="h" * 64)
++        with self.assertRaises(TypeError):
++            runtime.register_and_issue(**kwargs)
++        with self.assertRaises(Exception) as none_scope:
++            runtime.register_and_issue(**kwargs, scope=None)
++        self.assertEqual(getattr(none_scope.exception, "code", ""), "OBSERVATION_SCOPE_REQUIRED")
++        other = self.build_service(FeedbackOpener(), root=self.root / "other")
++        other_scope = other.controlled_design_runtime.begin_invocation(PROJECT)
++        other_scope.opener().open(Request("http://127.0.0.1:9/stub?other", b"{}"))
++        with self.assertRaises(Exception) as foreign:
++            runtime.run_service.issue(
++                observation=scope.latest(), project_id=PROJECT,
++                candidate_sha256="c" * 64, input_hash="h" * 64, output_sha256="o" * 64,
++                model="m", prompt_version="p", site_snapshot_sha256="s" * 64,
++                basemap_files_sha256="b" * 64, scope=other_scope)
++        self.assertEqual(getattr(foreign.exception, "code", ""), "OBSERVATION_SCOPE_INVALID")
++
++    def test_discarded_before_commit_leaves_no_parent_registration(self):
++        """A baseline changed after the model call discards the candidate.
++
++        ``revise`` is synchronous, so a public ``adopt`` from inside the stubbed
++        exchange is used to change the adoption/version baseline between the
++        controlled model call and the write transaction.  The write must be
++        discarded and the new revision must never become a usable parent.
++        """
++        holder: dict = {}
++
++        def adopt_while_generating():
++            if "service" in holder:
++                holder["service"].adopt_ai_design_option(ORG, PROJECT, "tester", {
++                    "option_id": holder["option_id"],
++                    "expected_revision": holder["expected_revision"],
++                    "expected_version": holder["expected_version"]})
++
++        opener = FeedbackOpener(on_revise=adopt_while_generating)
++        service, _parent, baseline = self.prepare(opener)
++        holder.update({"service": service, "option_id": baseline["option_id"],
++                       "expected_revision": baseline["expected_revision"],
++                       "expected_version": baseline["expected_version"]})
++        initial_registered = {key[1] for key in service.controlled_design_runtime
++                              .run_service._revisions if key[0] == PROJECT}
++        with self.assertRaises(ApiError) as error:
++            service.revise_ai_design_option(ORG, PROJECT, "tester",
++                                            self.request(baseline))
++        self.assertEqual(error.exception.code, "STALE_ADOPTION_VERSION")
++        runtime = service.controlled_design_runtime
++        registered_now = {key[1] for key in runtime.run_service._revisions
++                          if key[0] == PROJECT}
++        self.assertEqual(registered_now, initial_registered,
++                         "被丢弃的修订不能登记为可用父链")
++        self.assertEqual(len(service.get_ai_design_options(
++            ORG, PROJECT)["item"]["revisions"]), 2)
++
++    def test_adoption_cas_conflict_and_feedback_locks_preserved(self):
++        service, _parent, baseline = self.prepare(FeedbackOpener())
++        revised = service.revise_ai_design_option(
++            ORG, PROJECT, "tester", self.request(baseline))["item"]
++        self.assertEqual(list(revised["feedback"]["locks"]), baseline["locks"],
++                         "修订必须保留用户提交的锁定条件")
++        good = self.build_service(FeedbackOpener(), root=self.root / "good")
++        self.files.seed_ningbo(good, FIXTURE)
++        brief = good.submit_ai_requirement(
++            ORG, PROJECT, "tester", {"natural_language": "开放交流"},
++            "brief-adoption-cas")["item"]
++        self.requirement_ai.wait_for_job(ORG, PROJECT, brief["job_id"])
++        item = good.submit_ai_design_options(
++            ORG, PROJECT, "tester", {}, "options-adoption-cas")["item"]
++        good.ai_design_option_service.wait_for_set(ORG, PROJECT, item["set_id"],
++                                                  timeout_seconds=120)
++        option = good.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
++        with self.assertRaises(ApiError) as conflict:
++            good.adopt_ai_design_option(ORG, PROJECT, "tester", {
++                "option_id": option["option_id"], "expected_revision": 1,
++                "expected_version": 99})
++        self.assertEqual(conflict.exception.code, "STALE_ADOPTION_VERSION")
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/scripts/verify_w3_astra_remediation.py b/scripts/verify_w3_astra_remediation.py
+index 5075f19..8629eac 100644
+--- a/scripts/verify_w3_astra_remediation.py
++++ b/scripts/verify_w3_astra_remediation.py
+@@ -204,7 +204,8 @@ def main() -> int:
+             "option_id": option["option_id"], "expected_revision": 1,
+             "feedback": "把中岛移到右侧", "locks": []})
+     except Exception as error:  # noqa: BLE001
+-        feedback_rejected = getattr(error, "code", "") == "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED"
++        feedback_rejected = getattr(error, "code", "") in {
++            "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED", "INVALID_FEEDBACK_BASELINE"}
+     after = service.revision_by_id(ORG, PROJECT, option["option_revision_id"])
+     record("A-06", "R1：不受支持的反馈路径明确拒绝、不复用父版准入、保留原版本",
+            feedback_rejected and after is not None and
+diff --git a/scripts/w3_composition_findings.py b/scripts/w3_composition_findings.py
+index 2bf0ba4..0399738 100644
+--- a/scripts/w3_composition_findings.py
++++ b/scripts/w3_composition_findings.py
+@@ -173,7 +173,8 @@ def main() -> int:
+                 "option_id": option["option_id"], "expected_revision": 1,
+                 "feedback": "改成右侧中岛", "locks": []})
+         except ApiError as error:
+-            feedback["rejected"] = error.code == "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED"
++            feedback["rejected"] = error.code in {
++                "CONTROLLED_FEEDBACK_PATH_UNSUPPORTED", "INVALID_FEEDBACK_BASELINE"}
+         after = service.get_ai_design_options(ORG, PROJECT)["item"]["options"][0]
+         feedback["original_preserved"] = after["option_revision_id"] == before and after["revision_no"] == 1
+     results["feedback"] = {"ok": feedback["rejected"] and feedback["original_preserved"],
+diff --git a/scripts/w3_feedback_revision_findings.py b/scripts/w3_feedback_revision_findings.py
+new file mode 100644
+index 0000000..2b228ee
+--- /dev/null
++++ b/scripts/w3_feedback_revision_findings.py
+@@ -0,0 +1,217 @@
++"""Same-case before/after harness for controlled candidate feedback revision.
++
++Drives ONLY the real ApiService public API with a real isolated SQLite store,
++the real ControlledDesignRuntime and a local protocol stub.  On the frozen
++baseline (902952e) the controlled feedback path is rejected with
++CONTROLLED_FEEDBACK_PATH_UNSUPPORTED.  On the fixed tree the same request must
++produce a NEW revision bound to a fresh invocation scope, with a new run and
++admission, while the parent bytes stay unchanged.
++
++    python scripts/w3_feedback_revision_findings.py --code-root <dir> \
++        --label before|after --out <dir> [--expect vulnerable|fixed]
++"""
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import sys
++import tempfile
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++FIXTURE = ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09"
++ORG = "org-local"
++PROJECT = "project_ningbo_xiecheng_2026"
++
++
++def canon(value) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True,
++                      separators=(",", ":")).encode("utf-8")
++
++
++class StubResponse:
++    def __init__(self, payload) -> None:
++        self._raw = canon(payload)
++        self.headers = {}
++        self.status = 200
++
++    def read(self, _n=None) -> bytes:
++        return self._raw
++
++    def __enter__(self):
++        return self
++
++    def __exit__(self, *args):
++        return False
++
++
++class FeedbackStubOpener:
++    """Generate -> two candidates; revise -> one changed candidate."""
++
++    def __init__(self) -> None:
++        self.requests: list[dict] = []
++        self.responses: list[bytes] = []
++
++    def open(self, request, timeout=None):
++        from w3_trust_findings import candidate
++        body = bytes(getattr(request, "data", b"") or b"")
++        payload = json.loads(body.decode("utf-8"))
++        user_text = " ".join(str(message.get("content") or "")
++                             for message in payload.get("messages", []))
++        revising = "feedback_task" in user_text
++        if revising:
++            revised = candidate("loop", 10.3)
++            revised["strategy_id"] = "feedback-revised"
++            revised["concept"] = "反馈修订桩候选，不是设计成果"
++            content = canon({"candidate": revised, "parsed_intents": ["more_open"],
++                             "locked_conflicts": []}).decode("utf-8")
++        else:
++            content = canon({"candidates": [candidate("branch", 10.3),
++                                            candidate("loop", 10.3)]}).decode("utf-8")
++        response = canon({"choices": [{"message": {"content": content}}],
++                          "model": payload.get("model"), "usage": {}})
++        self.requests.append({"body": payload, "revising": revising,
++                              "request_sha256": hashlib.sha256(body).hexdigest()})
++        self.responses.append(response)
++        return StubResponse(json.loads(response))
++
++
++def build(code_root: Path, directory: Path, opener):
++    from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider
++    from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository
++    from rkd_mvp.ai_requirement_service import AIRequirementService
++    from rkd_mvp.ai_design_option_provider import DesignOptionConfig
++    from rkd_mvp.api_service import ApiService
++    from rkd_mvp.engine import MVPApp
++    from rkd_mvp.file_service import FileService
++    from rkd_mvp.requirement_service import RequirementService
++    from rkd_mvp.sqlite_store import SQLiteStore
++
++    db = directory / "app.sqlite3"
++    store = SQLiteStore(db)
++    files = FileService(db, directory)
++    requirements = RequirementService(db)
++    req_cfg = AIProviderConfig(
++        kind="synthetic", name="本地合成需求通道（非真实 AI）", model_id=None,
++        base_url=None, api_key_present=False, adapter_version="v1", prompt_version="pv",
++        schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++        max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++        real_model=False, configuration_errors=[])
++    ai = AIRequirementService(SQLiteAIRequirementRepository(db), requirements, config=req_cfg,
++                              provider_factory=lambda config: build_provider(config))
++    config = DesignOptionConfig(
++        kind="openai_compatible", name="本地协议桩（模拟）", adapter_version="stub",
++        prompt_version="pv", schema_version="rkd-ai-design-option.v1", max_candidates=2,
++        real_model=True, configuration_errors=[], base_url="http://127.0.0.1:9/stub",
++        model_id="stub-model", api_key_present=True, max_attempts=2, timeout_seconds=5,
++        external_context_allowed=False)
++    service = ApiService(MVPApp(store), files, requirement_service=requirements,
++                         ai_requirement_service=ai, runtime_root=directory,
++                         design_option_config=config, design_transport_opener=opener)
++    files.seed_ningbo(service, FIXTURE)
++    brief = service.submit_ai_requirement(
++        ORG, PROJECT, "tester", {"natural_language": "开放交流，入口在左侧，暖木色"},
++        "brief-feedback-00001")["item"]
++    ai.wait_for_job(ORG, PROJECT, brief["job_id"])
++    return service, store
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--code-root", required=True)
++    ap.add_argument("--label", required=True)
++    ap.add_argument("--out", required=True)
++    ap.add_argument("--expect", choices=("vulnerable", "fixed"), default=None)
++    args = ap.parse_args()
++    code_root = Path(args.code_root).resolve()
++    out = Path(args.out).resolve()
++    out.mkdir(parents=True, exist_ok=True)
++    for path in (code_root / "mvp", code_root, ROOT / "scripts"):
++        if str(path) not in sys.path:
++            sys.path.insert(0, str(path))
++
++    from rkd_mvp.api_service import ApiError
++    from rkd_mvp import realmodel_spatial_adapter as adapter
++
++    directory = Path(tempfile.mkdtemp())
++    opener = FeedbackStubOpener()
++    service, store = build(code_root, directory, opener)
++    detail: dict = {"ok": False, "problems": []}
++
++    item = service.submit_ai_design_options(
++        ORG, PROJECT, "tester", {}, "options-feedback-0001")["item"]
++    service.ai_design_option_service.wait_for_set(ORG, PROJECT, item["set_id"], timeout_seconds=120)
++    state = service.get_ai_design_options(ORG, PROJECT)
++    parent = state["item"]["options"][0]
++    parent_id = parent["option_revision_id"]
++    parent_model_sha = hashlib.sha256(canon(parent["model"])).hexdigest()
++    parent_admission = parent["validation"].get("controlled", {}).get("admission")
++    parent_admission_sha = hashlib.sha256(canon(parent_admission)).hexdigest() if parent_admission else None
++    expected_version = int(state["adoption"]["expected_revision"]) if state.get("adoption") else 0
++    input_hash = next(row["input_hash"] for row in state["sets"] if row["set_id"] == item["set_id"])
++    detail.update({"parent_revision_id": parent_id, "parent_revision_no": parent["revision_no"],
++                   "parent_model_sha256": parent_model_sha,
++                   "parent_admission_sha256": parent_admission_sha,
++                   "expected_version": expected_version, "input_hash": input_hash,
++                   "schema": parent["model"]["schema_version"]})
++
++    request = {"option_id": parent["option_id"], "expected_revision": parent["revision_no"],
++               "parent_revision_id": parent_id, "expected_version": expected_version,
++               "expected_input_hash": input_hash,
++               "feedback": "更开放但保留入口", "locks": ["entrance"]}
++    try:
++        result = service.revise_ai_design_option(ORG, PROJECT, "tester", request)
++        revision = result["item"]
++        detail["result"] = {"option_revision_id": revision["option_revision_id"],
++                            "revision_no": revision["revision_no"],
++                            "parent_revision_id": revision["parent_revision_id"],
++                            "run_id": (revision["validation"].get("controlled") or {}).get("run_id")}
++        detail["ok"] = bool(revision["revision_no"] == parent["revision_no"] + 1
++                            and revision["parent_revision_id"] == parent_id
++                            and detail["result"]["run_id"]
++                            and revision["option_revision_id"] != parent_id)
++        # parent must remain byte-identical
++        after = service.get_ai_design_options(ORG, PROJECT)
++        same_parent = next((row for row in after["item"]["revisions"]
++                            if row["option_revision_id"] == parent_id), None)
++        detail["parent_unchanged"] = bool(same_parent and
++            hashlib.sha256(canon(same_parent["model"])).hexdigest() == parent_model_sha)
++        new_admission = (revision["validation"].get("controlled") or {}).get("admission")
++        detail["fresh_admission"] = bool(new_admission and
++            (not parent_admission_sha or
++             hashlib.sha256(canon(new_admission)).hexdigest() != parent_admission_sha))
++        detail["adoptable"] = bool((new_admission or {}).get("adoptable"))
++        detail["visible_in_store"] = bool(service.get_ai_design_options(
++            ORG, PROJECT)["item"]["options"] and any(
++            row["option_revision_id"] == revision["option_revision_id"]
++            for row in after["item"]["revisions"]))
++        detail["ok"] = detail["ok"] and detail["parent_unchanged"] and detail["fresh_admission"]
++    except ApiError as error:
++        detail["result"] = {"error_code": error.code, "status": error.status,
++                            "message": error.message}
++        detail["problems"].append(f"反馈修订被拒绝：{error.code}: {error.message}")
++    except Exception as error:  # noqa: BLE001
++        detail["result"] = {"error": f"{type(error).__name__}: {error}"}
++        detail["problems"].append("反馈修订抛出未分类异常")
++
++    summary = "fixed" if detail["ok"] else "vulnerable"
++    audit = {"schema_version": "rkd-w3-controlled-feedback.v1", "baseline": "902952e",
++             "code_root": str(code_root), "label": args.label,
++             "summary": summary, "detail": detail,
++             "stub_revising_calls": sum(1 for item in opener.requests if item["revising"]),
++             "stub_generate_calls": sum(1 for item in opener.requests if not item["revising"]),
++             "external_calls": 0, "cost_cny": 0, "keys_used": False}
++    (out / "findings.json").write_bytes(canon(audit))
++    print(json.dumps({"summary": summary, "detail": detail,
++                      "stub_revising_calls": audit["stub_revising_calls"]},
++                     ensure_ascii=False, sort_keys=True))
++    if args.expect == "vulnerable":
++        return 0 if summary == "vulnerable" else 2
++    if args.expect == "fixed":
++        return 0 if summary == "fixed" else 2
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

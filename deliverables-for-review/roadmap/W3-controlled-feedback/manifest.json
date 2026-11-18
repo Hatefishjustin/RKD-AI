@@ -1,0 +1,80 @@
+{
+  "baseline": "902952ed31370852cbae58df2248d79c4d9e2237",
+  "code_commit": "c5446d9",
+  "counts": {
+    "checks": {
+      "fail": 0,
+      "not_run": 1,
+      "observed_pass": 5
+    },
+    "files": 10,
+    "tests": {
+      "ai_design_options": "8/8 OK",
+      "controlled_feedback": "9/9 OK",
+      "full_suite": "287/287 OK",
+      "w3_astra_remediation": "4/4 OK",
+      "w3_composition_root": "7/7 OK",
+      "w3_r1r2_source_records": "5/5 OK"
+    }
+  },
+  "files": {
+    "changes.patch": {
+      "bytes": 72696,
+      "sha256": "684ac9e79d4b619f155e265a3da6fdc5a9f7252c2714dd69c33678ba1f0ba70c"
+    },
+    "checks.json": {
+      "bytes": 3082,
+      "sha256": "b32293ef3ca1300ad1a521ef283aad75bb9bf142ac3a6c9ebc9627c265962333"
+    },
+    "code-diff.md": {
+      "bytes": 2506,
+      "sha256": "30ea1aa7563221e44e85ca7870c2449f96a90c79867a8a916dbd15c0f1eb5dbd"
+    },
+    "commit-reference.md": {
+      "bytes": 3030,
+      "sha256": "770a2c2f89f32d85ec8da0e4baa090b0f2632338d0bf2befab17ecbcae9cca27"
+    },
+    "decision-request.md": {
+      "bytes": 1634,
+      "sha256": "516fe7cf5609faebd0a9262309759461cc59ada0f9f13437937610ac79a32be3"
+    },
+    "outputs/entrypoints.json": {
+      "bytes": 2373,
+      "sha256": "321722fbcb7f7c1833769148cc81e4b16516290bd478ccbb4c03fbade6085534"
+    },
+    "outputs/findings-after.json": {
+      "bytes": 944,
+      "sha256": "a3c5d8a38163be3d5ac6196851b08415e8391e8cc19c02b4ac72261406b2497d"
+    },
+    "outputs/findings-before.json": {
+      "bytes": 1171,
+      "sha256": "0aafe6b7a534c1ba276be2b0567c70a3b1568b6da30f62393fe37769ab259881"
+    },
+    "positive-negative-cases.md": {
+      "bytes": 2562,
+      "sha256": "3d979602b70980309125e10c92cdcebcf2e4fc0ef8ecd29b503f90fae5698181"
+    },
+    "review-packet.md": {
+      "bytes": 7697,
+      "sha256": "483f1537e2320515de49cc59a31b4b8898e94d5e09b04d1331c52c5b5eb7cfe4"
+    }
+  },
+  "generated_at": "2026-11-18",
+  "not_run": [
+    "PG 数据面",
+    "HTTP 下载",
+    "浏览器 UI",
+    "真实模型调用",
+    "正式采用/发布",
+    "专业签核"
+  ],
+  "resources": {
+    "cost_cny": 0,
+    "external_calls": 0,
+    "external_disclosures": 0,
+    "images": 0,
+    "tokens": 0
+  },
+  "review": "W3-controlled-feedback",
+  "schema_version": "rkd-w3-controlled-feedback-manifest.v1"
+}
