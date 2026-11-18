@@ -1,0 +1,1328 @@
+diff --git a/PROJECT_STATUS.md b/PROJECT_STATUS.md
+index fef1bde..38d8bd0 100644
+--- a/PROJECT_STATUS.md
++++ b/PROJECT_STATUS.md
+@@ -1,9 +1,11 @@
+ # 室内设计公司自主生产系统：项目进度
+ 
+-更新时间：2026-11-17
++更新时间：2026-11-18
+ 
+ ## 当前阶段
+ 
++**2026-11-18 W3 来源记录两个 P1 整改：并发观测串线 + 幽灵父修订（基线 `f473c92`；不宣布 W3/阶段2/客户设计通过，不放行真实模型试验，不改 AD）：**两条意见都成立并在冻结基线上同例复现。**R1** 原 `_controlled_finalize` 取「项目最后一条观测」（`controlled_observations` + `fresh_observation`），同项目并发 provider invocation 会互相串线：基线实测出现**同一个候选集内两个候选分别绑定到两次不同交换**。改为每次 invocation 一个 `ObservationScope`（`controlled_run_ledger.py:264-300`），`ControlledTransport.send(scope=)` 只记入本次调用（`:234-262`），`begin_invocation()`（`:472-480`）、`issue(scope=)` 归属校验（`:557-566`，`OBSERVATION_NOT_FROM_INVOCATION`/`OBSERVATION_PROJECT_MISMATCH`）；服务在 `_run_set` 建 scope 并把 `scope.opener()` 交给 provider（`ai_design_option_service.py:327-340`），`_controlled_finalize(scope=…)` 读 `scope.latest()`（`:204-253`），空观测 fail closed（`CONTROLLED_EXCHANGE_MISSING`）。**R2** 原 `register_and_issue` 在候选持久化前就 `register_revision`，业务事务被丢弃后账本留下幽灵父修订；改为 `register_and_issue` 不再登记（`controlled_design_runtime.py:97-135`，只把 `revision_id` 写入运行记录 details 便于追责），新增 `commit_revision`（`:155-171`）由服务在仓储事务**提交后**调用（`ai_design_option_service.py:421-437`），登记失败标 `REVISION_REGISTRATION_FAILED` 且不伪造父链。同例 harness `scripts/w3_r1r2_findings.py`（只走 ApiService 组合根公共 API + 真实隔离 SQLite）：基线 3/3 vulnerable（R1 两集都落到最后那次响应、同集内候选绑到不同交换；R2 业务修订 0 条但账本登记 2 条、以该 id 作父链被接受），修复后 3/3 fixed（各自绑定 `A`/`B1`、4 个 run_id 互不重复；账本登记 0 条、父链 `PARENT_UNREGISTERED`）。新增永久回归 `mvp/tests/test_w3_r1r2_source_records.py` 4 项（并发绑定逐候选四字段断言、scope 隔离与缺失观测 fail closed、幽灵父修订拒绝、提交后登记正例），修复前 3 失败 1 通过、修复后 4/4；组合根 7/7、设计候选 8/8、Astra 4/4；全量单测 **277/277 OK**。**not_run**：HTTP 进程级下载、浏览器 UI、PG 数据面、真实模型调用（0 授权/0 费用/0 密钥）；账本与仓储两阶段提交窗口列为残余限制（崩溃时方向为 fail closed），见 `decision-request.md` D1—D4。复核包 `deliverables-for-review/roadmap/W3-r1r2-source-records/`，证据 `var/evidence/roadmap/W3-r1r2-source-records/{before,after}/`，请架构师复核。阶段1底图确认、阶段2方案、AD01—AD08、未知项与正式责任边界均未改动。
++
+ **2026-11-17 W3 Astra R1 追加整改：真实组合根接通受控运行时（基线 `446a6f6`；不宣布 W3/阶段2/客户设计通过，不放行真实模型试验，不改 AD）：**第二轮意见指出 `86e3e36` 只新增了可注入的 `ControlledDesignRuntime` 类，全仓没有任何生产创建/注入位置，此前端到端证据依赖验证脚本手工注入。已在两个真实生产组合根接线：`mvp/rkd_mvp/api_service.py:107-127`（`load_design_option_config` → 真实模型配置时 `build_controlled_runtime` → 注入 `AIDesignOptionService`，缺 `runtime_root` 抛 `RUNTIME_ROOT_REQUIRED`；`133-137` 接 `spatial_renderer`）与 `mvp/rkd_mvp/postgres_api_service.py:88-101`（同构）。启动入口未改契约：`run_api_server.py:29`、`run_postgres_api.py:37`、`run_team_api.py:21`。fail-closed（`controlled_design_runtime.py:160-200`）：`REAL_MODEL_REQUIRED` / `DESIGN_CONFIG_INCOMPLETE` / `API_KEY_REQUIRED`；服务层 `ai_design_option_service.py:259-264` 真实模型配置无 runtime 直接 503 `CONTROLLED_RUNTIME_REQUIRED`，不退回旧候选路径、不产出无法采用的候选；反馈路径仍 `CONTROLLED_FEEDBACK_PATH_UNSUPPORTED` 且原修订不变（:908）；采用边界用持久化不可变源候选重新准入（:975-1008）。同例 harness `scripts/w3_composition_findings.py`（只调 `ApiService` 公共 API）：基线 `--expect vulnerable` 5/5 vulnerable（`chain` 实为 `failed`/`DESIGN_PROVIDER_NOT_CONFIGURED`，配置根本进不了产品路径），工作树 `--expect fixed` 5/5 fixed（`succeeded`→v2+spatial+来源 fixture→`adopted_draft`；四态 完整 `complete`/6 条清单逐条 SHA 相符、无渲染 `preview_incomplete`、失败 `SPATIAL_OUTPUT_FAILED` 无 revision、取消 `cancelled` 无 revision）。新增永久回归 `mvp/tests/test_w3_composition_root.py` **7/7 OK**（含 PG 组合根启动接线与 fail-closed），第一轮 Astra 回归 4/4，全量单测 **273/273 OK**。**not_run**：HTTP 服务进程级下载、浏览器 UI、PG 数据面（无活动实例，未用桩冒充）、真实模型调用（0 授权/0 费用/0 密钥）。复核包 `deliverables-for-review/roadmap/W3-astra-r1-composition/`，证据 `var/evidence/roadmap/W3-astra-r1-composition/{before,after}/`，请架构师复核。阶段1底图确认、阶段2方案、AD01—AD08、未知项与正式责任边界均未改动。
+ 
+ **2026-11-17 W3 GPT-6 Astra 独立复核 R1—R5 限定整改已交复核包（基线 `72442c7`；不宣布 W3/阶段2/客户设计通过，不放行真实模型试验，不改 AD）：**按 GPT-6 Astra 对 `72442c7` 的独立复核（不是设计验收意见）执行。先在冻结基线代码快照 `var/evidence/roadmap/W3-astra-remediation/before/` 上用同一 harness 复现五项，再修复，再同例复跑：before 5/5 vulnerable，after 5/5 fixed。R1 接通「场地快照→provider(受控 opener)→SQLite 持久候选→受控 spatial 适配→可信准入→采用」的实际服务链（新 `controlled_design_runtime.py`，服务采用边界重新计算准入；历史 v1 保持可读，反馈路径不受支持时显式拒绝并保留原版，不复用父准入）。R2 关闭自报 `observe_exchange`，签发只由受控传输实际字节产生。R3 准入党绑定服务上下文组织/项目与仓储不可变源候选摘要，重新适配对账几何，捕获内容篡改/来源冲突/跨项目。R4 从 `path_mm`/`width_mm`/footprint 重建几何，覆盖横纵近方/越界/零宽/对象增删/连接。R5 完整性判定接入真实登记与下载，无渲染显式 preview/incomplete，下载 ZIP 重开校验字节。综合验证 12 pass / 0 fail / 1 not_run（HTTP/浏览器），新增 4 项永久回归，全量单测 266/266 OK（基线 262+新增 4，日志 `var/evidence/roadmap/W3-astra-remediation/after/full-regression.log`）。信任边界为进程内（不防御任意进程执行权限攻击者），不扩 KMS/账号/NAS。外部调用 0、外发 0、费用 0、真实密钥未使用。复核包 `deliverables-for-review/roadmap/W3-astra-remediation/`，请架构师复核。阶段1底图确认、阶段2方案、AD01—AD08、未知项与正式责任边界均未改动。
+diff --git a/mvp/rkd_mvp/ai_design_option_service.py b/mvp/rkd_mvp/ai_design_option_service.py
+index 1df4e22..9fa97fa 100644
+--- a/mvp/rkd_mvp/ai_design_option_service.py
++++ b/mvp/rkd_mvp/ai_design_option_service.py
+@@ -204,29 +204,31 @@ class AIDesignOptionService:
+     def _controlled_finalize(self, *, model: dict[str, Any], set_id: str,
+                              option_revision_id: str, config: DesignOptionConfig,
+                              input_hash: str, organization_id: str,
+-                             project_id: str, created_at: str
++                             project_id: str, created_at: str, scope: Any
+                              ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+         """Take a validated provider candidate through the controlled chain.
+ 
+-        register immutable candidate -> issue a run from the ACTUAL observed
+-        exchange -> controlled spatial adaptation -> trusted admission.  The
+-        returned adapted model is what gets persisted, so the stored revision
+-        carries both the spatial payload and its admission.  No gate is disabled
+-        and no source is fabricated: with a stub, runs are simulated and the
+-        origin is ``fixture``.
++        issue a run from THIS invocation's observed exchange -> controlled spatial
++        adaptation -> trusted admission.  The returned adapted model is what gets
++        persisted, so the stored revision carries both the spatial payload and its
++        admission.  Parent-chain registration happens only after the repository
++        transaction commits (``runtime.commit_revision``), never here.  No gate is
++        disabled and no source is fabricated: with a stub, runs are simulated and
++        the origin is ``fixture``.
+         """
+         runtime = self.controlled_runtime
+         source_candidate = copy.deepcopy(model)
+-        observations = runtime.run_service.controlled_observations(project_id=project_id)
+-        observation = runtime.fresh_observation(observations)
++        # R1: read the observation of THIS provider invocation, never "the last
++        # observation of the project" (that bound another task's exchange).
++        observation = scope.latest() if scope is not None else None
+         if observation is None:
+             raise DesignOptionProviderFailure(
+                 category="execution", code="CONTROLLED_EXCHANGE_MISSING",
+-                message="受控传输没有观测到实际模型交换，不能签发运行记录")
++                message="受控传输没有观测到本次调用的实际模型交换，不能签发运行记录")
+         record, provenance = runtime.register_and_issue(
+             project_id=project_id, revision_id=option_revision_id,
+             candidate_model=source_candidate, observation=observation,
+-            config=config, input_hash=input_hash)
++            config=config, input_hash=input_hash, scope=scope)
+         adapted, note = runtime.adapt(source_candidate, provenance=provenance,
+                                       created_at=created_at)
+         # Preserve the identity fields the service assigned to the candidate.
+@@ -321,14 +323,15 @@ class AIDesignOptionService:
+                 tx.start_set(set_id, attempt, now_iso())
+                 context = item["context"]
+                 config = DesignOptionConfig.from_public(item["config"])
++            scope = None
+             if self.controlled_runtime is not None:
+-                # The provider performs transport ONLY through the service-bound
+-                # opener, so every exchange is observed by the controlled run
+-                # service.  No caller can assert bytes or transport here.
++                # R1: every provider invocation gets its OWN observation scope,
++                # so the exchange observed for this candidate cannot come from a
++                # concurrent invocation of the same project.
+                 from .ai_design_option_provider import RealModelDesignOptionProvider
++                scope = self.controlled_runtime.begin_invocation(project_id)
+                 provider = RealModelDesignOptionProvider(
+-                    config, self.api_key,
+-                    opener=self.controlled_runtime.bound_opener(project_id))
++                    config, self.api_key, opener=scope.opener())
+             elif self.provider is not None:
+                 provider = self.provider
+             else:
+@@ -368,7 +371,7 @@ class AIDesignOptionService:
+                         model=model, set_id=set_id, option_revision_id=option_revision_id,
+                         config=config, input_hash=item["input_hash"],
+                         organization_id=organization_id, project_id=project_id,
+-                        created_at=now_iso())
++                        created_at=now_iso(), scope=scope)
+                 data = render_svg(model)
+                 relative = (attempt_dir / f"layout-{option_revision_id}.svg").relative_to(self.runtime_root).as_posix()
+                 (self.runtime_root / relative).write_bytes(data)
+@@ -381,6 +384,7 @@ class AIDesignOptionService:
+                 if not current or current["status"] != "running" or int(current["attempt_count"]) != attempt:
+                     raise DesignOptionProviderFailure(category="conflict", code="LATE_RESULT_DISCARDED",
+                                                       message="候选集状态已变化，迟到结果未写入")
++                committed: list[tuple[str, str]] = []
+                 for option_revision_id, model, relative, data, metadata in prepared:
+                     if metadata is not None:
+                         # Controlled chain: the model already carries its
+@@ -414,7 +418,23 @@ class AIDesignOptionService:
+                         "content_type": "image/svg+xml", "relative_path": relative,
+                         "sha256": hashlib.sha256(data).hexdigest(), "size_bytes": len(data), "created_at": now_iso(),
+                     })
++                    if metadata is not None:
++                        committed.append((option_revision_id, metadata["provenance"]["sha256"]))
+                 tx.update_set(set_id, status="succeeded", phase="completed", updated_at=now_iso())
++            # R2: parent-chain registration happens ONLY after the repository
++            # transaction committed, so a discarded candidate can never leave a
++            # phantom parent in the run ledger.
++            for revision_id, candidate_sha256 in committed:
++                try:
++                    self.controlled_runtime.commit_revision(
++                        project_id=project_id, revision_id=revision_id,
++                        candidate_sha256=candidate_sha256)
++                except Exception as error:  # noqa: BLE001 - fail closed, never fake a parent
++                    with self.repository.transaction(organization_id, project_id, write=True) as tx:
++                        tx.update_set(set_id, status="failed", phase="failed", updated_at=now_iso(),
++                                      error_code="REVISION_REGISTRATION_FAILED",
++                                      error_message=f"候选已写入但父链登记失败，不能作为后续父修订：{error}")
++                    raise
+             attempt_dir = None
+         except DesignOptionProviderFailure as failure:
+             self._finish_failure(organization_id, project_id, set_id, failure)
+diff --git a/mvp/rkd_mvp/controlled_design_runtime.py b/mvp/rkd_mvp/controlled_design_runtime.py
+index 56563af..2a13a72 100644
+--- a/mvp/rkd_mvp/controlled_design_runtime.py
++++ b/mvp/rkd_mvp/controlled_design_runtime.py
+@@ -30,7 +30,7 @@ from typing import Any
+ from . import realmodel_spatial_adapter as A
+ from . import site_snapshot as SS
+ from .admission import admit_document
+-from .controlled_run_ledger import ControlledRunService
++from .controlled_run_ledger import ControlledRunService, RunLedgerError
+ from .ai_design_option_provider import DesignOptionConfig, load_design_option_config
+ 
+ 
+@@ -81,20 +81,34 @@ class ControlledDesignRuntime:
+     def bound_opener(self, project_id: str) -> Any:
+         return self.run_service.transport().bind(project_id)
+ 
++    def begin_invocation(self, project_id: str) -> Any:
++        """One provider invocation -> one observation scope (R1).
++
++        The provider may only use ``scope.opener()`` and the candidate may only
++        be signed from ``scope.latest()``, so concurrent invocations on the same
++        project cannot bind each other's exchange.
++        """
++        return self.run_service.begin_invocation(str(project_id))
++
+     def verifier(self) -> Any:
+         return self.run_service.verifier()
+ 
+     # -- controlled run issuance --------------------------------------------
+     def register_and_issue(self, *, project_id: str, revision_id: str,
+                            candidate_model: dict, observation: Any, config: Any,
+-                           input_hash: str,
++                           input_hash: str, scope: Any = None,
+                            parent_revision_id: str | None = None) -> tuple[dict, dict]:
+-        """Issue a run bound to the immutable candidate + observed exchange."""
++        """Issue a run bound to the immutable candidate + its OWN invocation's exchange.
++
++        The revision is deliberately NOT registered here (R2): a revision may only
++        become a parent after the business candidate is committed, which is what
++        :meth:`commit_revision` records.
++        """
+         cand, _ = A.candidate_from_persisted(candidate_model)
+         candidate_sha = A.sha256_hex(cand)
+-        self.run_service.register_revision(
+-            project_id=project_id, revision_id=revision_id,
+-            candidate_sha256=candidate_sha)
++        if observation is None:
++            raise RunLedgerError("CONTROLLED_EXCHANGE_MISSING",
++                                 "受控传输没有观测到本次调用的实际模型交换，不能签发运行记录")
+         record = self.run_service.issue(
+             observation=observation, project_id=project_id,
+             candidate_sha256=candidate_sha, input_hash=input_hash,
+@@ -104,7 +118,9 @@ class ControlledDesignRuntime:
+             site_snapshot_sha256=self.snapshot["sha256"],
+             basemap_files_sha256=self.snapshot["basemap_files_sha256"],
+             parent_revision_id=parent_revision_id,
+-            details={"transport_note": "受控传输实际交换；注入桩恒为模拟，不是真实模型"})
++            details={"revision_id": revision_id,
++                     "transport_note": "受控传输实际交换；注入桩恒为模拟，不是真实模型"},
++            scope=scope)
+         # Origin declaration follows the SIGNED run record, never a hard-coded
+         # claim: a stub exchange stays fixture/simulated, a verified live run
+         # may be declared real_model by a separate authorized path.
+@@ -135,6 +151,22 @@ class ControlledDesignRuntime:
+         }
+         return record, provenance
+ 
++    # -- post-commit parent-chain registration (R2) --------------------------
++    def commit_revision(self, *, project_id: str, revision_id: str,
++                        candidate_sha256: str) -> dict:
++        """Register a revision as a valid parent ONLY after the business row exists.
++
++        Called by the service after its repository transaction committed.  A
++        candidate that never persisted therefore never becomes a parent, so the
++        ledger cannot hold a phantom revision (R2).
++        """
++        if not candidate_sha256:
++            raise RunLedgerError("REVISION_REGISTRATION_INVALID",
++                                 "登记父修订必须带该候选不可变来源摘要")
++        return self.run_service.register_revision(
++            project_id=project_id, revision_id=revision_id,
++            candidate_sha256=candidate_sha256)
++
+     # -- controlled adaptation ----------------------------------------------
+     def adapt(self, persisted_candidate: dict, *, provenance: dict,
+               created_at: str) -> tuple[dict, dict]:
+@@ -152,10 +184,6 @@ class ControlledDesignRuntime:
+             organization_id=organization_id, project_id=project_id,
+             source_candidate=source_candidate, provenance=provenance)
+ 
+-    @staticmethod
+-    def fresh_observation(observations: list[Any]) -> Any | None:
+-        return observations[-1] if observations else None
+-
+ 
+ def build_controlled_runtime(*, runtime_root: str | Path,
+                              config: DesignOptionConfig | None = None,
+diff --git a/mvp/rkd_mvp/controlled_run_ledger.py b/mvp/rkd_mvp/controlled_run_ledger.py
+index 9fc510c..e0fdad6 100644
+--- a/mvp/rkd_mvp/controlled_run_ledger.py
++++ b/mvp/rkd_mvp/controlled_run_ledger.py
+@@ -20,10 +20,12 @@ v2 rules:
+    request/response bytes.  ``simulated`` is DERIVED by the service:
+    an injected protocol stub is always simulated; only a live transport to a
+    non-loopback endpoint can produce ``kind="real_model_run"``.
+-3. **A parent must exist in the same project.**  ``register_revision()`` is
+-   called by the real repository when a revision is persisted.  An invented
+-   parent id fails ``PARENT_UNREGISTERED``; a mismatched parent digest fails
+-   ``PARENT_CANDIDATE_MISMATCH``.
++3. **A parent must exist in the same project AND have been committed.**  A
++   revision becomes a parent only after the business repository transaction
++   committed and the service registered it (``commit_revision``).  An invented
++   or never-persisted parent id fails ``PARENT_UNREGISTERED``; a mismatched
++   parent digest fails ``PARENT_CANDIDATE_MISMATCH``.  Registering before
++   persistence would leave a phantom parent chain (fixed in this batch).
+ 4. **Restart policy.**  The key and an append-only record log persist under the
+    service directory, so records issued before a restart still verify.  If the
+    key is missing/unreadable, the service refuses to verify anything issued
+@@ -35,6 +37,12 @@ v2 rules:
+ 5. **Isolation.**  ``isolated_test`` mode exists for negative tests only; its
+    records are marked ``admission_scope=not_validated`` and can never be used
+    as adoptable evidence.
++6. **One invocation, one observation scope.**  ``begin_invocation()`` returns an
++   ``ObservationScope``; the provider only gets ``scope.opener()`` and a
++   candidate may only be signed from ``scope.latest()``.  A run signed with
++   another invocation's observation fails ``OBSERVATION_NOT_FROM_INVOCATION``,
++   so concurrent invocations on the same project cannot cross-bind their
++   request/response bytes.
+ 
+ No network calls, no external keys, no reads outside the service directory.
+ """
+@@ -223,7 +231,8 @@ class ControlledTransport:
+         """
+         return BoundControlledOpener(self, str(project_id))
+ 
+-    def send(self, *, project_id: str, request: Any) -> ControlledResponse:
++    def send(self, *, project_id: str, request: Any,
++             scope: "ObservationScope | None" = None) -> ControlledResponse:
+         url = str(getattr(request, "full_url", "") or "")
+         endpoint = url
+         body = bytes(getattr(request, "data", b"") or b"")
+@@ -243,25 +252,74 @@ class ControlledTransport:
+             project_id=project_id, transport=self._transport, endpoint=endpoint,
+             request_bytes=body, response_bytes=raw, simulated=simulated,
+             exec_token=_EXECUTION_TOKEN)
++        if scope is not None:
++            # R1: the observation belongs to THIS invocation only.  Binding a
++            # candidate reads the invocation scope, never "the project's last
++            # observation", so concurrent invocations cannot cross-bind.
++            scope._record(observation)
+         return ControlledResponse(raw, headers,
+                                   response_sha256=observation.response_sha256)
+ 
+ 
++class ObservationScope:
++    """Per-invocation observation handle (R1).
++
++    One provider invocation owns one scope; every exchange that invocation
++    performs is recorded here and nowhere else.  Issuing a candidate may only
++    use an observation from its own scope, which removes the "last observation
++    of the project" race between concurrent invocations.
++    """
++
++    def __init__(self, transport: ControlledTransport, project_id: str) -> None:
++        self._transport = transport
++        self.project_id = str(project_id)
++        self.observations: list[ExchangeObservation] = []
++        self._lock = threading.Lock()
++
++    def opener(self) -> "BoundControlledOpener":
++        return BoundControlledOpener(self._transport, self.project_id, scope=self)
++
++    def _record(self, observation: ExchangeObservation) -> None:
++        with self._lock:
++            self.observations.append(observation)
++
++    def latest(self) -> ExchangeObservation | None:
++        """The LAST exchange of this invocation (retries precede the success)."""
++        with self._lock:
++            return self.observations[-1] if self.observations else None
++
++    def owns(self, observation: ExchangeObservation | None) -> bool:
++        if observation is None:
++            return False
++        with self._lock:
++            return any(item.observation_id == observation.observation_id
++                       for item in self.observations)
++
++    def __len__(self) -> int:
++        with self._lock:
++            return len(self.observations)
++
++
++
+ class BoundControlledOpener:
+     """Project-bound opener face given to the real provider.
+ 
+     Only ``open`` is exposed.  Response bytes come from the actual exchange the
+     controlled transport performs; no self-report surface is available here.
++    Each opener belongs to ONE invocation scope, which is where the exchanges it
++    causes are recorded.
+     """
+ 
+-    def __init__(self, transport: ControlledTransport, project_id: str) -> None:
++    def __init__(self, transport: ControlledTransport, project_id: str,
++                 scope: ObservationScope | None = None) -> None:
+         self._transport = transport
+         self._project_id = project_id
+-        self.observations: list[ExchangeObservation] = []
++        self._scope = scope if scope is not None else ObservationScope(transport, project_id)
++        self.observations = self._scope.observations
+ 
+     def open(self, request: Any, timeout: float | None = None) -> ControlledResponse:
+-        response = self._transport.send(project_id=self._project_id, request=request)
+-        return response
++        return self._transport.send(project_id=self._project_id, request=request,
++                                    scope=self._scope)
+ 
+ 
+ def build_live_opener() -> Any:
+@@ -411,6 +469,15 @@ class ControlledRunService:
+         """
+         return self._transport
+ 
++    def begin_invocation(self, project_id: str) -> ObservationScope:
++        """Open a per-invocation observation scope for one provider call.
++
++        The provider receives ``scope.opener()``; the candidate signed after the
++        call reads ``scope.latest()``.  Two concurrent invocations on the same
++        project therefore never share an observation (R1).
++        """
++        return ObservationScope(self._transport, str(project_id))
++
+     def _record_exchange(self, *, project_id: str, transport: str, endpoint: str,
+                          request_bytes: bytes, response_bytes: bytes, simulated: bool,
+                          exec_token: object) -> ExchangeObservation:
+@@ -476,7 +543,8 @@ class ControlledRunService:
+               model: str, prompt_version: str, site_snapshot_sha256: str,
+               basemap_files_sha256: str,
+               parent_revision_id: str | None = None,
+-              details: dict | None = None) -> dict:
++              details: dict | None = None,
++              scope: ObservationScope | None = None) -> dict:
+         """Issue a run record. Only THIS service can turn an observation into one."""
+         if _OBSERVATION_TOKEN is None:  # pragma: no cover - never true
+             raise RunLedgerError("OBSERVATION_REQUIRED", "缺少观测")
+@@ -486,6 +554,16 @@ class ControlledRunService:
+                 self._observations.get(observation.observation_id) is not observation:
+             raise RunLedgerError("OBSERVATION_FORGED",
+                                  "只能由本服务受控传输实际观测到的请求/响应签发运行记录")
++        if scope is not None:
++            # R1: the exchange must belong to THIS invocation, not merely to the
++            # same project (that was the cross-binding defect).
++            if scope.project_id != str(project_id):
++                raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH",
++                                     "invocation 句柄的项目与运行项目不一致")
++            if not scope.owns(observation):
++                raise RunLedgerError(
++                    "OBSERVATION_NOT_FROM_INVOCATION",
++                    "只能用本次调用自己产生的观测签发运行记录；不接受同项目其他调用的交换")
+         if observation.project_id != str(project_id):
+             raise RunLedgerError("OBSERVATION_PROJECT_MISMATCH", "观测项目与运行项目不一致")
+         if observation.transport == "live_http" and observation.simulated is False and \
+diff --git a/mvp/tests/test_w3_r1r2_source_records.py b/mvp/tests/test_w3_r1r2_source_records.py
+new file mode 100644
+index 0000000..f8c54d6
+--- /dev/null
++++ b/mvp/tests/test_w3_r1r2_source_records.py
+@@ -0,0 +1,422 @@
++"""W3 来源记录 P1 永久回归：并发观测串线 + 幽灵父修订。
++
++两个缺陷都发生在「候选签发」这一层，所以测试全部走
++``ApiService`` 组合根 → 真实 ``ControlledDesignRuntime`` → 真实隔离 SQLite
++仓储，不手工插入记录、不调用私有 helper 代替产品入口。
++
++R1 并发串线
++    同一项目两个并发 provider invocation，必须以各自的观测签发：每个持久候选的
++    run_id、request/response 摘要、input hash、候选摘要都对应自己那次调用；缺失
++    观测或用别人的观测必须 fail closed。
++
++R2 幽灵父修订
++    候选没有成功写入业务仓储时，账本不得留下可当父链的修订；父链必须只认
++    「业务候选已提交」之后的登记。
++
++所有交换都是本地协议桩（``simulated=True``），不外发、不花费用、不用真实密钥。
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import sqlite3
++import sys
++import tempfile
++import threading
++import time
++import unittest
++from pathlib import Path
++from urllib.request import Request
++
++ROOT = Path(__file__).resolve().parents[2]
++for _p in (ROOT / "mvp", ROOT / "scripts", ROOT):
++    if str(_p) not in sys.path:
++        sys.path.insert(0, str(_p))
++
++from rkd_mvp import realmodel_spatial_adapter as adapter  # noqa: E402
++from rkd_mvp.ai_design_option_provider import DesignOptionConfig  # noqa: E402
++from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider  # noqa: E402
++from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository  # noqa: E402
++from rkd_mvp.ai_requirement_service import AIRequirementService  # noqa: E402
++from rkd_mvp.api_service import ApiService  # noqa: E402
++from rkd_mvp.engine import MVPApp  # noqa: E402
++from rkd_mvp.file_service import FileService, NINGBO_PROJECT_ID  # noqa: E402
++from rkd_mvp.requirement_service import RequirementService  # noqa: E402
++from rkd_mvp.sqlite_store import SQLiteStore  # noqa: E402
++from w3_trust_findings import candidate  # noqa: E402
++
++ORG = "org-local"
++PROJECT = NINGBO_PROJECT_ID
++FIXTURE = ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09"
++
++
++def canon(value) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True,
++                      separators=(",", ":")).encode("utf-8")
++
++
++def real_config() -> DesignOptionConfig:
++    return DesignOptionConfig(
++        kind="openai_compatible", name="本地协议桩（模拟）", adapter_version="stub",
++        prompt_version="pv", schema_version="rkd-ai-design-option.v1",
++        max_candidates=2, real_model=True, configuration_errors=[],
++        base_url="http://127.0.0.1:9/stub", model_id="stub-model",
++        api_key_present=True, max_attempts=2, timeout_seconds=5,
++        external_context_allowed=False)
++
++
++class StubResponse:
++    def __init__(self, payload) -> None:
++        self._raw = canon(payload)
++        self.headers = {}
++        self.status = 200
++
++    def read(self, _n=None) -> bytes:
++        return self._raw
++
++    def __enter__(self):
++        return self
++
++    def __exit__(self, *args):
++        return False
++
++
++class PerCallOpener:
++    """The Nth exchange gets marker N; the exact bytes are kept for assertions.
++
++    The first response carries a padded field so its parse is slow: the second
++    invocation records its exchange while the first is still between "exchange
++    recorded" and "observation read".  A project-last binding cannot survive it.
++    """
++
++    def __init__(self, pad_first: int = 3_000_000) -> None:
++        self.lock = threading.Lock()
++        self.calls = 0
++        self.pad_first = pad_first
++        self.responses: list[bytes] = []
++        self.requests: list[bytes] = []
++        self.markers: list[str] = []
++
++    def open(self, request, timeout=None):
++        body = bytes(getattr(request, "data", b"") or b"")
++        with self.lock:
++            index = self.calls
++            self.calls += 1
++            self.requests.append(body)
++        marker = "A" if index == 0 else f"B{index}"
++        pad = self.pad_first if index == 0 else 0
++        branch, loop = candidate("branch", 10.3), candidate("loop", 10.3)
++        for item in (branch, loop):
++            item["tradeoffs"] = [f"{marker}-invocation", "仅验证工程链"]
++            item["concept"] = f"{marker} 桩候选" + ("p" * pad)
++        content = canon({"candidates": [branch, loop]}).decode("utf-8")
++        response = canon({"choices": [{"message": {"content": content}}],
++                          "model": "stub-model", "usage": {}})
++        with self.lock:
++            self.responses.append(response)
++            self.markers.append(marker)
++        return StubResponse(json.loads(response))
++
++
++class BlockingOpener:
++    def __init__(self) -> None:
++        self.entered = threading.Event()
++        self.release = threading.Event()
++
++    def open(self, request, timeout=None):
++        self.entered.set()
++        self.release.wait(timeout=20)
++        content = canon({"candidates": [candidate("branch", 10.3),
++                                        candidate("loop", 10.3)]}).decode("utf-8")
++        return StubResponse({"choices": [{"message": {"content": content}}],
++                             "model": "stub-model", "usage": {}})
++
++
++class SourceRecordTests(unittest.TestCase):
++    """Every case runs through the real composition root and public API."""
++
++    def setUp(self):
++        self.directory = tempfile.TemporaryDirectory()
++        self.root = Path(self.directory.name)
++        self.db = self.root / "app.sqlite3"
++        self.store = SQLiteStore(self.db)
++        self.files = FileService(self.db, self.root)
++        self.requirements = RequirementService(self.db)
++        req_cfg = AIProviderConfig(
++            kind="synthetic", name="本地合成需求通道（非真实 AI）", model_id=None,
++            base_url=None, api_key_present=False, adapter_version="rkd-model-provider.v1",
++            prompt_version="requirement-understanding.zh-CN.v1",
++            schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++            max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++            real_model=False, configuration_errors=[])
++        self.requirement_ai = AIRequirementService(
++            SQLiteAIRequirementRepository(self.db), self.requirements, config=req_cfg,
++            provider_factory=lambda config: build_provider(config))
++
++    def tearDown(self):
++        try:
++            self.requirement_ai.wait_for_idle()
++        except Exception:  # noqa: BLE001
++            pass
++        for service in getattr(self, "_services", []):
++            try:
++                service.ai_design_option_service.wait_for_idle(timeout_seconds=20)
++            except Exception:  # noqa: BLE001
++                pass
++        self.store.close()
++        self.directory.cleanup()
++
++    # ---------------------------------------------------------------- helpers
++    def build_service(self, root: Path | None = None, *, opener,
++                      db: Path | None = None) -> ApiService:
++        root = root or self.root
++        root.mkdir(parents=True, exist_ok=True)
++        db = db or self.db
++        store = SQLiteStore(db) if db != self.db else self.store
++        service = ApiService(
++            MVPApp(store), FileService(db, root), requirement_service=RequirementService(db),
++            ai_requirement_service=self.requirement_ai, runtime_root=root,
++            design_option_config=real_config(), design_transport_opener=opener)
++        getattr(self, "_services", []).append(service)
++        return service
++
++    def brief(self, service: ApiService, key: str) -> None:
++        self.files.seed_ningbo(service, FIXTURE)
++        item = service.submit_ai_requirement(
++            ORG, PROJECT, "tester",
++            {"natural_language": "开放交流，入口在左侧，暖木色"}, key)["item"]
++        self.requirement_ai.wait_for_job(ORG, PROJECT, item["job_id"])
++
++    def revisions(self, service: ApiService, set_id: str) -> list[dict]:
++        with service.ai_design_option_service.repository.transaction(ORG, PROJECT) as tx:
++            return tx.revisions_for_set(set_id)
++
++    def set_row(self, service: ApiService, set_id: str) -> dict:
++        return next(row for row in service.get_ai_design_options(ORG, PROJECT)["sets"]
++                    if row["set_id"] == set_id)
++
++    def stored_phase(self, set_id: str):
++        connection = sqlite3.connect(self.db, timeout=10)
++        try:
++            return connection.execute(
++                "SELECT status, phase FROM ai_design_option_sets WHERE set_id=?",
++                (set_id,)).fetchone()
++        finally:
++            connection.close()
++
++    def stored_revisions(self, set_id: str) -> int:
++        connection = sqlite3.connect(self.db, timeout=10)
++        try:
++            return connection.execute(
++                "SELECT COUNT(*) FROM ai_design_option_revisions WHERE set_id=?",
++                (set_id,)).fetchone()[0]
++        finally:
++            connection.close()
++
++    def exchange(self, runtime, marker: str):
++        """One real controlled exchange through the runtime's invocation handle."""
++        scope = runtime.begin_invocation(PROJECT)
++        scope.opener().open(Request(f"http://127.0.0.1:9/stub?marker={marker}", b"{}"))
++        return scope
++
++    # ------------------------------------------------------------- R1 (a)
++    def test_concurrent_invocations_each_bind_their_own_exchange(self):
++        opener = PerCallOpener()
++        service = self.build_service(opener=opener)
++        self.brief(service, "brief-r1-concurrent")
++        runtime = service.controlled_design_runtime
++
++        set_a = service.submit_ai_design_options(
++            ORG, PROJECT, "tester", {}, "options-r1-concurrent-a")["item"]["set_id"]
++        deadline = time.monotonic() + 15
++        while time.monotonic() < deadline and opener.calls < 1:
++            time.sleep(0.001)
++        self.assertGreaterEqual(opener.calls, 1, "第一个调用没有发起交换")
++        set_b = service.submit_ai_design_options(
++            ORG, PROJECT, "tester", {}, "options-r1-concurrent-b")["item"]["set_id"]
++        for set_id in (set_a, set_b):
++            service.ai_design_option_service.wait_for_set(
++                ORG, PROJECT, set_id, timeout_seconds=120)
++        service.ai_design_option_service.wait_for_idle(timeout_seconds=30)
++
++        records = {record["run_id"]: record for record in runtime.run_service.export_public()}
++        marker_of = {hashlib.sha256(raw).hexdigest(): marker
++                     for raw, marker in zip(opener.responses, opener.markers)}
++        request_digests = {hashlib.sha256(raw).hexdigest() for raw in opener.requests}
++        self.assertEqual(len(opener.responses), 2, "两次并发调用应各发生一次交换")
++
++        seen: dict[str, set] = {}
++        for set_id in (set_a, set_b):
++            row = self.set_row(service, set_id)
++            self.assertEqual(row["status"], "succeeded")
++            revisions = self.revisions(service, set_id)
++            self.assertEqual(len(revisions), 2)
++            markers = set()
++            for revision in revisions:
++                controlled = revision["validation"]["controlled"]
++                record = records[controlled["run_id"]]
++                # 1) the run must be signed from THIS invocation's exchange
++                markers.add(marker_of[record["response_sha256"]])
++                # 2) the request digest must be one actually sent on the wire
++                self.assertIn(record["request_sha256"], request_digests)
++                # 3) input hash belongs to this persisted candidate set
++                self.assertEqual(record["input_hash"], row["input_hash"])
++                # 4) candidate digest is this candidate's own immutable source
++                source_sha = adapter.sha256_hex(adapter.candidate_from_persisted(
++                    controlled["source_candidate"])[0])
++                self.assertEqual(record["candidate_sha256"], source_sha)
++                self.assertEqual(controlled["provenance"]["sha256"], source_sha)
++            self.assertEqual(len(markers), 1,
++                             f"候选集 {set_id[-6:]} 内不同候选绑定到了不同交换")
++            seen[set_id] = markers
++
++        every = set().union(*seen.values())
++        self.assertEqual(len(every), 2,
++                         "两个并发调用没有分别绑定各自的交换（观测串线）")
++        self.assertEqual(len({record["run_id"] for record in records.values()}), 4)
++
++    # ------------------------------------------------------------- R1 (b)
++    def test_observation_scope_isolated_and_missing_fails_closed(self):
++        opener = PerCallOpener(pad_first=0)
++        service = self.build_service(opener=opener)
++        self.brief(service, "brief-r1-scope")
++        runtime = service.controlled_design_runtime
++        self.assertTrue(hasattr(runtime, "begin_invocation"),
++                        "运行时必须提供按 invocation 的观测句柄")
++
++        item = service.submit_ai_design_options(
++            ORG, PROJECT, "tester", {}, "options-r1-scope")["item"]
++        service.ai_design_option_service.wait_for_set(ORG, PROJECT, item["set_id"],
++                                                      timeout_seconds=120)
++        revisions = self.revisions(service, item["set_id"])
++        model = revisions[0]["validation"]["controlled"]["source_candidate"]
++
++        scope_a = self.exchange(runtime, "a")
++        scope_b = self.exchange(runtime, "b")
++        self.assertEqual(len(scope_a.observations), 1)
++        self.assertEqual(len(scope_b.observations), 1)
++        self.assertNotEqual(scope_a.latest().observation_id,
++                            scope_b.latest().observation_id)
++
++        # missing observation -> fail closed
++        with self.assertRaises(Exception) as missing:
++            runtime.register_and_issue(
++                project_id=PROJECT, revision_id="rev-empty-000001",
++                candidate_model=model, observation=None,
++                scope=runtime.begin_invocation(PROJECT), config=real_config(),
++                input_hash="h" * 64)
++        self.assertEqual(getattr(missing.exception, "code", ""), "CONTROLLED_EXCHANGE_MISSING")
++
++        # another invocation's observation -> fail closed
++        with self.assertRaises(Exception) as foreign:
++            runtime.register_and_issue(
++                project_id=PROJECT, revision_id="rev-foreign-00001",
++                candidate_model=model, observation=scope_b.latest(), scope=scope_a,
++                config=real_config(), input_hash="h" * 64)
++        self.assertEqual(getattr(foreign.exception, "code", ""), "OBSERVATION_NOT_FROM_INVOCATION")
++
++        # own observation -> accepted, bound to exactly this exchange
++        record, provenance = runtime.register_and_issue(
++            project_id=PROJECT, revision_id="rev-own-0000001", candidate_model=model,
++            observation=scope_a.latest(), scope=scope_a, config=real_config(),
++            input_hash="h" * 64)
++        self.assertEqual(record["observation_id"], scope_a.latest().observation_id)
++        self.assertEqual(record["response_sha256"], scope_a.latest().response_sha256)
++        self.assertEqual(provenance["design_origin"]["run_refs"], [record["run_id"]])
++
++    # ---------------------------------------------------------------- R2
++    def test_phantom_parent_revision_rejected(self):
++        healthy = PerCallOpener(pad_first=0)
++        service = self.build_service(opener=healthy)
++        self.brief(service, "brief-r2-phantom")
++        ok_set = service.submit_ai_design_options(
++            ORG, PROJECT, "tester", {}, "options-r2-healthy")["item"]["set_id"]
++        service.ai_design_option_service.wait_for_set(ORG, PROJECT, ok_set,
++                                                      timeout_seconds=120)
++        ok_rows = self.revisions(service, ok_set)
++        self.assertEqual(len(ok_rows), 2)
++        model = ok_rows[0]["validation"]["controlled"]["source_candidate"]
++
++        # second composition root over the same store discards the running set
++        # after the controlled finalize (public API only)
++        blocking = BlockingOpener()
++        owner = self.build_service(self.root / "owner", opener=blocking)
++        shadow = self.build_service(self.root / "shadow", opener=BlockingOpener())
++        owner_runtime = owner.controlled_design_runtime
++
++        bad_set = owner.submit_ai_design_options(
++            ORG, PROJECT, "tester", {}, "options-r2-phantom")["item"]["set_id"]
++        self.assertTrue(blocking.entered.wait(timeout=20), "阻塞桩没有被调用")
++        blocking.release.set()
++        deadline = time.monotonic() + 30
++        while time.monotonic() < deadline:
++            row = self.stored_phase(bad_set)
++            if row and row[1] == "outputs":
++                break
++        shadow.get_ai_design_options(ORG, PROJECT)   # reclaim -> WORKER_RESTARTED
++        for _ in range(400):
++            row = self.stored_phase(bad_set)
++            if row and row[0] in {"failed", "cancelled", "succeeded"}:
++                break
++            time.sleep(0.01)
++        time.sleep(0.3)
++
++        self.assertEqual(self.stored_revisions(bad_set), 0,
++                         "被丢弃的候选集不应写业务修订")
++        self.assertNotEqual((self.stored_phase(bad_set) or [None])[0], "succeeded")
++        registered = [key for key in owner_runtime.run_service._revisions
++                      if key[0] == PROJECT]
++        self.assertEqual(
++            registered, [],
++            "业务候选没有提交，账本不得登记可当父链的修订（幽灵父修订）")
++
++        # whatever id the run record targeted must not be usable as a parent
++        target = None
++        for record in owner_runtime.run_service.export_public():
++            revision_id = (record.get("details") or {}).get("revision_id")
++            if revision_id:
++                target = revision_id
++                break
++        self.assertIsNotNone(target, "运行记录必须记录本次尝试的修订号，便于追责与父链拒绝")
++
++        scope = self.exchange(owner_runtime, "parent")
++        with self.assertRaises(Exception) as rejected:
++            owner_runtime.register_and_issue(
++                project_id=PROJECT, revision_id="rev-child-000001",
++                candidate_model=model, observation=scope.latest(), scope=scope,
++                config=real_config(), input_hash="h" * 64,
++                parent_revision_id=target)
++        self.assertIn(getattr(rejected.exception, "code", ""),
++                      {"PARENT_UNREGISTERED", "PARENT_NOT_COMMITTED"})
++
++    def test_registration_happens_only_after_commit(self):
++        opener = PerCallOpener(pad_first=0)
++        service = self.build_service(opener=opener)
++        self.brief(service, "brief-r2-commit")
++        runtime = service.controlled_design_runtime
++        self.assertEqual([key for key in runtime.run_service._revisions
++                          if key[0] == PROJECT], [],
++                         "新运行时不应有历史登记")
++
++        set_id = service.submit_ai_design_options(
++            ORG, PROJECT, "tester", {}, "options-r2-commit")["item"]["set_id"]
++        service.ai_design_option_service.wait_for_set(ORG, PROJECT, set_id,
++                                                      timeout_seconds=120)
++        revisions = self.revisions(service, set_id)
++        self.assertEqual(len(revisions), 2)
++
++        registered = {(key[1], value) for key, value in runtime.run_service._revisions.items()
++                      if key[0] == PROJECT}
++        self.assertEqual({key for key, _ in registered},
++                         {revision["option_revision_id"] for revision in revisions},
++                         "已提交的候选必须全部登记")
++        for revision in revisions:
++            controlled = revision["validation"]["controlled"]
++            source_sha = adapter.sha256_hex(adapter.candidate_from_persisted(
++                controlled["source_candidate"])[0])
++            self.assertIn((revision["option_revision_id"], source_sha), registered,
++                          "登记摘要必须是该候选不可变来源的摘要")
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/scripts/w3_r1r2_findings.py b/scripts/w3_r1r2_findings.py
+new file mode 100644
+index 0000000..f4d916a
+--- /dev/null
++++ b/scripts/w3_r1r2_findings.py
+@@ -0,0 +1,504 @@
++"""Reproduce the two P1 source-record defects against a given code root.
++
++R1 concurrent observation cross-binding
++    ``AIDesignOptionService._controlled_finalize`` bound a candidate to "the last
++    observation of this project", so with two concurrent provider invocations on
++    the SAME project one candidate could be signed with the other invocation's
++    exchange (wrong run_id / request / response / input hash binding).
++
++R2 phantom parent revision
++    ``ControlledDesignRuntime.register_and_issue`` registered the revision in the
++    run ledger BEFORE the business candidate was persisted.  When the repository
++    transaction was discarded, the ledger still held a parent the business
++    repository never contained, so it could be claimed as a parent later.
++
++The same harness runs on the frozen review commit (f473c92) and on the fixed
++tree.  It drives ONLY the real application composition root (``ApiService``
++public API), the real injected ``ControlledDesignRuntime`` and a real isolated
++SQLite repository.  No private helper replaces the product entry point, no paid
++model call, no real key, every exchange is a local protocol stub
++(``simulated=True``).
++
++    python scripts/w3_r1r2_findings.py --code-root <dir> \
++        --label before|after --out <dir> [--expect vulnerable|fixed]
++"""
++from __future__ import annotations
++
++import argparse
++import hashlib
++import inspect
++import json
++import sqlite3
++import sys
++import tempfile
++import threading
++import time
++from pathlib import Path
++from urllib.request import Request
++
++ROOT = Path(__file__).resolve().parents[1]
++FIXTURE = ROOT / "fixtures" / "ningbo-xiecheng" / "2026-09"
++ORG = "org-local"
++PROJECT = "project_ningbo_xiecheng_2026"
++
++
++def canon(value) -> bytes:
++    return json.dumps(value, ensure_ascii=False, sort_keys=True,
++                      separators=(",", ":")).encode("utf-8")
++
++
++class StubResponse:
++    def __init__(self, payload) -> None:
++        self._raw = canon(payload)
++        self.headers = {}
++        self.status = 200
++
++    def read(self, _n=None) -> bytes:
++        return self._raw
++
++    def __enter__(self):
++        return self
++
++    def __exit__(self, *args):
++        return False
++
++
++class PerCallOpener:
++    """Protocol stub: the Nth call gets marker N and its exact bytes are kept.
++
++    The first call carries a padded concept string, so its JSON parse is slow
++    enough that the second invocation records its exchange while the first is
++    still between "exchange recorded" and "observation read".  That is the real
++    race window of the project-last binding; the fix must make it irrelevant.
++    """
++
++    def __init__(self, pad_first: int = 3_000_000) -> None:
++        self.lock = threading.Lock()
++        self.calls = 0
++        self.pad_first = pad_first
++        self.responses: list[bytes] = []
++        self.requests: list[bytes] = []
++        self.markers: list[str] = []
++
++    def open(self, request, timeout=None):
++        body = bytes(getattr(request, "data", b"") or b"")
++        with self.lock:
++            index = self.calls
++            self.calls += 1
++            self.requests.append(body)
++        marker = "A" if index == 0 else f"B{index}"
++        pad = self.pad_first if index == 0 else 0
++        branch, loop = candidate("branch", 10.3), candidate("loop", 10.3)
++        for item in (branch, loop):
++            item["tradeoffs"] = [f"{marker}-invocation", "仅验证工程链"]
++            item["concept"] = f"{marker} 桩候选" + ("p" * pad)
++        content = canon({"candidates": [branch, loop]}).decode("utf-8")
++        response = canon({"choices": [{"message": {"content": content}}],
++                          "model": "stub-model", "usage": {}})
++        with self.lock:
++            self.responses.append(response)
++            self.markers.append(marker)
++        return StubResponse(json.loads(response))
++
++
++class BlockingOpener:
++    """Holds the provider call open so the harness can act on the running set."""
++
++    def __init__(self) -> None:
++        self.entered = threading.Event()
++        self.release = threading.Event()
++
++    def open(self, request, timeout=None):
++        self.entered.set()
++        self.release.wait(timeout=20)
++        content = canon({"candidates": [candidate("branch", 10.3),
++                                        candidate("loop", 10.3)]}).decode("utf-8")
++        return StubResponse({"choices": [{"message": {"content": content}}],
++                             "model": "stub-model", "usage": {}})
++
++
++def candidate(kind: str, entrance_y: float) -> dict:
++    from w3_trust_findings import candidate as base_candidate
++    return base_candidate(kind, entrance_y)
++
++
++def real_config():
++    from rkd_mvp.ai_design_option_provider import DesignOptionConfig
++    return DesignOptionConfig(
++        kind="openai_compatible", name="本地协议桩（模拟）", adapter_version="stub",
++        prompt_version="pv", schema_version="rkd-ai-design-option.v1",
++        max_candidates=2, real_model=True, configuration_errors=[],
++        base_url="http://127.0.0.1:9/stub", model_id="stub-model",
++        api_key_present=True, max_attempts=2, timeout_seconds=5,
++        external_context_allowed=False)
++
++
++def build_service(root: Path, opener, db: Path):
++    from rkd_mvp.ai_model_provider import AIProviderConfig, build_provider
++    from rkd_mvp.ai_requirement_repository import SQLiteAIRequirementRepository
++    from rkd_mvp.ai_requirement_service import AIRequirementService
++    from rkd_mvp.api_service import ApiService
++    from rkd_mvp.engine import MVPApp
++    from rkd_mvp.file_service import FileService
++    from rkd_mvp.requirement_service import RequirementService
++    from rkd_mvp.sqlite_store import SQLiteStore
++
++    root.mkdir(parents=True, exist_ok=True)
++    store = SQLiteStore(db)
++    files = FileService(db, root)
++    requirements = RequirementService(db)
++    req_cfg = AIProviderConfig(
++        kind="synthetic", name="本地合成需求通道（非真实 AI）", model_id=None,
++        base_url=None, api_key_present=False, adapter_version="v1", prompt_version="pv",
++        schema_version="rkd-ai-design-brief.v1", max_input_chars=8000,
++        max_output_tokens=2000, timeout_seconds=20, external_context_allowed=False,
++        real_model=False, configuration_errors=[])
++    requirement_ai = AIRequirementService(
++        SQLiteAIRequirementRepository(db), requirements, config=req_cfg,
++        provider_factory=lambda config: build_provider(config))
++    service = ApiService(
++        MVPApp(store), files, requirement_service=requirements,
++        ai_requirement_service=requirement_ai, runtime_root=root,
++        design_option_config=real_config(), design_transport_opener=opener)
++    return service, files, requirement_ai, store
++
++
++def seed(service, files, requirement_ai, key: str) -> None:
++    files.seed_ningbo(service, FIXTURE)
++    item = service.submit_ai_requirement(
++        ORG, PROJECT, "tester",
++        {"natural_language": "开放交流，入口在左侧，暖木色"}, key)["item"]
++    requirement_ai.wait_for_job(ORG, PROJECT, item["job_id"])
++
++
++def revisions_of(service, set_id: str) -> list[dict]:
++    repository = service.ai_design_option_service.repository
++    with repository.transaction(ORG, PROJECT) as tx:
++        return tx.revisions_for_set(set_id)
++
++
++def set_row(service, set_id: str) -> dict:
++    return next(row for row in service.get_ai_design_options(ORG, PROJECT)["sets"]
++                if row["set_id"] == set_id)
++
++
++def stored_phase(db: Path, set_id: str):
++    """Read the authoritative store directly (no writes, no recovery side effects)."""
++    connection = sqlite3.connect(db, timeout=10)
++    try:
++        return connection.execute(
++            "SELECT status, phase FROM ai_design_option_sets WHERE set_id=?",
++            (set_id,)).fetchone()
++    finally:
++        connection.close()
++
++
++def stored_revision_count(db: Path, set_id: str) -> int:
++    connection = sqlite3.connect(db, timeout=10)
++    try:
++        return connection.execute(
++            "SELECT COUNT(*) FROM ai_design_option_revisions WHERE set_id=?",
++            (set_id,)).fetchone()[0]
++    finally:
++        connection.close()
++
++
++def bind_through_runtime(runtime, project_id: str, marker: str):
++    """One real controlled exchange through the runtime; returns (observation, scope)."""
++    if hasattr(runtime, "begin_invocation"):
++        scope = runtime.begin_invocation(project_id)
++        scope.opener().open(Request(f"http://127.0.0.1:9/stub?marker={marker}", b"{}"))
++        return scope.latest(), scope
++    runtime.bound_opener(project_id).open(
++        Request(f"http://127.0.0.1:9/stub?marker={marker}", b"{}"))
++    observations = runtime.run_service.controlled_observations(project_id=project_id)
++    return (observations[-1] if observations else None), None
++
++
++# ------------------------------------------------------------------- R1 (a)
++def check_concurrent_binding(directory: Path) -> dict:
++    """Two concurrent invocations for ONE project must not cross-bind."""
++    opener = PerCallOpener()
++    service, files, requirement_ai, _store = build_service(directory, opener, directory / "app.sqlite3")
++    seed(service, files, requirement_ai, "brief-r1-0001")
++    runtime = service.controlled_design_runtime
++
++    set_a = service.submit_ai_design_options(
++        ORG, PROJECT, "tester", {}, "options-r1-aaaa")["item"]["set_id"]
++    deadline = time.monotonic() + 10
++    while time.monotonic() < deadline and opener.calls < 1:
++        time.sleep(0.001)
++    set_b = service.submit_ai_design_options(
++        ORG, PROJECT, "tester", {}, "options-r1-bbbb")["item"]["set_id"]
++    for set_id in (set_a, set_b):
++        service.ai_design_option_service.wait_for_set(
++            ORG, PROJECT, set_id, timeout_seconds=120)
++    service.ai_design_option_service.wait_for_idle(timeout_seconds=30)
++
++    records = runtime.run_service.export_public()
++    by_run = {record["run_id"]: record for record in records}
++    marker_of = {hashlib.sha256(raw).hexdigest(): marker
++                 for raw, marker in zip(opener.responses, opener.markers)}
++    from rkd_mvp import realmodel_spatial_adapter as adapter
++
++    detail = {"ok": True, "problems": [], "sets": {}, "bound_markers": {},
++              "stub_calls": opener.calls, "run_records": len(records)}
++    for set_id in (set_a, set_b):
++        row = set_row(service, set_id)
++        revisions = revisions_of(service, set_id)
++        entry = {"status": row["status"], "revisions": len(revisions), "bindings": []}
++        detail["sets"][set_id[-6:]] = entry
++        if row["status"] != "succeeded" or len(revisions) != 2:
++            detail["problems"].append(f"{set_id[-6:]} 未成功或修订数不是 2")
++            detail["ok"] = False
++            continue
++        markers = set()
++        for revision in revisions:
++            controlled = (revision["validation"] or {}).get("controlled") or {}
++            record = by_run.get(controlled.get("run_id"))
++            if record is None:
++                detail["problems"].append(f"{set_id[-6:]} 候选缺少运行记录")
++                detail["ok"] = False
++                continue
++            source_sha = adapter.sha256_hex(adapter.candidate_from_persisted(
++                controlled.get("source_candidate"))[0])
++            binding = {
++                "option": revision["option_id"].rsplit(":", 1)[-1][-14:],
++                "run_id": controlled.get("run_id"),
++                "bound_response": marker_of.get(record.get("response_sha256"), "unknown"),
++                "request_sha256": record.get("request_sha256"),
++                "response_sha256": record.get("response_sha256"),
++                "input_hash": record.get("input_hash"),
++                "candidate_sha_matches_own_source": record.get("candidate_sha256") == source_sha,
++            }
++            entry["bindings"].append(binding)
++            if not binding["candidate_sha_matches_own_source"]:
++                detail["problems"].append(f"{set_id[-6:]} 候选摘要不是本人来源")
++                detail["ok"] = False
++            if record.get("input_hash") != row["input_hash"]:
++                detail["problems"].append(f"{set_id[-6:]} input_hash 与本人候选集不符")
++                detail["ok"] = False
++            if binding["bound_response"] != "unknown":
++                markers.add(binding["bound_response"])
++        detail["bound_markers"][set_id[-6:]] = sorted(markers)
++        if len(markers) > 1:
++            detail["problems"].append(f"{set_id[-6:]} 同一候选集内不同候选绑定到不同交换")
++            detail["ok"] = False
++    distinct = {marker for value in detail["bound_markers"].values() for marker in value}
++    if len(distinct) < 2:
++        detail["problems"].append(
++            "两个并发执行的调用没有分别绑定各自的交换（串线或被同一交换覆盖）")
++        detail["ok"] = False
++    detail["distinct_run_ids"] = len({record["run_id"] for record in records})
++    return detail
++
++
++# ------------------------------------------------------------------- R1 (b)
++def check_invocation_scope(directory: Path) -> dict:
++    """A candidate may only be signed from its OWN invocation's observation."""
++    detail = {"ok": False, "problems": []}
++    opener = PerCallOpener(pad_first=0)
++    service, files, requirement_ai, _store = build_service(directory, opener, directory / "app.sqlite3")
++    seed(service, files, requirement_ai, "brief-r1-0002")
++    runtime = service.controlled_design_runtime
++    detail["invocation_scope_api"] = hasattr(runtime, "begin_invocation")
++    if not detail["invocation_scope_api"]:
++        detail["problems"].append(
++            "运行时没有按 invocation 的观测句柄：只能取项目最后一条观测，并发必然串线")
++        return detail
++
++    item = service.submit_ai_design_options(ORG, PROJECT, "tester", {}, "options-r1-cccc")["item"]
++    service.ai_design_option_service.wait_for_set(ORG, PROJECT, item["set_id"], timeout_seconds=120)
++    revisions = revisions_of(service, item["set_id"])
++    if not revisions:
++        detail["problems"].append("正例候选集没有修订")
++        return detail
++    model = revisions[0]["validation"]["controlled"]["source_candidate"]
++
++    scope_a = runtime.begin_invocation(PROJECT)
++    scope_b = runtime.begin_invocation(PROJECT)
++    scope_a.opener().open(Request("http://127.0.0.1:9/stub?a", b"{}"))
++    scope_b.opener().open(Request("http://127.0.0.1:9/stub?b", b"{}"))
++    detail["scope_counts"] = [len(scope_a.observations), len(scope_b.observations)]
++    detail["scopes_distinct"] = (scope_a.latest().observation_id
++                                 != scope_b.latest().observation_id)
++
++    def attempt(**kwargs):
++        try:
++            runtime.register_and_issue(**kwargs)
++            return "accepted"
++        except Exception as error:  # noqa: BLE001
++            return getattr(error, "code", type(error).__name__)
++
++    empty = runtime.begin_invocation(PROJECT)
++    detail["missing_observation"] = attempt(
++        project_id=PROJECT, revision_id="rev-empty-000001", candidate_model=model,
++        observation=None, scope=empty, config=real_config(), input_hash="h" * 64)
++    detail["foreign_observation"] = attempt(
++        project_id=PROJECT, revision_id="rev-foreign-00001", candidate_model=model,
++        observation=scope_b.latest(), scope=scope_a, config=real_config(),
++        input_hash="h" * 64)
++    accepted = attempt(
++        project_id=PROJECT, revision_id="rev-own-0000001", candidate_model=model,
++        observation=scope_a.latest(), scope=scope_a, config=real_config(),
++        input_hash="h" * 64)
++    detail["own_observation"] = accepted
++    if accepted == "accepted":
++        record = next(record for record in runtime.run_service.export_public()
++                      if (record.get("details") or {}).get("revision_id") == "rev-own-0000001")
++        detail["own_binds_own_exchange"] = (
++            record["observation_id"] == scope_a.latest().observation_id
++            and record["response_sha256"] == scope_a.latest().response_sha256)
++        detail["own_run_id"] = record["run_id"]
++    else:
++        detail["own_binds_own_exchange"] = False
++
++    for name, value in (("missing_observation", detail["missing_observation"]),
++                        ("foreign_observation", detail["foreign_observation"])):
++        if value == "accepted":
++            detail["problems"].append(f"{name} 被接受，未 fail closed")
++    if not detail["own_binds_own_exchange"]:
++        detail["problems"].append("本 invocation 的签发没有绑定自己的交换")
++    detail["ok"] = not detail["problems"]
++    return detail
++
++
++# ---------------------------------------------------------------------- R2
++def check_phantom_parent(directory: Path) -> dict:
++    """A revision the business repository never kept must not become a parent."""
++    detail = {"ok": False, "problems": []}
++    db = directory / "app.sqlite3"
++    healthy = PerCallOpener(pad_first=0)
++    service, files, requirement_ai, _store = build_service(directory / "healthy", healthy, db)
++    seed(service, files, requirement_ai, "brief-r2-0001")
++    runtime = service.controlled_design_runtime
++
++    ok_set = service.submit_ai_design_options(
++        ORG, PROJECT, "tester", {}, "options-r2-okok")["item"]["set_id"]
++    service.ai_design_option_service.wait_for_set(ORG, PROJECT, ok_set, timeout_seconds=120)
++    ok_rows = revisions_of(service, ok_set)
++    detail["healthy_set"] = {"status": set_row(service, ok_set)["status"],
++                             "revisions": len(ok_rows)}
++    if not ok_rows:
++        detail["problems"].append("正常候选集没有修订，无法继续")
++        return detail
++    model = ok_rows[0]["validation"]["controlled"]["source_candidate"]
++    detail["healthy_registered"] = len(
++        [key for key in getattr(runtime.run_service, "_revisions", {}) if key[0] == PROJECT])
++
++    # Force the business transaction to be discarded AFTER the controlled
++    # finalize: a second composition root over the same store reclaims the
++    # running set (WORKER_RESTARTED) as soon as the worker enters its outputs
++    # phase, so the worker's insert never commits.
++    blocking = BlockingOpener()
++    owner, _owner_files, _owner_ai, _owner_store = build_service(
++        directory / "owner", blocking, db)
++    shadow, _shadow_files, _shadow_ai, _shadow_store = build_service(
++        directory / "shadow", BlockingOpener(), db)
++    owner_runtime = owner.controlled_design_runtime
++    bad_set = owner.submit_ai_design_options(
++        ORG, PROJECT, "tester", {}, "options-r2-bad0")["item"]["set_id"]
++    if not blocking.entered.wait(timeout=20):
++        detail["problems"].append("阻塞桩没有被调用")
++        return detail
++    blocking.release.set()
++    deadline = time.monotonic() + 30
++    while time.monotonic() < deadline:
++        row = stored_phase(db, bad_set)
++        if row and row[1] == "outputs":
++            break
++    shadow.get_ai_design_options(ORG, PROJECT)   # reclaim the abandoned running set
++    for _ in range(400):
++        row = stored_phase(db, bad_set)
++        if row and row[0] in {"failed", "cancelled", "succeeded"}:
++            break
++        time.sleep(0.01)
++    time.sleep(0.3)
++
++    bad_row = stored_phase(db, bad_set)
++    bad_revisions = stored_revision_count(db, bad_set)
++    ledger_registered = [key for key in getattr(owner_runtime.run_service, "_revisions", {})
++                         if str(key[0]) == PROJECT]
++    records = owner_runtime.run_service.export_public()
++    detail.update({
++        "failed_set": {"status": (bad_row or [None])[0],
++                       "phase": (bad_row or [None, None])[1],
++                       "business_revisions": bad_revisions},
++        "ledger_registered": len(ledger_registered),
++        "run_records": len(records),
++    })
++    if bad_revisions:
++        detail["problems"].append("被丢弃的候选集仍写入了业务修订")
++    if ledger_registered:
++        detail["problems"].append(
++            f"业务仓储没有对应修订，账本仍登记了 {len(ledger_registered)} 条父修订（幽灵父修订）")
++
++    target = ledger_registered[0][1] if ledger_registered else None
++    if target is None:
++        for record in records:
++            candidate_id = (record.get("details") or {}).get("revision_id")
++            if candidate_id:
++                target = candidate_id
++    detail["parent_attempt_target"] = target
++    if target is None:
++        detail["problems"].append("无法取得本次失败尝试的修订号，父链负例无法执行")
++        return detail
++
++    observation, scope = bind_through_runtime(owner_runtime, PROJECT, "parent-attempt")
++    kwargs = {"project_id": PROJECT, "revision_id": "rev-child-000001",
++              "candidate_model": model, "observation": observation,
++              "config": real_config(), "input_hash": "h" * 64,
++              "parent_revision_id": target}
++    if scope is not None:
++        kwargs["scope"] = scope
++    try:
++        owner_runtime.register_and_issue(**kwargs)
++        detail["parent_attempt"] = "accepted"
++        detail["problems"].append("以未持久化的修订作为父链被接受（幽灵父修订可用）")
++    except Exception as error:  # noqa: BLE001
++        detail["parent_attempt"] = getattr(error, "code", type(error).__name__)
++    detail["ok"] = (not detail["problems"]
++                    and detail["parent_attempt"] not in {"accepted", None})
++    return detail
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--code-root", required=True)
++    ap.add_argument("--label", required=True)
++    ap.add_argument("--out", required=True)
++    ap.add_argument("--expect", choices=("vulnerable", "fixed"), default=None)
++    args = ap.parse_args()
++    code_root = Path(args.code_root).resolve()
++    out = Path(args.out).resolve()
++    out.mkdir(parents=True, exist_ok=True)
++    for path in (code_root / "mvp", code_root, ROOT / "scripts"):
++        if str(path) not in sys.path:
++            sys.path.insert(0, str(path))
++
++    from rkd_mvp.api_service import ApiService
++    parameters = inspect.signature(ApiService.__init__).parameters
++    tools = Path(tempfile.mkdtemp())
++    results = {
++        "R1-binding": check_concurrent_binding(tools / "r1-binding"),
++        "R1-scope": check_invocation_scope(tools / "r1-scope"),
++        "R2-phantom": check_phantom_parent(tools / "r2"),
++    }
++    summary = {name: ("fixed" if value.get("ok") else "vulnerable")
++               for name, value in results.items()}
++    audit = {"schema_version": "rkd-w3-r1r2-source-records.v1",
++             "baseline": "f473c92", "code_root": str(code_root), "label": args.label,
++             "composition_root_seams": [name for name in parameters],
++             "results": results, "summary": summary,
++             "external_calls": 0, "cost_cny": 0, "keys_used": False}
++    (out / "findings.json").write_bytes(canon(audit))
++    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
++    if args.expect == "vulnerable":
++        return 0 if all(value == "vulnerable" for value in summary.values()) else 2
++    if args.expect == "fixed":
++        return 0 if all(value == "fixed" for value in summary.values()) else 2
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

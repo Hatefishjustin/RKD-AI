@@ -1,0 +1,72 @@
+{
+  "baseline": "f473c92b2ee8f88ed4e7af61adb4d7ad53b07fb8",
+  "code_commit": "55602df",
+  "counts": {
+    "checks": {
+      "fail": 0,
+      "not_run": 1,
+      "observed_pass": 7
+    },
+    "files": 10,
+    "tests": {
+      "ai_design_options": "8/8 OK",
+      "full_suite": "277/277 OK",
+      "w3_astra_remediation": "4/4 OK",
+      "w3_composition_root": "7/7 OK",
+      "w3_r1r2_source_records": "4/4 OK"
+    }
+  },
+  "files": {
+    "changes.patch": {
+      "bytes": 73208,
+      "sha256": "2f9b007b942dc1d7bf1e06137083b9f40a189559ebf9d8ff76ddfe5ca1657bbc"
+    },
+    "checks.json": {
+      "bytes": 6712,
+      "sha256": "c9c0968078c7caa5ee857d15cb5bb9e8e95d29207e779d85e0618eac6a3e1ee7"
+    },
+    "code-diff.md": {
+      "bytes": 2842,
+      "sha256": "09efcc61222a17428726c7f803d1eaf3a1febf8809c98af88035ab33796c92c3"
+    },
+    "commit-reference.md": {
+      "bytes": 2747,
+      "sha256": "12519277c9fc9cb90ffd5a7a3b91a2e4c0b913a24d5b769aaff29a37c4670c06"
+    },
+    "decision-request.md": {
+      "bytes": 2802,
+      "sha256": "a913dd05bd34ff72a7d860bc59d25b02f842d0ba2b1ce79239f49e996149b815"
+    },
+    "outputs/entrypoints.json": {
+      "bytes": 3849,
+      "sha256": "c092cebe5cd87a179e5526ddfaa2d37af0dbefb68aa26066d924fdb4c63a3ed1"
+    },
+    "outputs/findings-after.json": {
+      "bytes": 3177,
+      "sha256": "44f3e9915b9921c9994010bf5571b96a2dc7cfd2e1d2c6383b95980cbc8960e1"
+    },
+    "outputs/findings-before.json": {
+      "bytes": 3309,
+      "sha256": "fbf6a8899ee744bed4f1392ed37e9b92746601746dd8a70469957fea9d178b55"
+    },
+    "positive-negative-cases.md": {
+      "bytes": 3457,
+      "sha256": "84bff927bb215afdf31cfcc4c77e88e8ca076badb0897dbbd56339de09d80038"
+    },
+    "review-packet.md": {
+      "bytes": 9515,
+      "sha256": "881d3bc55f7db2ed4e3941fa2bca5ad8f9944f57fba82c2f710d1c7984d5d089"
+    }
+  },
+  "generated_at": "2026-11-18",
+  "not_run": [
+    "HTTP 下载",
+    "PG 数据面",
+    "真实模型调用",
+    "正式采用/发布",
+    "浏览器 UI",
+    "专业签核"
+  ],
+  "review": "W3-r1r2-source-records",
+  "schema_version": "rkd-w3-r1r2-source-records-manifest.v1"
+}
